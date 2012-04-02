@@ -83,7 +83,7 @@
     }
     #+end_src
 
-    + type :: denotes the message type
+    + type :: message type
     + host :: the sender's hostname
     + sig  :: Base64 encoded cryptographic signature of the stringified JSON hash containing only the above fields.[fn:1]
 
@@ -101,6 +101,30 @@
     the node status tracker's ZeroMQ identity. The identity is required so the message is correctly
     routed. See the [[Heartbeat Channel]] section for a visual representation of the message flows and ZeroMQ
     sockets.
+**** Managed nodes
+     A managed node sends heartbeats to the in_addr URL specified in the config data received during [[Server and Client Discovery][discovery]].
+     It receives server heartbeats via the out_addr URL specified during discovery. ZeroMQ Pub/Sub is strongly
+     recommended for broadcasting server heartbeats since it's more efficient when sending the same message
+     to many receivers. Clients should not ACK server heartbeats.
+
+     A managed node must mark the OPC server as offline when it fails to receive server heartbeats
+     for a consecutive number of intervals equal to push\_jobs/heartbeat/offline\_threshold. A managed client
+     must not attempt to send any data when the server is offline. Any job requests received by the managed
+     node from the offline server must be NAK'd and discarded.
+
+     After a managed node has marked the server as offline it must receive server heartbeats for a consecutive
+     number of intervals equal to push\_jobs/heartbeat/online\_threshold before marking the server online.
+     The managed node may resume sending data and accepting job requests from the OPC server at this point.
+**** OPC Server
+     A OPC server broadcasts its heartbeat on the URL described by out_addr. The server shouldn't expect any
+     ACKs from managed nodes.
+
+     The server receives heartbeats messages from managed nodes via ZeroMQ Pub/Sub. Each time a new managed node
+     connects to a OPC server it tells the server the URL of its heartbeat publisher so it can subscribe to the
+     managed node's heartbeat stream.
+**** TODO Do clients store and forward or just drop data when the server is unavailable?
+**** TODO How do we expose HWM/SWAP as user-visible tunables? Do we want to?
+
 
 ** Server and Client Discovery
 *** REST endpoint (perhaps on /nodes?) to supply all config data in JSON format
@@ -109,11 +133,16 @@
       "type": "config",
       "host": "opc1.opscode.com",
       "push_jobs": {
-                     "heartbeat": "10.10.1.5:10000",
-                     "command": "10.10.1.5:10001",
-                     "heartbeat_interval": 15,
-                     "offline_threshold": 3,
-                     "online_threshold": 2
+                     "heartbeat": {
+                                    "out_addr": "tcp://10.10.1.5:10000",
+                                    "in_addr": "tcp://10.10.1.5:10001",
+                                    "interval": 15,
+                                    "offline_threshold": 3,
+                                    "online_threshold": 2
+                                  },
+                     "command":   {
+                                    "addr": "tcp://10.10.1.5:10001"
+                                  }
                    },
       "public_key": "AAAAB3NzaC1kc3MAAACBAIZbwlySffbB
                     5msSUH8JzLLXo/v03JBCWr13fVTjWYpc
@@ -132,10 +161,11 @@
 
     + type :: message type
     + host :: sender's host name (Private Chef server)
-    + push\_jobs/heartbeat :: IP address and port of the server's ZeroMQ heartbeat channel
-    + push\_jobs/command :: IP address and port of the server's ZeroMQ command channel
-    + push\_jobs/heartbeat\_interval :: Interval, in seconds, between heartbeat messages
-    + push\_jobs/offline\_threshold :: How many heartbeat intervals must be missed before the other end is considered offline
+    + push\_jobs/heartbeat/out_addr :: URL pointing to the server's heartbeat broadcast service
+    + push\_jobs/heartbeat/in_addr :: URL pointing to the server's node state tracking service
+    + push\_jobs/interval :: Interval, in seconds, between heartbeat messages
+    + push\_jobs/offline_threshold :: How many intervals must be missed before the other end is considered offline
+    + command/addr :: URL pointing to the command service
     + sig :: Base64 encoded cryptographic signature of the stringified JSON hash containing only the above fields[fn:1]
 
 [fn:1] Public key signatures are used to verify the sender's identity and provide some amount of message
