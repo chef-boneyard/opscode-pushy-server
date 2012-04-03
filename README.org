@@ -2,4 +2,4 @@
 will find:
 - A org-mode file describing the overall design
 - A spec compliant agent suitable for production deployment
-- A spec copmliant server suitable for inclusion in a production OPC installation.
+- A spec compliant server suitable for inclusion in a production OPC installation.
