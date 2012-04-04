@@ -1,0 +1,223 @@
+#+STARTUP: overview
+#+STARTUP: indent
+#+STARTUP: hidestars
+#+STARTUP: logdone
+#+AUTHOR: Christopher Brown
+#+EMAIL:  cb@opscode.com
+#+TITLE: Push Job Functional Design
+#+EXPORT_DATE: nil
+#+OPTIONS: ^:{}
+#+LaTeX: \raggedright
+#+LaTeX: \thispagestyle{fancy}
+#+LaTeX_HEADER: \usepackage[T1]{fontenc} 
+#+LaTeX_HEADER: \usepackage[adobe-utopia]{mathdesign}
+#+LaTeX_HEADER: \usepackage[scaled]{berasans} 
+#+LaTeX_HEADER: \usepackage[scaled]{beramono}
+#+LATEX_HEADER: \setlength{\evensidemargin}{0in}
+#+LATEX_HEADER: \setlength{\oddsidemargin}{0in}
+#+LATEX_HEADER: \setlength{\textwidth}{6.5in}
+#+LATEX_HEADER: \usepackage{fancyhdr}
+#+LATEX_HEADER: \usepackage{paralist}
+#+LATEX_HEADER: \pagestyle{fancy} \renewcommand{\headrulewidth}{0pt}
+#+LATEX_HEADER: \chead{\includegraphics[width=4cm]{Opscode_Logo_Small.png}} 
+#+LATEX_HEADER: \lhead{} \rhead{} \lfoot{\today} 
+#+LATEX_HEADER: \cfoot{Opscode Confidential}\rfoot{\thepage}
+#+LATEX_HEADER: \renewcommand{\headrulewidth}{0pt}
+#+LaTeX_HEADER: \let\itemize\compactitem
+#+LaTeX_HEADER: \let\description\compactdesc
+#+LaTeX_HEADER: \let\enumerate\inparaenum
+
+
+* Summary
+Opscode Chef is missing a key feature that comes up in discussion with
+nearly every potential customer.  That feature is immediate, ad-hoc
+task execution against one or more managed devices.  This document
+describes a solution including formats for task definition, group
+membership, and a weak transaction-like execution protocol running
+over ZeroMQ as a transport.
+* Defining groups of servers
+* Ideas for Protocol Design with ZeroMQ
+  If the intent is to arbitrarily and perhaps temporarily define a
+  group of servers against which to execute some command, then we need
+  to determine what to do if / when:
+
+  - not all the servers answer within a pre-defined period of time or
+    after some number of alert messages have been broadcast
+  - some participants answer late, while the early responders are still
+    executing or reporting results
+
+Some of the challenges include:
+- determining how many agents can be supported
+
+  Without knowing exactly how ZeroMQ is doing the polling and queuing,
+  it's hard to tell where the scaling bottlenecks lie
+
+- synchronization protocol (discussed below)
+
+* Synchronization Protocol
+** Initial registration and handshake from remote agent to server
+Ignoring the need for encryption and security for a moment, let's talk
+about the protocol.  Server creates a PUB socket and waits for
+SUBscriptions.  New remote agents start up and register by
+SUBscribing.  The payload of the published message may contain
+additional information such as which endpoint to use for further 1:1
+communication, authN handshake, etc.  The remote agent uses this
+information in a REQ-REP conversation with the server.  
+
+*** Perpetual heartbeat
+One issue is in-band versus out-of-band heartbeat.  In-band wouldn't
+require another socket but out-of-band can be easier because REQ-REP
+doesn't allow one end to send more than one message without first
+closing the socket (see EFSM problem).  What action is taken after
+failure of N consecutive heartbeats?  What's the efficient management
+of a long list of outstanding heartbeat futures?
+
+** Setup phase
+    
+Often, in the setup phase of such a protocol, an /alert/ message will
+go out, signifying the start of operations.  Either the list of
+participants is part of the /alert/ payload (introducing a scale
+concern) and is read by all *possible* participants, or the list of
+participants is known a priori and the /alert/ is sent only to them.
+
+*NOTE* Sometimes in this case, the list of participants is still sent
+in the /alert/ payload to inform all the partcipants of their peers.
+
+Now the protocol must wait and listen for responses and decide when to
+rebroadcast in the hope that missing participants join.  Once the desired
+waiting time has expired or number of retransmissions has occurred,
+the operation either is cancelled or continues with the currently
+defined capture group.  Further late responses from would-be
+participants are dropped and those participants are shunned.  Another
+design question is whether those late joiners are sent a /shun/
+message to let them know they were heard but have not been chosen.
+
+** Action phase
+
+With the list of chosen participants in hand, the master now sends out
+its instructions.  Implementation note:  if the instruction payload is
+identical to all participants, this is just *PUB/SUB*; if not, we must
+either alter and send to each participant directly, or treat the
+message channel as a publish bus which includes everyone's
+instructions.  This is a fairly typical abuse of multicast.
+
+** Acknowledge phase
+
+Again, a dance can be performed between the list of /expected/
+participants and /actual/ participants, as some may have already been
+lost.  Protocols may forgo this phase, including it conceptually in
+the /gather/ phase if the instructions were sent by multicast or other
+non-blocking send.  The point here is to prevent blocking against
+absent but expected participants.
+
+** Gather phase
+
+As participants complete their tasks, they report success or failure
+and extended information.  The master receives their responses, with
+fair queuing, and decides how long to wait for stragglers.  Again,
+there's a design question of positive acknowledgement to the
+participant that the protocol has been completed, so that resources
+may be freed, and whether tardy participants receive an active /shun/
+message, also allowing them to stop execution and free resources if
+they receive the message.
+
+* ZeroMQ
+** Install ZeroMQ with Homebrew
+#+BEGIN_SRC bash
+brew install zeromq
+ARCHFLAGS="-arch x86_64" gem install zmq -- --with-zmq-dir=/usr/local
+gem install em-zeromq
+#+END_SRC
+*NOTE* em-zeromq uses EventMachine
+** Install /czmq/ to build the C examples
+#+BEGIN_SRC bash
+brew install czmq
+#+END_SRC
+** Install ZGuide
+#+BEGIN_SRC bash
+git clone https://github.com/imatix/zguide.git
+#+END_SRC
+The C and C++ examples will not build without installing /czmq/
+mentioned above, but I didn't see that in the docs anywhere.  
+** Alter C++ build script to actually use C++
+#+BEGIN_EXAMPLE
+https://github.com/skeptomai/zguide/commit/25032846376ea73de0576c62c6cc73a4faf2afd1
+#+END_EXAMPLE
+I think there are two ways to skin the cat here.  One is to
+specifically add the C++ stdlib to link, and the other is to tell the
+build script to use g++ and you get the library linked for free.  I
+did the latter.
+** NOTE Look at /salt/ in Python
+#+BEGIN_EXAMPLE
+Salt is a distributed remote execution system used to execute commands
+and query data. Salt is meant to solve the problem of managing large
+sets of servers. It was developed in order to bring the best solutions
+found in the world of remote execution together and make them better,
+faster and more malleable. Salt is a great example of secure pub-sub
+over ZeroMQ, and scales to hundreds or thousands of servers.
+#+END_EXAMPLE
+
+** Questions about ZeroMQ
+- What happens if a SUB socket connects with an identity, and a second
+  socket attempts to connect with the same identity?
+
+** Installing on Ubuntu Oneiric 
+(just my bash history for posterity)
+ubuntu/images/ebs/ubuntu-oneiric-11.10-amd64-server-20120108 ( ami-c594ca80)
+#+BEGIN_EXAMPLE
+apt-get -y install build-essential libzmq-dev ruby1.9.1 ruby-dev git
+
+ubuntu@ip-10-171-70-149:~$ history
+    1  sudo apt-get install build-essential
+    2  sudo apt-get update
+    3  sudo apt-get install build-essential
+    4  sudo apt-get install zeromq
+    5  ruby -v
+    6  sudo apt-get install ruby1.9.1
+    7  ruby -v
+    8  sudo gem install chef
+    9  sudo gem install ruby-dev
+   10  sudo apt-get install ruby-dev
+   11  sudo gem install chef
+   12  gcc
+   13  gcc --dumpversion
+   14  gcc --version
+   15  sudo apt-get install ruby1.9-dev
+   16  sudo apt-get install ruby-dev
+   17  irb
+   18  sudo gem install chef
+   19  update-alternatives --config ruby
+   20  sudo update-alternatives --config ruby
+   21  sudo update-alternatives --config gem
+   22  sudo apt-get install ruby-dev
+   23  apt-get install ruby1.9.1-dev
+   24  sudo apt-get install ruby1.9.1-dev
+   25  sudo gem install chef
+   26  history
+   27  sudo apt-get install czmq
+   28  sudo apt-get install git
+   29  git
+   30  history
+#+END_EXAMPLE
+* Prototyping with Ruby
+There's a fair amount of experience out in the world with Ruby,
+ZeroMQ, and Eventmachine.  Here's a clean list of dependencies to get
+up and running with it.
+
+- bones (3.7.3)
+- bundler (1.0.22)
+- diff-lcs (1.1.3)
+- eventmachine (0.12.10)
+- ffi (1.0.11)
+- ffi-rzmq (0.9.5, 0.9.3)
+- little-plugger (1.1.3)
+- loquacious (1.9.1)
+- multi_json (1.1.0)
+- rake (0.9.2)
+- rake-compiler (0.8.0)
+- rspec (2.8.0)
+- rspec-core (2.8.0)
+- rspec-expectations (2.8.0)
+- rspec-mocks (2.8.0)
+- simplecov (0.6.1)
+- simplecov-html (0.5.3)
