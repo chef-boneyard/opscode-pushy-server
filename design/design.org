@@ -1,6 +1,30 @@
 #+TITLE: Push Job Specification
 #+AUTHOR: Christopher Brown <cb@opscode.com>\\Kevin Smith <kevin@opscode.com>
 #+OPTIONS: toc:nil
+#+EXPORT_DATE: nil
+#+OPTIONS: ^:{}
+#+LaTeX: \raggedright
+#+LaTeX: \thispagestyle{fancy}
+#+LaTeX_HEADER: \hypersetup{colorlinks=true,linkcolor=blue,linkbordercolor=blue}
+#+LaTeX_HEADER: \def\@pdfborder{0 0 1}
+#+LaTeX_HEADER: \def\@pdfborderstyle{/S/U/W 1}}
+#+LaTeX_HEADER: \usepackage[T1]{fontenc}
+#+LaTeX_HEADER: \usepackage[adobe-utopia]{mathdesign}
+#+LaTeX_HEADER: \usepackage[scaled]{berasans}
+#+LaTeX_HEADER: \usepackage[scaled]{beramono}
+#+LATEX_HEADER: \setlength{\evensidemargin}{0in}
+#+LATEX_HEADER: \setlength{\oddsidemargin}{0in}
+#+LATEX_HEADER: \setlength{\textwidth}{6.5in}
+#+LATEX_HEADER: \usepackage{fancyhdr}
+#+LATEX_HEADER: \usepackage{paralist}
+#+LATEX_HEADER: \pagestyle{fancy} \renewcommand{\headrulewidth}{0pt}
+#+LATEX_HEADER: \chead{\includegraphics[width=4cm]{Opscode_Logo_Small.png}}
+#+LATEX_HEADER: \lhead{} \rhead{} \lfoot{\today}
+#+LATEX_HEADER: \cfoot{Opscode Confidential}\rfoot{\thepage}
+#+LATEX_HEADER: \renewcommand{\headrulewidth}{0pt}
+#+LaTeX_HEADER: \let\itemize\compactitem
+#+LaTeX_HEADER: \let\description\compactdesc
+#+LaTeX_HEADER: \let\enumerate\inparaenum
 
 * Overview
   This specification describes the ability to execute on-demand chef-client via knife. For brevity's sake
@@ -30,7 +54,7 @@
 ** Scalability & Security
    1. Push jobs will be deployed in Private Chef only.
    2. Push jobs will not be deployed in Hosted Chef.
-   3. The design must scale up to 8,000 managed nodes.
+   3. The design must scale up to 8,000 managed nodes per OPC server.
    4. Push jobs will honor the same security guarantees made by the Chef REST API.
 
 * Architecture
@@ -60,32 +84,32 @@
 *** Command Channel
     TBD
 
-** Message Formats
-*** Why JSON?
-   All push job messages are valid JSON hashes. Each message contains, as the first element in the
-   hash an entry with the string key "type" and a string value denoting the message's type. Valid
-   types are: heartbeat and TBD.
-
-   Push jobs are able to use JSON because ZeroMQ handles packet fragmentation and reassembly.
-   Applications built using ZeroMQ are guaranteed to receive entire message payloads. This
-   frees application developers from worrying about low level details and permits focus on
-   formats and protocols.
-
-   Using JSON as the message format also improves the debuggability and loggability of the system.
-   A binary protocol, such as Protocol Buffers or msgpack, would be more efficient but would also
-   substantially increase the effort required to debug and support the system.
+** General Messaging
+*** JSON
+   Push jobs use JSON because ZeroMQ handles packet fragmentation and reassembly. JSON also
+   facilitates easier debugging and maintenance of the system since all messages are textual
+   and human-readable. A binary protocol, such as Protocol Buffers or msgpack, would be more
+   efficient but would also substantially increase the effort required to debug and support
+   the system.
+*** Security
+   All messages are signed using the caller's private key. This signature is transmitted in
+   a separate ZeroMQ frame before the JSON payload.[fn:1]
+   #+begin_src erlang
+   Sock = connect_to_server("tcp://some_server:8765"),
+   Sig = sign_message(JSON),
+   erlzmq:send(Sock, Sig, [sndmore]),
+   erlzmq:send(Sock, JSON)
+   #+end_src
 *** Heartbeat
     #+begin_src javascript
     {
       "type":  "heartbeat",
       "host":  "node123.foo.com",
-      "sig":   "yYy96kyXcpV840fCW7O2Nw=="
     }
     #+end_src
 
     + type :: message type
     + host :: the sender's hostname
-    + sig  :: Base64 encoded cryptographic signature of the stringified JSON hash containing only the above fields.[fn:1]
 
 ** Protocols
 *** Heartbeat
@@ -125,6 +149,18 @@
 **** TODO Do clients store and forward or just drop data when the server is unavailable?
 **** TODO How do we expose HWM/SWAP as user-visible tunables? Do we want to?
 
+*** Jobs
+    A job is a request to execute a command sent to a group of managed nodes. The server is responsible for
+    managing the execution of the job and its result set, if any. While job execution is conceptually simple
+    it does require dealing with several aspects of distributed systems.
+*** TODO Flesh out this section with CB's comments
+*** TODO Describe a coherent design using ZeroMQ socket types
+**** Selecting servers
+**** Determining if enough servers are present to initiate the job
+**** Job initiation
+**** Tracking the progress of each participant
+**** Gathering participant job execution responses
+**** Returning job execution status & results to caller
 
 ** Server and Client Discovery
 *** REST endpoint (perhaps on /nodes?) to supply all config data in JSON format
@@ -153,8 +189,7 @@
                     AFQDIipDNo83e8RRp7Fits0DSy0DCpwAA
                     AIB01BwXg9WSfU0mwzz/0+5Gb/TMAxfkD
                     yucbcpJNncpRtr9Jb+9GjeZIbqkBQAqwg
-                    dbEjviRbUAuSawNSCdtnMgWD2NXkBKEde",
-      "sig":   "yYy96kyXcpV840fCW7O2Nw=="
+                    dbEjviRbUAuSawNSCdtnMgWD2NXkBKEde"
 
     }
     #+end_src
@@ -166,7 +201,6 @@
     + push\_jobs/interval :: Interval, in seconds, between heartbeat messages
     + push\_jobs/offline_threshold :: How many intervals must be missed before the other end is considered offline
     + command/addr :: URL pointing to the command service
-    + sig :: Base64 encoded cryptographic signature of the stringified JSON hash containing only the above fields[fn:1]
 
 [fn:1] Public key signatures are used to verify the sender's identity and provide some amount of message
 tamper detection.
