@@ -1,3 +1,6 @@
 design/*.tex
 design/*.log
 design/*.aux
+prototype/ebin
+prototype/deps
+.DS_STORE
