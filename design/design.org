@@ -1,5 +1,5 @@
 #+TITLE: Push Job Specification
-#+AUTHOR: Chris Brown <cb@opscode.com>\\Kevin Smith <kevin@opscode.com>
+#+AUTHOR: Christopher Brown <cb@opscode.com>\\Kevin Smith <kevin@opscode.com>
 #+OPTIONS: toc:nil
 
 * Overview
