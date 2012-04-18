@@ -21,7 +21,7 @@ def server_ping(context, listen_if, port)
   while true
     time = Time.now()
     update = "%08d %s %s" % [sequence, server, time]
-    puts update
+    puts "ud: #{update}"
     publisher.send_string(update)
     sequence+=1
     sleep 1
@@ -41,5 +41,5 @@ def hb_collect(context, listen_if, port)
 end
 
 
-#server_ping(context, listen_if, pub_port)
+Thread.new{server_ping(context, listen_if, pub_port)}
 hb_collect(context, listen_if, hb_port)

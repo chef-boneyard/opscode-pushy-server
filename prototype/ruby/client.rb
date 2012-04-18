@@ -64,7 +64,8 @@ def heartbeat_server(context, server, port)
   end
 end
 
-#listen_blocking(subscriber)
-heartbeat_server(context, server, hb_port)
+Thread.new{heartbeat_server(context, server, hb_port)}
+listen_blocking(subscriber)
+
 
 
