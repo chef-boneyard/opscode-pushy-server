@@ -1,10 +1,12 @@
 #!/usr/bin/ruby
 
 #
-# Shamelessly stolen from the zmq examples
+# Very preliminary take on pushy protocol
+# TODO
+# * multi-packet processing
+# * signing/checking of packets
+# * rework system reactor model
 #
-
-
 require 'rubygems'
 require 'ffi-rzmq'
 require 'pp'
