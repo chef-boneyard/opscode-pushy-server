@@ -1,0 +1,48 @@
+#+TITLE: Notes on Security and Confidentiality
+#+AUTHOR: Mark Anderson <mark@opscode.com>
+#+OPTIONS: toc:nil
+#+EXPORT_DATE: nil
+#+OPTIONS: ^:{}
+#+LaTeX: \raggedright
+#+LaTeX: \thispagestyle{fancy}
+#+LaTeX_HEADER: \hypersetup{colorlinks=true,linkcolor=blue,linkbordercolor=blue}
+#+LaTeX_HEADER: \def\@pdfborder{0 0 1}
+#+LaTeX_HEADER: \def\@pdfborderstyle{/S/U/W 1}}
+#+LaTeX_HEADER: \usepackage[T1]{fontenc}
+#+LaTeX_HEADER: \usepackage[adobe-utopia]{mathdesign}
+#+LaTeX_HEADER: \usepackage[scaled]{berasans}
+#+LaTeX_HEADER: \usepackage[scaled]{beramono}
+#+LATEX_HEADER: \setlength{\evensidemargin}{0in}
+#+LATEX_HEADER: \setlength{\oddsidemargin}{0in}
+#+LATEX_HEADER: \setlength{\textwidth}{6.5in}
+#+LATEX_HEADER: \usepackage{fancyhdr}
+#+LATEX_HEADER: \usepackage{paralist}
+#+LATEX_HEADER: \pagestyle{fancy} \renewcommand{\headrulewidth}{0pt}
+#+LATEX_HEADER: \chead{\includegraphics[width=4cm]{Opscode_Logo_Small.png}}
+#+LATEX_HEADER: \lhead{} \rhead{} \lfoot{\today}
+#+LATEX_HEADER: \cfoot{Opscode Confidential}\rfoot{\thepage}
+#+LATEX_HEADER: \renewcommand{\headrulewidth}{0pt}
+#+LaTeX_HEADER: \let\itemize\compactitem
+#+LaTeX_HEADER: \let\description\compactdesc
+#+LaTeX_HEADER: \let\enumerate\inparaenum
+
+* Overview
+  Many of our private chef installations will be serving multiple organizations which do not share data. For example it
+  HP Cloud may wish to use one private chef instance to serve multiple distinct customers. We should insure that the
+  design does not leak data about one organization to another. This might include name, size of system under management,
+  and commands being sent out.
+
+* Threat model
+  A few simplifying assumptions are in order. 
+  * VPNs and the like will be used to segregate one organizations traffic from another; we don't have to worry about
+    snooping.
+  * We trust the network infrastructure to be secure.
+  * The actual server hardware is properly locked down, and our concern is limited to what additional threats the
+    service offers.
+  * We are not concerned about 'orange book' level of threats like covert channels and the like. 
+
+* Design choices
+  * Broadcast channels should not be used to be distribute information that applies to more to one organization; so we
+    should use care if we use server heartbeat as a distribution channel.
+  * What else? Review protocol as it emerges for information leaks.
+  
