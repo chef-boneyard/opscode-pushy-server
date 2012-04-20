@@ -174,19 +174,20 @@
     The clients do not ACK the server heartbeats.
 
 *** Server Heartbeat Message
-    First packet
-    #+begin_src 
-VersionId\r\n            # an decimal ascii integer value for the protocol version (1 for now)
+    First packet (why not break each of these into packets and take
+    advantage of 0mq's multi-part for parsing the header as well?)
+    #+begin_example
+VersionId\r\n            # a decimal ASCII integer value for the protocol version (1 for now)
 SignedChecksum\r\n       # the signed checksum of the second packet in hexadecimal (base64 could be another option as it 2/3 the size)
-    #+end_src
+    #+end_example
     Second packet is json
-    #+begin_src
+    #+begin_example
 {"server":"SERVER",                 # specifies the server
  "sequence":SEQUENCE_NUMBER",       # integer sequence number
  "timestamp":"TIMESTAMP",           # timestamp
  "type":"MSGTYPE"                   # 'heartbeat' for now
 }
-    #+end_src
+    #+end_example
 
 ** Client Heartbeat Channel
    PUSH/PULL sockets are used for the client hearbeat. The client PUSHes heartbeats to the
@@ -209,19 +210,19 @@ SignedChecksum\r\n       # the signed checksum of the second packet in hexadecim
    * The port the command processor is listening on.
    * ID and status of the most recently received command.
     First packet
-    #+begin_src 
+    #+begin_example
 VersionId\r\n            # an decimal ascii integer value for the protocol version
 SignedChecksum\r\n       # the signed checksum of the second packet in hexadecimal (base64 could be another option as it 2/3 the size)
-    #+end_src
+    #+end_example
     Second packet is json
-    #+begin_src
+    #+begin_example
 {"client":"CLIENTNAME",             # specifies which client key to use for signature check
  "org":"ORGNAME",                   # orgname of the client 
  "sequence":SEQUENCE_NUMBER",       # integer sequence number
  "timestamp":"TIMESTAMP",           # timestamp
  "command_port":PORT                # the port we are listening on for commands
 }
-    #+end_src
+    #+end_example
 
    The client will discontinue the heartbeat and note the server as down if the server heartbeat
    stops arriving, and resume it when the server heartbeat resumes. 
