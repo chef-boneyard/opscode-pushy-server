@@ -1,4 +1,4 @@
-DEPS = deps/erlzmq deps/jiffy
+DEPS = deps/erlzmq deps/jiffy deps/gproc
 
 all: compile all_tests
 

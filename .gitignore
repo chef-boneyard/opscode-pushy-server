@@ -5,4 +5,5 @@ prototype/ebin
 prototype/deps
 server/rel/pushy
 server/apps/pushy/ebin
+server/deps
 .DS_STORE

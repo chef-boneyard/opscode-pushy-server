@@ -1,11 +1,14 @@
 {application, pushy,
  [
-  {description, ""},
-  {vsn, "1"},
+  {description, "Chef Push Job Server"},
+  {vsn, "0.0.1"},
   {registered, []},
   {applications, [
                   kernel,
-                  stdlib
+                  stdlib,
+		  erlzmq,
+		  jiffy,
+		  gproc
                  ]},
   {mod, { pushy_app, []}},
   {env, []}
