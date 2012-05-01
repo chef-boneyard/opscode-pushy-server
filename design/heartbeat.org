@@ -249,13 +249,7 @@ SignedChecksum\r\n       # the signed checksum of the second packet in hexadecim
    While it is outside the scope of this document, one viable approach for the command channel is
    for the client to bind a PULL socket to a port and pass that via the heartbeat to the server.
 
-
-** TODO
 *** TODO Do clients store and forward or just drop data when the server is unavailable?
-*** TODO 
-
-** Server and Client Discovery
-*** REST endpoint (perhaps on /nodes?) to supply all config data in JSON format
 
 [fn:1] Public key signatures are used to verify the sender's identity and provide some amount of message
 tamper detection.
