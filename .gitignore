@@ -3,4 +3,6 @@ design/*.log
 design/*.aux
 prototype/ebin
 prototype/deps
+server/rel/pushy
+server/apps/pushy/ebin
 .DS_STORE
