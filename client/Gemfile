@@ -1,0 +1,8 @@
+source :rubygems
+
+gem "mixlib-cli", "~> 1.2.2"
+gem "mixlib-log", "~> 1.3.0"
+gem "chef", "~> 0.10.8"
+gem "ffi-rzmq", "~> 0.9.3"
+gem "uuid", "~> 2.3.5"
+gem "em-zeromq", "~> 0.3.0"
