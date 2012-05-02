@@ -16,8 +16,9 @@ compile: $(DEPS)
 	@rebar compile
 
 dialyzer:
-	rm -rf apps/pushy/.eunit
-	@dialyzer -Wrace_conditions -Wunderspecs -r apps --src
+	@rm -rf apps/pushy/.eunit
+# Uncomment when stubbed functions in the FSM are complete
+# @dialyzer -Wrace_conditions -Wunderspecs -r apps --src
 
 $(DEPS):
 	@rebar get-deps
@@ -28,19 +29,20 @@ eunit: compile
 test: eunit
 
 tags:
-	find src deps -name "*.[he]rl" -print | etags -
+	@find src deps -name "*.[he]rl" -print | etags -
 
 rel: rel/pushy
 rel/pushy:
-	cd rel;rebar generate overlay_vars=db_vars.config
+	@cd rel;rebar generate overlay_vars=db_vars.config
 
 relclean:
-	rm -rf rel/pushy
+	@rm -rf rel/pushy
 
 devrel: rel
 	@/bin/echo -n Symlinking deps and apps into release
-	@$(foreach dep,$(wildcard deps/*), /bin/echo -n .;rm -rf rel/erchef/lib/$(shell basename $(dep))-* \
-	   && ln -sf $(abspath $(dep)) rel/erchef/lib;)
+	@$(foreach dep,$(wildcard deps/*), /bin/echo -n .;rm -rf rel/pushy/lib/$(shell basename $(dep))-* \
+	   && ln -sf $(abspath $(dep)) rel/pushy/lib;)
+	@rm -rf rel/pushy/lib/pushy*;ln -sf $(abspath apps/pushy) rel/pushy/lib/pushy
 	@/bin/echo done.
 	@/bin/echo  Run \'make update\' to pick up changes in a running VM.
 

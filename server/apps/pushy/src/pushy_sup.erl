@@ -27,5 +27,7 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
-    {ok, { {one_for_one, 5, 10}, []} }.
+    {ok, {{one_for_one, 3, 60},
+          [{pushy_node_state_sup, {pushy_node_state_sup, start_link, []},
+            permanent, infinity, supervisor, [pushy_node_state_sup]}]}}.
 
