@@ -1,7 +1,10 @@
+require File.dirname(__FILE__) + "/../client"
 
 module Pushy
   module CLI
     class Client
+
+      include Mixlib::CLI
 
       option :config_file,
         :short => "-c CONFIG",
@@ -27,16 +30,19 @@ module Pushy
         trap("HUP") do
           reconfigure
         end
+
+        run
       end
 
       def run
         reconfigure
-        ctx = EM::ZeroMQ::Context.new(1)
-        client = Pushy::Client.new(ctx)
+        client = Pushy::Client.new
         client.start
       end
 
       def reconfigure
+        return if config[:config_file].empty?
+
         ::File::open(config[:config_file]) do |f|
           Chef::Config.from_file(f.path)
         end
