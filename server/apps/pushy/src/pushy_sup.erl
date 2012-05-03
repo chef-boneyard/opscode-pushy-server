@@ -27,8 +27,8 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
-    application:set_env(pushy, heartbeat_interval, 5000),
-    application:set_env(pushy, heartbeat_source_socket, "tcp://*:5555"),
+    application:set_env(pushy, heartbeat_interval, 1000),
+    application:set_env(pushy, heartbeat_source_socket, "tcp://*:5556"),
     {ok, {{one_for_one, 3, 60},
           [{pushy_node_state_sup, {pushy_node_state_sup, start_link, []},
             permanent, infinity, supervisor, [pushy_node_state_sup]},
