@@ -79,3 +79,4 @@ DEPENDENCIES
   mixlib-cli (~> 1.2.2)
   mixlib-log (~> 1.3.0)
   rspec
+  yajl-ruby (~> 1.1.0)

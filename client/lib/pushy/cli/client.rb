@@ -66,6 +66,8 @@ module Pushy
 
         # set log level
         Pushy::Log.level = config[:verbose] ? :debug : config[:log_level]
+
+        self
       end
 
       def run

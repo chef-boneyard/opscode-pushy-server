@@ -25,6 +25,8 @@ module Pushy
     def start
       ctx = @ctx
 
+      Pushy::Log.info "Listening at tcp://#{@config[:address]}:#{@config[:port]}"
+
 
       EM.run do
 

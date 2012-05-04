@@ -22,6 +22,7 @@ def server_ping(context, listen_if, port)
     time = Time.now()
     update = "%08d %s %s" % [sequence, server, time]
     puts "ud: #{update}"
+    publisher.send_string("A", ZMQ::SNDMORE)
     publisher.send_string(update)
     sequence+=1
     sleep 1
