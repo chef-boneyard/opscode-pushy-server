@@ -18,11 +18,15 @@ def server_ping(context, listen_if, port)
   
   sequence = 0
   server = (`hostname`).chomp!
+
+  json = '{"key":"value","array":["el1","el2","el3"]}'
+
   while true
     time = Time.now()
     update = "%08d %s %s" % [sequence, server, time]
     puts "ud: #{update}"
-    publisher.send_string("A", ZMQ::SNDMORE)
+    publisher.send_string("Validation", ZMQ::SNDMORE)
+    publisher.send_string(json, ZMQ::SNDMORE)
     publisher.send_string(update)
     sequence+=1
     sleep 1
