@@ -1,5 +1,3 @@
-require File.dirname(__FILE__) + "/../client"
-
 module Pushy
   module CLI
     class Client
