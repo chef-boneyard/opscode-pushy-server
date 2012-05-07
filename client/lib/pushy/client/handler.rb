@@ -12,7 +12,6 @@ module Pushy
     private
 
     def valid?(auth)
-      puts auth
       true
     end
 
@@ -20,8 +19,8 @@ module Pushy
       parser = Yajl::Parser.new
       hash = parser.parse(json)
 
-      puts hash['key']
-      puts hash['array'].inspect
+      puts hash['type']
+      puts hash['host']
     end
 
   end

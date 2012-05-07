@@ -4,6 +4,7 @@
 
 require 'rubygems'
 require 'ffi-rzmq'
+require 'yajl'
 
 
 listen_if = "tcp://*"
@@ -19,7 +20,11 @@ def server_ping(context, listen_if, port)
   sequence = 0
   server = (`hostname`).chomp!
 
-  json = '{"key":"value","array":["el1","el2","el3"]}'
+  hash = { type: 'heartbeat',
+           host: server }
+
+  encoder = Yajl::Encoder.new
+  json = encoder.encode hash
 
   while true
     time = Time.now()
