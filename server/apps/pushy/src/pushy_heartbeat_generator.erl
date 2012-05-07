@@ -6,7 +6,7 @@
 %% API Function Exports
 %% ------------------------------------------------------------------
 
--export([start_link/0,
+-export([start_link/1,
          stats/0,
          heartbeat/0
         ]).
@@ -25,17 +25,16 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -record(state,
-        { zeromq_context,
-          zeromq_publisher,
-          heartbeat_interval,
-          beat_count}).
+        {zeromq_publisher,
+         heartbeat_interval,
+         beat_count}).
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
 %% ------------------------------------------------------------------
 
-start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+start_link(Ctx) ->
+    gen_server:start_link({local, ?SERVER}, ?MODULE, [Ctx], []).
 
 stats() ->
     gen_server:call(?SERVER, stats, infinity).
@@ -48,16 +47,14 @@ heartbeat() ->
 %% gen_server Function Definitions
 %% ------------------------------------------------------------------
 
-init([]) ->
+init([Ctx]) ->
     ?debugVal("Starting heartbeat generator"),
     {ok, Interval} = application:get_env(pushy, heartbeat_interval),
     % expect "tcp://*:port_id"
     {ok, HeartbeatSourceSocket} = application:get_env(pushy, heartbeat_source_socket),
-    {ok, ZeromqContext} = erlzmq:context(),
-    {ok, ZeromqPublisher} = erlzmq:socket(ZeromqContext, pub),
+    {ok, ZeromqPublisher} = erlzmq:socket(Ctx, pub),
     ok = erlzmq:bind(ZeromqPublisher, HeartbeatSourceSocket),
-    State = #state{zeromq_context = ZeromqContext,
-                   zeromq_publisher = ZeromqPublisher,
+    State = #state{zeromq_publisher = ZeromqPublisher,
                    heartbeat_interval = Interval,
                    beat_count = 0
                   },

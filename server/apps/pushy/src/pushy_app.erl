@@ -14,7 +14,13 @@
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
-    pushy_sup:start_link().
+    case erlzmq:context() of
+        {ok, Ctx} ->
+            {ok, Pid} = pushy_sup:start_link(Ctx),
+            {ok, Pid, Ctx};
+        Error ->
+            Error
+    end.
 
-stop(_State) ->
-    ok.
+stop(Ctx) ->
+    erlzmq:term(Ctx, 5000).
