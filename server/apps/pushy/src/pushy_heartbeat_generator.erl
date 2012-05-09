@@ -29,7 +29,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -record(state,
-        {zeromq_publisher,
+        {heartbeat_sock,
          heartbeat_interval,
          beat_count}).
 
@@ -55,10 +55,10 @@ init([Ctx]) ->
     ?debugVal("Starting heartbeat generator"),
     {ok, Interval} = application:get_env(pushy, heartbeat_interval),
     % expect "tcp://*:port_id"
-    {ok, HeartbeatSourceSocket} = application:get_env(pushy, server_heartbeat_socket),
-    {ok, ZeromqPublisher} = erlzmq:socket(Ctx, pub),
-    ok = erlzmq:bind(ZeromqPublisher, HeartbeatSourceSocket),
-    State = #state{zeromq_publisher = ZeromqPublisher,
+    {ok, HeartbeatAddress} = application:get_env(pushy, server_heartbeat_socket),
+    {ok, HeartbeatSock} = erlzmq:socket(Ctx, pub),
+    ok = erlzmq:bind(HeartbeatSock, HeartbeatAddress),
+    State = #state{heartbeat_sock = HeartbeatSock,
                    heartbeat_interval = Interval,
                    beat_count = 0
                   },
@@ -70,12 +70,17 @@ handle_call(stats, _From, State) ->
 handle_call(_Request, _From, State) ->
     {noreply, ok, State}.
 
-handle_cast(heartbeat, #state{zeromq_publisher=ZeromqPublisher, beat_count=Count}=State) ->
-    % TODO - use a record
-    % TODO - generate a timestamp; how does erchef do this?
-    Msg = {[{server, ?SERVER}, {sequence, integer_to_list(Count)}, {timestamp, 0}, {type, heartbeat}]},
+handle_cast(heartbeat, #state{heartbeat_sock=HeartbeatSock, beat_count=Count}=State) ->
+    {ok, Hostname} = inet:gethostname(),
+    Msg = {[{server, list_to_binary(Hostname)},
+            {timestamp, list_to_binary(httpd_util:rfc1123_date())},
+            {type, heartbeat}]},
     ?debugVal(Msg),
-    erlzmq:send(ZeromqPublisher, jiffy:encode(Msg)),
+    % TODO - sign JsonMsg
+    JsonMsg = jiffy:encode(Msg),
+    %Sig = 'SUPERSECRET',
+    %erlzmq:send(HeartbeatSock, Sig, [sndmore]),
+    erlzmq:send(HeartbeatSock, JsonMsg),
     {noreply, State#state{beat_count=Count+1}};
 handle_cast(_Msg, State) ->
     {noreply, State}.

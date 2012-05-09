@@ -26,7 +26,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -record(state,
-        {zeromq_receiver}).
+        {status_sock}).
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
@@ -42,10 +42,10 @@ start_link(Ctx) ->
 init([Ctx]) ->
     ?debugVal("Starting node status tracker"),
     % expect "tcp://*:port_id"
-    {ok, NodeStatusSocket} = application:get_env(pushy, node_status_socket),
-    {ok, ZeromqReceiver} = erlzmq:socket(Ctx, pull),
-    ok = erlzmq:bind(ZeromqReceiver, NodeStatusSocket),
-    State = #state{zeromq_receiver = ZeromqReceiver},
+    {ok, StatusAddress} = application:get_env(pushy, node_status_socket),
+    {ok, StatusSock} = erlzmq:socket(Ctx, [pull, {active, true}]),
+    ok = erlzmq:bind(StatusSock, StatusAddress),
+    State = #state{status_sock = StatusSock},
     {ok, State}.
 
 handle_call(_Request, _From, State) ->
@@ -54,8 +54,8 @@ handle_call(_Request, _From, State) ->
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
-handle_info({zmq, _ZeromqReceiver, Sender, [rcvmore]}, State) ->
-    read_message(Sender),
+handle_info({zmq, _StatusSock, Sig, [rcvmore]}, State) ->
+    read_message(Sig),
     {noreply, State};
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -70,20 +70,18 @@ code_change(_OldVsn, State, _Extra) ->
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
 
-read_message(Sender) ->
+read_message(Sig) ->
+    ?debugVal(Sig),
     receive
-        {zmq, _ZeromqReceiver, Target, [rcvmore]} ->
-            read_message(Sender, Target, [])
-    end.
-
-read_message(Sender, Target, Body) ->
-    receive
-        {zmq, _ZeromqReceiver, BodyPart, [rcvmore]} ->
-            read_message(Sender, Target, [BodyPart|Body]);
-        {zmq, _ZeromqReceiver, BodyPart, []} ->
-            Message = list_to_binary(lists:reverse([BodyPart|Body])),
-            % TODO - decode into a record
-            % TODO - handle bad JSON messages
-            {[{_client, ClientName}]} = jiffy:decode(Message),
-            pushy_node_state:heartbeat(binary_to_list(ClientName))
+        {zmq, _StatusSock, Body, []} ->
+            ?debugVal(Body),
+            % TODO - verify sig
+            case catch jiffy:decode(Body) of
+              {Hash} ->
+                NodeName = proplists:get_value(<<"node">>, Hash),
+                pushy_node_state:heartbeat(NodeName);
+              {'EXIT', _Error} ->
+                %% Log error and move on
+                error_logger:info_msg("Bad status message received: ~s~n", [Body])
+            end
     end.
