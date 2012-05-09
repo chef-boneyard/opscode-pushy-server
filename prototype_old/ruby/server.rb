@@ -4,11 +4,12 @@
 
 require 'rubygems'
 require 'ffi-rzmq'
+require 'yajl'
 
 
 listen_if = "tcp://*"
-pub_port  = 5556
-hb_port   = 5557
+pub_port  = 10000
+hb_port   = 10001
 
 context = ZMQ::Context.new(1) # one io thread
 
@@ -18,10 +19,19 @@ def server_ping(context, listen_if, port)
   
   sequence = 0
   server = (`hostname`).chomp!
+
+  hash = { type: 'heartbeat',
+           host: server }
+
+  encoder = Yajl::Encoder.new
+  json = encoder.encode hash
+
   while true
     time = Time.now()
     update = "%08d %s %s" % [sequence, server, time]
     puts "ud: #{update}"
+    publisher.send_string("Validation", ZMQ::SNDMORE)
+    publisher.send_string(json, ZMQ::SNDMORE)
     publisher.send_string(update)
     sequence+=1
     sleep 1
