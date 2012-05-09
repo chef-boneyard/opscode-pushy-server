@@ -8,8 +8,8 @@ require 'yajl'
 
 
 listen_if = "tcp://*"
-pub_port  = 5556
-hb_port   = 5557
+pub_port  = 10000
+hb_port   = 10001
 
 context = ZMQ::Context.new(1) # one io thread
 
