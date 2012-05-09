@@ -40,16 +40,16 @@ module Pushy
           if monitor.online?
             encoder = Yajl::Encoder.new
 
-            auth = encoder.encode({:version => 0.01,
-                                   :checksum => checksum})
-
             json = encoder.encode({:node => (`hostname`).chomp!,
                                    :client => (`hostname`).chomp!,
                                    :org => orgname,
                                    :sequence => seq,
                                    :timestamp => Time.now})
 
+            auth = "VersionId:0.0.1;SignedChecksum:#{sign_checksum(json)}"
+
             Pushy::Log.debug "Sending Message #{json}"
+
             push_socket.send_msg(auth, json)
 
             seq += 1
@@ -62,8 +62,8 @@ module Pushy
 
     private
 
-    def checksum
-      "12345"
+    def sign_checksum(json)
+      ""
     end
 
   end
