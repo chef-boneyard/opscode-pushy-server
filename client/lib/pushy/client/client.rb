@@ -26,6 +26,7 @@ module Pushy
 
         # Push heartbeat to server
         push_socket = ctx.socket(ZMQ::PUSH)
+        push_socket.setsockopt(ZMQ::LINGER, 0)
         push_socket.connect(in_address)
 
         monitor.start
