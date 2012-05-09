@@ -1,3 +1,5 @@
+require 'time'
+
 module Pushy
   class Client
     attr_accessor :monitor
@@ -5,7 +7,8 @@ module Pushy
     attr_accessor :out_address
     attr_accessor :in_address
     attr_accessor :interval
-    attr_accessor :orgname
+    attr_accessor :client_private_key
+    attr_accessor :server_public_key
 
 
     def initialize(options)
@@ -14,7 +17,11 @@ module Pushy
       @out_address = options[:out_address]
       @in_address = options[:in_address]
       @interval = options[:interval]
-      @orgname = options[:orgname]
+      @client_key_path = options[:client_key]
+      @server_key_path = options[:server_key]
+
+      @client_private_key = load_key(options[:client_private_key])
+      @server_public_key = load_key(options[:server_public_key])
     end
 
     def start
@@ -42,9 +49,9 @@ module Pushy
 
             json = encoder.encode({:node => (`hostname`).chomp!,
                                    :client => (`hostname`).chomp!,
-                                   :org => orgname,
+                                   :org => "ORG",
                                    :sequence => seq,
-                                   :timestamp => Time.now})
+                                   :timestamp => Time.now.httpdate})
 
             auth = "VersionId:0.0.1;SignedChecksum:#{sign_checksum(json)}"
 
@@ -62,8 +69,13 @@ module Pushy
 
     private
 
+    def load_key(key_path)
+      raw_key = IO.read(key_path).strip
+      OpenSSL::PKey::RSA.new(raw_key)
+    end
+
     def sign_checksum(json)
-      ""
+      Base64.encode64(client_private_key.private_encrypt(json)).chomp
     end
 
   end

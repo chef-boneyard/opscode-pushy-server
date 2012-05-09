@@ -42,10 +42,17 @@ module Pushy
         :boolean => true,
         :description => "Be verbose"
 
-      option :orgname,
-        :short => "-o",
-        :long => "--orgname ORGNAME",
-        :default => "ORG"
+      option :client_private_key,
+        :long => "--client-key KEY_FILE",
+        :description => "Set the client key file location",
+        :default => File.expand_path(File.join(File.dirname(__FILE__), '..', '..', 'keys', 'client')),
+        :proc => nil
+
+      option :server_public_key,
+        :long => "--server-key KEY_FILE",
+        :description => "Set the client key file location",
+        :default => File.expand_path(File.join(File.dirname(__FILE__), '..', '..', 'keys', 'client')),
+        :proc => nil
 
       option :help,
         :short => "-h",
