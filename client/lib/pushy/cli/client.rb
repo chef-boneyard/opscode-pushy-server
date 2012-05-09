@@ -10,17 +10,31 @@ module Pushy
         :default => "config.rb",
         :description => "The configuration file to use"
 
-      option :port,
-        :short => "-p PORT",
-        :long => "--port PORT",
-        :default => "5556",
-        :description => "use PORT (default: 5555)"
+      option :offline_threshold,
+        :long => "--offline-threshold THRESHOLD",
+        :default => 3,
+        :description => "Number of missed intervals before I stop sending a heartbeat"
 
-      option :address,
-        :short => "-a HOST",
-        :long => "--address HOST",
-        :default => "0.0.0.0",
-        :description => "bind to HOST address (default: 0.0.0.0)"
+      option :online_threshold,
+        :long => "--online-threshold THRESHOLD",
+        :default => 2,
+        :description => "Number of messages to receive after disconnect before I start sending a heartbeat"
+
+      option :interval,
+        :short => "-i INTERVAL",
+        :long => "--interval INTERVAL",
+        :default => 1,
+        :description => "How often do I send a heartbeat"
+
+      option :out_address,
+        :long => "--out-address HOST",
+        :default => "tcp://127.0.0.1:10000",
+        :description => "URL pointing to the server's heartbeat broadcast service"
+
+      option :in_address,
+        :long => "--in-address HOST",
+        :default => "tcp://127.0.0.1:10001",
+        :description => "URL pointing to the server's node state tracking service"
 
       option :verbose,
         :short => "-v",
