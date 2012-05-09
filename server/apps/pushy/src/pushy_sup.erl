@@ -28,9 +28,6 @@ start_link(Ctx) ->
 %% ===================================================================
 
 init([Ctx]) ->
-    application:set_env(pushy, heartbeat_interval, 1000),
-    application:set_env(pushy, node_status_socket, "tcp://*:5558"),
-    application:set_env(pushy, server_heartbeat_socket, "tcp://*:5559"),
     {ok, {{one_for_one, 3, 60},
           [?SUP(pushy_node_state_sup, []),
            ?WORKER(pushy_heartbeat_generator, [Ctx]),
