@@ -9,10 +9,21 @@ module Pushy
     end
 
     def on_readable(socket, parts)
-      if valid?(parts[0].copy_out_string)
-        monitor.checkin!
-        parse_json parts[1].copy_out_string
-      end
+      require 'pp'
+
+      puts parts[0].copy_out_string
+
+      #puts parts.each do |part|
+        #pp part
+        ##part.each do |p|
+          ##puts p.inspect
+        ##end
+      #end
+      monitor.checkin!
+      #if valid?(parts[0].copy_out_string)
+        #monitor.checkin!
+        #parse_json parts[1].copy_out_string
+      #end
     end
 
     private

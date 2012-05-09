@@ -33,7 +33,10 @@ module Pushy
         EM::PeriodicTimer.new(interval) do
           if monitor.online?
             Pushy::Log.debug "Sending Message"
-            push_socket.send_msg("message")
+            encoder = Yajl::Encoder.new
+            json = encoder.encode({:node => (`hostname`).chomp!})
+
+            push_socket.send_msg("auth", json)
           end
         end
 
