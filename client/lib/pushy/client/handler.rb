@@ -2,9 +2,15 @@ module Pushy
   class Handler
 
     attr_reader :received
+    attr_accessor :monitor
+
+    def initialize(monitor)
+      @monitor = monitor
+    end
 
     def on_readable(socket, parts)
       if valid?(parts[0].copy_out_string)
+        monitor.checkin!
         parse_json parts[1].copy_out_string
       end
     end
