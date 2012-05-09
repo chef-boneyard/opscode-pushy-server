@@ -42,6 +42,11 @@ module Pushy
         :boolean => true,
         :description => "Be verbose"
 
+      option :orgname,
+        :short => "-o",
+        :long => "--orgname ORGNAME",
+        :default => "ORG"
+
       option :help,
         :short => "-h",
         :long => "--help",

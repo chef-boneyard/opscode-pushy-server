@@ -5,6 +5,8 @@ module Pushy
     attr_accessor :out_address
     attr_accessor :in_address
     attr_accessor :interval
+    attr_accessor :orgname
+
 
     def initialize(options)
       @monitor = Pushy::Monitor.new(options)
@@ -12,6 +14,7 @@ module Pushy
       @out_address = options[:out_address]
       @in_address = options[:in_address]
       @interval = options[:interval]
+      @orgname = options[:orgname]
     end
 
     def start
@@ -31,18 +34,36 @@ module Pushy
 
         monitor.start
 
+        seq = 0
+
         EM::PeriodicTimer.new(interval) do
           if monitor.online?
-            Pushy::Log.debug "Sending Message"
             encoder = Yajl::Encoder.new
-            json = encoder.encode({:node => (`hostname`).chomp!})
 
-            push_socket.send_msg("auth", json)
+            auth = encoder.encode({:version => 0.01,
+                                   :checksum => checksum})
+
+            json = encoder.encode({:node => (`hostname`).chomp!,
+                                   :client => (`hostname`).chomp!,
+                                   :org => orgname,
+                                   :sequence => seq,
+                                   :timestamp => Time.now})
+
+            Pushy::Log.debug "Sending Message #{json}"
+            push_socket.send_msg(auth, json)
+
+            seq += 1
           end
         end
 
       end
 
+    end
+
+    private
+
+    def checksum
+      "12345"
     end
 
   end
