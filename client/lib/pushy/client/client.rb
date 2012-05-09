@@ -20,17 +20,16 @@ module Pushy
       EM.run do
 
         # Subscribe to heartbeat from the server
-        subscriber = ctx.socket(ZMQ::SUB)
+        subscriber = ctx.socket(ZMQ::SUB, Pushy::Handler.new(monitor))
         subscriber.connect(out_address)
+        subscriber.setsockopt(ZMQ::SUBSCRIBE, "")
 
         # Push heartbeat to server
-        #push_socket = ctx.socket(ZMQ::PUSH)
+        push_socket = ctx.socket(ZMQ::PUSH)
         push_socket.connect(in_address)
+
         monitor.start
 
-        # Listen for a response
-        pull_socket = ctx.socket(ZMQ::PULL, Pushy::Handler.new)
-        pull_socket.connect("tcp://#{@config[:address]}:#{@config[:port]}")
         EM::PeriodicTimer.new(interval) do
           if monitor.online?
             Pushy::Log.debug "Sending Message"
@@ -39,7 +38,8 @@ module Pushy
         end
 
       end
-    end
-  end
 
+    end
+
+  end
 end
