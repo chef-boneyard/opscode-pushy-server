@@ -6,9 +6,9 @@
   {applications, [
                   kernel,
                   stdlib,
-		  erlzmq,
-		  jiffy,
-		  gproc
+		              erlzmq,
+		              jiffy,
+		              gproc
                  ]},
   {mod, { pushy_app, []}},
   {env, []}
