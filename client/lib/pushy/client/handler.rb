@@ -12,6 +12,7 @@ module Pushy
       require 'pp'
 
       puts parts[0].copy_out_string
+      monitor.checkin!
 
       #puts parts.each do |part|
         #pp part
@@ -19,7 +20,6 @@ module Pushy
           ##puts p.inspect
         ##end
       #end
-      monitor.checkin!
       #if valid?(parts[0].copy_out_string)
         #monitor.checkin!
         #parse_json parts[1].copy_out_string
