@@ -27,9 +27,9 @@ start_link(Ctx) ->
 %% Supervisor callbacks
 %% ===================================================================
 
-init([_Ctx]) ->
+init([Ctx]) ->
     {ok, {{one_for_one, 3, 60},
           [?SUP(pushy_node_state_sup, []),
-           %?WORKER(pushy_heartbeat_generator, [Ctx]),
-           %?WORKER(pushy_node_status_tracker, [Ctx]),
+           ?WORKER(pushy_heartbeat_generator, [Ctx]),
+           ?WORKER(pushy_node_status_tracker, [Ctx]),
            ?WORKER(chef_keyring, [])]}}.
