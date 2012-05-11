@@ -76,14 +76,11 @@ read_message(HeaderFrame) ->
     receive
         {zmq, _StatusSock, BodyFrame, []} ->
             ?debugVal(BodyFrame),
-            do_authenticate_message(HeaderFrame, BodyFrame),
-            case catch jiffy:decode(BodyFrame) of
-              {Hash} ->
-                NodeName = proplists:get_value(<<"node">>, Hash),
-                pushy_node_state:heartbeat(NodeName);
-              {'EXIT', _Error} ->
-                %% Log error and move on
-                error_logger:info_msg("Status message JSON parsing failed: ~s~n", [BodyFrame])
+            case catch do_authenticate_message(HeaderFrame, BodyFrame) of
+                {ok} ->
+                    send_heartbeat(BodyFrame);
+                {no_authn, bad_sig} ->
+                    error_logger:info_msg("Status message failed verification: ~s~n", [HeaderFrame])
             end
     end.
 
@@ -98,7 +95,6 @@ do_authenticate_message(Header, Body) ->
         {ok}
     catch
         error:{badmatch, _} ->
-            error_logger:info_msg("Status message failed verification: ~s~n", [Header]),
             {no_authn, bad_sig}
     end.
 
@@ -116,3 +112,15 @@ signed_checksum_from_header(Header) ->
     {_version, _Version, _signed_checksum, SignedChecksum}
         = list_to_tuple(HeaderParts),
     SignedChecksum.
+
+send_heartbeat(BodyFrame) ->
+    case catch jiffy:decode(BodyFrame) of
+      {Hash} ->
+        ?debugVal(Hash),
+        NodeName = proplists:get_value(<<"node">>, Hash),
+        pushy_node_state:heartbeat(NodeName),
+        error_logger:info_msg("Heartbeat received from: ~s~n", [NodeName]);
+      {'EXIT', _Error} ->
+        %% Log error and move on
+        error_logger:info_msg("Status message JSON parsing failed: ~s~n", [BodyFrame])
+    end.
