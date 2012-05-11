@@ -30,6 +30,6 @@ start_link(Ctx) ->
 init([Ctx]) ->
     {ok, {{one_for_one, 3, 60},
           [?SUP(pushy_node_state_sup, []),
+           ?WORKER(chef_keyring, []),
            ?WORKER(pushy_heartbeat_generator, [Ctx]),
-           ?WORKER(pushy_node_status_tracker, [Ctx]),
-           ?WORKER(chef_keyring, [])]}}.
+           ?WORKER(pushy_node_status_tracker, [Ctx])]}}.
