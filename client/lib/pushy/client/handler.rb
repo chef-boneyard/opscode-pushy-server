@@ -11,8 +11,11 @@ module Pushy
     def on_readable(socket, parts)
       require 'pp'
 
-      puts parts[0].copy_out_string
       monitor.checkin!
+
+      if valid?(parts[0].copy_out_string)
+        puts parts.length
+      end
 
       #puts parts.each do |part|
         #pp part
@@ -29,6 +32,7 @@ module Pushy
     private
 
     def valid?(auth)
+      puts "auth: #{auth}"
       true
     end
 

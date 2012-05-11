@@ -30,7 +30,7 @@ module Pushy
       EM.run do
 
         # Subscribe to heartbeat from the server
-        subscriber = ctx.socket(ZMQ::SUB, Pushy::Handler.new(monitor))
+        subscriber = ctx.socket(ZMQ::SUB, Pushy::Handler.new(monitor, server_public_key))
         subscriber.connect(out_address)
         subscriber.setsockopt(ZMQ::SUBSCRIBE, "")
 
@@ -69,7 +69,6 @@ module Pushy
     private
 
     def load_key(key_path)
-      puts key_path
       raw_key = IO.read(key_path).strip
       OpenSSL::PKey::RSA.new(raw_key)
     end
