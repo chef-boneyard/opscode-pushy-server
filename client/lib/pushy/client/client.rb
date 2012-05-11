@@ -30,7 +30,7 @@ module Pushy
       EM.run do
 
         # Subscribe to heartbeat from the server
-        subscriber = ctx.socket(ZMQ::SUB, Pushy::Handler.new(monitor, server_public_key))
+        subscriber = ctx.socket(ZMQ::SUB, Pushy::Handler.new(monitor, self))
         subscriber.connect(out_address)
         subscriber.setsockopt(ZMQ::SUBSCRIBE, "")
 
