@@ -45,13 +45,12 @@ module Pushy
 
         EM::PeriodicTimer.new(interval) do
           if monitor.online?
-            encoder = Yajl::Encoder.new
 
-            json = encoder.encode({:node => (`hostname`).chomp!,
-                                   :client => (`hostname`).chomp!,
-                                   :org => "ORG",
-                                   :sequence => seq,
-                                   :timestamp => Time.now.httpdate})
+            json = Yajl::Encoder.encode({:node => (`hostname`).chomp,
+                                         :client => (`hostname`).chomp,
+                                         :org => "ORG",
+                                         :sequence => seq,
+                                         :timestamp => Time.now.httpdate})
 
             auth = "VersionId:0.0.1;SignedChecksum:#{sign_checksum(json)}"
 
@@ -70,12 +69,14 @@ module Pushy
     private
 
     def load_key(key_path)
+      puts key_path
       raw_key = IO.read(key_path).strip
       OpenSSL::PKey::RSA.new(raw_key)
     end
 
     def sign_checksum(json)
-      Base64.encode64(client_private_key.private_encrypt(json)).chomp
+      checksum = Mixlib::Authentication::Digester.hash_string(json)
+      Base64.encode64(client_private_key.private_encrypt(checksum)).chomp
     end
 
   end
