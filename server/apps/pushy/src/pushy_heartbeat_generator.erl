@@ -31,7 +31,8 @@
 -record(state,
         {heartbeat_sock,
          heartbeat_interval,
-         beat_count}).
+         beat_count,
+         private_key}).
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
@@ -57,10 +58,12 @@ init([Ctx]) ->
     % expect "tcp://*:port_id"
     {ok, HeartbeatAddress} = application:get_env(pushy, server_heartbeat_socket),
     {ok, HeartbeatSock} = erlzmq:socket(Ctx, pub),
+    {ok, PrivateKey} = chef_keyring:get_key(server_private),
     ok = erlzmq:bind(HeartbeatSock, HeartbeatAddress),
     State = #state{heartbeat_sock = HeartbeatSock,
                    heartbeat_interval = Interval,
-                   beat_count = 0
+                   beat_count = 0,
+                   private_key = PrivateKey
                   },
     timer:apply_interval(Interval, ?MODULE, heartbeat, []),
     {ok, State}.
@@ -70,17 +73,18 @@ handle_call(stats, _From, State) ->
 handle_call(_Request, _From, State) ->
     {noreply, ok, State}.
 
-handle_cast(heartbeat, #state{heartbeat_sock=HeartbeatSock, beat_count=Count}=State) ->
+handle_cast(heartbeat,
+    #state{heartbeat_sock=HeartbeatSock, beat_count=Count, private_key=PrivateKey}=State) ->
     {ok, Hostname} = inet:gethostname(),
     Msg = {[{server, list_to_binary(Hostname)},
             {timestamp, list_to_binary(httpd_util:rfc1123_date())},
             {type, heartbeat}]},
-    ?debugVal(Msg),
-    % TODO - sign JsonMsg
     JsonMsg = jiffy:encode(Msg),
-    %Sig = 'SUPERSECRET',
-    %erlzmq:send(HeartbeatSock, Sig, [sndmore]),
+    % Header w/ sig
+    erlzmq:send(HeartbeatSock, generate_signed_header(PrivateKey, JsonMsg), [sndmore]),
+    % JSON body
     erlzmq:send(HeartbeatSock, JsonMsg),
+    ?debugVal(JsonMsg),
     {noreply, State#state{beat_count=Count+1}};
 handle_cast(_Msg, State) ->
     {noreply, State}.
@@ -97,3 +101,9 @@ code_change(_OldVsn, State, _Extra) ->
 %% ------------------------------------------------------------------
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
+
+generate_signed_header(PrivateKey, Body) ->
+    HashedBody = chef_authn:hash_string(Body),
+    ?debugVal(HashedBody),
+    Sig = base64:encode(public_key:encrypt_private(HashedBody, PrivateKey)),
+    list_to_binary("Version:1.0;SignedChecksum:" ++ Sig).
