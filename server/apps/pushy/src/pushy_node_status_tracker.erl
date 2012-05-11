@@ -43,7 +43,7 @@ start_link(Ctx) ->
 %% ------------------------------------------------------------------
 
 init([Ctx]) ->
-    ?debugVal("Starting node status tracker"),
+     error_logger:info_msg("Starting node status tracker."),
     % expect "tcp://*:port_id"
     {ok, StatusAddress} = application:get_env(pushy, node_status_socket),
     {ok, HeartbeatInterval} = application:get_env(pushy, heartbeat_interval),
