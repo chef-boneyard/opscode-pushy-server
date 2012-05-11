@@ -1,5 +1,29 @@
-"pushy" is the internal nickname for the new push job feature. In this repo you
-will find:
-- A org-mode file describing the overall design
-- A spec compliant agent suitable for production deployment
-- A spec compliant server suitable for inclusion in a production OPC installation.
+* Overview
+
+  "pushy" is the internal nickname for the new push job feature. In this repo you
+  will find:
+  - A org-mode file describing the overall design
+  - A spec compliant agent suitable for production deployment
+  - A spec compliant server suitable for inclusion in a production OPC installation.
+
+* Run ALL THE THINGS
+
+  To start the server:
+
+  #+BEGIN_SRC shell
+  cd ./server
+  make
+  make rel
+  ./rel/pushy/bin/pushy console
+  #+END_SRC
+
+  To start a client:
+
+  #+BEGIN_SRC shell
+  cd ./client
+  bundle install
+  ./bin/pushy-client -v -n DERPY
+  #+END_SRC
+
+  Feel free to start multiple clients..just be sure to give them all a
+  different name.
