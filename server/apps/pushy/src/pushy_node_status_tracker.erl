@@ -92,7 +92,7 @@ do_authenticate_message(Header, Body) ->
     % TODO - query DB for public key of each client
     {ok, PublicKey} = chef_keyring:get_key(client_public),
     Decrypted = decrypt_sig(SignedChecksum, PublicKey),
-    Plain = chef_authn:hashed_body(Body),
+    Plain = chef_authn:hash_string(Body),
     try
         Decrypted = Plain,
         {ok}
