@@ -63,6 +63,15 @@ handle_cast(_Msg, State) ->
 
 handle_info({zmq, _StatusSock, Header, [rcvmore]},
     #state{heartbeat_interval=HeartbeatInterval,dead_interval=DeadInterval}=State) ->
+
+    Body = read_body(),
+    case catch do_authenticate_message(Header, Body) of
+        ok ->
+            send_heartbeat(Body, HeartbeatInterval, DeadInterval);
+        {no_authn, bad_sig} ->
+            error_logger:error_msg("Status message failed verification: header=~s~n", [Header])
+    end,
+
     {noreply, State};
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -77,17 +86,10 @@ code_change(_OldVsn, State, _Extra) ->
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
 
-read_message(HeaderFrame) ->
-    ?debugVal(HeaderFrame),
+read_body() ->
     receive
         {zmq, _StatusSock, BodyFrame, []} ->
-            ?debugVal(BodyFrame),
-            case catch do_authenticate_message(HeaderFrame, BodyFrame) of
-                {ok} ->
-                    send_heartbeat(BodyFrame);
-                {no_authn, bad_sig} ->
-                    error_logger:info_msg("Status message failed verification: ~s~n", [HeaderFrame])
-            end
+            BodyFrame
     end.
 
 do_authenticate_message(Header, Body) ->
@@ -98,7 +100,7 @@ do_authenticate_message(Header, Body) ->
     Plain = chef_authn:hash_string(Body),
     try
         Decrypted = Plain,
-        {ok}
+        ok
     catch
         error:{badmatch, _} ->
             {no_authn, bad_sig}
@@ -119,14 +121,19 @@ signed_checksum_from_header(Header) ->
         = list_to_tuple(HeaderParts),
     SignedChecksum.
 
-send_heartbeat(BodyFrame) ->
+send_heartbeat(BodyFrame, HeartbeatInterval, DeadInterval) when is_binary(BodyFrame) ->
     case catch jiffy:decode(BodyFrame) of
-      {Hash} ->
-        ?debugVal(Hash),
-        NodeName = proplists:get_value(<<"node">>, Hash),
-        pushy_node_state:heartbeat(NodeName),
-        error_logger:info_msg("Heartbeat received from: ~s~n", [NodeName]);
-      {'EXIT', _Error} ->
-        %% Log error and move on
-        error_logger:info_msg("Status message JSON parsing failed: ~s~n", [BodyFrame])
+        {Hash} ->
+            send_heartbeat(Hash, HeartbeatInterval, DeadInterval);
+        {'EXIT', Error} ->
+            error_logger:error_msg("Status message JSON parsing failed: body=~s, error=~s~n", [BodyFrame,Error])
+    end;
+send_heartbeat(Hash, HeartbeatInterval, DeadInterval) ->
+    NodeName = proplists:get_value(<<"node">>, Hash),
+    case catch pushy_node_state:heartbeat(NodeName) of
+        {error, no_node} ->
+            pushy_node_state_sup:new(NodeName, HeartbeatInterval, DeadInterval),
+            send_heartbeat(Hash, HeartbeatInterval, DeadInterval);
+        ok ->
+            error_logger:info_msg("Heartbeat received from: ~s~n", [NodeName])
     end.
