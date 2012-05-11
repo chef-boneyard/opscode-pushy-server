@@ -89,7 +89,7 @@ read_message(HeaderFrame) ->
 do_authenticate_message(Header, Body) ->
     SignedChecksum = signed_checksum_from_header(Header),
     % TODO - query DB for public key of each client
-    PublicKey = chef_keyring:get_key(client_public),
+    {ok, PublicKey} = chef_keyring:get_key(client_public),
     Decrypted = chef_authn:decrypt_sig(SignedChecksum, PublicKey),
     Plain = chef_authn:hashed_body(Body),
     try
