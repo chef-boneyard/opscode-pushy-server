@@ -79,12 +79,18 @@ handle_cast(heartbeat,
     Msg = {[{server, list_to_binary(Hostname)},
             {timestamp, list_to_binary(httpd_util:rfc1123_date())},
             {type, heartbeat}]},
-    JsonMsg = jiffy:encode(Msg),
-    % Header w/ sig
-    erlzmq:send(HeartbeatSock, generate_signed_header(PrivateKey, JsonMsg), [sndmore]),
-    % JSON body
-    erlzmq:send(HeartbeatSock, JsonMsg),
-    ?debugVal(JsonMsg),
+    % JSON encode message
+    BodyFrame = jiffy:encode(Msg),
+
+    % Send Header (including signed checksum)
+    HeaderParts = sign_message(PrivateKey, BodyFrame),
+    Headers = [join_bins(tuple_to_list(Part), <<":">>) || Part <- HeaderParts],
+    HeaderFrame = join_bins(Headers, <<";">>),
+    erlzmq:send(HeartbeatSock, HeaderFrame, [sndmore]),
+    ?debugVal(HeaderFrame),
+    % Send Body
+    erlzmq:send(HeartbeatSock, BodyFrame),
+    ?debugVal(BodyFrame),
     {noreply, State#state{beat_count=Count+1}};
 handle_cast(_Msg, State) ->
     {noreply, State}.
@@ -102,8 +108,23 @@ code_change(_OldVsn, State, _Extra) ->
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
 
-generate_signed_header(PrivateKey, Body) ->
+%% @doc Sign a heartbeat message so it can be published to the clients
+%%
+%% Returns a list of header tuples that should be included in the
+%% final ZMQ message.
+%%
+sign_message(PrivateKey, Body) ->
     HashedBody = chef_authn:hash_string(Body),
-    ?debugVal(HashedBody),
-    Sig = base64:encode(public_key:encrypt_private(HashedBody, PrivateKey)),
-    list_to_binary("Version:1.0;SignedChecksum:" ++ Sig).
+    SignedChecksum = base64:encode(public_key:encrypt_private(HashedBody, PrivateKey)),
+    [{<<"Version">>, <<"1.0">>},
+     {<<"SignedChecksum">>, SignedChecksum}].
+
+join_bins([], _Sep) ->
+    <<>>;
+join_bins(Bins, Sep) when is_binary(Sep) ->
+    join_bins(Bins, Sep, []).
+
+join_bins([B], _Sep, Acc) ->
+    iolist_to_binary(lists:reverse([B|Acc]));
+join_bins([B|Rest], Sep, Acc) ->
+    join_bins(Rest, Sep, [Sep, B | Acc]).
