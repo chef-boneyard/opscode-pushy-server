@@ -54,8 +54,8 @@ handle_call(_Request, _From, State) ->
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
-handle_info({zmq, _StatusSock, Sig, [rcvmore]}, State) ->
-    read_message(Sig),
+handle_info({zmq, _StatusSock, Header, [rcvmore]}, State) ->
+    read_message(Header),
     {noreply, State};
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -70,12 +70,12 @@ code_change(_OldVsn, State, _Extra) ->
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
 
-read_message(Sig) ->
-    ?debugVal(Sig),
+read_message(Header) ->
+    ?debugVal(Header),
     receive
         {zmq, _StatusSock, Body, []} ->
             ?debugVal(Body),
-            % TODO - verify sig
+            do_authenticate_message(Header, Body),
             case catch jiffy:decode(Body) of
               {Hash} ->
                 NodeName = proplists:get_value(<<"node">>, Hash),
@@ -85,3 +85,20 @@ read_message(Sig) ->
                 error_logger:info_msg("Bad status message received: ~s~n", [Body])
             end
     end.
+
+do_authenticate_message(Header, Body) ->
+    AuthSig = sig_from_header(Header),
+    % TODO - this look up public key for client...
+    PublicKey = chef_keyring:get_key(client_public),
+    Decrypted = chef_authn:decrypt_sig(AuthSig, PublicKey),
+    Plain = chef_authn:hashed_body(Body),
+    try
+        Decrypted = Plain,
+        {ok}
+    catch
+        error:{badmatch, _} -> {no_authn, bad_sig}
+    end.
+
+% TODO - parse Sig out of header
+sig_from_header(MessageHeader) ->
+    {ok, MessageHeader}.
