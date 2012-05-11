@@ -70,35 +70,39 @@ code_change(_OldVsn, State, _Extra) ->
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
 
-read_message(Header) ->
-    ?debugVal(Header),
+read_message(HeaderFrame) ->
+    ?debugVal(HeaderFrame),
     receive
-        {zmq, _StatusSock, Body, []} ->
-            ?debugVal(Body),
-            do_authenticate_message(Header, Body),
-            case catch jiffy:decode(Body) of
+        {zmq, _StatusSock, BodyFrame, []} ->
+            ?debugVal(BodyFrame),
+            do_authenticate_message(HeaderFrame, BodyFrame),
+            case catch jiffy:decode(BodyFrame) of
               {Hash} ->
                 NodeName = proplists:get_value(<<"node">>, Hash),
                 pushy_node_state:heartbeat(NodeName);
               {'EXIT', _Error} ->
                 %% Log error and move on
-                error_logger:info_msg("Bad status message received: ~s~n", [Body])
+                error_logger:info_msg("Status message JSON parsing failed: ~s~n", [BodyFrame])
             end
     end.
 
 do_authenticate_message(Header, Body) ->
-    AuthSig = sig_from_header(Header),
-    % TODO - this look up public key for client...
+    SignedChecksum = signed_checksum_from_header(Header),
+    % TODO - query DB for public key of each client
     PublicKey = chef_keyring:get_key(client_public),
-    Decrypted = chef_authn:decrypt_sig(AuthSig, PublicKey),
+    Decrypted = chef_authn:decrypt_sig(SignedChecksum, PublicKey),
     Plain = chef_authn:hashed_body(Body),
     try
         Decrypted = Plain,
         {ok}
     catch
-        error:{badmatch, _} -> {no_authn, bad_sig}
+        error:{badmatch, _} ->
+            error_logger:info_msg("Status message failed verification: ~s~n", [Header]),
+            {no_authn, bad_sig}
     end.
 
-% TODO - parse Sig out of header
-sig_from_header(MessageHeader) ->
-    {ok, MessageHeader}.
+signed_checksum_from_header(Header) ->
+    HeaderParts = re:split(Header, <<":|;">>),
+    {_version, _Version, _signed_checksum, SignedChecksum}
+        = list_to_tuple(HeaderParts),
+    SignedChecksum.
