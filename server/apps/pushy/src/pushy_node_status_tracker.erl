@@ -27,7 +27,9 @@
 -include_lib("public_key/include/public_key.hrl").
 
 -record(state,
-        {status_sock}).
+        {status_sock,
+         heartbeat_interval,
+         dead_interval}).
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
@@ -44,9 +46,13 @@ init([Ctx]) ->
     ?debugVal("Starting node status tracker"),
     % expect "tcp://*:port_id"
     {ok, StatusAddress} = application:get_env(pushy, node_status_socket),
+    {ok, HeartbeatInterval} = application:get_env(pushy, heartbeat_interval),
+    {ok, DeadInterval} = application:get_env(pushy, dead_interval),
     {ok, StatusSock} = erlzmq:socket(Ctx, [pull, {active, true}]),
     ok = erlzmq:bind(StatusSock, StatusAddress),
-    State = #state{status_sock = StatusSock},
+    State = #state{status_sock = StatusSock,
+                   heartbeat_interval = HeartbeatInterval,
+                   dead_interval = DeadInterval},
     {ok, State}.
 
 handle_call(_Request, _From, State) ->
@@ -55,8 +61,8 @@ handle_call(_Request, _From, State) ->
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
-handle_info({zmq, _StatusSock, Header, [rcvmore]}, State) ->
-    read_message(Header),
+handle_info({zmq, _StatusSock, Header, [rcvmore]},
+    #state{heartbeat_interval=HeartbeatInterval,dead_interval=DeadInterval}=State) ->
     {noreply, State};
 handle_info(_Info, State) ->
     {noreply, State}.
