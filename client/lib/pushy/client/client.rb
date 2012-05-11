@@ -9,6 +9,7 @@ module Pushy
     attr_accessor :interval
     attr_accessor :client_private_key
     attr_accessor :server_public_key
+    attr_accessor :node_name
 
 
     def initialize(options)
@@ -19,6 +20,7 @@ module Pushy
       @interval = options[:interval]
       @client_key_path = options[:client_key]
       @server_key_path = options[:server_key]
+      @node_name = options[:node_name]
 
       @client_private_key = load_key(options[:client_private_key])
       @server_public_key = load_key(options[:server_public_key])
@@ -46,7 +48,7 @@ module Pushy
         EM::PeriodicTimer.new(interval) do
           if monitor.online?
 
-            json = Yajl::Encoder.encode({:node => (`hostname`).chomp,
+            json = Yajl::Encoder.encode({:node => node_name,
                                          :client => (`hostname`).chomp,
                                          :org => "ORG",
                                          :sequence => seq,

@@ -10,6 +10,12 @@ module Pushy
         :default => "config.rb",
         :description => "The configuration file to use"
 
+      option :node_name,
+        :short => "-n NODENAME",
+        :long => "--node-name NODENAME",
+        :default => (`hostname`).chomp,
+        :description => "The Node name"
+
       option :offline_threshold,
         :long => "--offline-threshold THRESHOLD",
         :default => 3,
