@@ -24,6 +24,7 @@
          code_change/3]).
 
 -include_lib("eunit/include/eunit.hrl").
+-include_lib("public_key/include/public_key.hrl").
 
 -record(state,
         {status_sock}).
@@ -90,7 +91,7 @@ do_authenticate_message(Header, Body) ->
     SignedChecksum = signed_checksum_from_header(Header),
     % TODO - query DB for public key of each client
     {ok, PublicKey} = chef_keyring:get_key(client_public),
-    Decrypted = chef_authn:decrypt_sig(SignedChecksum, PublicKey),
+    Decrypted = decrypt_sig(SignedChecksum, PublicKey),
     Plain = chef_authn:hashed_body(Body),
     try
         Decrypted = Plain,
@@ -99,6 +100,15 @@ do_authenticate_message(Header, Body) ->
         error:{badmatch, _} ->
             error_logger:info_msg("Status message failed verification: ~s~n", [Header]),
             {no_authn, bad_sig}
+    end.
+
+% TODO - update chef_authn to export this function
+decrypt_sig(Sig, {'RSAPublicKey', _, _} = PK) ->
+    try
+        public_key:decrypt_public(base64:decode(Sig), PK)
+    catch
+        error:decrypt_failed ->
+            decrypt_failed
     end.
 
 signed_checksum_from_header(Header) ->
