@@ -60,10 +60,10 @@ init([Name, HeartbeatInterval, DeadIntervalCount]) ->
 initializing(timeout, #state{name=Name}=State) ->
     case load_status() of
         {ok, Status} ->
-                yes ->
             case gproc:reg({n, l, Name}) of
+                true ->
                     {next_state, Status, reset_timer(State)};
-                no ->
+                false ->
                     {stop, shutdown, State}
             end;
         Error ->
