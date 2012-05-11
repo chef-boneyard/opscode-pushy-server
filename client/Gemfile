@@ -7,6 +7,7 @@ gem "ffi-rzmq", "~> 0.9.3"
 gem "yajl-ruby", "~> 1.1.0", :require => "yajl"
 #gem "uuid", "~> 2.3.5"
 gem "em-zeromq", "~> 0.3.0"
+gem "mixlib-authentication", "1.1.5", :git => "git@github.com:opscode/mixlib-authentication.git"
 
 group :test do
   gem "rspec"
