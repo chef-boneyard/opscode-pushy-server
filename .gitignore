@@ -1,3 +1,4 @@
+.bundle/
 design/*.tex
 design/*.log
 design/*.aux
