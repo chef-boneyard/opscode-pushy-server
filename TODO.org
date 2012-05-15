@@ -1,5 +1,6 @@
 * Client
 ** consume the configuration endpoint
+** Discard unsent messages after disconnect
 
 * Server
 ** write node status to the DB (currently just kept in gen_fsm process)
