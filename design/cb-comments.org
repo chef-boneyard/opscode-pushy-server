@@ -23,10 +23,6 @@
 #+LATEX_HEADER: \lhead{} \rhead{} \lfoot{\today} 
 #+LATEX_HEADER: \cfoot{Opscode Confidential}\rfoot{\thepage}
 #+LATEX_HEADER: \renewcommand{\headrulewidth}{0pt}
-#+LaTeX_HEADER: \let\itemize\compactitem
-#+LaTeX_HEADER: \let\description\compactdesc
-#+LaTeX_HEADER: \let\enumerate\inparaenum
-
 
 * Summary
 Opscode Chef is missing a key feature that comes up in discussion with

@@ -22,34 +22,36 @@
 #+LATEX_HEADER: \lhead{} \rhead{} \lfoot{\today}
 #+LATEX_HEADER: \cfoot{Opscode Confidential}\rfoot{\thepage}
 #+LATEX_HEADER: \renewcommand{\headrulewidth}{0pt}
-#+LaTeX_HEADER: \let\itemize\compactitem
-#+LaTeX_HEADER: \let\description\compactdesc
-#+LaTeX_HEADER: \let\enumerate\inparaenum
 
 * Overview
-  This specification describes the ability to execute on-demand chef-client via knife. For brevity's sake
-  this feature will be referred to as "push job" or "push jobs".
+Opscode Chef is currently missing a key feature that comes up in discussion with nearly
+every potential customer.  That feature is immediate, ad-hoc task execution against one or
+more managed devices (nodes).  In Chef, we will model these tasks as /run lists/ and will
+model their execution by distributed, coordinated /chef-client/ runs. For brevity's sake
+this feature will be referred to as /push jobs/.
 
-  The concept of push jobs is quite simple. A user is able to select some subset of nodes managed by
-  their Private Chef organization, specify an action or command for those nodes to execute, and
-  track the status of each node as it executes the request.
+The concept of /push jobs/ is quite simple. A user is able to select some subset of nodes
+managed by their Private Chef organization, specify an action or command for those nodes
+to execute, and track the status of each node as it executes the request.
 
-  A bit of complexity and bookkeeping lurks underneath push job's simplicity. Managed nodes
-  will need to a way to reliably monitor the job coordinators so they can cope with outages.
-  Job coordinators also need to monitor the status of each managed node so commands are only
-  sent to available nodes and to track job progress.
+A bit of complexity and bookkeeping lurks underneath push job's simplicity. Managed nodes
+will need to reliably monitor the job coordinators to cope with outages.  Job coordinators
+also need to monitor the status of each managed node so commands are only sent to available,
+responding nodes and to track job progress.
 
-  The push job server and the managed nodes keep tabs on each other via a bidirectional heartbeating
-  system. The push job server sends heartbeat messages to all the managed nodes, and the managed
-  nodes send heartbeat messages to the server.
+The push job server and the managed nodes ensure mutual liveness via a bidirectional
+heartbeating system. The push job server sends heartbeat messages to all the managed nodes,
+and the managed nodes send heartbeat messages to the server.
 
-  The remainder of this document will attempt to describe this feature in enough detail to allow
-  a reasonable and scalable implementation.
+The remainder of this document will attempt to describe this feature in enough detail to allow
+a reasonable and scalable implementation.
 
 * Assumptions
 ** Connectivity
    1. Managed nodes *MUST* be reachable via a TCP-enabled network interface.
-   2. Managed nodes *MUST* be able to accept incoming TCP connections.
+   2. Managed nodes *MUST* be able to *accept* incoming TCP
+      connections. NOTE: This precludes implementation in current
+      Hosted Chef. See below.
    3. Managed nodes *MUST* be able to connect to the heartbeat and job coordination
       components inside Chef server.
 ** Data format & Storage
@@ -63,44 +65,45 @@
 
 * Architecture
 ** Communications
-   Managed nodes and server components will communicate using [[http://www.zeromq.org][ZeroMQ]] messaging. While the server
-   will be bound to predefined ports, the client should never require them. This is to ease running
-   multiple clients on the same host for scalability testing; we will want to be able to run many
-   hundreds of clients on the same machine rather than stand up thousands of individual nodes to
-   test message scalability.
+Managed nodes and server components will communicate using [[http://www.zeromq.org][ZeroMQ]] messaging. While the server
+will be bound to predefined ports, the client should never require them. This is to ease running
+multiple clients on the same host for scalability testing; we will want to be able to run many
+hundreds of clients on the same machine rather than stand up thousands of individual nodes to
+test message scalability. 
 
-   Communication can be separated into two categories: heartbeat and job execution. The heartbeat
-   channel is used by the Chef server to detect when managed nodes are offline and, therefore,
-   unavailable for job execution. Managed nodes also use the heartbeat channel to detect when the
-   server is unavailable.
+Communication can be separated into two categories: heartbeat and job execution. The heartbeat
+channel is used by the Chef server to detect when managed nodes are offline and, therefore,
+unavailable for job execution. Managed nodes also use the heartbeat channel to detect when the
+server is unavailable.
 
-   The job execution channel is used by the Chef server to send job execution requests to
-   managed nodes. Managed nodes used the execution channel to send job-related messages such
-   as acknowledging jobs, sending progress updates, and reporting final results.
+The job execution channel is used by the Chef server to send job execution requests to
+managed nodes. Managed nodes used the execution channel to send job-related messages such
+as acknowledging jobs, sending progress updates, and reporting final results.
 
 *** Heartbeat Channel
-    PUB and SUB sockets are used because they automatically and scalably manage the fanin
-    the server requires to monitor nodes as well as the fanout the server needs to broadcast
-    its heartbeat to all the nodes.
+ZeroMQ PUB/SUB (publish and subscribe) sockets are used because they automatically and
+scalably manage the fan-in the server requires to monitor nodes as well as the fan-out the
+server needs to broadcast its heartbeat to all the nodes.
 
-    In the interest of simplicity the heartbeat protocol should be as stateless as possible. The
-    server continually broadcasts heartbeat messages to all clients that are listening. Clients
-    indicate their availability by sending heartbeat messages to the server. There is no process
-    beyond the zeromq connection to start or stop a connection from the client.
+In the interest of simplicity, the heartbeat protocol should be as stateless as possible. The
+server continually broadcasts heartbeat messages to all clients that are listening. Clients
+indicate their availability by sending heartbeat messages to the server. There is no process
+beyond the zeromq connection to start or stop a connection from the client.
 
-    This might be worth modifying in the future. For example we might want to lower the signature
-    validation load on the server by having a per-session symmetric key for the client heartbeat
-    established at startup. Instead of the somewhat expensive public key signature check we could
-    simply decrypt the packet with the session key and check for sanity. (TODO: think about whether
-    this protocol is actually sane and secure)
+This might be worth modifying in the future. For example we might want to lower the signature
+validation load on the server by having a per-session symmetric key for the client heartbeat
+established at startup. Instead of the somewhat expensive public key signature check we could
+simply decrypt the packet with the session key and check for sanity. (TODO: think about whether
+this protocol is actually sane and secure)
 
-    #+CAPTION: ZeroMQ sockets
-    #+LABEL: img:heartbeat.jpg
-    #+ATTR_LaTeX: wrap placement={left}
-    [[./heartbeat.jpg]]
+#+CAPTION: ZeroMQ sockets
+#+LABEL: img:heartbeat.jpg
+[[./heartbeat.jpg]]
 
-    The details of how nodes and servers discover and connect to each other's PUB and SUB sockets
-    is covered in [[Server and Client Discovery]].
+The details of how nodes and servers discover and connect to each other's PUB and SUB sockets
+is covered in [[Server and Client Discovery]].
+#+LaTeX: \pagebreak
+
 *** Command Channel
     TBD
 
@@ -112,8 +115,8 @@
    * The public key of the server
    * The lifetime of this configuration information
 
-   A configuration endpoint ':organization/nodes/push_jobs' will be added to our chef rest
-   services. A signed GET to this endpoint will retrieve the appropriate configuration information
+   A configuration endpoint ':organization/nodes/push_jobs' will be added to our Chef REST
+   services. A signed /GET/ to this endpoint will retrieve the appropriate configuration information
    in JSON format.
 
    #+begin_src javascript
@@ -164,11 +167,12 @@
 
 ** General Messaging
 *** JSON
-   Push jobs use JSON because ZeroMQ handles packet fragmentation and reassembly. JSON also
-   facilitates easier debugging and maintenance of the system since all messages are textual
-   and human-readable. A binary protocol, such as Protocol Buffers or msgpack, would be more
-   efficient but would also substantially increase the effort required to debug and support
-   the system.
+   Push jobs use JSON because ZeroMQ sends and receives messages as complete frames, without
+   fragmentation. JSON also facilitates easier debugging and maintenance of the system since
+   all messages are textual and human-readable. A binary protocol, such as /Protocol Buffers/
+   or /msgpack/, would be more efficient but would also substantially increase the effort
+   required to debug and support the system.  We can discuss those as potential
+   optimizations once the initial system is in place.
 *** Security
    All messages are signed using the caller's private key. This signature is transmitted in
    a separate ZeroMQ frame before the JSON payload.[fn:1]
@@ -199,28 +203,29 @@
     status to 'online' once A starts receiving heartbeats from B again.
 
     The protocol described here is loosely based on the Paranoid Pirate Protocol, but with some
-    embelishments introduced because of the need for signing.  
+    embellishments introduced for signing.  
 
-    The heartbeat server sends out regular heartbeats to managed nodes via ZeroMQ PubSub. Managed
-    nodes send their heartbeats over a separate channel. See the [[Heartbeat Channel]]
-    section for a visual representation of the message flows and ZeroMQ sockets.
+    The heartbeat server sends out regular heartbeats to managed nodes via ZeroMQ
+    PUB/SUB. Managed nodes send their heartbeats over a separate channel. See the [[Heartbeat
+    Channel]] section for a visual representation of the message flows and ZeroMQ sockets.
 
 *** Message Format
-    The basic message format used here is a simple header packet containing the protocol version and
-    a signature separated by CRLF.  
+    The basic message format used here is a simple header frame containing the protocol
+    version and a signature separated by CRLF.
 
-    The main packet is a JSON blob. Push jobs use JSON because ZeroMQ handles packet fragmentation
-    and reassembly. JSON also facilitates easier debugging and maintenance of the system since all
-    messages are textual and human-readable. A binary protocol, such as Protocol Buffers or msgpack,
-    would be more efficient but would also substantially increase the effort required to debug and
+    The main frame is a JSON blob. Push jobs use JSON because ZeroMQ sends and receives
+    messages as complete frames without fragmentation. JSON also facilitates easier
+    debugging and maintenance of the system since all messages are textual and
+    human-readable. A binary protocol, such as /Protocol Buffers/ or /msgpack/, would be
+    more efficient but would also substantially increase the effort required to debug and
     support the system.
 
 *** Security
-    All messages are signed using the caller's private key. This signature is transmitted in a
-    separate ZeroMQ frame before the JSON payload. The actual payload is not encrypted, and is broad
-    cast to all clients. The system should never broadcast any data that is sensitive, such as
-    commands or node status. This implies that the server heartbeat broadcast is not suitable for
-    commands.
+    All messages are signed using the caller's private key. This signature is transmitted in
+    a separate ZeroMQ frame before the JSON payload. The actual payload is not encrypted,
+    and is broadcast to all clients. The system should never broadcast any data that is
+    sensitive, such as commands or node status. This implies that the server heartbeat
+    broadcast is not suitable for commands.
 
 *** Socket configuration
     The heartbeats (and other messages) flowing through the system are time sensitive. There is
@@ -233,19 +238,19 @@
 ** Server Heartbeat
 
 ** Server Heartbeat Channel
-    PUB/SUB sockets are used for the server heartbeat because this manages the fanout required to
-    send messages to thousands of clients. The client subscribes to the server heartbeat at a
-    host/port combination specified in the discovery process.
+    PUB/SUB sockets are used for the server heartbeat because this manages the fan-out
+    required to send messages to thousands of clients. The client subscribes to the server
+    heartbeat at a host/port combination specified in the discovery process.
 
-    The HWM should be kept small; there is no point in storing messages for dead clients any longer
-    than necessary. Clients going down must be accepted and tolerated. If a client is not reachable
-    for any length of time we want to drop those messages. This is in keeping with the fail fast
-    philosphy.
+    The HWM should be kept small; there is no point in storing messages for dead clients any
+    longer than necessary. Client failure must be accepted and tolerated. If a client has
+    been marked as down (not reachable), we want to drop any messages destined for that
+    client. This is in keeping with the fail-fast philosophy.
 
     The clients do not ACK the server heartbeats, and the server should not expect any. 
 
 *** Server Heartbeat Message
-    First packet (why not break each of these into packets and take
+    First frame (Why not break each of these into separate frames and take
     advantage of 0mq's multi-part for parsing the header as well?)
     #+begin_example
 VersionId\r\n            # a decimal ASCII integer value for the protocol version (1 for now)
@@ -263,22 +268,23 @@ SignedChecksum\r\n       # the signed checksum of the second packet in hexadecim
 ** Client Heartbeat
 
 ** Client Heartbeat Channel
-   PUSH/PULL sockets are used for the client hearbeat. The client PUSHes heartbeats to the server at
-   the host/port specified in the config data received during [[Server and Client Discovery][discovery]]. The server will not ACK
-   heartbeats.
+   PUSH/PULL sockets are used for the client heartbeat. The client PUSHes heartbeats to the
+   server at the host/port specified in the config data received during [[Server and Client Discovery][discovery]]. The
+   server will not ACK heartbeats.
 
-   NOTE: Some versions of this spec had PUB/SUB being used for this process. It would be simpler if
-   the client was able to connect to the server to send heartbeats, rather than requiring the server
-   to bind to the client. The latter would require some sort of handshake on startup to inform the
-   server where to connect. While it is possible to bind the SUB to an address and connect the PUB,
-   this seems to be not recommended (see zeromq guide, 'Getting the Message Out'). However, it seems
-   that multiple PUSH to one PULL is supported, and we can bind the PULL socket to an address
-   without trouble.
+   NOTE: Some versions of this spec had PUB/SUB being used for this process. It would be
+   simpler if the client was able to connect to the server to send heartbeats, rather than
+   requiring the server to bind to the client. The latter would require some sort of
+   handshake on startup to inform the server where to connect. While it is possible to bind
+   the SUB to an address and connect the PUB, this seems to be not recommended (see zeromq
+   guide, 'Getting the Message Out'). However, it seems that multiple PUSH to one PULL is
+   supported, and we can bind the PULL socket to an address without trouble.
 
-   There isn't any reason we couldn't use the heartbeat to convey extra information. The public key
-   signature based authentication process for heartbeats already requires a moderate sized payload,
-   so a little extra information seems pretty harmless. This is in contrast to the 1-2 byte sized
-   payload in the paranoid pirate protocol. Possible items to include are:
+   There isn't any reason we couldn't use the heartbeat to convey extra information. The
+   public key signature-based authentication process for heartbeats already requires a
+   moderate sized payload, so a little extra information seems pretty harmless. This is in
+   contrast to the 1-2 byte sized payload in the paranoid pirate protocol. Possible items to
+   include are:
 
    * The port the command processor is listening on.
    * ID and status of the most recently received command.
@@ -311,7 +317,7 @@ SignedChecksum\r\n       # the signed checksum of the second packet in hexadecim
    number of intervals equal to push\_jobs/heartbeat/online\_threshold before marking the server online.
    The managed node may resume sending data and accepting job requests from the OPC server at this point.
 
-   If the client fails to recieve a heartbeat for too long, it will query the configuration
+   If the client fails to receive a heartbeat for too long, it will query the configuration
    interface to receive a possible configuration update. This would allow the system to recover from
    a failed server.
 
