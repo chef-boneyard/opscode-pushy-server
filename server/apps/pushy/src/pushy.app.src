@@ -1,3 +1,6 @@
+%% -*- mode: erlang -*-
+%% -*- tab-width: 4;erlang-indent-level: 4;indent-tabs-mode: nil -*-
+%% ex: ts=4 sw=4 ft=erlang et
 {application, pushy,
  [
   {description, "Chef Push Job Server"},
@@ -6,10 +9,11 @@
   {applications, [
                   kernel,
                   stdlib,
-		  erlzmq,
-		  jiffy,
-		  gproc
+                  erlzmq,
+                  jiffy,
+                  gproc
                  ]},
+  {included_applications, [chef_common]},
   {mod, { pushy_app, []}},
   {env, []}
  ]}.

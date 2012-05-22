@@ -62,14 +62,13 @@ a reasonable and scalable implementation.
    2. Push jobs will not be deployed in Hosted Chef.
    3. The design must scale up to 8,000 managed nodes per OPC server.
    4. Push jobs will honor the same security guarantees made by the Chef REST API.
-
 * Architecture
 ** Communications
 Managed nodes and server components will communicate using [[http://www.zeromq.org][ZeroMQ]] messaging. While the server
-will be bound to predefined ports, the client should never require them. This is to ease running
-multiple clients on the same host for scalability testing; we will want to be able to run many
-hundreds of clients on the same machine rather than stand up thousands of individual nodes to
-test message scalability. 
+will be bound to predefined ports, the node should never require them. This is to ease running
+multiple nodes on the same host for scalability testing; we will want to be able to run many
+hundreds of nodes on the same machine rather than stand up thousands of individual nodes to
+test message scalability.
 
 Communication can be separated into two categories: heartbeat and job execution. The heartbeat
 channel is used by the Chef server to detect when managed nodes are offline and, therefore,
@@ -86,12 +85,12 @@ scalably manage the fan-in the server requires to monitor nodes as well as the f
 server needs to broadcast its heartbeat to all the nodes.
 
 In the interest of simplicity, the heartbeat protocol should be as stateless as possible. The
-server continually broadcasts heartbeat messages to all clients that are listening. Clients
+server continually broadcasts heartbeat messages to all nodes that are listening. Nodes
 indicate their availability by sending heartbeat messages to the server. There is no process
-beyond the zeromq connection to start or stop a connection from the client.
+beyond the zeromq connection to start or stop a connection from the node.
 
 This might be worth modifying in the future. For example we might want to lower the signature
-validation load on the server by having a per-session symmetric key for the client heartbeat
+validation load on the server by having a per-session symmetric key for the node heartbeat
 established at startup. Instead of the somewhat expensive public key signature check we could
 simply decrypt the packet with the session key and check for sanity. (TODO: think about whether
 this protocol is actually sane and secure)
@@ -101,17 +100,17 @@ this protocol is actually sane and secure)
 [[./heartbeat.jpg]]
 
 The details of how nodes and servers discover and connect to each other's PUB and SUB sockets
-is covered in [[Server and Client Discovery]].
+is covered in [[Server and Node Discovery]].
 #+LaTeX: \pagebreak
 
 *** Command Channel
     TBD
 
-** Configuration/Discovery process
+** Configuration/Discovery Process
    The configuration and service discovery process will provide the following pieces of data:
    * The push job server hostname or address
    * The port to subscribe to for server heartbeat
-   * The port to push client heartbeats to
+   * The port to push node heartbeats to
    * The public key of the server
    * The lifetime of this configuration information
 
@@ -155,12 +154,12 @@ is covered in [[Server and Client Discovery]].
     + push\_jobs/offline_threshold :: How many intervals must be missed before the other end is considered offline
     + push\_jobs/online_threshold :: How many intervals must be missed before the other end is considered online
     + public_key :: The signing key that the push server will use.
-    + lifetime :: how long in seconds this configuration is good for. The client should reload the
+    + lifetime :: how long in seconds this configuration is good for. The node should reload the
                   configuration information after this has expired.
 
    We may wish to use the discovery process to handle failover to a new server and distribution of
-   clients among multiple servers. The discovery system would allocate the clients to various active servers
-   and if a client lost the server heartbeat for a certain length of time (or got a reconfigure
+   nodes among multiple servers. The discovery system would allocate the nodes to various active servers
+   and if a node lost the server heartbeat for a certain length of time (or got a reconfigure
    command via the command channel) it would reload the configuration and start a connection to the
    appropriate server. We would also reconfigure after the liftime of the configuration expires.
 
@@ -182,19 +181,7 @@ is covered in [[Server and Client Discovery]].
    erlzmq:send(Sock, Sig, [sndmore]),
    erlzmq:send(Sock, JSON)
    #+end_src
-*** Heartbeat
-    #+begin_src javascript
-    {
-      "type":  "heartbeat",
-      "host":  "node123.foo.com",
-    }
-    #+end_src
-
-    + type :: message type
-    + host :: the sender's hostname
-
-** Protocols
-*** Heartbeat
+** Heartbeat
     Liveness detection in a distributed system is a notoriously difficult problem. The most common
     approach is to arrange for two parties to exchange heartbeat messages on a regular interval. Let's
     call these two parties 'A' and 'B'. Both A and B are considered 'online' while they are able to
@@ -223,7 +210,7 @@ is covered in [[Server and Client Discovery]].
 *** Security
     All messages are signed using the caller's private key. This signature is transmitted in
     a separate ZeroMQ frame before the JSON payload. The actual payload is not encrypted,
-    and is broadcast to all clients. The system should never broadcast any data that is
+    and is broadcast to all nodes. The system should never broadcast any data that is
     sensitive, such as commands or node status. This implies that the server heartbeat
     broadcast is not suitable for commands.
 
@@ -235,26 +222,24 @@ is covered in [[Server and Client Discovery]].
 
     This implies that the HWM values should be kept small, and ZMQ_SWAP should always be zero.
 
-** Server Heartbeat
-
-** Server Heartbeat Channel
+*** Server Heartbeat Channel
     PUB/SUB sockets are used for the server heartbeat because this manages the fan-out
-    required to send messages to thousands of clients. The client subscribes to the server
+    required to send messages to thousands of nodes. The node subscribes to the server
     heartbeat at a host/port combination specified in the discovery process.
 
-    The HWM should be kept small; there is no point in storing messages for dead clients any
-    longer than necessary. Client failure must be accepted and tolerated. If a client has
+    The HWM should be kept small; there is no point in storing messages for dead nodes any
+    longer than necessary. Node failure must be accepted and tolerated. If a node has
     been marked as down (not reachable), we want to drop any messages destined for that
-    client. This is in keeping with the fail-fast philosophy.
+    node. This is in keeping with the fail-fast philosophy.
 
-    The clients do not ACK the server heartbeats, and the server should not expect any. 
-
+    The nodes do not ACK the server heartbeats, and the server should not expect any.
 *** Server Heartbeat Message
     First frame (Why not break each of these into separate frames and take
     advantage of 0mq's multi-part for parsing the header as well?)
     #+begin_example
-VersionId\r\n            # a decimal ASCII integer value for the protocol version (1 for now)
-SignedChecksum\r\n       # the signed checksum of the second packet in hexadecimal (base64 could be another option as it 2/3 the size)
+Version=1.0;Checksum=fyq6ukIwYcUJ9JI90Ets8Q==
+# Version -> a decimal ASCII integer value for the protocol version (1 for now)
+# SignedChecksum -> the signed checksum of the second packet in hexadecimal (base64 could be another option as it 2/3 the size)
     #+end_example
     Second packet is json
     #+begin_example
@@ -265,87 +250,203 @@ SignedChecksum\r\n       # the signed checksum of the second packet in hexadecim
 }
     #+end_example
 
-** Client Heartbeat
 
-** Client Heartbeat Channel
-   PUSH/PULL sockets are used for the client heartbeat. The client PUSHes heartbeats to the
-   server at the host/port specified in the config data received during [[Server and Client Discovery][discovery]]. The
-   server will not ACK heartbeats.
+*** Node Heartbeat Channel
+    PUSH/PULL sockets are used for the node heartbeat. The node PUSHes heartbeats to the
+    server at the host/port specified in the config data received during [[Server and Client Discovery][discovery]]. The
+    server will not ACK heartbeats.
 
-   NOTE: Some versions of this spec had PUB/SUB being used for this process. It would be
-   simpler if the client was able to connect to the server to send heartbeats, rather than
-   requiring the server to bind to the client. The latter would require some sort of
-   handshake on startup to inform the server where to connect. While it is possible to bind
-   the SUB to an address and connect the PUB, this seems to be not recommended (see zeromq
-   guide, 'Getting the Message Out'). However, it seems that multiple PUSH to one PULL is
-   supported, and we can bind the PULL socket to an address without trouble.
+    NOTE: Some versions of this spec had PUB/SUB being used for this process. It would be
+    simpler if the node was able to connect to the server to send heartbeats, rather than
+    requiring the server to bind to the node. The latter would require some sort of
+    handshake on startup to inform the server where to connect. While it is possible to bind
+    the SUB to an address and connect the PUB, this seems to be not recommended (see zeromq
+    guide, 'Getting the Message Out'). However, it seems that multiple PUSH to one PULL is
+    supported, and we can bind the PULL socket to an address without trouble.
 
-   There isn't any reason we couldn't use the heartbeat to convey extra information. The
-   public key signature-based authentication process for heartbeats already requires a
-   moderate sized payload, so a little extra information seems pretty harmless. This is in
-   contrast to the 1-2 byte sized payload in the paranoid pirate protocol. Possible items to
-   include are:
+    There isn't any reason we couldn't use the heartbeat to convey extra information. The
+    public key signature-based authentication process for heartbeats already requires a
+    moderate sized payload, so a little extra information seems pretty harmless. This is in
+    contrast to the 1-2 byte sized payload in the paranoid pirate protocol. Possible items to
+    include are:
 
    * The port the command processor is listening on.
    * ID and status of the most recently received command.
-   * Information allowing the detection of crashed clients
-*** Client Heartbeat Message
-    First packet
-    #+begin_example
-VersionId\r\n            # an decimal ascii integer value for the protocol version
-SignedChecksum\r\n       # the signed checksum of the second packet in hexadecimal (base64 could be another option as it 2/3 the size)
-    #+end_example
-    Second packet is json
-    #+begin_example
-{"client":"CLIENTNAME",             # specifies which client key to use for signature check
- "org":"ORGNAME",                   # orgname of the client 
- "sequence":SEQUENCE_NUMBER",       # integer sequence number
- "timestamp":"TIMESTAMP",           # timestamp
- "command_port":PORT                # the port we are listening on for commands
-}
-    #+end_example
+   * Information allowing the detection of crashed nodes
+*** Node Heartbeat Message
+    Node heartbeats are comprised of two ZeroMQ frames. The first frame contains
+    the signature version and signature for the heartbeat message:
 
-   The client will discontinue the heartbeat and note the server as down if the server heartbeat
+#+begin_example
+    VersionId=1.0;Checksum=CUtCvLKeS0l/fq5lnGf25w==
+#+end_example
+
+    The second frame contains the JSON-formatted heartbeat payload:
+
+#+begin_example
+    {"node": "node123.foo.com",                    # node's host name
+     "org": "foo.com",                             # orgname of the node
+     "timestamp": "Sat, 12 May 2012 20:33:15 GMT", # timestamp
+     "command_port": 9987                          # the port we are listening on for commands
+    }
+#+end_example
+
+   The node will discontinue the heartbeat and note the server as down if the server heartbeat
    state moves to down, and resume it when the server heartbeat resumes. 
 
    A managed node must mark the OPC server as offline when it fails to receive server heartbeats for
    a consecutive number of intervals equal to push\_jobs/heartbeat/offline\_threshold. A managed
-   client must not attempt to send any data when the server is offline. Any job requests received by
-   the managed node from the offline server must be discarded.
+   node must not attempt to send any data when the server is offline. Any job requests received by
+   the managed node from the offline server which haven't begun execution must be discarded.
  
    After a managed node has marked the server as offline it must receive server heartbeats for a consecutive
    number of intervals equal to push\_jobs/heartbeat/online\_threshold before marking the server online.
    The managed node may resume sending data and accepting job requests from the OPC server at this point.
 
-   If the client fails to receive a heartbeat for too long, it will query the configuration
+   If the node fails to receive a heartbeat for too long, it will query the configuration
    interface to receive a possible configuration update. This would allow the system to recover from
    a failed server.
 
-   The client may wish to detect if the HWM is reached on the PUSH socket, since it will block when the
+   The node may wish to detect if the HWM is reached on the PUSH socket, since it will block when the
    HWM is reached. One strategy would be to set the HWM low and have some sort of alarm detect if we
    are blocked for any length of time. If the HWM is reached, we should declare the server down as
    if it stopped sending heartbeats. 
+** Node-Server Command Execution
+    A OPC server sends requests to execute actions to managed nodes. These requests are
+    called commands.
+*** TODO How does a node advertise its PUSH socket?
+*** TODO What happens if a node goes offline mid-job? What if it's an expected outage (reboot)?
+*** TODO What is the default duration for a job?
+*** TODO Does OPC have a notion of max #/concurrently executing push jobs?
+*** TODO How does the job monitor monitor the up/down state of each participating node?
+*** TODO How do we handle job queueing for backed up nodes? No more than 1-2 per node?
+*** Vocabulary
+    * Job - A collection of nodes executing the same command. Jobs have persistent state.
+      This state can be queried by users via the knife 'job' command.
+    * Command - A request to a managed node to perform an action immediately.
+*** Commands and node state
+     A server may not send commands to a down node. A server may not send a command to
+     a node which is currently executing a command. In other words, nodes execute
+     serially only. This makes it easier to reason about the current state of any node
+     and also avoids any undesired runtime interactions between commands.
+*** Command vocabulary
+***** chef-client
+      This command causes a managed node to initiate a chef-client run.
+***** ohai
+      This command tells a managed node to run ohai and update its node data.
+      This is not required for the PoC project but will be required for the real
+      implementation.
+*** Server-side job execution lifecycle
+**** Initiation
+***** Search & Filter
+     Command execution is tracked across a collection of nodes by a command job. The
+     collection of nodes is defined by a standard Chef search criteria. The search
+     is executed against the node index and returns a list of managed nodes satisfying
+     the search criteria. Any nodes which are marked down at the time of job initiation
+     shall be omitted from the job.
+***** Command Transmission
+     By default the job shall be executed on all candidates returned by the search
+     and filter step. Exceptions to this and user-visible ways to modify the
+     default behavior are discussed later in this document.
 
-** Client-Server command channel
-   While it is outside the scope of this document, one viable approach for the command channel is
-   for the client to bind a PULL socket to a port and pass that via the heartbeat to the server.
+     When the OPC server is ready to execute a job it creates a job monitor. The role
+     of the job monitor is to manage the execution of a job and track the execution
+     state of all nodes referenced by the job. The job monitor has two associated
+     ZeroMQ sockets: one each of PUSH and PULL.
 
-**** TODO Do clients store and forward or just drop data when the server is unavailable?
-**** TODO How do we expose HWM/SWAP as user-visible tunables? Do we want to?
+     The PUSH socket is used to transmit commands to the nodes participating in the job.
+     The PULL socket is used to receive job ACK/NAK traffic from the nodes.
+****** Command message format
+       The job command message is extremely similar to the heartbeat message. It
+       consists of two ZeroMQ frames. The first frame contains the signature version and
+       signature of the message.
 
-*** Jobs
-    A job is a request to execute a command sent to a group of managed nodes. The server is responsible for
-    managing the execution of the job and its result set, if any. While job execution is conceptually simple
-    it does require dealing with several aspects of distributed systems.
-*** TODO Flesh out this section with CB's comments
-*** TODO Describe a coherent design using ZeroMQ socket types
-**** Selecting servers
-**** Determining if enough servers are present to initiate the job
-**** Job initiation
-**** Tracking the progress of each participant
-**** Gathering participant job execution responses
-**** Returning job execution status & results to caller
+#+begin_example
+Version=1.0;Checksum=vQiGY85BzEAi5k7noSiN3A==
+#+end_example
 
-[fn:1] Public key signatures are used to verify the sender's identity and provide some amount of message
-tamper detection.
-[fn:2] See the Paranoid Pirate Protocol at [[http://zeromq.org][zeromq.org]].
+       The second frame contains the command payload for the job formatted as a JSON
+       hash. The payload contains the job id, command to be executed, the host name
+       of the OPC server, and the URL of the PULL socket used to collect node ACK/NAKs.
+
+#+begin_example
+{
+  "server": "opc1.foo.com",               # OPC host name
+  "type": "job_command",                  # message type
+  "job_id": "1234",                       # job id
+  "listener": "tcp://opc1.foo.com:15037", # PULL socket endpoint
+  "command": "chef-client"                # command to execute
+}
+#+end_example
+
+***** Modifying Job Initiation
+      Users can place additional restrictions on the initiation of a push job.
+      These restrictions are expressed by passing additional flags to the knife
+      job command.
+****** Quorum
+       A user can specify that a minimum number of nodes matching the search criteria
+       must both be online and ACK the job request. This is done by using the quorum
+       flag.
+
+#+begin_example
+knife job create role:database chef-client --quorum=0.8
+#+end_example
+
+#+begin_example
+knife job create role:database chef-client --quorum=3
+#+end_example
+
+       The first example illustrates specifying quorum as a percentage of the total
+       number of nodes returned from the search index.
+
+       The second example illustrates specifying quorum as an absolute count of nodes.
+**** Executing the job
+     Once a job meets the job initiation criteria it is ready to execute. The job monitor
+     tells the participating nodes to begin execution by sending the execute message to
+     all ACK'd nodes.
+***** Execute message format
+      As with prior messages, the execute message is comprised of two ZeroMQ frames.
+      The first frame contains the digital signature and signature version as previously
+      illustrated. The second frame contains the execute message payload.
+
+#+begin_example
+{
+  "server": "opc1.foo.com",    # OPC host name
+  "job_id": "1234",            # job id
+  "type": "job_execute"        # message type
+}
+#+end_example
+**** Tracking job status
+      If at least one node has ACK'd the job request (see exceptions to this rule in
+      subsequent sections) the monitor then transitions the job to an executing state.
+      The monitor is responsible for updating the job details as each participating node
+      sends its job execution results. Since OPC already has other mechanisms for collecting
+      the output of chef-client runs, nodes are required to report only pass/fail status.
+***** Job States
+      The following is a list of valid job states:
+
+      * Executing - At least one node ACK'd the job request and is executing the command.
+      * Complete - All participating nodes executed the command without errors.
+      * Error - At least one node encountered errors while executing the command.
+      * Failed - All candidate nodes NAK'd the job request OR no candidate nodes were found.
+      * Expired - At least one node failed to complete in the specified time.
+****** Job Expiry
+       Users can also specify a maximum duration for a job. This is accomplished by passing
+       the duration flag to the knife job plugin. Duration is always expressed in minutes.
+
+#+begin_example
+knife job create role:database chef-client --duration=10
+#+end_example
+
+*** Node-side job execution lifecycle
+**** Initiation
+     ACK if idle. NAK if job is currently running and the server asked node to start
+     another one. If ACK, consider the job to have started execution for the purposed
+     of future job requests.
+**** Execution
+     Wait for server to send execution message. Begin command execution when message is
+     received.
+**** Completion
+     Send success or error message when command completes.
+
+*** Knife job plugin

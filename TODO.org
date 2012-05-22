@@ -1,0 +1,9 @@
+* Client
+** consume the configuration endpoint
+** Discard unsent messages after disconnect
+
+* Server
+** write node status to the DB (currently just kept in gen_fsm process)
+** expose a configuration endpoint for clients
+** query DB for client public key (currently client/server keypairs in keys/ dir are used)
+** pushy_node_status_tracker:send_heartbeat/3 call to pushy_node_state_sup:new could start an endless loop of death.

@@ -1,3 +1,4 @@
+.bundle/
 design/*.tex
 design/*.log
 design/*.aux
@@ -6,4 +7,5 @@ prototype/deps
 server/rel/pushy
 server/apps/pushy/ebin
 server/deps
+server/apps/pushy/.eunit
 .DS_STORE

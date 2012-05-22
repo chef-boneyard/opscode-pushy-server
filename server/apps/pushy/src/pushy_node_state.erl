@@ -21,7 +21,7 @@
          restarting/3]).
 
 -define(NO_NODE, {error, no_node}).
--define(NODE_EVENT(Event), Event(Name) -> case catch gproc:send(Name, Event) of
+-define(NODE_EVENT(Event), Event(Name) -> case catch gproc:send({n,l,Name}, Event) of
                                               {'EXIT', _} -> ?NO_NODE;
                                               _ -> ok
                                           end).
@@ -46,7 +46,7 @@ start_link(Name, HeartbeatInterval, DeadIntervalCount) ->
 ?NODE_EVENT(node_restarting).
 
 current_state(Name) ->
-    case catch gproc:lookup_pid(Name) of
+    case catch gproc:lookup_pid({n,l,Name}) of
         {'EXIT', _} ->
             ?NO_NODE;
         Pid ->
@@ -60,10 +60,10 @@ init([Name, HeartbeatInterval, DeadIntervalCount]) ->
 initializing(timeout, #state{name=Name}=State) ->
     case load_status() of
         {ok, Status} ->
-            case gproc:reg(Name) of
-                yes ->
+            case gproc:reg({n, l, Name}) of
+                true ->
                     {next_state, Status, reset_timer(State)};
-                no ->
+                false ->
                     {stop, shutdown, State}
             end;
         Error ->
