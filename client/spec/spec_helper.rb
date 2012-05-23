@@ -9,6 +9,8 @@ require 'pushy'
 require 'tmpdir'
 require 'tempfile'
 
+require 'spec/support/concern'
+
 WATCH = lambda { |x| puts x } unless defined?(WATCH)
 
 # Load everything from spec/support
