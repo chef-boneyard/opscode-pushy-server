@@ -1,4 +1,5 @@
 require "spec_helper"
+require 'pushy/cli/client'
 
 describe Pushy::CLI::Client do
   describe "#reconfigure" do
