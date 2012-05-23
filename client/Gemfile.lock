@@ -1,6 +1,7 @@
 GIT
-  remote: git@github.com:opscode/mixlib-authentication.git
+  remote: git://github.com/opscode/mixlib-authentication.git
   revision: f3cd8b31e04aac87f82bb4ae1de6a2bf0ab49401
+  branch: f3cd8b31e04aac87f82bb4ae1de6a2bf0ab49401
   specs:
     mixlib-authentication (1.1.5)
       mixlib-log
