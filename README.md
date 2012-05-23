@@ -11,33 +11,43 @@ will find:
 Run ALL THE THINGS
 ==================
 
-## Load the schema
+## Ensure host-based checkouts of all projects are on the correct branches
 
-Ensure mixlib-authorization is on the 'pushy' branch.
+* `opscode-omnibus` => pushy
+* `mixlib-authorization` => pushy
+* `pushy` => 54/integration
 
-    $ cd ~/oc/mixlib-authorization
-    $ git checkout pushy
+## Reconfigure OPC
 
-Load mixlib-authorization into the dev-vm:
+Load `opscode-omnibus`:
+
+    $ cd ~/oc/opscode-dev-vm
+    $ rake project:load[opscode-omnibus]
+
+Generate the artisanal OPC-specific app.config for pushy:
+
+    $ cd ~/oc/opscode-dev-vm
+    $ rake ssh
+    vagrant@private-chef:~$ sudo private-chef-ctl reconfigure
+
+## Load required projects into dev-vm
 
     $ cd ~/oc/opscode-dev-vm
     $ rake project:load[mixlib-authorization]
+    $ rake project:load[pushy]
+
+## Load the schema
 
 SSH into the dev-vm and run Sequel migrations:
 
+    $ cd ~/oc/opscode-dev-vm
     $ rake ssh
     vagrant@private-chef:~$ cd /srv/piab/mounts/mixlib-authorization
     vagrant@private-chef:/srv/piab/mounts/mixlib-authorization$ bundle exec sequel -m db/migrate postgres://opscode-pgsql@127.0.0.1/opscode_chef
 
-## Start the server
-
-Load pushy/server into the dev-vm:
+## Start the pushy server
 
     $ cd ~/oc/opscode-dev-vm
-    $ rake project:load[pushy]
-
-Start the party:
-
     $ rake ssh
     vagrant@private-chef:~$ cd /srv/piab/mounts/pushy
     vagrant@private-chef:/srv/piab/mounts/pushy$ ./rel/pushy/bin/pushy console
