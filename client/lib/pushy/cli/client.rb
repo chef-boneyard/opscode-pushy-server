@@ -51,13 +51,13 @@ module Pushy
       option :client_private_key,
         :long => "--client-key KEY_FILE",
         :description => "Set the client key file location",
-        :default => File.expand_path(File.join(File.dirname(__FILE__), '..', '..', '..', '..', 'keys', 'client_private.pem')),
+        :default => File.expand_path(File.join(File.dirname(__FILE__), '..', '..', '..', 'keys', 'client_private.pem')),
         :proc => nil
 
       option :server_public_key,
         :long => "--server-key KEY_FILE",
         :description => "Set the client key file location",
-        :default => File.expand_path(File.join(File.dirname(__FILE__), '..', '..', '..', '..', 'keys', 'server_public.pem')),
+        :default => File.expand_path(File.join(File.dirname(__FILE__), '..', '..', '..', 'keys', 'server_public.pem')),
         :proc => nil
 
       option :help,
