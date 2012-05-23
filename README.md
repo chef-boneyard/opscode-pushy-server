@@ -19,16 +19,11 @@ Run ALL THE THINGS
 
 ## Reconfigure OPC
 
-Load `opscode-omnibus`:
+Load `opscode-omnibus` and generate the artisanal OPC-specific app.config for pushy:
 
     $ cd ~/oc/opscode-dev-vm
     $ rake project:load[opscode-omnibus]
-
-Generate the artisanal OPC-specific app.config for pushy:
-
-    $ cd ~/oc/opscode-dev-vm
-    $ rake ssh
-    vagrant@private-chef:~$ sudo private-chef-ctl reconfigure
+    $ rake update
 
 ## Load required projects into dev-vm
 
