@@ -18,6 +18,10 @@ describe Pushy::Client do
     its(:out_address) { should eql out_addr }
     its(:interval)    { should eql interval }
 
+    its(:offline_threshold) { should eql offline_threshold }
+    its(:online_threshold)  { should eql online_threshold }
+    its(:lifetime)          { should eql lifetime }
+
     its(:server_public_key)  { should eql public_key }
   end
 end

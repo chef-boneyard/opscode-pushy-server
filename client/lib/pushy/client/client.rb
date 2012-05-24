@@ -7,10 +7,12 @@ module Pushy
     attr_accessor :out_address
     attr_accessor :in_address
     attr_accessor :interval
+    attr_accessor :offline_threshold
+    attr_accessor :online_threshold
+    attr_accessor :lifetime
     attr_accessor :client_private_key
     attr_accessor :server_public_key
     attr_accessor :node_name
-
 
     def initialize(options)
       @monitor = Pushy::Monitor.new(options)
@@ -22,6 +24,10 @@ module Pushy
       @server_key_path = options[:server_key]
       @node_name = options[:node_name]
 
+      @offline_threshold = options[:offline_threshold]
+      @online_threshold = options[:online_threshold]
+      @lifetime = options[:lifetime]
+
       @client_private_key = load_key(options[:client_private_key_path]) if options[:client_private_key_path]
       @server_public_key = options[:server_public_key] || load_key(options[:server_public_key_path])
     end
@@ -31,6 +37,9 @@ module Pushy
       new :in_address        => config['push_jobs']['heartbeat']['in_addr'],
           :out_address       => config['push_jobs']['heartbeat']['out_addr'],
           :interval          => config['push_jobs']['heartbeat']['interval'],
+          :offline_threshold => config['push_jobs']['heartbeat']['offline_threshold'],
+          :online_threshold  => config['push_jobs']['heartbeat']['online_threshold'],
+          :lifetime          => config['lifetime'],
           :server_public_key => config['public_key'],
           :node_name         => config['host']
     end
