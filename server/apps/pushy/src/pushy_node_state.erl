@@ -113,10 +113,15 @@ load_status() ->
 
 save_status(Status, State) when is_atom(Status) ->
     save_status(status_code(Status), State);
-save_status(Status, #state{name=Name}) ->
+save_status(Status, #state{name=Name}=State) ->
     case pushy_sql:create_node_status(Name, Status) of
-        {conflict, _} -> pushy_sql:update_node_status(Name, Status);
-        {error, Error} -> {error, Error}
+        {ok, _} ->
+            State;
+        {conflict, _} ->
+            pushy_sql:update_node_status(Name, Status),
+            State;
+        {error, _Error} ->
+            State
     end.
 
 %% Map status atom to valid integer before storing in db
