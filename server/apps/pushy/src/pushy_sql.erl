@@ -13,7 +13,7 @@ create_node_status(Name, Status) ->
   create_object(insert_node_status, Record).
 
 update_node_status(Name, Status) ->
-  UpdateFields = [Name, Status],
+  UpdateFields = [Status, Name],
   do_update(update_node_status, UpdateFields).
 
 
