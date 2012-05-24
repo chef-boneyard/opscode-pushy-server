@@ -87,7 +87,7 @@ server needs to broadcast its heartbeat to all the nodes.
 In the interest of simplicity, the heartbeat protocol should be as stateless as possible. The
 server continually broadcasts heartbeat messages to all nodes that are listening. Nodes
 indicate their availability by sending heartbeat messages to the server. There is no process
-beyond the zeromq connection to start or stop a connection from the node.
+beyond the ZeroMQ connection to start or stop a connection from the node.
 
 This might be worth modifying in the future. For example we might want to lower the signature
 validation load on the server by having a per-session symmetric key for the node heartbeat
@@ -130,6 +130,9 @@ is covered in [[Server and Node Discovery]].
                                     "offline_threshold": 3,
                                     "online_threshold": 2
                                   },
+                     "command" : {
+                                    "command_source":"tcp://10.10.1.5:10002"
+                                 }
                    },
       "public_key": "AAAAB3NzaC1kc3MAAACBAIZbwlySffbB
                     5msSUH8JzLLXo/v03JBCWr13fVTjWYpc
@@ -157,11 +160,11 @@ is covered in [[Server and Node Discovery]].
     + lifetime :: how long in seconds this configuration is good for. The node should reload the
                   configuration information after this has expired.
 
-   We may wish to use the discovery process to handle failover to a new server and distribution of
+   We may wish to use the discovery process to handle fail over to a new server and distribution of
    nodes among multiple servers. The discovery system would allocate the nodes to various active servers
    and if a node lost the server heartbeat for a certain length of time (or got a reconfigure
    command via the command channel) it would reload the configuration and start a connection to the
-   appropriate server. We would also reconfigure after the liftime of the configuration expires.
+   appropriate server. We would also reconfigure after the lifetime of the configuration expires.
 
 
 ** General Messaging
@@ -260,7 +263,7 @@ Version=1.0;Checksum=fyq6ukIwYcUJ9JI90Ets8Q==
     simpler if the node was able to connect to the server to send heartbeats, rather than
     requiring the server to bind to the node. The latter would require some sort of
     handshake on startup to inform the server where to connect. While it is possible to bind
-    the SUB to an address and connect the PUB, this seems to be not recommended (see zeromq
+    the SUB to an address and connect the PUB, this seems to be not recommended (see ZeroMQ
     guide, 'Getting the Message Out'). However, it seems that multiple PUSH to one PULL is
     supported, and we can bind the PULL socket to an address without trouble.
 
@@ -312,23 +315,45 @@ Version=1.0;Checksum=fyq6ukIwYcUJ9JI90Ets8Q==
    are blocked for any length of time. If the HWM is reached, we should declare the server down as
    if it stopped sending heartbeats. 
 ** Node-Server Command Execution
-    A OPC server sends requests to execute actions to managed nodes. These requests are
-    called commands.
-*** TODO How does a node advertise its PUSH socket?
-*** TODO What happens if a node goes offline mid-job? What if it's an expected outage (reboot)?
-*** TODO What is the default duration for a job?
-*** TODO Does OPC have a notion of max #/concurrently executing push jobs?
-*** TODO How does the job monitor monitor the up/down state of each participating node?
-*** TODO How do we handle job queueing for backed up nodes? No more than 1-2 per node?
+   A OPC server sends requests to execute actions to managed nodes. These requests are called
+   commands. The command server listens on an address specified in the configuration process, and
+   clients connect to that address to receive commands.
+
 *** Vocabulary
     * Job - A collection of nodes executing the same command. Jobs have persistent state.
       This state can be queried by users via the knife 'job' command.
     * Command - A request to a managed node to perform an action immediately.
-*** Commands and node state
-     A server may not send commands to a down node. A server may not send a command to
-     a node which is currently executing a command. In other words, nodes execute
-     serially only. This makes it easier to reason about the current state of any node
-     and also avoids any undesired runtime interactions between commands.
+
+*** Overall communications structure
+
+   The command server will create a ROUTER socket, and each client will connect via a DEALER socket
+   identified with a name unique to that client. On connection to the ROUTER socket, the client will
+   send a signed message indicating that it is available for commands, letting us capture the
+   transient socket name. This will provide a way to map the unique name of the connection to the
+   client in question. Commands will be addressed via that unique name.
+   
+   The server will need to send a separate message to each client. However the message body
+   (aside from the address packet) will remain the same, and we can reuse the ZeroMQ buffers created
+   and save on the signing cost. 
+
+   When a command is completed on the node, it sends the command results back to the server using
+   the ROUTER/DEALER connection above. Possible results include success, failure (possibly with
+   error message) and perhaps a timeout.
+
+*** TODO Alternately we could name our sockets. 
+    However, they are persistent; we will need a mechanism to allow us to prevent stale commands
+    from getting out on reconnect. We could add an expire time to the command, but we would still
+    waste ZeroMQ buffer space holding on to that dead command.
+
+*** TODO Do we want a separate connection for each job? Probably no, as this increases the complexity of connecting
+*** TODO What happens if we send a command to a node that isn't coming back; 
+**** does it occupy space in the zmq buffers until the server restarts things? 
+**** do we want to periodically drop and restart the ZMQ ROUTER socket to purge these?    
+
+   Jobs need to be persistent on the server side; we should not 'forget' a job in progress even if
+   the server restarts. However, clients may lose state at any time, and we must be prepared to
+   handle it. 
+
 *** Command vocabulary
 ***** chef-client
       This command causes a managed node to initiate a chef-client run.
@@ -336,6 +361,41 @@ Version=1.0;Checksum=fyq6ukIwYcUJ9JI90Ets8Q==
       This command tells a managed node to run ohai and update its node data.
       This is not required for the PoC project but will be required for the real
       implementation.
+***** sleep n
+      This command tells a managed node to wait n seconds and then reply with success. This is
+      intended for testing.
+***** dummy_job pfail duration
+      This would be a more sophisticated version of the sleep command. This command tells a managed
+      node to wait duration seconds and either fail with a probability of pfail, and otherwise
+      succeed. This would ease testing of the system failure cases.
+***** arbitrary command?
+      This is the most general possible solution, and something we should consider for the long
+      term; apparently (according to Lamont) just about every company has some provision for this in
+      their infrastructure. Many interesting security issues appear, including what UID to run under (root? the user id that
+      knife ssh would use?) access control problems, etc. Perhaps this needs to have a specific ACL
+      right in authz.
+
+*** TODO What happens if a node goes offline mid-job? What if it's an expected outage (reboot)?
+*** TODO How do we handle stuck/dead nodes?
+*** TODO What is the default duration for a job?
+*** TODO Does OPC have a notion of max #/concurrently executing push commands?
+    As SF has commented, we have the potential to make push jobs a DDOS tool for OPC. We probably
+    will need to refine our system to track clients in-flight, and limit the peak # of clients in
+    flight. This complicates the push job system a bit, in that we will have to have a mechanism to
+    track in-flight items and issue commands. 
+
+*** TODO How does the job monitor monitor the up/down state of each participating node?
+*** TODO How do we handle job queueing for backed up nodes? No more than 1-2 per node?
+
+*** Commands and node state
+     A server may not send commands to a down node. A server may not send a command to
+     a node which is currently executing a command. In other words, nodes execute
+     serially only. This makes it easier to reason about the current state of any node
+     and also avoids any undesired runtime interactions between
+     commands.
+   
+     MAA: Do jobs issue multiple commands?
+
 *** Server-side job execution lifecycle
 **** Initiation
 ***** Search & Filter
@@ -344,6 +404,14 @@ Version=1.0;Checksum=fyq6ukIwYcUJ9JI90Ets8Q==
      is executed against the node index and returns a list of managed nodes satisfying
      the search criteria. Any nodes which are marked down at the time of job initiation
      shall be omitted from the job.
+
+     MAA: Do we need search for prototyping? Can we replace it
+     with an oracle that maps a text string to a node list? E.g. maybe
+     the input to the 'search' is the list of nodes to use? This seperates
+
+     MAA: CB mentions the idea of entity groups (a named collection of nodes or other entities in
+     chef); in the future we may want to integrate this more deeply.
+
 ***** Command Transmission
      By default the job shall be executed on all candidates returned by the search
      and filter step. Exceptions to this and user-visible ways to modify the
