@@ -120,17 +120,10 @@ save_status(Status, #state{name=Name}) ->
     end.
 
 %% Map status atom to valid integer before storing in db
-status_code(Status) ->
-    case Status of
-        up ->
-            1;
-        crashed ->
-            0;
-        restarting ->
-            -1;
-        _ ->
-            0
-    end.
+status_code(up) ->
+    1;
+status_code(crashed) ->
+    0.
 
 reset_timer(#state{dead_interval=Interval, tref=undefined}=State) ->
     TRef = erlang:send_after(Interval, self(), no_heartbeats),
