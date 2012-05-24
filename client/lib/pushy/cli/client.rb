@@ -48,13 +48,13 @@ module Pushy
         :boolean => true,
         :description => "Be verbose"
 
-      option :client_private_key,
+      option :client_private_key_path,
         :long => "--client-key KEY_FILE",
         :description => "Set the client key file location",
         :default => File.expand_path(File.join(File.dirname(__FILE__), '..', '..', '..', '..', 'keys', 'client_private.pem')),
         :proc => nil
 
-      option :server_public_key,
+      option :server_public_key_path,
         :long => "--server-key KEY_FILE",
         :description => "Set the client key file location",
         :default => File.expand_path(File.join(File.dirname(__FILE__), '..', '..', '..', '..', 'keys', 'server_public.pem')),

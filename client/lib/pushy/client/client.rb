@@ -22,8 +22,17 @@ module Pushy
       @server_key_path = options[:server_key]
       @node_name = options[:node_name]
 
-      @client_private_key = load_key(options[:client_private_key])
-      @server_public_key = load_key(options[:server_public_key])
+      @client_private_key = load_key(options[:client_private_key_path]) if options[:client_private_key_path]
+      @server_public_key = options[:server_public_key] || load_key(options[:server_public_key_path])
+    end
+
+    def self.from_json(raw_json_config)
+      config = Yajl::Parser.parse(raw_json_config)
+      new :in_address        => config['push_jobs']['heartbeat']['in_addr'],
+          :out_address       => config['push_jobs']['heartbeat']['out_addr'],
+          :interval          => config['push_jobs']['heartbeat']['interval'],
+          :server_public_key => config['public_key'],
+          :node_name         => config['host']
     end
 
     def start
