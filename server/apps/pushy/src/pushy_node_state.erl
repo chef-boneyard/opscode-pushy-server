@@ -86,8 +86,8 @@ handle_sync_event(_Event, _From, StateName, State) ->
     {reply, ignored, StateName, State}.
 
 handle_info(heartbeat, up, State) ->
-    {next_state, up, reset_timer(State)};
 handle_info(hearbeat, crashed, State) ->
+    {next_state, up, reset_timer(save_status(up, State))};
     {next_state, up, reset_timer(save_status(up, State))};
 handle_info(heartbeat, restarting, State) ->
     {next_state, up, reset_timer(save_status(up, State))};
