@@ -11,7 +11,8 @@
                   stdlib,
                   erlzmq,
                   jiffy,
-                  gproc
+                  gproc,
+                  sqerl
                  ]},
   {included_applications, [chef_common]},
   {mod, { pushy_app, []}},
