@@ -9,6 +9,7 @@ GIT
 GEM
   remote: http://rubygems.org/
   specs:
+    awesome_print (1.0.2)
     bunny (0.7.9)
     chef (0.10.8)
       bunny (>= 0.6.0)
@@ -79,6 +80,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  awesome_print
   chef (~> 0.10.8)
   em-zeromq (~> 0.3.0)
   ffi-rzmq (~> 0.9.3)

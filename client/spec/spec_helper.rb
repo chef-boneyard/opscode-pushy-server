@@ -6,6 +6,7 @@ Bundler.require(:default, :test)
 
 require 'pushy'
 
+require 'ap'
 require 'tmpdir'
 require 'tempfile'
 

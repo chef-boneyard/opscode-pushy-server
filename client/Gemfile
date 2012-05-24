@@ -11,4 +11,5 @@ gem "mixlib-authentication", "1.1.5", :git => "git://github.com/opscode/mixlib-a
 
 group :test do
   gem "rspec"
+  gem "awesome_print"
 end
