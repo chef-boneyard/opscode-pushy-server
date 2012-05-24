@@ -19,31 +19,24 @@ Run ALL THE THINGS
 
 ## Reconfigure OPC
 
-Load `opscode-omnibus`:
+Load `opscode-omnibus` and generate the artisanal OPC-specific app.config for pushy:
 
     $ cd ~/oc/opscode-dev-vm
     $ rake project:load[opscode-omnibus]
+    $ rake update
 
-Generate the artisanal OPC-specific app.config for pushy:
+## Load the new database schema
 
-    $ cd ~/oc/opscode-dev-vm
-    $ rake ssh
-    vagrant@private-chef:~$ sudo private-chef-ctl reconfigure
-
-## Load required projects into dev-vm
+Load `mixlib-authorization` and migrate the database:
 
     $ cd ~/oc/opscode-dev-vm
     $ rake project:load[mixlib-authorization]
-    $ rake project:load[pushy]
+    $ rake migrate
 
-## Load the schema
-
-SSH into the dev-vm and run Sequel migrations:
+## Load pushy into dev-vm
 
     $ cd ~/oc/opscode-dev-vm
-    $ rake ssh
-    vagrant@private-chef:~$ cd /srv/piab/mounts/mixlib-authorization
-    vagrant@private-chef:/srv/piab/mounts/mixlib-authorization$ bundle exec sequel -m db/migrate postgres://opscode-pgsql@127.0.0.1/opscode_chef
+    $ rake project:load[pushy]
 
 ## Start the pushy server
 
