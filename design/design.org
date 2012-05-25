@@ -314,6 +314,10 @@ Version=1.0;Checksum=fyq6ukIwYcUJ9JI90Ets8Q==
    HWM is reached. One strategy would be to set the HWM low and have some sort of alarm detect if we
    are blocked for any length of time. If the HWM is reached, we should declare the server down as
    if it stopped sending heartbeats. 
+
+*** Server tracking of node 
+
+
 ** Node-Server Command Execution
    A OPC server sends requests to execute actions to managed nodes. These requests are called
    commands. The command server listens on an address specified in the configuration process, and
@@ -325,55 +329,105 @@ Version=1.0;Checksum=fyq6ukIwYcUJ9JI90Ets8Q==
     * Command - A request to a managed node to perform an action immediately.
 
 *** Overall communications structure
+    There are a number of ways to implement the communication structure. 
+
+
+**** Client listens
+   The client chooses some port to bind a PULL to, and then advertises it to the server, perhaps via the
+   heartbeat channel. The command server issues commands to this port, and possibly includes a port
+   to report status back via PUSH connection. Otherwise this could be contained in the configuration
+   data.
+
+   Advantages:
+   This enables having a separate socket on the server for each job, which would ease the process of
+   distributing the work of managing the job, since a separate erlang process could be used for each
+   job. Having an ephemeral socket also allows us to tear down the socket and destroy any messages
+   waiting for a dead node.
+
+   Disadvantages: This will require the server to setup/teardown many sockets as it individually
+   connects to each client and sends the command. This seems somewhat against the ZeroMQ
+   style. Having the server connect to the client means that the client cannot live behind any kind
+   of NAT device without added work, a limitation we haven't yet had to insert into our design.
+
+**** Server listens
 
    The command server will create a ROUTER socket, and each client will connect via a DEALER socket
    identified with a name unique to that client. On connection to the ROUTER socket, the client will
    send a signed message indicating that it is available for commands, letting us capture the
    transient socket name. This will provide a way to map the unique name of the connection to the
-   client in question. Commands will be addressed via that unique name.
+   client in question. Commands will be addressed via that unique name. The client will learn the
+   the address of the ROUTER socket via the discovery system.
+
+   Alternately we could name the sockets with a name derived from the organization and the node
+   name, and possibly skip the first message exchange. However this creates a persistent connection,
+   with possible issues with messages queued to be send to dead nodes, and stale commands showing up
+   when a new node with the same name appears. 
    
    The server will need to send a separate message to each client. However the message body
    (aside from the address packet) will remain the same, and we can reuse the ZeroMQ buffers created
    and save on the signing cost. 
 
    When a command is completed on the node, it sends the command results back to the server using
-   the ROUTER/DEALER connection above. Possible results include success, failure (possibly with
-   error message) and perhaps a timeout.
+   the ROUTER/DEALER connection above. 
 
-*** TODO Alternately we could name our sockets. 
-    However, they are persistent; we will need a mechanism to allow us to prevent stale commands
-    from getting out on reconnect. We could add an expire time to the command, but we would still
-    waste ZeroMQ buffer space holding on to that dead command.
+   Advantages:
+   This reduces the number of ZeroMQ connections we have to maintain. It preserves the pattern of the
+   client always connecting to the server.
+
+   Disadvantages:
+   This makes all the jobs go through the same socket, and will require some mux/demux work to route
+   messages where the need to go. (This is a relatively straightforward pattern for ZeroMQ though.)
+
+
+**** Handoff model
+   As in the 'Server listens' model, clients connect to the command server via a ROUTER/DEALER
+   pattern. When we initiate a job, the command sent to the clients includes a port for further
+   communication. 
+
+   Advantages:
+   This minimizes the long lived sockets in the system, and allows a separate socket/process to
+   handle the connection, moving some of the traffic off of the main command connection, while
+   preserving the client connects model. 
+
+   Disadvantages:
+   This is a more complex protocol. The actual amount of traffic it moves to the separate connection
+   isn't huge; the main server still needs to contact every node in the job to tell it where to
+   listen (The protocol would only have small number of messages going back and forth for each node,
+   so it would only alter the traffic by a small constant factor).
 
 *** TODO Do we want a separate connection for each job? Probably no, as this increases the complexity of connecting
 *** TODO What happens if we send a command to a node that isn't coming back; 
 **** does it occupy space in the zmq buffers until the server restarts things? 
 **** do we want to periodically drop and restart the ZMQ ROUTER socket to purge these?    
+*** TODO Devise a mechanisim for job cancellation
 
+*** Command vocabulary
+**** chef-client
+      This command causes a managed node to initiate a chef-client run.
+**** ohai
+      This command tells a managed node to run ohai and update its node data.
+      This is not required for the PoC project but will be required for the real
+      implementation.
+**** sleep n
+      This command tells a managed node to wait n seconds and then reply with success. This is
+      intended for testing.
+**** dummy_job pfail duration
+      This would be a more sophisticated version of the sleep command. This command tells a managed
+      node to wait duration seconds and either fail with a probability of pfail, and otherwise
+      succeed. This would ease testing of the system failure cases.
+**** arbitrary command?
+      This is the most general possible solution, and something we should consider for the long
+      term; apparently (according to Lamont) just about every company has some provision for this in
+      their infrastructure. Many interesting security issues appear, including what UID to run under
+      (root? the user id that knife ssh would use?) access control problems, etc. Perhaps this needs
+      to have a specific ACL right in authz.
+
+
+*** Persistence and lifetimes. 
    Jobs need to be persistent on the server side; we should not 'forget' a job in progress even if
    the server restarts. However, clients may lose state at any time, and we must be prepared to
    handle it. 
 
-*** Command vocabulary
-***** chef-client
-      This command causes a managed node to initiate a chef-client run.
-***** ohai
-      This command tells a managed node to run ohai and update its node data.
-      This is not required for the PoC project but will be required for the real
-      implementation.
-***** sleep n
-      This command tells a managed node to wait n seconds and then reply with success. This is
-      intended for testing.
-***** dummy_job pfail duration
-      This would be a more sophisticated version of the sleep command. This command tells a managed
-      node to wait duration seconds and either fail with a probability of pfail, and otherwise
-      succeed. This would ease testing of the system failure cases.
-***** arbitrary command?
-      This is the most general possible solution, and something we should consider for the long
-      term; apparently (according to Lamont) just about every company has some provision for this in
-      their infrastructure. Many interesting security issues appear, including what UID to run under (root? the user id that
-      knife ssh would use?) access control problems, etc. Perhaps this needs to have a specific ACL
-      right in authz.
 
 *** TODO What happens if a node goes offline mid-job? What if it's an expected outage (reboot)?
 *** TODO How do we handle stuck/dead nodes?
@@ -498,6 +552,23 @@ knife job create role:database chef-client --quorum=3
       * Error - At least one node encountered errors while executing the command.
       * Failed - All candidate nodes NAK'd the job request OR no candidate nodes were found.
       * Expired - At least one node failed to complete in the specified time.
+      * Aborted - The job was aborted
+***** Per node job information
+      We will want to keep information about the state of each node in a job. 
+
+      * Ready - available for a command, but the command not yet sent.
+      * Execution - executing command
+      * Down - not issued the command because it was down
+      * Completed - sucessfully completed the command
+      * Failed - failed during execution of the command
+        Possible subtypes include
+      ** Error - there was an error in the execution of the command
+      ** Crashed - not only did the command fail, but the node went down during execution
+      ** Timed out - the command took longer than its time limit, and was terminated
+      * Aborted - the command was running when an abort message was recieved.
+
+      This information will be useful when chaining together multiple jobs.
+
 ****** Job Expiry
        Users can also specify a maximum duration for a job. This is accomplished by passing
        the duration flag to the knife job plugin. Duration is always expressed in minutes.
@@ -514,7 +585,31 @@ knife job create role:database chef-client --duration=10
 **** Execution
      Wait for server to send execution message. Begin command execution when message is
      received.
+**** Abort
+     
 **** Completion
      Send success or error message when command completes.
 
+*** REST API for job control
+    Job control will be done via a rest api in the pushy server. API requests are signed like any
+    other chef command.
+**** ORGNAME/pushy/jobs GET
+     List all jobs 
+**** ORGNAME/pushy/jobs PUT
+     Start a job. The body will be a json blob specifying the list of nodes and the command to run, along with any other
+     parameters (throttling, lifetime, etc). The return value is the guid of the job.
+**** ORGNAME/pushy/jobs POST
+     Amend a job; this may include aborts, or alterations of timeouts. 
+**** ORGNAME/pushy/jobs/GUID GET
+     Get the current state of a job. This may include aggregated breakdown of node state, (n nodes
+     completed, m nodes failed, etc)
+**** ORGNAME/pushy/jobs/GUID DELETE
+     Delete a job, and the associated data
+**** ORGNAME/pushy/jobs/GUID/nodes
+     List all nodes in the job. 
+***** TODO: does this also list the state, at least in short form? Probably should
+**** ORGNAME/pushy/jobs/GUID/node/NODE
+     Detailed information about a nodes status in the job. (Do we really need this level of detail?)
+
 *** Knife job plugin
+    Works against the above API.
