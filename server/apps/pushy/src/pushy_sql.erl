@@ -1,21 +1,28 @@
 -module(pushy_sql).
 
--include_lib("eunit/include/eunit.hrl").
+-include_lib("pushy_sql.hrl").
 
--export([create_node_status/2,
-         update_node_status/2,
+-export([
+         create_node_status/1,
+         update_node_status/1,
+         sql_now/0,
          statements/1
-  ]).
+        ]).
 
+sql_now() -> calendar:now_to_universal_time(os:timestamp()).
 
-create_node_status(Name, Status) ->
-  Record = [make_id(Name), Name, Status],
-  create_object(insert_node_status, Record).
+-spec create_node_status(#pushy_node_status{}) -> {ok, 1} | {error, term()}.
+create_node_status(#pushy_node_status{}=NodeStatus) ->
+    create_object(NodeStatus).
 
-update_node_status(Name, Status) ->
-  UpdateFields = [Status, Name],
-  do_update(update_node_status, UpdateFields).
-
+-spec update_node_status(#pushy_node_status{}) -> {ok, 1 | not_found} | {error, term()}.
+update_node_status(#pushy_node_status{status = Status,
+                                      last_updated_by = LastUpdatedBy,
+                                      updated_at = UpdatedAt,
+                                      node_name = NodeName,
+                                      org_id = OrgId}) ->
+    UpdateFields = [Status, LastUpdatedBy, UpdatedAt, OrgId, NodeName],
+    do_update(update_node_by_orgid_name, UpdateFields).
 
 do_update(QueryName, UpdateFields) ->
     case sqerl:statement(QueryName, UpdateFields) of
@@ -25,8 +32,14 @@ do_update(QueryName, UpdateFields) ->
     end.
 
 
+%% CHEF_COMMON CARGO_CULT
+
+%% @doc create an object given a pushy object record
+create_object(#pushy_node_status{}=NodeStatus) ->
+    create_object(insert_node_status, NodeStatus).
+
 create_object(QueryName, Record) when is_atom(QueryName) ->
-    case sqerl:statement(QueryName, Record, count) of
+    case sqerl:statement(QueryName, flatten_record(Record), count) of
         {ok, N} ->
             {ok, N};
         {error, Reason} ->
@@ -37,14 +50,14 @@ create_object(QueryName, Record) when is_atom(QueryName) ->
         %% Error -> Error
     end.
 
-make_id(Name) ->
-  Bin = iolist_to_binary([Name, crypto:rand_bytes(16)]),
-  <<ObjectPart:80, _/binary>> = crypto:md5(Bin),
-  %% FIXME: Shits broke we need to fix it
-  iolist_to_binary(io_lib:format("~p", [ObjectPart])).
+%% CHEF_COMMON CARGO_CULT
+%% chef_sql:flatten_record/1
+flatten_record(Rec) ->
+    [_Head|Tail] = tuple_to_list(Rec),
+    Tail.
 
-%% Utility for generating specific message tuples from database-specific
-%% error messages
+%% CHEF_COMMON CARGO_CULT
+%% chef_sql:parse_error/2
 parse_error(mysql, Reason) ->
     case string:str(Reason, "Duplicate entry") of
         0 ->
@@ -64,6 +77,8 @@ parse_error(pgsql, {error,                      % error from sqerl
             {error, Message}
     end.
 
+%% CHEF_COMMON CARGO_CULT
+%% chef_sql:statements/1
 statements(DbType) ->
     File = atom_to_list(DbType) ++ "_statements.config",
     Path = filename:join([filename:dirname(code:which(?MODULE)), "..", "priv", File]),
