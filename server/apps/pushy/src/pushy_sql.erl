@@ -22,7 +22,7 @@ update_node_status(#pushy_node_status{status = Status,
                                       node_name = NodeName,
                                       org_id = OrgId}) ->
     UpdateFields = [Status, LastUpdatedBy, UpdatedAt, OrgId, NodeName],
-    do_update(update_node_by_orgid_name, UpdateFields).
+    do_update(update_node_status_by_orgid_name, UpdateFields).
 
 do_update(QueryName, UpdateFields) ->
     case sqerl:statement(QueryName, UpdateFields) of
