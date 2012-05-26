@@ -43,7 +43,7 @@ Load `mixlib-authorization` and migrate the database:
     $ cd ~/oc/opscode-dev-vm
     $ rake ssh
     vagrant@private-chef:~$ cd /srv/piab/mounts/pushy
-    vagrant@private-chef:/srv/piab/mounts/pushy$ ./rel/pushy/bin/pushy console
+    vagrant@private-chef:/srv/piab/mounts/pushy$ sudo ./rel/pushy/bin/pushy console
 
 ## Start a client
 
@@ -51,7 +51,7 @@ Start a client on your host:
 
     $ cd ~/oc/pushy/client
     $ bundle install
-    $ ./bin/pushy-client -v -n DERPY
+    $ ./bin/pushy-client -v --in-address tcp://33.33.33.10:10001 --out-address tcp://33.33.33.10:10000 -n DERPY
 
 Feel free to start multiple clients..just be sure to give them all a
 different name.
