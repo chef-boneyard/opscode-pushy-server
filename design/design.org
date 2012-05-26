@@ -1,5 +1,5 @@
 #+TITLE: Push Job Specification
-#+AUTHOR: Christopher Brown <cb@opscode.com>\\Kevin Smith <kevin@opscode.com>
+#+AUTHOR: Christopher Brown <cb@opscode.com>\\Kevin Smith <kevin@opscode.com>\\Mark Anderson <mark@opscode.com>
 #+OPTIONS: toc:nil
 #+EXPORT_DATE: nil
 #+OPTIONS: ^:{}
@@ -290,7 +290,7 @@ Version=1.0;Checksum=fyq6ukIwYcUJ9JI90Ets8Q==
     {"node": "node123.foo.com",                    # node's host name
      "org": "foo.com",                             # orgname of the node
      "timestamp": "Sat, 12 May 2012 20:33:15 GMT", # timestamp
-     "command_port": 9987                          # the port we are listening on for commands
+     "state": "idle"
     }
 #+end_example
 
@@ -315,8 +315,28 @@ Version=1.0;Checksum=fyq6ukIwYcUJ9JI90Ets8Q==
    are blocked for any length of time. If the HWM is reached, we should declare the server down as
    if it stopped sending heartbeats. 
 
+   The node can report a variety of states. 
+ 
+   idle: not running any jobs
+   ready: reports job id in flight
+   running: also reports job id
+   restarting: about to restart
+
+**** TODO Identify other possible states to report.   
+
+
 *** Server tracking of node 
 
+
+*** Simple protocol for detection of crashed node
+    It can be helpful to know whether a node has crashed and returned (possibly on different
+    hardware) vs undergone a planned restart. This can be done with a guid and simple state file
+    (/var/pushy/incarnation). On startup, the client will look for the incarnation file, load the
+    incarnation GUID from it, and delete the file. If no file is found, the client will generate a
+    new incarnation GUID. On a clean shutdown the current incarnation GUID is written to the
+    file. The client reports this incarnation GUID in its heartbeat, and if the incarnation id
+    changes the push job server can recognize this and act accordingly. If a command was in flight
+    the server should record that it ended in a indeterminate state.
 
 ** Node-Server Command Execution
    A OPC server sends requests to execute actions to managed nodes. These requests are called
@@ -329,27 +349,6 @@ Version=1.0;Checksum=fyq6ukIwYcUJ9JI90Ets8Q==
     * Command - A request to a managed node to perform an action immediately.
 
 *** Overall communications structure
-    There are a number of ways to implement the communication structure. 
-
-
-**** Client listens
-   The client chooses some port to bind a PULL to, and then advertises it to the server, perhaps via the
-   heartbeat channel. The command server issues commands to this port, and possibly includes a port
-   to report status back via PUSH connection. Otherwise this could be contained in the configuration
-   data.
-
-   Advantages:
-   This enables having a separate socket on the server for each job, which would ease the process of
-   distributing the work of managing the job, since a separate erlang process could be used for each
-   job. Having an ephemeral socket also allows us to tear down the socket and destroy any messages
-   waiting for a dead node.
-
-   Disadvantages: This will require the server to setup/teardown many sockets as it individually
-   connects to each client and sends the command. This seems somewhat against the ZeroMQ
-   style. Having the server connect to the client means that the client cannot live behind any kind
-   of NAT device without added work, a limitation we haven't yet had to insert into our design.
-
-**** Server listens
 
    The command server will create a ROUTER socket, and each client will connect via a DEALER socket
    identified with a name unique to that client. On connection to the ROUTER socket, the client will
@@ -370,32 +369,7 @@ Version=1.0;Checksum=fyq6ukIwYcUJ9JI90Ets8Q==
    When a command is completed on the node, it sends the command results back to the server using
    the ROUTER/DEALER connection above. 
 
-   Advantages:
-   This reduces the number of ZeroMQ connections we have to maintain. It preserves the pattern of the
-   client always connecting to the server.
 
-   Disadvantages:
-   This makes all the jobs go through the same socket, and will require some mux/demux work to route
-   messages where the need to go. (This is a relatively straightforward pattern for ZeroMQ though.)
-
-
-**** Handoff model
-   As in the 'Server listens' model, clients connect to the command server via a ROUTER/DEALER
-   pattern. When we initiate a job, the command sent to the clients includes a port for further
-   communication. 
-
-   Advantages:
-   This minimizes the long lived sockets in the system, and allows a separate socket/process to
-   handle the connection, moving some of the traffic off of the main command connection, while
-   preserving the client connects model. 
-
-   Disadvantages:
-   This is a more complex protocol. The actual amount of traffic it moves to the separate connection
-   isn't huge; the main server still needs to contact every node in the job to tell it where to
-   listen (The protocol would only have small number of messages going back and forth for each node,
-   so it would only alter the traffic by a small constant factor).
-
-*** TODO Do we want a separate connection for each job? Probably no, as this increases the complexity of connecting
 *** TODO What happens if we send a command to a node that isn't coming back; 
 **** does it occupy space in the zmq buffers until the server restarts things? 
 **** do we want to periodically drop and restart the ZMQ ROUTER socket to purge these?    
@@ -411,7 +385,7 @@ Version=1.0;Checksum=fyq6ukIwYcUJ9JI90Ets8Q==
 **** sleep n
       This command tells a managed node to wait n seconds and then reply with success. This is
       intended for testing.
-**** dummy_job pfail duration
+**** dummy_job PFAIL DURATION
       This would be a more sophisticated version of the sleep command. This command tells a managed
       node to wait duration seconds and either fail with a probability of pfail, and otherwise
       succeed. This would ease testing of the system failure cases.
@@ -421,15 +395,26 @@ Version=1.0;Checksum=fyq6ukIwYcUJ9JI90Ets8Q==
       their infrastructure. Many interesting security issues appear, including what UID to run under
       (root? the user id that knife ssh would use?) access control problems, etc. Perhaps this needs
       to have a specific ACL right in authz.
-
+**** abort JOBID
+      The final product will need some mechanism to cancel/abort a job in progess. The job id may
+      not be necessary since there will only be one job running per client. (However it might be
+      nice if the client and server get out of sync, and the client thinks its running a different
+      job than the server does)
 
 *** Persistence and lifetimes. 
    Jobs need to be persistent on the server side; we should not 'forget' a job in progress even if
    the server restarts. However, clients may lose state at any time, and we must be prepared to
    handle it. 
+   
+   Cases to consider:
 
+**** A node crashes in the middle of job execution, and loses all knowledge of the current job state.
+**** A long lost node reconnects with job status or execution process long after the job is over.
+**** Can a node do a controlled reboot as part of command execution? 
+     This comes in play for such items as kernel upgrades. If so, we will need some way to identify
+     completion, presumably when the node boots back up. This will require the client to keep some
+     state through a reboot.
 
-*** TODO What happens if a node goes offline mid-job? What if it's an expected outage (reboot)?
 *** TODO How do we handle stuck/dead nodes?
 *** TODO What is the default duration for a job?
 *** TODO Does OPC have a notion of max #/concurrently executing push commands?
@@ -438,30 +423,37 @@ Version=1.0;Checksum=fyq6ukIwYcUJ9JI90Ets8Q==
     flight. This complicates the push job system a bit, in that we will have to have a mechanism to
     track in-flight items and issue commands. 
 
+    This has implications for the job lifetime; we may want separate values and management of the
+    lifetime of the job overall, and the lifetime of the command execution on an individual node. 
+
 *** TODO How does the job monitor monitor the up/down state of each participating node?
-*** TODO How do we handle job queueing for backed up nodes? No more than 1-2 per node?
+
 
 *** Commands and node state
-     A server may not send commands to a down node. A server may not send a command to
-     a node which is currently executing a command. In other words, nodes execute
-     serially only. This makes it easier to reason about the current state of any node
-     and also avoids any undesired runtime interactions between
-     commands.
-   
-     MAA: Do jobs issue multiple commands?
+     A server may not send commands to a down node. A server may not send a command to a node which
+     is currently executing a command. In other words, nodes execute serially only. This makes it
+     easier to reason about the current state of any node and also avoids any undesired runtime
+     interactions between commands.
+    
+*** TODO
+*** TODO How do we handle job queueing for backed up nodes? No more than 1-2 per node? 
+    MAA: I believe we should *not* do queueing for jobs. 
+    MAA: Do jobs issue multiple commands? I think the natural primitive is for a job to issue a
+    single command, with a single up/down result. Multi-command sequences are assembled at the job level.
 
 *** Server-side job execution lifecycle
 **** Initiation
 ***** Search & Filter
-     Command execution is tracked across a collection of nodes by a command job. The
-     collection of nodes is defined by a standard Chef search criteria. The search
-     is executed against the node index and returns a list of managed nodes satisfying
-     the search criteria. Any nodes which are marked down at the time of job initiation
-     shall be omitted from the job.
+     Command execution is tracked across a collection of nodes by a command job. The collection of
+     nodes is defined by a standard Chef search criteria. The search is executed against the node
+     index and returns a list of managed nodes satisfying the search criteria. The search criteria
+     should eventually allow up/down state and job execution state as factors. For example it would
+     be quite valuable to run a job against all nodes that match a search and 'succeeded' on job id
+     XXXX.
 
-     MAA: Do we need search for prototyping? Can we replace it
-     with an oracle that maps a text string to a node list? E.g. maybe
-     the input to the 'search' is the list of nodes to use? This seperates
+     MAA: Do we need search for prototyping? Can we replace it with an oracle that maps a text
+     string to a node list? E.g. maybe the input to the 'search' is the list of nodes to use? This
+     seperates
 
      MAA: CB mentions the idea of entity groups (a named collection of nodes or other entities in
      chef); in the future we may want to integrate this more deeply.
@@ -473,11 +465,8 @@ Version=1.0;Checksum=fyq6ukIwYcUJ9JI90Ets8Q==
 
      When the OPC server is ready to execute a job it creates a job monitor. The role
      of the job monitor is to manage the execution of a job and track the execution
-     state of all nodes referenced by the job. The job monitor has two associated
-     ZeroMQ sockets: one each of PUSH and PULL.
+     state of all nodes referenced by the job.
 
-     The PUSH socket is used to transmit commands to the nodes participating in the job.
-     The PULL socket is used to receive job ACK/NAK traffic from the nodes.
 ****** Command message format
        The job command message is extremely similar to the heartbeat message. It
        consists of two ZeroMQ frames. The first frame contains the signature version and
@@ -496,10 +485,13 @@ Version=1.0;Checksum=vQiGY85BzEAi5k7noSiN3A==
   "server": "opc1.foo.com",               # OPC host name
   "type": "job_command",                  # message type
   "job_id": "1234",                       # job id
-  "listener": "tcp://opc1.foo.com:15037", # PULL socket endpoint
   "command": "chef-client"                # command to execute
 }
 #+end_example
+
+       On receipt of this command the client will reply with an ACK message and will be marked as
+       ready for execution. If the client is currently executing a job, it will reply with a NACK
+       message and the server will mark that node as ineligible to start the command.
 
 ***** Modifying Job Initiation
       Users can place additional restrictions on the initiation of a push job.
@@ -509,7 +501,6 @@ Version=1.0;Checksum=vQiGY85BzEAi5k7noSiN3A==
        A user can specify that a minimum number of nodes matching the search criteria
        must both be online and ACK the job request. This is done by using the quorum
        flag.
-
 #+begin_example
 knife job create role:database chef-client --quorum=0.8
 #+end_example
@@ -522,6 +513,19 @@ knife job create role:database chef-client --quorum=3
        number of nodes returned from the search index.
 
        The second example illustrates specifying quorum as an absolute count of nodes.
+
+****** Lifetime
+       A job will have a specific lifetime; if execution has not completed by the timeout, nodes
+       with a command in flight will be aborted and the job state will be marked as timed out. There
+       should also be a default lifetime of a job set to some TBD value. (Is an hour a reasonable
+       time? Most chef-client runs should be done by then). There are obvious tradeoffs between
+       squelching laggarts and not being too hasty.
+
+****** Concurrency
+       In many cases we will want to limit how many simultaneous nodes are executing a job. This
+       will complicate the job manager, as it will need to track nodes completing or timing out and
+       start new nodes.
+
 **** Executing the job
      Once a job meets the job initiation criteria it is ready to execute. The job monitor
      tells the participating nodes to begin execution by sending the execute message to
@@ -539,13 +543,13 @@ knife job create role:database chef-client --quorum=3
 }
 #+end_example
 **** Tracking job status
-      If at least one node has ACK'd the job request (see exceptions to this rule in
-      subsequent sections) the monitor then transitions the job to an executing state.
-      The monitor is responsible for updating the job details as each participating node
-      sends its job execution results. Since OPC already has other mechanisms for collecting
-      the output of chef-client runs, nodes are required to report only pass/fail status.
+      If at least one node has ACK'd the job request (quorum requirements withstanding, see
+      subsequent sections) the monitor then transitions the job to an executing state.  The monitor
+      is responsible for updating the job details as each participating node sends its job execution
+      results. Since OPC already has other mechanisms for collecting the output of chef-client runs,
+      nodes are required to report only pass/fail status.
+
 ***** Job States
-      The following is a list of valid job states:
 
       * Executing - At least one node ACK'd the job request and is executing the command.
       * Complete - All participating nodes executed the command without errors.
@@ -554,6 +558,27 @@ knife job create role:database chef-client --quorum=3
       * Expired - At least one node failed to complete in the specified time.
       * Aborted - The job was aborted
 ***** Per node job information
+
+      There are several broad states a node can be in, and subcategories of these
+      * The command never started.
+	* it was down when the command initiated
+        * it never ACKed
+        * it NACKed, because it was busy with some other job (perhaps record which job)
+      * The command started, but has not (yet) completed
+        * the command is in flight, and everything seems ok (heartbeats are recieved)
+	* the command is in flight, and something is wrong (no heartbeat, cancelling the command, etc)
+      * The command stopped for some without completing successfully.
+        * failed
+        * timed out
+        * was aborted
+        * node died 
+      * The command completed successfully
+
+****** TODO: Figure out how to handle heartbeat loss during command execution; we don't know whether the command completed or not. 
+
+MARKER--- revisions haven't gone past here yet.
+
+
       We will want to keep information about the state of each node in a job. 
 
       * Ready - available for a command, but the command not yet sent.
@@ -577,6 +602,7 @@ knife job create role:database chef-client --quorum=3
 knife job create role:database chef-client --duration=10
 #+end_example
 
+***** 
 *** Node-side job execution lifecycle
 **** Initiation
      ACK if idle. NAK if job is currently running and the server asked node to start
