@@ -38,6 +38,8 @@
                 name,
                 tref}).
 
+-include("pushy_sql.hrl").
+
 start_link(Name, HeartbeatInterval, DeadIntervalCount) ->
     gen_fsm:start_link(?MODULE, [Name, HeartbeatInterval, DeadIntervalCount], []).
 
@@ -114,11 +116,14 @@ load_status() ->
 save_status(Status, State) when is_atom(Status) ->
     save_status(status_code(Status), State);
 save_status(Status, #state{name=Name}=State) ->
-    case pushy_sql:create_node_status(Name, Status) of
+    NodeStatus = pushy_object:new_record(pushy_node_status,
+                                        ?POC_ORG_ID,
+                                        [{<<"node">>, Name},{<<"type">>, Status}]),
+    case pushy_object:create_object(create_node_status, NodeStatus, ?POC_ACTOR_ID) of
         {ok, _} ->
             State;
         {conflict, _} ->
-            pushy_sql:update_node_status(Name, Status),
+            pushy_object:update_object(update_node_status, NodeStatus, ?POC_ACTOR_ID),
             State;
         {error, _Error} ->
             State
