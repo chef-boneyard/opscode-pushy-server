@@ -8,5 +8,6 @@ require "bundler"
 Bundler.require(:default)
 
 require 'pushy'
+require 'pushy/cli/client'
 
 Pushy::CLI::Client.new.setup.run

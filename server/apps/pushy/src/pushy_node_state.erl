@@ -38,6 +38,8 @@
                 name,
                 tref}).
 
+-include("pushy_sql.hrl").
+
 start_link(Name, HeartbeatInterval, DeadIntervalCount) ->
     gen_fsm:start_link(?MODULE, [Name, HeartbeatInterval, DeadIntervalCount], []).
 
@@ -86,8 +88,8 @@ handle_sync_event(_Event, _From, StateName, State) ->
     {reply, ignored, StateName, State}.
 
 handle_info(heartbeat, up, State) ->
-    {next_state, up, reset_timer(State)};
-handle_info(hearbeat, crashed, State) ->
+    {next_state, up, reset_timer(save_status(up, State))};
+handle_info(heartbeat, crashed, State) ->
     {next_state, up, reset_timer(save_status(up, State))};
 handle_info(heartbeat, restarting, State) ->
     {next_state, up, reset_timer(save_status(up, State))};
@@ -111,8 +113,27 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 load_status() ->
     {ok, up}.
 
-save_status(_Status, State) ->
-    State.
+save_status(Status, State) when is_atom(Status) ->
+    save_status(status_code(Status), State);
+save_status(Status, #state{name=Name}=State) ->
+    NodeStatus = pushy_object:new_record(pushy_node_status,
+                                        ?POC_ORG_ID,
+                                        [{<<"node">>, Name},{<<"type">>, Status}]),
+    case pushy_object:create_object(create_node_status, NodeStatus, ?POC_ACTOR_ID) of
+        {ok, _} ->
+            State;
+        {conflict, _} ->
+            pushy_object:update_object(update_node_status, NodeStatus, ?POC_ACTOR_ID),
+            State;
+        {error, _Error} ->
+            State
+    end.
+
+%% Map status atom to valid integer before storing in db
+status_code(up) ->
+    1;
+status_code(crashed) ->
+    0.
 
 reset_timer(#state{dead_interval=Interval, tref=undefined}=State) ->
     TRef = erlang:send_after(Interval, self(), no_heartbeats),

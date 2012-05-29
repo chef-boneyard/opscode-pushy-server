@@ -1,4 +1,4 @@
-DEPS = deps/erlzmq deps/jiffy deps/gproc deps/ej
+DEPS = deps/erlzmq deps/jiffy deps/gproc deps/ej deps/chef_common deps/sqerl
 
 all: compile all_tests
 
@@ -31,7 +31,7 @@ test: eunit
 tags:
 	@find src deps -name "*.[he]rl" -print | etags -
 
-rel: rel/pushy
+rel: compile rel/pushy
 rel/pushy:
 	@cd rel;rebar generate overlay_vars=db_vars.config
 

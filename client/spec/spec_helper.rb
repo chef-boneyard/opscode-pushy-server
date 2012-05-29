@@ -6,8 +6,11 @@ Bundler.require(:default, :test)
 
 require 'pushy'
 
+require 'ap'
 require 'tmpdir'
 require 'tempfile'
+
+require 'spec/support/concern'
 
 WATCH = lambda { |x| puts x } unless defined?(WATCH)
 

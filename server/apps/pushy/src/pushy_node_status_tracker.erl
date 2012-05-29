@@ -43,7 +43,7 @@ start_link(Ctx) ->
 %% ------------------------------------------------------------------
 
 init([Ctx]) ->
-     error_logger:info_msg("Starting node status tracker."),
+     %error_logger:info_msg("Starting node status tracker."),
     % expect "tcp://*:port_id"
     {ok, StatusAddress} = application:get_env(pushy, node_status_socket),
     {ok, HeartbeatInterval} = application:get_env(pushy, heartbeat_interval),
@@ -135,5 +135,6 @@ send_heartbeat(Hash, HeartbeatInterval, DeadInterval) ->
             pushy_node_state_sup:new(NodeName, HeartbeatInterval, DeadInterval),
             send_heartbeat(Hash, HeartbeatInterval, DeadInterval);
         ok ->
-            error_logger:info_msg("Heartbeat received from: ~s~n", [NodeName])
+            %error_logger:info_msg("Heartbeat received from: ~s~n", [NodeName])
+            ok
     end.

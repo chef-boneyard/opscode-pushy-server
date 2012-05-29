@@ -1,6 +1,7 @@
 GIT
-  remote: git@github.com:opscode/mixlib-authentication.git
+  remote: git://github.com/opscode/mixlib-authentication.git
   revision: f3cd8b31e04aac87f82bb4ae1de6a2bf0ab49401
+  branch: f3cd8b31e04aac87f82bb4ae1de6a2bf0ab49401
   specs:
     mixlib-authentication (1.1.5)
       mixlib-log
@@ -8,6 +9,7 @@ GIT
 GEM
   remote: http://rubygems.org/
   specs:
+    awesome_print (1.0.2)
     bunny (0.7.9)
     chef (0.10.8)
       bunny (>= 0.6.0)
@@ -25,6 +27,7 @@ GEM
       rest-client (>= 1.0.4, < 1.7.0)
       treetop (~> 1.4.9)
       uuidtools
+    daemons (1.1.8)
     diff-lcs (1.1.3)
     em-zeromq (0.3.0)
       eventmachine (= 1.0.0.beta.4)
@@ -57,6 +60,7 @@ GEM
       systemu
       yajl-ruby
     polyglot (0.3.3)
+    rack (1.4.1)
     rest-client (1.6.7)
       mime-types (>= 1.16)
     rspec (2.9.0)
@@ -68,6 +72,10 @@ GEM
       diff-lcs (~> 1.1.3)
     rspec-mocks (2.9.0)
     systemu (2.5.0)
+    thin (1.3.1)
+      daemons (>= 1.0.9)
+      eventmachine (>= 0.12.6)
+      rack (>= 1.0.0)
     treetop (1.4.10)
       polyglot
       polyglot (>= 0.3.1)
@@ -78,11 +86,14 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  awesome_print
   chef (~> 0.10.8)
   em-zeromq (~> 0.3.0)
   ffi-rzmq (~> 0.9.3)
   mixlib-authentication (= 1.1.5)!
   mixlib-cli (~> 1.2.2)
   mixlib-log (~> 1.3.0)
+  rack
   rspec
+  thin
   yajl-ruby (~> 1.1.0)
