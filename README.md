@@ -11,36 +11,39 @@ will find:
 Run ALL THE THINGS
 ==================
 
-## Load the schema
+## Ensure host-based checkouts of all projects are on the correct branches
 
-Ensure mixlib-authorization is on the 'pushy' branch.
+* `opscode-omnibus` => pushy
+* `mixlib-authorization` => pushy
+* `pushy` => 54/integration
 
-    $ cd ~/oc/mixlib-authorization
-    $ git checkout pushy
+## Reconfigure OPC
 
-Load mixlib-authorization into the dev-vm:
+Load `opscode-omnibus` and generate the artisanal OPC-specific app.config for pushy:
+
+    $ cd ~/oc/opscode-dev-vm
+    $ rake project:load[opscode-omnibus]
+    $ rake update
+
+## Load the new database schema
+
+Load `mixlib-authorization` and migrate the database:
 
     $ cd ~/oc/opscode-dev-vm
     $ rake project:load[mixlib-authorization]
+    $ rake migrate
 
-SSH into the dev-vm and run Sequel migrations:
-
-    $ rake ssh
-    vagrant@private-chef:~$ cd /srv/piab/mounts/mixlib-authorization
-    vagrant@private-chef:/srv/piab/mounts/mixlib-authorization$ bundle exec sequel -m db/migrate postgres://opscode-pgsql@127.0.0.1/opscode_chef
-
-## Start the server
-
-Load pushy/server into the dev-vm:
+## Load pushy into dev-vm
 
     $ cd ~/oc/opscode-dev-vm
     $ rake project:load[pushy]
 
-Start the party:
+## Start the pushy server
 
+    $ cd ~/oc/opscode-dev-vm
     $ rake ssh
     vagrant@private-chef:~$ cd /srv/piab/mounts/pushy
-    vagrant@private-chef:/srv/piab/mounts/pushy$ ./rel/pushy/bin/pushy console
+    vagrant@private-chef:/srv/piab/mounts/pushy$ sudo ./rel/pushy/bin/pushy console
 
 ## Start a client
 
@@ -48,7 +51,7 @@ Start a client on your host:
 
     $ cd ~/oc/pushy/client
     $ bundle install
-    $ ./bin/pushy-client -v -n DERPY
+    $ ./bin/pushy-client -v --in-address tcp://33.33.33.10:10001 --out-address tcp://33.33.33.10:10000 -n DERPY
 
 Feel free to start multiple clients..just be sure to give them all a
 different name.

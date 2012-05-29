@@ -53,7 +53,7 @@ heartbeat() ->
 %% ------------------------------------------------------------------
 
 init([Ctx]) ->
-    error_logger:info_msg("Starting heartbeat generator."),
+    %error_logger:info_msg("Starting heartbeat generator."),
     {ok, Interval} = application:get_env(pushy, heartbeat_interval),
     % expect "tcp://*:port_id"
     {ok, HeartbeatAddress} = application:get_env(pushy, server_heartbeat_socket),
@@ -91,7 +91,7 @@ handle_cast(heartbeat,
     % Send Body
     erlzmq:send(HeartbeatSock, BodyFrame),
     %?debugVal(BodyFrame),
-    error_logger:info_msg("Heartbeat sent: header=~s,body=~s~n",[HeaderFrame, BodyFrame]),
+    %error_logger:info_msg("Heartbeat sent: header=~s,body=~s~n",[HeaderFrame, BodyFrame]),
     {noreply, State#state{beat_count=Count+1}};
 handle_cast(_Msg, State) ->
     {noreply, State}.
