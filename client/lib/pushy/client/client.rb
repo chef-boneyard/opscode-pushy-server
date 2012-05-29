@@ -32,9 +32,17 @@ module Pushy
       @server_public_key = options[:server_public_key] || load_key(options[:server_public_key_path])
     end
 
-    def self.from_json(raw_json_config)
-      config = Yajl::Parser.parse(raw_json_config)
-      new :in_address        => config['push_jobs']['heartbeat']['in_addr'],
+    class << self
+      def boot!
+        from_hash(get_config_json)
+      end
+
+      def from_json(raw_json_config)
+        from_hash(Yajl::Parser.parse(raw_json_config))
+      end
+
+      def from_hash(config)
+        new :in_address        => config['push_jobs']['heartbeat']['in_addr'],
           :out_address       => config['push_jobs']['heartbeat']['out_addr'],
           :interval          => config['push_jobs']['heartbeat']['interval'],
           :offline_threshold => config['push_jobs']['heartbeat']['offline_threshold'],
@@ -42,6 +50,20 @@ module Pushy
           :lifetime          => config['lifetime'],
           :server_public_key => config['public_key'],
           :node_name         => config['host']
+      end
+
+      #CHEF_SERVER_URL = Chef::Config[:chef_server_url]
+      CHEF_SERVER_URL = 'http://localhost:9000'
+      def noauth_rest
+        @noauth_rest ||= begin
+                           require 'chef/rest'
+                           Chef::REST.new(CHEF_SERVER_URL, false, false)
+                         end
+      end
+
+      def get_config_json
+        noauth_rest.get_rest("config.json", false)
+      end
     end
 
     def start
