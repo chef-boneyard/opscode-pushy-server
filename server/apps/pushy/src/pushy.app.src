@@ -12,7 +12,8 @@
                   erlzmq,
                   jiffy,
                   gproc,
-                  sqerl
+                  sqerl,
+                  webmachine
                  ]},
   {included_applications, [chef_common]},
   {mod, { pushy_app, []}},
