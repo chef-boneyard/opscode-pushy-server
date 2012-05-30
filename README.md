@@ -13,17 +13,35 @@ Run ALL THE THINGS
 
 ## Ensure host-based checkouts of all projects are on the correct branches
 
-* `opscode-omnibus` => pushy
-* `mixlib-authorization` => pushy
-* `pushy` => 54/integration
+* `opscode-omnibus` => OC-18/pushy
+* `mixlib-authorization` => OC-18/pushy
+* `pushy` => master (cut a feature branch)
 
-## Reconfigure OPC
+## Build or steal an OPC deb
 
-Load `opscode-omnibus` and generate the artisanal OPC-specific app.config for pushy:
+This will ensure you are developing against an OPC with Erlang R15B01 (you will
+thank me later).
+
+Decision time.  You can either:
+
+1. Build your own artisanal OPC deb using `opscode-omnibus`:
+
+        $ cd ~/oc/opscode-omnibus
+        $ vagrant omnibus build ubuntu-10.04 private-chef
+
+2. Grab a recent Pushy-aware deb from S3 (signed URL expires on 6/6/2012):
+
+        $ cd ~/oc/opscode-omnibus/pkg
+        $ wget https://opscode-east-collab.s3.amazonaws.com/opscode-omnibus/pkg/private-chef_1.1.19-128-g2616125-1.ubuntu.10.04_amd64.deb?AWSAccessKeyId=AKIAICIM7JE4OBF3OXVA&Expires=1339025284&Signature=ezWQKh0tUcwEt9v94zv7Y8mqYQ4%3D
+        $ export OPC_INSTALLER=
+
+## Stand up a dev-vm
+
+We'll use the deb that was created/leached in the last step to stand up a dev-vm:
 
     $ cd ~/oc/opscode-dev-vm
-    $ rake project:load[opscode-omnibus]
-    $ rake update
+    $ export OPC_INSTALLER=~/oc/opscode-omnibus/pkg/private_chef_X.X.X-X.ubuntu.10.04_amd64.deb
+    $ rake start # choose 'Private Chef' environment
 
 ## Load the new database schema
 
