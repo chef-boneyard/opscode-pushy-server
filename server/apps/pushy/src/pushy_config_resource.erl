@@ -31,11 +31,34 @@ allowed_methods(Req, State) ->
 content_types_provided(Req, State) ->
     {[{"application/json", to_json}], Req, State}.
 
-to_json(Req, State) ->
-    case application:get_env(pushy, configuration_json) of
-        {ok, Data} -> {ejson:encode(Data), Req, State};
-        _ -> error_logger:error_msg("Missing key pushy configuration_json~n", []),
-             erlang:error({error, "Missing pushy configuration_json key"})
-    end.
+to_json(_Req, _State) ->
 
+    {ok, ZeroMQListenAddress} = application:get_env(pushy, zeromq_listen_address),
+
+    {ok, HeartbeatPort} = application:get_env(pushy, server_heartbeat_port),
+    HeartbeatAddress = iolist_to_binary(io_lib:format("~s~w",[ZeroMQListenAddress,HeartbeatPort])),
+
+    {ok, StatusPort} = application:get_env(pushy, node_status_port),
+    StatusAddress = io_lib:format("~s~w",[ZeroMQListenAddress,StatusPort]),
+
+    PublicKey = <<"AAAAB3NzaC1kc3MAAACBAIZbwlySffbB5msSUH8JzLLXo/v03JBCWr13fVTjWYpccdbi/xL3IK/Jw8Rm3bGhnpwCAqBtsLvZ OcqXrc2XuKBYjiKWzigBMC7wC9dUDGwDl2aZ89B0jn2QPRWZuCAkxm6sKpefu++VPRRZF+iyZqFwS0wVKtl97T0gwWlzAJYpAAA AFQDIipDNo83e8RRp7Fits0DSy0DCpwAAAIB01BwXg9WSfU0mwzz/0+5Gb/TMAxfkDyucbcpJNncpRtr9Jb+9GjeZIbqkBQAqwgdbEjviRbUAuSawNSCdtnMgWD2NXkBKEde">>,
+
+    ConfigurationStruct =
+        {struct, [{<<"type">>, <<"config">>},
+                  {<<"host">>, <<"opc1.opscode.com">>},
+                  {<<"push_jobs">>,
+                   {struct, [{<<"heartbeat">>,
+                              {struct, [{<<"out_addr">>, HeartbeatAddress},
+                                        {<<"in_addr">>, StatusAddress},
+                                        {<<"interval">>, 15},
+                                        {<<"offline_threshold">>, 3},
+                                        {<<"online_threshold">>, 2}
+                                       ]}}]}},
+                  {<<"public_key">>, PublicKey},
+                  {<<"lifetime">> ,3600}
+                 ]},
+
+    ConfigurationJson = ejson:encode(ConfigurationStruct),
+
+    {ok, ConfigurationJson}.
 
