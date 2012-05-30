@@ -10,6 +10,7 @@
 -export([start_link/3,
          current_state/1,
          heartbeat/1,
+         down/1,
          restarting/1]).
 
 %% States
@@ -41,12 +42,13 @@
 -include("pushy_sql.hrl").
 
 start_link(Name, HeartbeatInterval, DeadIntervalCount) ->
-    error_logger:info_msg("START LINK"),
     gen_fsm:start_link(?MODULE, [Name, HeartbeatInterval, DeadIntervalCount], []).
 
 ?NODE_EVENT(heartbeat).
 
 ?NODE_EVENT(restarting).
+
+?NODE_EVENT(down).
 
 current_state(Name) ->
     case catch gproc:lookup_pid({n,l,Name}) of
@@ -57,12 +59,10 @@ current_state(Name) ->
     end.
 
 init([Name, HeartbeatInterval, DeadIntervalCount]) ->
-    error_logger:info_msg("INIT"),
     {ok, initializing, #state{dead_interval=HeartbeatInterval * DeadIntervalCount,
                               name=Name}, 0}.
 
 initializing(timeout, #state{name=Name}=State) ->
-    error_logger:info_msg("INITIALIZING"),
     case load_status() of
         {ok, Status} ->
             case gproc:reg({n, l, Name}) of
@@ -94,6 +94,8 @@ handle_info(heartbeat, up, State) ->
     {next_state, up, reset_timer(save_status(up, State))};
 handle_info(heartbeat, crashed, State) ->
     {next_state, up, reset_timer(save_status(up, State))};
+handle_info(heartbeat, down, State) ->
+    {next_state, up, reset_timer(save_status(up, State))};
 handle_info(heartbeat, restarting, State) ->
     {next_state, up, reset_timer(save_status(up, State))};
 handle_info(crashed, up, State) ->
@@ -102,8 +104,11 @@ handle_info(restarting, up, State) ->
     {next_state, restarting, save_status(restarting, State)};
 handle_info(restarting, crashed, State) ->
     {next_state, restarting, save_status(restarting, State)};
+handle_info(down, down, State) ->
+    {next_state, down, save_status(down, State)};
 
 handle_info(_Info, StateName, State) ->
+    error_logger:info_msg("_Info:~p~nStateName:~p~nState:~p~n", [_Info, StateName, State]),
     {next_state, StateName, State}.
 
 terminate(_Reason, _StateName, _State) ->
@@ -114,8 +119,7 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 
 %% Internal functions
 load_status() ->
-    error_logger:info_msg("LOAD STATUS"),
-    {ok, up}.
+    {ok, down}.
 
 save_status(Status, State) when is_atom(Status) ->
     save_status(status_code(Status), State);
@@ -137,10 +141,10 @@ save_status(Status, #state{name=Name}=State) ->
 %% Map status atom to valid integer before storing in db
 status_code(up) ->
     1;
-status_code(restarting) ->
-    -1;
+status_code(down) ->
+    0;
 status_code(crashed) ->
-    0.
+    -1.
 
 reset_timer(#state{dead_interval=Interval, tref=undefined}=State) ->
     TRef = erlang:send_after(Interval, self(), no_heartbeats),
