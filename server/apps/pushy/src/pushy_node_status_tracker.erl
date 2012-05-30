@@ -44,8 +44,10 @@ start_link(Ctx) ->
 
 init([Ctx]) ->
      %error_logger:info_msg("Starting node status tracker."),
-    % expect "tcp://*:port_id"
-    {ok, StatusAddress} = application:get_env(pushy, node_status_socket),
+    {ok, ZeroMQListenAddress} = application:get_env(pushy, zeromq_listen_address),
+    {ok, StatusPort} = application:get_env(pushy, node_status_port),
+    StatusAddress = io_lib:format("~s~w",[ZeroMQListenAddress,StatusPort]),
+
     {ok, HeartbeatInterval} = application:get_env(pushy, heartbeat_interval),
     {ok, DeadInterval} = application:get_env(pushy, dead_interval),
     {ok, StatusSock} = erlzmq:socket(Ctx, [pull, {active, true}]),

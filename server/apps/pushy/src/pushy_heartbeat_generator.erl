@@ -55,8 +55,11 @@ heartbeat() ->
 init([Ctx]) ->
     %error_logger:info_msg("Starting heartbeat generator."),
     {ok, Interval} = application:get_env(pushy, heartbeat_interval),
-    % expect "tcp://*:port_id"
-    {ok, HeartbeatAddress} = application:get_env(pushy, server_heartbeat_socket),
+
+    {ok, ZeroMQListenAddress} = application:get_env(pushy, zeromq_listen_address),
+    {ok, HeartbeatPort} = application:get_env(pushy, server_heartbeat_port),
+    HeartbeatAddress = io_lib:format("~s~w",[ZeroMQListenAddress,HeartbeatPort]),
+
     {ok, HeartbeatSock} = erlzmq:socket(Ctx, pub),
     {ok, PrivateKey} = chef_keyring:get_key(server_private),
     ok = erlzmq:bind(HeartbeatSock, HeartbeatAddress),
