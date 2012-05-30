@@ -6,6 +6,8 @@
 
 -behaviour(supervisor).
 
+-include_lib("pushy_sql.hrl").
+
 %% API
 -export([start_link/0,
          new/3]).
@@ -16,10 +18,35 @@
 -define(SERVER, ?MODULE).
 
 start_link() ->
-    supervisor:start_link({local, ?SERVER}, ?MODULE, []).
+    case supervisor:start_link({local, ?SERVER}, ?MODULE, []) of
+        {ok, Pid} ->
+            load_children(),
+            {ok, Pid};
+        Error ->
+            Error
+    end.
 
 new(Name, HeartbeatInterval, DeadIntervalCount) ->
     supervisor:start_child(?SERVER, [Name, HeartbeatInterval, DeadIntervalCount]).
+
+new(Name) ->
+    error_logger:info_msg("Creating Process For ~s~n", [Name]),
+    HeartbeatInterval = application:get_env(pushy, heartbeat_interval),
+    DeadIntervalCount = application:get_env(pushy, dead_interval),
+    new(Name, HeartbeatInterval, DeadIntervalCount).
+
+load_children() ->
+    error_logger:info_msg("Loading Statuses~n"),
+    load_child(pushy_sql:get_node_statuses(?POC_ORG_ID)).
+
+load_child([]) ->
+    {ok, done};
+load_child([Child | Rest]) ->
+    Name = proplists:get_value(<<"node_name">>, Child),
+    new(Name),
+    pushy_node_state:restarting(Name),
+    load_child(Rest).
+
 
 init([]) ->
     {ok, {{simple_one_for_one, 0, 1},

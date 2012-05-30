@@ -10,7 +10,7 @@
 -export([start_link/3,
          current_state/1,
          heartbeat/1,
-         node_restarting/1]).
+         restarting/1]).
 
 %% States
 -export([initializing/2]).
@@ -41,11 +41,12 @@
 -include("pushy_sql.hrl").
 
 start_link(Name, HeartbeatInterval, DeadIntervalCount) ->
+    error_logger:info_msg("START LINK"),
     gen_fsm:start_link(?MODULE, [Name, HeartbeatInterval, DeadIntervalCount], []).
 
 ?NODE_EVENT(heartbeat).
 
-?NODE_EVENT(node_restarting).
+?NODE_EVENT(restarting).
 
 current_state(Name) ->
     case catch gproc:lookup_pid({n,l,Name}) of
@@ -56,10 +57,12 @@ current_state(Name) ->
     end.
 
 init([Name, HeartbeatInterval, DeadIntervalCount]) ->
+    error_logger:info_msg("INIT"),
     {ok, initializing, #state{dead_interval=HeartbeatInterval * DeadIntervalCount,
                               name=Name}, 0}.
 
 initializing(timeout, #state{name=Name}=State) ->
+    error_logger:info_msg("INITIALIZING"),
     case load_status() of
         {ok, Status} ->
             case gproc:reg({n, l, Name}) of
@@ -111,6 +114,7 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 
 %% Internal functions
 load_status() ->
+    error_logger:info_msg("LOAD STATUS"),
     {ok, up}.
 
 save_status(Status, State) when is_atom(Status) ->
@@ -119,6 +123,7 @@ save_status(Status, #state{name=Name}=State) ->
     NodeStatus = pushy_object:new_record(pushy_node_status,
                                         ?POC_ORG_ID,
                                         [{<<"node">>, Name},{<<"type">>, Status}]),
+    %{_OrgId, Name, _Status, _, _, _} = NodeStatus,
     case pushy_object:create_object(create_node_status, NodeStatus, ?POC_ACTOR_ID) of
         {ok, _} ->
             State;
@@ -132,6 +137,8 @@ save_status(Status, #state{name=Name}=State) ->
 %% Map status atom to valid integer before storing in db
 status_code(up) ->
     1;
+status_code(restarting) ->
+    -1;
 status_code(crashed) ->
     0.
 
