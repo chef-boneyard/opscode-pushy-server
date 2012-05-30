@@ -33,7 +33,6 @@ Decision time.  You can either:
 
         $ cd ~/oc/opscode-omnibus/pkg
         $ wget https://opscode-east-collab.s3.amazonaws.com/opscode-omnibus/pkg/private-chef_1.1.19-128-g2616125-1.ubuntu.10.04_amd64.deb?AWSAccessKeyId=AKIAICIM7JE4OBF3OXVA&Expires=1339025284&Signature=ezWQKh0tUcwEt9v94zv7Y8mqYQ4%3D
-        $ export OPC_INSTALLER=
 
 ## Stand up a dev-vm
 
