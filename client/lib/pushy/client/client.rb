@@ -33,7 +33,7 @@ module Pushy
     end
 
     class << self
-      def boot!
+      def load!
         from_hash(get_config_json)
       end
 

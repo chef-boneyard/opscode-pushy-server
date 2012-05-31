@@ -13,8 +13,8 @@ describe Pushy::Client do
   after(:each) { server.stop }
 
   # FIXME: Something is borked here when this is enabled.
-  pending '.boot!' do
-    subject { given; Pushy::Client.boot! }
+  pending '.load!' do
+    subject { given; Pushy::Client.load! }
     let(:given) { config_endpoint }
 
     it { should_not be_nil }
@@ -22,7 +22,7 @@ describe Pushy::Client do
 
   context 'with configuration endpoint' do
     let(:given) { config_endpoint }
-    let(:pushy_client) { given; Pushy::Client.boot! }
+    let(:pushy_client) { given; Pushy::Client.load! }
 
     def self.its(_attribute, &expectation)
       context "with configuration attribute :#{_attribute}" do
