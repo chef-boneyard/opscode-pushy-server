@@ -108,7 +108,6 @@ handle_info(down, down, State) ->
     {next_state, down, save_status(down, State)};
 
 handle_info(_Info, StateName, State) ->
-    error_logger:info_msg("_Info:~p~nStateName:~p~nState:~p~n", [_Info, StateName, State]),
     {next_state, StateName, State}.
 
 terminate(_Reason, _StateName, _State) ->

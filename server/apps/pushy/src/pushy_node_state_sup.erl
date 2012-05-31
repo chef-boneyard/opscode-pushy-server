@@ -36,11 +36,15 @@ new(Name) ->
     new(Name, HeartbeatInterval, DeadIntervalCount).
 
 load_children() ->
-    error_logger:info_msg("Loading Statuses~n"),
-    ChildNames = [ proplists:get_value(<<"node_name">>, Child)
-                   || Child <- pushy_sql:get_node_statuses(?POC_ORG_ID) ],
-    [ new(Name) || Name <- ChildNames],
-    [ pushy_node_state:down(Name) || Name <- ChildNames ].
+    load_children(pushy_sql:get_node_statuses(?POC_ORG_ID)).
+
+load_children({ok, []}) ->
+    {ok, done};
+load_children({ok, [FirstChild | OtherChildren]}) ->
+    Name = proplists:get_value(<<"node_name">>, FirstChild),
+    new(Name),
+    pushy_node_state:down(Name),
+    load_children({ok, OtherChildren}).
 
 
 init([]) ->

@@ -27,11 +27,12 @@ update_node_status(#pushy_node_status{status = Status,
 
 get_node_statuses(OrgId) ->
   case sqerl:select(get_node_status_by_orgid, [OrgId]) of
-    {ok, none} -> {ok, not_found};
+    {ok, none} ->
+      {ok, []};
     {ok, Response} ->
-      Response;
+      {ok, Response};
     {error, Reason} ->
-      error_logger:info_msg("Error: ~p", [Reason])
+      error_logger:info_msg("Error: ~p~n", [Reason])
   end.
 
 do_update(QueryName, UpdateFields) ->
