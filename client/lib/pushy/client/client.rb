@@ -37,19 +37,24 @@ module Pushy
         from_hash(get_config_json)
       end
 
+      def reload!(old_client)
+        old_client.stop if old_client
+        load!.start
+      end
+
       def from_json(raw_json_config)
         from_hash(Yajl::Parser.parse(raw_json_config))
       end
 
       def from_hash(config)
         new :in_address        => config['push_jobs']['heartbeat']['in_addr'],
-          :out_address       => config['push_jobs']['heartbeat']['out_addr'],
-          :interval          => config['push_jobs']['heartbeat']['interval'],
-          :offline_threshold => config['push_jobs']['heartbeat']['offline_threshold'],
-          :online_threshold  => config['push_jobs']['heartbeat']['online_threshold'],
-          :lifetime          => config['lifetime'],
-          :server_public_key => config['public_key'],
-          :node_name         => config['host']
+            :out_address       => config['push_jobs']['heartbeat']['out_addr'],
+            :interval          => config['push_jobs']['heartbeat']['interval'],
+            :offline_threshold => config['push_jobs']['heartbeat']['offline_threshold'],
+            :online_threshold  => config['push_jobs']['heartbeat']['online_threshold'],
+            :lifetime          => config['lifetime'],
+            :server_public_key => config['public_key'],
+            :node_name         => config['host']
       end
 
       #CHEF_SERVER_URL = Chef::Config[:chef_server_url]
@@ -106,6 +111,11 @@ module Pushy
 
       end
 
+    end
+
+    def stop
+      monitor.stop
+      EM.stop_event_loop
     end
 
     private
