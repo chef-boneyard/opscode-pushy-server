@@ -32,7 +32,7 @@ fetch_node_statuses(OrgId) ->
     {ok, Response} ->
       {ok, Response};
     {error, Reason} ->
-      error_logger:info_msg("Error: ~p~n", [Reason])
+      {error, Reason}
   end.
 
 do_update(QueryName, UpdateFields) ->
