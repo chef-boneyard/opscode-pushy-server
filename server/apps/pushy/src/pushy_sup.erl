@@ -40,10 +40,6 @@ init([Ctx]) ->
     {ok, Dispatch} = file:consult(filename:join(
                                     [code:priv_dir(pushy), "dispatch.conf"])),
 
-
-%    {ok, PublicKey} = chef_keyring:get_key(server_public),
-%    ?debugVal(PublicKey),
-
 %%% Set up trace dir specific stuff
 %%%    {_,_,[{trace_dir, TraceDir}]} = lists:keyfind(["dev", "wmtrace", '*'], 1, Dispatch),
 %%%    ok = filelib:ensure_dir(string:join([TraceDir,"trace"], "/")),
