@@ -6,6 +6,7 @@
 -define(POC_ORG_ID, <<"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa">>).
 -define(POC_ORG_NAME, <<"pushy">>).
 -define(POC_ACTOR_ID, <<"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb">>).
+-define(POC_HB_THRESHOLD, 3).
 
 -record(pushy_node_status, {'org_id',           % organization guid
                             'node_name',        % node name
