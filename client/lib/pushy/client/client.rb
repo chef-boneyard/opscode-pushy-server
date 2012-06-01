@@ -30,7 +30,7 @@ module Pushy
       @lifetime = options[:lifetime]
 
       @client_private_key = load_key(options[:client_private_key_path]) if options[:client_private_key_path]
-      @server_public_key = options[:server_public_key] || load_key(options[:server_public_key_path])
+      @server_public_key = OpenSSL::PKey::RSA.new(options[:server_public_key]) || load_key(options[:server_public_key_path])
     end
 
     class << self
