@@ -43,8 +43,9 @@ content_types_provided(Req, State) ->
 
 to_json(Req, State) ->
 
-    HeartbeatAddress = iolist_to_binary(pushy_util:make_zmq_socket_addr(server_heartbeat_port)),
-    StatusAddress = iolist_to_binary(pushy_util:make_zmq_socket_addr(node_status_port)),
+    Host = "tcp://33.33.33.10:",
+    HeartbeatAddress = iolist_to_binary(pushy_util:make_zmq_socket_addr(Host, server_heartbeat_port)),
+    StatusAddress = iolist_to_binary(pushy_util:make_zmq_socket_addr(Host, node_status_port)),
 
 %% TODO: Figure out how to get public key out of chef_keyring in encoded form!
 %    {ok, PublicKeyR} = chef_keyring:get_key(server_public),
