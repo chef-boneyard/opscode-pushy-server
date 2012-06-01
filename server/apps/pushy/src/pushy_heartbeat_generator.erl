@@ -59,9 +59,6 @@ init([Ctx]) ->
     {ok, HeartbeatSock} = erlzmq:socket(Ctx, pub),
     {ok, PrivateKey} = chef_keyring:get_key(server_private),
 
-%    {ok, PublicKey} = chef_keyring:get_key(server_public),
-%    ?debugVal(PublicKey),
-
     HeartbeatAddress = pushy_util:make_zmq_socket_addr(server_heartbeat_port),
 
     ok = erlzmq:bind(HeartbeatSock, HeartbeatAddress),
