@@ -54,7 +54,16 @@ to_json(Req, State) ->
 %    ?debugVal(EncKey),
 
 
-    PublicKey = <<"AAAAB3NzaC1kc3MAAACBAIZbwlySffbB5msSUH8JzLLXo/v03JBCWr13fVTjWYpccdbi/xL3IK/Jw8Rm3bGhnpwCAqBtsLvZ OcqXrc2XuKBYjiKWzigBMC7wC9dUDGwDl2aZ89B0jn2QPRWZuCAkxm6sKpefu++VPRRZF+iyZqFwS0wVKtl97T0gwWlzAJYpAAA AFQDIipDNo83e8RRp7Fits0DSy0DCpwAAAIB01BwXg9WSfU0mwzz/0+5Gb/TMAxfkDyucbcpJNncpRtr9Jb+9GjeZIbqkBQAqwgdbEjviRbUAuSawNSCdtnMgWD2NXkBKEde">>,
+    PublicKey =
+        <<"-----BEGIN PUBLIC KEY-----\n"
+          "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwLm8nRqzKICAP9LMNtpF\n"
+          "5LAFbOjCRvceprp+Gs6M1xU3csU0S16ZpBUuXslIcJyOWWZtfyqW2GPb4+zNlbAQ\n"
+          "lsg26ngpw+XT9e4XH2ufp8xkQpwOBiA+1uo54uUj3PSxb1fySvPzpGzuhxOuGgBP\n"
+          "JUrE7EE0eQFl3lTFDz9EtRgYc9x9kmbf0CfxX+YdMLCTsWJKC+BmzYARtFtf6rJc\n"
+          "mpN0EF29kBunF2AckjF3EYm6H351BnJtCZMZn2vqBF1UPt4bdnuloUdPW2xOf0Zm\n"
+          "LiyfwjODDOinSTpE5E8WfU1efXST7GvYZ1CmWS41c1UZBsqjLUDDlQNM8jWmpHqb\n"
+          "4QIDAQAB\n"
+          "-----END PUBLIC KEY-----">>,
 
     ConfigurationStruct =
         {[{<<"type">>, <<"config">>},
