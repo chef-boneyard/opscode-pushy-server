@@ -43,7 +43,7 @@ module Pushy
         :description => "URL pointing to the server's node state tracking service"
 
       option :config_service,
-        :long => "--config-address HOST",
+        :long => "--config-service HOST",
         :default => "localhost:10003/organizations/clownco",
         :description => "URL pointing to configuration service (eventually same as chef)"
 
@@ -107,7 +107,11 @@ module Pushy
 
       def run
         reconfigure
-        client = Pushy::Client.new(config)
+
+        Pushy::Client.service_url_base = config[:service_config]
+        pp ({:pushy_client=> Pushy::Client.service_url_base})
+
+        client = Pushy::Client.boot!
         client.start
       end
 
@@ -120,8 +124,6 @@ module Pushy
         ::File::open(config[:config_file]) do |f|
           Chef::Config.from_file(f.path)
         end
-
-        Pushy::Client.service_url_base = config[:service_config]
 
         true
       end

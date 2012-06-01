@@ -1,4 +1,5 @@
 require 'time'
+require 'pp'
 
 module Pushy
   class Client
@@ -60,6 +61,8 @@ module Pushy
                            require 'chef/rest'
                            Chef::REST.new(self.service_url_base || DEFAULT_SERVICE_URL_BASE, false, false)
                          end
+        pp ({:noauth=> @noauth_rest})
+        @noauth_rest
       end
 
       def get_config_json
