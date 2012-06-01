@@ -7,19 +7,19 @@
 -behaviour(gen_fsm).
 
 %% API
--export([start_link/3,
-         current_state/1,
-         heartbeat/1,
+-export([current_state/1,
          down/1,
-         restarting/1]).
+         heartbeat/1,
+         restarting/1,
+         start_link/3]).
 
 %% States
 -export([initializing/2]).
 
 %% Event handlers
--export([up/3,
-         crashed/3,
-         restarting/3]).
+-export([crashed/3,
+         restarting/3,
+         up/3]).
 
 -define(NO_NODE, {error, no_node}).
 -define(NODE_EVENT(Event), Event(Name) -> case catch gproc:send({n,l,Name}, Event) of
@@ -28,12 +28,12 @@
                                           end).
 
 %% gen_fsm callbacks
--export([init/1,
+-export([code_change/4,
          handle_event/3,
-         handle_sync_event/4,
          handle_info/3,
-         terminate/3,
-         code_change/4]).
+         handle_sync_event/4,
+         init/1,
+         terminate/3]).
 
 -record(state, {dead_interval,
                 name,
