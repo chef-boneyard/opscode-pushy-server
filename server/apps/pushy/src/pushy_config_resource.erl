@@ -12,18 +12,28 @@
          content_types_provided/2,
          to_json/2]).
 
+-include_lib("webmachine/include/webmachine.hrl").
+
 -include_lib("eunit/include/eunit.hrl").
 
--record(config_state, {organization_guid :: string() }).
+-record(config_state, {
+          orgname :: string(),
+          organization_guid :: string() }).
 
 init(Config) ->
     ?debugVal(Config),
     State = #config_state{},
-%%    {ok, State},
-    {{trace, "/tmp/traces"}, State}.
+    ?debugVal(State),
+    {ok, State}.
+%%    {{trace, "/tmp/traces"}, State}.
 %% then in console: wmtrace_resource:add_dispatch_rule("wmtrace", "/tmp/traces").
 %% then go to localhost:WXYZ/wmtrace
 
+%is_authorized(Req, State) ->
+%    OrgName =  wrq:path_info(Req, organization),
+%    ?debugVal(OrgName),
+%    State2 = State#config_state{orgname = OrgName},
+%    {{true, foo}, Req, State2}.
 
 allowed_methods(Req, State) ->
     {['GET'], Req, State}.
@@ -31,7 +41,7 @@ allowed_methods(Req, State) ->
 content_types_provided(Req, State) ->
     {[{"application/json", to_json}], Req, State}.
 
-to_json(_Req, _State) ->
+to_json(Req, State) ->
 
     {ok, ZeroMQListenAddress} = application:get_env(pushy, zeromq_listen_address),
 
@@ -41,24 +51,31 @@ to_json(_Req, _State) ->
     {ok, StatusPort} = application:get_env(pushy, node_status_port),
     StatusAddress = io_lib:format("~s~w",[ZeroMQListenAddress,StatusPort]),
 
+
+%    {ok, PublicKeyR} = chef_keyring:get_key(server_public),
+%    ?debugVal(PublicKeyR),
+
+
     PublicKey = <<"AAAAB3NzaC1kc3MAAACBAIZbwlySffbB5msSUH8JzLLXo/v03JBCWr13fVTjWYpccdbi/xL3IK/Jw8Rm3bGhnpwCAqBtsLvZ OcqXrc2XuKBYjiKWzigBMC7wC9dUDGwDl2aZ89B0jn2QPRWZuCAkxm6sKpefu++VPRRZF+iyZqFwS0wVKtl97T0gwWlzAJYpAAA AFQDIipDNo83e8RRp7Fits0DSy0DCpwAAAIB01BwXg9WSfU0mwzz/0+5Gb/TMAxfkDyucbcpJNncpRtr9Jb+9GjeZIbqkBQAqwgdbEjviRbUAuSawNSCdtnMgWD2NXkBKEde">>,
 
     ConfigurationStruct =
-        {struct, [{<<"type">>, <<"config">>},
+        {[{<<"type">>, <<"config">>},
                   {<<"host">>, <<"opc1.opscode.com">>},
                   {<<"push_jobs">>,
-                   {struct, [{<<"heartbeat">>,
-                              {struct, [{<<"out_addr">>, HeartbeatAddress},
-                                        {<<"in_addr">>, StatusAddress},
-                                        {<<"interval">>, 15},
-                                        {<<"offline_threshold">>, 3},
-                                        {<<"online_threshold">>, 2}
-                                       ]}}]}},
-                  {<<"public_key">>, PublicKey},
-                  {<<"lifetime">> ,3600}
-                 ]},
+                   {[{<<"heartbeat">>,
+                      {[{<<"out_addr">>, HeartbeatAddress},
+                        {<<"in_addr">>, StatusAddress},
+                        {<<"interval">>, 15},
+                        {<<"offline_threshold">>, 3},
+                        {<<"online_threshold">>, 2}
+                       ]}}]}},
+          {<<"public_key">>, PublicKey},
+          {<<"lifetime">> ,3600}
+         ]},
 
     ConfigurationJson = ejson:encode(ConfigurationStruct),
 
-    {ok, ConfigurationJson}.
+    ?debugVal(ConfigurationJson),
+
+    {ConfigurationJson, Req, State}.
 
