@@ -43,11 +43,13 @@ start_link(Ctx) ->
 %% ------------------------------------------------------------------
 
 init([Ctx]) ->
-    % error_logger:info_msg("Starting node status tracker."),
+    % error_logger:info_msg("Starting node status tracker.",)
     StatusAddress = pushy_util:make_zmq_socket_addr(node_status_port),
 
     HeartbeatInterval = pushy_util:get_env(pushy, heartbeat_interval, fun is_integer/1),
     DeadInterval = pushy_util:get_env(pushy, dead_interval, fun is_integer/1),
+
+    error_logger:info_msg("Starting node status tracker listening on ~s~n.", [StatusAddress]),
 
     {ok, StatusSock} = erlzmq:socket(Ctx, [pull, {active, true}]),
     ok = erlzmq:bind(StatusSock, StatusAddress),
