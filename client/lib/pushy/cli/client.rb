@@ -121,6 +121,8 @@ module Pushy
           Chef::Config.from_file(f.path)
         end
 
+        Pushy::Client.service_url_base = config[:service_config]
+
         true
       end
 

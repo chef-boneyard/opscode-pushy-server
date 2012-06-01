@@ -7,7 +7,9 @@ describe Pushy::Client do
   let(:metadata) { self.class.metadata }
   let(:server) { metadata[:server] || (metadata[:server] = TinyServer::Manager.new) }
   let(:api) { TinyServer::API.instance.tap(&:clear) }
-  let(:config_endpoint) { api.get '/config.json', 200, StringIO.new(config_json) }
+  let(:config_service) { 'localhost:9000/organization/clownco' }
+  let(:setup_config_service) { Pushy::Client.service_url_base = config_service } 
+  let(:config_endpoint) { api.get '/organization/clownco', 200, StringIO.new(config_json) }
 
   before(:each) { server.start }
   after(:each) { server.stop }
@@ -21,7 +23,7 @@ describe Pushy::Client do
   end
 
   context 'with configuration endpoint' do
-    let(:given) { config_endpoint }
+    let(:given) { setup_config_service and config_endpoint }
     let(:pushy_client) { given; Pushy::Client.boot! }
 
     def self.its(_attribute, &expectation)
@@ -31,7 +33,10 @@ describe Pushy::Client do
       end
     end
 
-    its(:node_name)   { should eql host }
+    context 'focus', :focus do
+    its(:node_name)   { given; ap [Pushy::Client.service_url_base];  should eql host }
+    end
+
     its(:in_address)  { should eql in_addr }
     its(:out_address) { should eql out_addr }
     its(:interval)    { should eql interval }
