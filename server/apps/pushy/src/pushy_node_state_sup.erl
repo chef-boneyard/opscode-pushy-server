@@ -36,7 +36,7 @@ new(Name) ->
     new(Name, HeartbeatInterval, DeadIntervalCount).
 
 load_children() ->
-    load_children(pushy_sql:get_node_statuses(?POC_ORG_ID)).
+    load_children(pushy_sql:fetch_node_statuses(?POC_ORG_ID)).
 
 load_children({ok, []}) ->
     {ok, done};

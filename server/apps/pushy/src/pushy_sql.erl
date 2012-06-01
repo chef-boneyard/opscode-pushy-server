@@ -6,7 +6,7 @@
          create_node_status/1,
          update_node_status/1,
          sql_now/0,
-         get_node_statuses/1,
+         fetch_node_statuses/1,
          statements/1
         ]).
 
@@ -25,7 +25,7 @@ update_node_status(#pushy_node_status{status = Status,
     UpdateFields = [Status, LastUpdatedBy, UpdatedAt, OrgId, NodeName],
     do_update(update_node_status_by_orgid_name, UpdateFields).
 
-get_node_statuses(OrgId) ->
+fetch_node_statuses(OrgId) ->
   case sqerl:select(get_node_status_by_orgid, [OrgId]) of
     {ok, none} ->
       {ok, []};
