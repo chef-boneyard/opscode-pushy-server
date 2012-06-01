@@ -14,7 +14,7 @@ Run ALL THE THINGS
 ## Ensure host-based checkouts of all projects are on the correct branches
 
 * `opscode-omnibus` => OC-18/pushy
-* `mixlib-authorization` => OC-18/pushy
+* `mixlib-authorization` => OC-1066/pushy-jobs
 * `pushy` => master (cut a feature branch)
 
 ## Build or steal an OPC deb
