@@ -43,17 +43,12 @@ content_types_provided(Req, State) ->
 
 to_json(Req, State) ->
 
-    {ok, ZeroMQListenAddress} = application:get_env(pushy, zeromq_listen_address),
-
-    {ok, HeartbeatPort} = application:get_env(pushy, server_heartbeat_port),
-    HeartbeatAddress = iolist_to_binary(io_lib:format("~s~w",[ZeroMQListenAddress,HeartbeatPort])),
-
-    {ok, StatusPort} = application:get_env(pushy, node_status_port),
-    StatusAddress = io_lib:format("~s~w",[ZeroMQListenAddress,StatusPort]),
+    HeartbeatAddress = iolist_to_binary(pushy_util:make_zmq_socket_addr(server_heartbeat_port)),
+    StatusAddress = iolist_to_binary(pushy_util:make_zmq_socket_addr(node_status_port)),
 
 %% TODO: Figure out how to get public key out of chef_keyring in encoded form!
-    {ok, PublicKeyR} = chef_keyring:get_key(server_public),
-    ?debugVal(PublicKeyR),
+%    {ok, PublicKeyR} = chef_keyring:get_key(server_public),
+%    ?debugVal(PublicKeyR),
 %    EncKey = public_key:pem_encode([public_key:pem_entr),
 %    ?debugVal(EncKey),
 
