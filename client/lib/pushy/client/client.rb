@@ -32,7 +32,7 @@ module Pushy
       @client_private_key = load_key(options[:client_private_key_path]) if options[:client_private_key_path]
       @server_public_key = options[:server_public_key] || load_key(options[:server_public_key_path])
 
-      @config_service = config['config_service']
+      @config_service = config[:config_service]
     end
 
     class << self
@@ -45,7 +45,7 @@ module Pushy
       end
 
       def from_hash(config)
-        new :in_address        => config['push_jobs']['heartbeat']['in_addr'],
+        new :in_address      => config['push_jobs']['heartbeat']['in_addr'],
           :out_address       => config['push_jobs']['heartbeat']['out_addr'],
           :interval          => config['push_jobs']['heartbeat']['interval'],
           :offline_threshold => config['push_jobs']['heartbeat']['offline_threshold'],
@@ -63,7 +63,7 @@ module Pushy
       end
 
       def get_config_json
-        noauth_rest.get_rest("config.json", false)
+        noauth_rest.get_rest("push_jobs/config", false)
       end
     end
 
