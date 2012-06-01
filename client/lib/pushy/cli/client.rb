@@ -42,6 +42,11 @@ module Pushy
         :default => "tcp://127.0.0.1:10001",
         :description => "URL pointing to the server's node state tracking service"
 
+      option :config_service,
+        :long => "--config-address HOST",
+        :default => "localhost:10003/organizations/clownco",
+        :description => "URL pointing to configuration service (eventually same as chef)"
+
       option :verbose,
         :short => "-v",
         :long => "--verbose",

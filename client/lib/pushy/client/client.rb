@@ -13,6 +13,7 @@ module Pushy
     attr_accessor :client_private_key
     attr_accessor :server_public_key
     attr_accessor :node_name
+    attr_accessor :config_service
 
     def initialize(options)
       @monitor = Pushy::Monitor.new(options)
@@ -30,6 +31,8 @@ module Pushy
 
       @client_private_key = load_key(options[:client_private_key_path]) if options[:client_private_key_path]
       @server_public_key = options[:server_public_key] || load_key(options[:server_public_key_path])
+
+      @config_service = config['config_service']
     end
 
     class << self
@@ -52,12 +55,10 @@ module Pushy
           :node_name         => config['host']
       end
 
-      #CHEF_SERVER_URL = Chef::Config[:chef_server_url]
-      CHEF_SERVER_URL = 'http://localhost:9000'
       def noauth_rest
         @noauth_rest ||= begin
                            require 'chef/rest'
-                           Chef::REST.new(CHEF_SERVER_URL, false, false)
+                           Chef::REST.new(config_server, false, false)
                          end
       end
 
