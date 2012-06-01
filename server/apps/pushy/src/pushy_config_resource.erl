@@ -51,9 +51,11 @@ to_json(Req, State) ->
     {ok, StatusPort} = application:get_env(pushy, node_status_port),
     StatusAddress = io_lib:format("~s~w",[ZeroMQListenAddress,StatusPort]),
 
-
-%    {ok, PublicKeyR} = chef_keyring:get_key(server_public),
-%    ?debugVal(PublicKeyR),
+%% TODO: Figure out how to get public key out of chef_keyring in encoded form!
+    {ok, PublicKeyR} = chef_keyring:get_key(server_public),
+    ?debugVal(PublicKeyR),
+%    EncKey = public_key:pem_encode([public_key:pem_entr),
+%    ?debugVal(EncKey),
 
 
     PublicKey = <<"AAAAB3NzaC1kc3MAAACBAIZbwlySffbB5msSUH8JzLLXo/v03JBCWr13fVTjWYpccdbi/xL3IK/Jw8Rm3bGhnpwCAqBtsLvZ OcqXrc2XuKBYjiKWzigBMC7wC9dUDGwDl2aZ89B0jn2QPRWZuCAkxm6sKpefu++VPRRZF+iyZqFwS0wVKtl97T0gwWlzAJYpAAA AFQDIipDNo83e8RRp7Fits0DSy0DCpwAAAIB01BwXg9WSfU0mwzz/0+5Gb/TMAxfkDyucbcpJNncpRtr9Jb+9GjeZIbqkBQAqwgdbEjviRbUAuSawNSCdtnMgWD2NXkBKEde">>,
