@@ -109,7 +109,10 @@ module Pushy
         reconfigure
 
         Pushy::Client.service_url_base = config[:config_service]
-        pp ({:pushy_client=> Pushy::Client.service_url_base})
+        Pushy::Client.client_private_key_path = config[:client_private_key_path]
+
+        Pushy::Log.info "Using configuration endpoint: #{Pushy::Client.service_url_base}"
+        Pushy::Log.info "Using private key: #{Pushy::Client.client_private_key_path}"
 
         client = Pushy::Client.boot!
         client.start

@@ -29,13 +29,14 @@ module Pushy
       @online_threshold = options[:online_threshold]
       @lifetime = options[:lifetime]
 
-      @client_private_key = load_key(options[:client_private_key_path]) if options[:client_private_key_path]
+      @client_private_key = load_key(self.class.client_private_key_path)
       @server_public_key = OpenSSL::PKey::RSA.new(options[:server_public_key]) || load_key(options[:server_public_key_path])
     end
 
     class << self
       DEFAULT_SERVICE_URL_BASE = "localhost:10003/organization/clownco"
       attr_accessor :service_url_base
+      attr_accessor :client_private_key_path
 
       def boot!
         from_hash(get_config_json)
@@ -61,7 +62,6 @@ module Pushy
                            require 'chef/rest'
                            Chef::REST.new(self.service_url_base || DEFAULT_SERVICE_URL_BASE, false, false)
                          end
-        pp ({:noauth=> @noauth_rest})
         @noauth_rest
       end
 
