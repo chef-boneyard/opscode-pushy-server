@@ -48,22 +48,8 @@ to_json(Req, State) ->
     StatusAddress = iolist_to_binary(pushy_util:make_zmq_socket_addr(Host, node_status_port)),
 
 %% TODO: Figure out how to get public key out of chef_keyring in encoded form!
-%    {ok, PublicKeyR} = chef_keyring:get_key(server_public),
-%    ?debugVal(PublicKeyR),
-%    EncKey = public_key:pem_encode([public_key:pem_entr),
-%    ?debugVal(EncKey),
-
-
-    PublicKey =
-        <<"-----BEGIN PUBLIC KEY-----\n"
-          "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwLm8nRqzKICAP9LMNtpF\n"
-          "5LAFbOjCRvceprp+Gs6M1xU3csU0S16ZpBUuXslIcJyOWWZtfyqW2GPb4+zNlbAQ\n"
-          "lsg26ngpw+XT9e4XH2ufp8xkQpwOBiA+1uo54uUj3PSxb1fySvPzpGzuhxOuGgBP\n"
-          "JUrE7EE0eQFl3lTFDz9EtRgYc9x9kmbf0CfxX+YdMLCTsWJKC+BmzYARtFtf6rJc\n"
-          "mpN0EF29kBunF2AckjF3EYm6H351BnJtCZMZn2vqBF1UPt4bdnuloUdPW2xOf0Zm\n"
-          "LiyfwjODDOinSTpE5E8WfU1efXST7GvYZ1CmWS41c1UZBsqjLUDDlQNM8jWmpHqb\n"
-          "4QIDAQAB\n"
-          "-----END PUBLIC KEY-----">>,
+    {ok, PublicKeyR} = chef_keyring:get_key(server_public),
+    PublicKey = public_key:pem_encode([public_key:pem_entry_encode('SubjectPublicKeyInfo', PublicKeyR)]),
 
     ConfigurationStruct =
         {[{<<"type">>, <<"config">>},
