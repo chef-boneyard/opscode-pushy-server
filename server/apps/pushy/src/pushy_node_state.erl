@@ -13,6 +13,10 @@
          restarting/1,
          start_link/3]).
 
+%% Observers
+-export([start_watching/1,
+         stop_watching/1]).
+
 %% States
 -export([initializing/2]).
 
@@ -38,6 +42,7 @@
 -record(state, {dead_interval,
                 name,
                 heartbeats = 0,
+                observers = [],
                 tref}).
 
 -include("pushy_sql.hrl").
@@ -76,6 +81,13 @@ initializing(timeout, #state{name=Name}=State) ->
             {stop, Error, State}
     end.
 
+start_watching(Name) ->
+    watching(start_watching, Name).
+
+stop_watching(Name) ->
+    watching(stop_watching, Name).
+
+
 up(current_state, _From, State) ->
     {reply, up, up, State}.
 
@@ -85,6 +97,15 @@ crashed(current_state, _From, State) ->
 restarting(current_state, _From, State) ->
     {reply, restarting, restarting, State}.
 
+handle_event({start_watching, Who}, StateName, #state{observers=Observers}=State) ->
+    State1 = case lists:member(Who, Observers) of
+        false -> State#state{observers=[Who|Observers]};
+        true -> State
+    end,
+    {next_state, StateName, State1};
+handle_event({stop_watching, Who}, StateName, #state{observers=Observers}=State) ->
+    State1 = State#state{observers=lists:delete(Who, Observers)},
+    {next_state, StateName, State1};
 handle_event(_Event, StateName, State) ->
     {next_state, StateName, State}.
 
@@ -120,6 +141,14 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 %% Internal functions
 load_status() ->
     {ok, down}.
+
+watching(Action, Name) ->
+    case catch gproc:lookup_pid({n,l,Name}) of
+        {'EXIT', _} ->
+            ?NO_NODE;
+        Pid ->
+            gen_fsm:send_all_state_event(Pid, {Action, self()})
+    end.
 
 save_status(Status, State) when is_atom(Status) ->
     save_status(status_code(Status), State);
