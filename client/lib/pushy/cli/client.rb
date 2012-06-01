@@ -108,7 +108,7 @@ module Pushy
       def run
         reconfigure
 
-        Pushy::Client.service_url_base = config[:service_config]
+        Pushy::Client.service_url_base = config[:config_service]
         pp ({:pushy_client=> Pushy::Client.service_url_base})
 
         client = Pushy::Client.boot!
