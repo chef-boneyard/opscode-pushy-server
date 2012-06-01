@@ -23,7 +23,7 @@ module Pushy
       @interval = options[:interval]
       @client_key_path = options[:client_key]
       @server_key_path = options[:server_key]
-      @node_name = options[:node_name]
+      @node_name = self.class.node_name
 
       @offline_threshold = options[:offline_threshold]
       @online_threshold = options[:online_threshold]
@@ -37,6 +37,7 @@ module Pushy
       DEFAULT_SERVICE_URL_BASE = "localhost:10003/organization/clownco"
       attr_accessor :service_url_base
       attr_accessor :client_private_key_path
+      attr_accessor :node_name
 
       def boot!
         from_hash(get_config_json)
@@ -54,7 +55,6 @@ module Pushy
           :online_threshold  => config['push_jobs']['heartbeat']['online_threshold'],
           :lifetime          => config['lifetime'],
           :server_public_key => config['public_key'],
-          :node_name         => config['host']
       end
 
       def noauth_rest

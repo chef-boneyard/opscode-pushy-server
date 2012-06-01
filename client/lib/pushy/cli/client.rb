@@ -110,9 +110,11 @@ module Pushy
 
         Pushy::Client.service_url_base = config[:config_service]
         Pushy::Client.client_private_key_path = config[:client_private_key_path]
+        Pushy::Client.node_name = config[:node_name]
 
         Pushy::Log.info "Using configuration endpoint: #{Pushy::Client.service_url_base}"
         Pushy::Log.info "Using private key: #{Pushy::Client.client_private_key_path}"
+        Pushy::Log.info "Using node name: #{Pushy::Client.node_name}"
 
         client = Pushy::Client.boot!
         client.start
