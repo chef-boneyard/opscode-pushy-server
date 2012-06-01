@@ -526,6 +526,16 @@ knife job create role:database chef-client --quorum=3
        will complicate the job manager, as it will need to track nodes completing or timing out and
        start new nodes.
 
+****** Job Expiry
+       Users can also specify a maximum duration for a command on a
+       single node. This is accomplished by passing
+       the duration flag to the knife job plugin. Duration is always expressed in minutes.
+
+#+begin_example
+knife job create role:database chef-client --duration=10
+#+end_example
+
+
 **** Executing the job
      Once a job meets the job initiation criteria it is ready to execute. The job monitor
      tells the participating nodes to begin execution by sending the execute message to
@@ -576,9 +586,6 @@ knife job create role:database chef-client --quorum=3
 
 ****** TODO: Figure out how to handle heartbeat loss during command execution; we don't know whether the command completed or not. 
 
-MARKER--- revisions haven't gone past here yet.
-
-
       We will want to keep information about the state of each node in a job. 
 
       * Ready - available for a command, but the command not yet sent.
@@ -594,13 +601,7 @@ MARKER--- revisions haven't gone past here yet.
 
       This information will be useful when chaining together multiple jobs.
 
-****** Job Expiry
-       Users can also specify a maximum duration for a job. This is accomplished by passing
-       the duration flag to the knife job plugin. Duration is always expressed in minutes.
 
-#+begin_example
-knife job create role:database chef-client --duration=10
-#+end_example
 
 ***** 
 *** Node-side job execution lifecycle
