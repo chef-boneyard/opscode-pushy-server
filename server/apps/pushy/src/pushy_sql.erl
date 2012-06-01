@@ -25,6 +25,7 @@ update_node_status(#pushy_node_status{status = Status,
     UpdateFields = [Status, LastUpdatedBy, UpdatedAt, OrgId, NodeName],
     do_update(update_node_status_by_orgid_name, UpdateFields).
 
+-spec fetch_node_statuses(binary() | string()) -> {ok, list()} | {error, term()}.
 fetch_node_statuses(OrgId) ->
   case sqerl:select(get_node_status_by_orgid, [OrgId]) of
     {ok, none} ->
