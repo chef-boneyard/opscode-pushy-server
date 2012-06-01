@@ -14,7 +14,6 @@
          to_json/2]).
 
 -include_lib("webmachine/include/webmachine.hrl").
--define(A2B(X), erlang:atom_to_binary(X, utf8)).
 
 init(_Any) ->
     {ok, <<"{}">>}.
@@ -36,11 +35,5 @@ to_json(Req, State) ->
 %% private functions
 
 check_health(_Req, _State) ->
-    Mods = [chef_otto, chef_sql, chef_authz, chef_solr],
-    Pings = [ {?A2B(Mod), ?A2B(Mod:ping())} || Mod <- Mods ],
-    Status = case [ Pang || {_, <<"pang">>}=Pang <- Pings ] of
-                 [] -> pong;
-                 _Pangs -> pang
-             end,
-    {Status, ejson:encode({[{<<"status">>, ?A2B(Status)}, {<<"upstreams">>, {Pings}}]})}.
+    {pong, ejson:encode({[{<<"status">>, <<"it's alive">> }]})}. 
 

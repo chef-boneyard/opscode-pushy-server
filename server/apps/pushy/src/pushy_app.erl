@@ -9,15 +9,22 @@
 %% Application callbacks
 -export([start/2, stop/1]).
 
+%-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+%-endif.
+
 %% ===================================================================
 %% Application callbacks
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
+%    sys:statistics(
     case erlzmq:context() of
         {ok, Ctx} ->
-            {ok, Pid} = pushy_sup:start_link(Ctx),
-            {ok, Pid, Ctx};
+            case pushy_sup:start_link(Ctx) of
+                {ok, Pid} -> {ok, Pid, Ctx};
+                Error -> Error
+            end;
         Error ->
             Error
     end.
