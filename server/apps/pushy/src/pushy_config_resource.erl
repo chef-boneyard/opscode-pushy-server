@@ -43,7 +43,7 @@ content_types_provided(Req, State) ->
 
 to_json(Req, State) ->
 
-    Host = "tcp://33.33.33.10:",
+    Host = pushy_util:get_env(pushy, server_name, fun is_list/1),
     HeartbeatAddress = iolist_to_binary(pushy_util:make_zmq_socket_addr(Host, server_heartbeat_port)),
     StatusAddress = iolist_to_binary(pushy_util:make_zmq_socket_addr(Host, node_status_port)),
 
@@ -53,7 +53,7 @@ to_json(Req, State) ->
 
     ConfigurationStruct =
         {[{<<"type">>, <<"config">>},
-                  {<<"host">>, <<"opc1.opscode.com">>},
+                  {<<"host">>, iolist_to_binary(Host)},
                   {<<"push_jobs">>,
                    {[{<<"heartbeat">>,
                       {[{<<"out_addr">>, HeartbeatAddress},

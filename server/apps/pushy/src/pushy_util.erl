@@ -25,7 +25,7 @@ make_zmq_socket_addr(Host, PortName) when is_atom(PortName) ->
     Port = get_env(pushy, PortName, fun is_integer/1),
     make_zmq_socket_addr(Host, Port);
 make_zmq_socket_addr(Host, Port) when is_integer(Port) ->
-    lists:flatten(io_lib:format("~s~w",[Host,Port])).
+    lists:flatten(io_lib:format("~s:~w",[Host,Port])).
 
 get_env(Section, Item, TypeCheck) ->
     case application:get_env(Section, Item) of
