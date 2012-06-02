@@ -113,7 +113,7 @@ handle_sync_event(_Event, _From, StateName, State) ->
     {reply, ignored, StateName, State}.
 
 handle_info(heartbeat, up, State) ->
-    {next_state, up, reset_timer(save_status(up, State))};
+    {next_state, up, reset_timer(State)};
 handle_info(heartbeat, crashed, State) ->
     confirm_heartbeat_threshold(State, crashed);
 handle_info(heartbeat, down, State) ->
