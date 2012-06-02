@@ -1,5 +1,3 @@
-%% a bit odd, but field names have to match column names for helper
-%% function to work.
 
 -type id() :: binary().
 %% object ids are always 32 characters hex. This spec matches the
@@ -14,7 +12,8 @@
 -define(HB_STATUS_RESTARTING, 4).
 
 %% job status
--type job_status() :: 1..6.
+-type job_status() :: 0..6.
+-define(JOB_STATUS_NEW, 0).
 -define(JOB_STATUS_EXECUTING, 1).
 -define(JOB_STATUS_COMPLETE, 2).
 -define(JOB_STATUS_ERROR, 3).
