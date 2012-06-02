@@ -38,7 +38,9 @@
 
 -record(pushy_job, {'id'::object_id(),                  % guid for object (unique)
                     'org_id'::object_id(),              % organization guid,
+                    'command'::binary(),                % command to execute
                     'status'::job_status(),             % job status
+                    'duration'::non_neg_integer(),      % max duration (in minutes) to allow execution
                     'last_updated_by'::object_id(),     % authz guid of last actor to update
                     'created_at'::calendar:datetime(),  % time created at
                     'updated_at'::calendar:datetime(),  % time updated at
