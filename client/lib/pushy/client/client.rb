@@ -1,4 +1,5 @@
 require 'time'
+require 'pp'
 
 module Pushy
   class Client
@@ -13,7 +14,6 @@ module Pushy
     attr_accessor :client_private_key
     attr_accessor :server_public_key
     attr_accessor :node_name
-    attr_accessor :config_service
 
     def initialize(options)
       @monitor = Pushy::Monitor.new(options)
@@ -23,19 +23,22 @@ module Pushy
       @interval = options[:interval]
       @client_key_path = options[:client_key]
       @server_key_path = options[:server_key]
-      @node_name = options[:node_name]
+      @node_name = self.class.node_name
 
       @offline_threshold = options[:offline_threshold]
       @online_threshold = options[:online_threshold]
       @lifetime = options[:lifetime]
 
-      @client_private_key = load_key(options[:client_private_key_path]) if options[:client_private_key_path]
-      @server_public_key = options[:server_public_key] || load_key(options[:server_public_key_path])
-
-      @config_service = config['config_service']
+      @client_private_key = load_key(self.class.client_private_key_path)
+      @server_public_key = OpenSSL::PKey::RSA.new(options[:server_public_key]) || load_key(options[:server_public_key_path])
     end
 
     class << self
+      DEFAULT_SERVICE_URL_BASE = "localhost:10003/organization/clownco"
+      attr_accessor :service_url_base
+      attr_accessor :client_private_key_path
+      attr_accessor :node_name
+
       def boot!
         from_hash(get_config_json)
       end
@@ -45,25 +48,25 @@ module Pushy
       end
 
       def from_hash(config)
-        new :in_address        => config['push_jobs']['heartbeat']['in_addr'],
+        new :in_address      => config['push_jobs']['heartbeat']['in_addr'],
           :out_address       => config['push_jobs']['heartbeat']['out_addr'],
           :interval          => config['push_jobs']['heartbeat']['interval'],
           :offline_threshold => config['push_jobs']['heartbeat']['offline_threshold'],
           :online_threshold  => config['push_jobs']['heartbeat']['online_threshold'],
           :lifetime          => config['lifetime'],
           :server_public_key => config['public_key'],
-          :node_name         => config['host']
       end
 
       def noauth_rest
         @noauth_rest ||= begin
                            require 'chef/rest'
-                           Chef::REST.new(config_server, false, false)
+                           Chef::REST.new(self.service_url_base || DEFAULT_SERVICE_URL_BASE, false, false)
                          end
+        @noauth_rest
       end
 
       def get_config_json
-        noauth_rest.get_rest("config.json", false)
+        noauth_rest.get_rest("push_jobs/config", false)
       end
     end
 

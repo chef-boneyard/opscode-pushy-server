@@ -61,6 +61,9 @@ init([Ctx]) ->
 
     HeartbeatAddress = pushy_util:make_zmq_socket_addr(server_heartbeat_port),
 
+    error_logger:info_msg("Starting heartbeat generator listening on ~s~n.",[HeartbeatAddress]),
+
+
     ok = erlzmq:bind(HeartbeatSock, HeartbeatAddress),
     State = #state{heartbeat_sock = HeartbeatSock,
                    heartbeat_interval = Interval,

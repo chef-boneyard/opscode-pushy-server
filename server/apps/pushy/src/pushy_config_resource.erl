@@ -43,21 +43,17 @@ content_types_provided(Req, State) ->
 
 to_json(Req, State) ->
 
-    HeartbeatAddress = iolist_to_binary(pushy_util:make_zmq_socket_addr(server_heartbeat_port)),
-    StatusAddress = iolist_to_binary(pushy_util:make_zmq_socket_addr(node_status_port)),
+    Host = pushy_util:get_env(pushy, server_name, fun is_list/1),
+    HeartbeatAddress = iolist_to_binary(pushy_util:make_zmq_socket_addr(Host, server_heartbeat_port)),
+    StatusAddress = iolist_to_binary(pushy_util:make_zmq_socket_addr(Host, node_status_port)),
 
 %% TODO: Figure out how to get public key out of chef_keyring in encoded form!
-%    {ok, PublicKeyR} = chef_keyring:get_key(server_public),
-%    ?debugVal(PublicKeyR),
-%    EncKey = public_key:pem_encode([public_key:pem_entr),
-%    ?debugVal(EncKey),
-
-
-    PublicKey = <<"AAAAB3NzaC1kc3MAAACBAIZbwlySffbB5msSUH8JzLLXo/v03JBCWr13fVTjWYpccdbi/xL3IK/Jw8Rm3bGhnpwCAqBtsLvZ OcqXrc2XuKBYjiKWzigBMC7wC9dUDGwDl2aZ89B0jn2QPRWZuCAkxm6sKpefu++VPRRZF+iyZqFwS0wVKtl97T0gwWlzAJYpAAA AFQDIipDNo83e8RRp7Fits0DSy0DCpwAAAIB01BwXg9WSfU0mwzz/0+5Gb/TMAxfkDyucbcpJNncpRtr9Jb+9GjeZIbqkBQAqwgdbEjviRbUAuSawNSCdtnMgWD2NXkBKEde">>,
+    {ok, PublicKeyR} = chef_keyring:get_key(server_public),
+    PublicKey = public_key:pem_encode([public_key:pem_entry_encode('SubjectPublicKeyInfo', PublicKeyR)]),
 
     ConfigurationStruct =
         {[{<<"type">>, <<"config">>},
-                  {<<"host">>, <<"opc1.opscode.com">>},
+                  {<<"host">>, iolist_to_binary(Host)},
                   {<<"push_jobs">>,
                    {[{<<"heartbeat">>,
                       {[{<<"out_addr">>, HeartbeatAddress},
