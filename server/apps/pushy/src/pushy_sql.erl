@@ -42,7 +42,7 @@ update_node_status(#pushy_node_status{status = Status,
                                       updated_at = UpdatedAt,
                                       node_name = NodeName,
                                       org_id = OrgId}) ->
-    UpdateFields = [Status, LastUpdatedBy, UpdatedAt, OrgId, NodeName],
+    UpdateFields = [hb_status_code(Status), LastUpdatedBy, UpdatedAt, OrgId, NodeName],
     do_update(update_node_status_by_orgid_name, UpdateFields).
 
 %% job ops
@@ -122,7 +122,8 @@ create_object(QueryName, Record) when is_atom(QueryName) ->
 insert_job_nodes([], _OrgId, _JobId, _CreatedAt, _UpdatedAt) ->
     ok;
 insert_job_nodes([{NodeName, Status, _CreatedAt, _UpdatedAt}|Rest], OrgId, JobId, CreatedAt, UpdatedAt) ->
-    case sqerl:statement(insert_job_node, [OrgId, NodeName, Status, CreatedAt, UpdatedAt, JobId], count) of
+    case sqerl:statement(insert_job_node, [OrgId, NodeName, job_status_code(Status),
+          CreatedAt, UpdatedAt, JobId], count) of
         {ok, 1} ->
             insert_job_nodes(Rest, OrgId, JobId, CreatedAt, UpdatedAt);
         {error, Reason} ->
@@ -142,7 +143,7 @@ job_join_rows_to_record([LastRow|[]], JobNodes) ->
     #pushy_job{id = safe_get(<<"id">>, LastRow),
                   org_id = safe_get(<<"org_id">>, LastRow),
                   command = safe_get(<<"command">>, LastRow),
-                  status = safe_get(<<"status">>, LastRow),
+                  status = job_status_atom(safe_get(<<"status">>, LastRow)),
                   duration = safe_get(<<"duration">>, LastRow),
                   last_updated_by = safe_get(<<"last_updated_by">>, LastRow),
                   created_at = safe_get(<<"created_at">>, LastRow),
@@ -155,10 +156,36 @@ job_join_rows_to_record([Row|Rest], JobNodes ) ->
 %% @doc Convenience function for assembling a job_node tuple from a proplist
 proplist_to_job_node(Proplist) ->
     {safe_get(<<"node_name">>, Proplist),
-     safe_get(<<"status">>, Proplist),
+     job_status_atom(safe_get(<<"status">>, Proplist)),
      safe_get(<<"created_at">>, Proplist),
      safe_get(<<"updated_at">>, Proplist)
      }.
+
+%% Heartbeat Status translators
+hb_status_code(idle) -> 1;
+hb_status_code(ready) -> 2;
+hb_status_code(running) -> 3;
+hb_status_code(restarting) -> 4.
+hb_status_atom(1) -> idle;
+hb_status_atom(2) -> ready;
+hb_status_atom(3) -> running;
+hb_status_atom(4) -> restarting.
+
+%% Job Status translators
+job_status_code(new) -> 0;
+job_status_code(executing) -> 1;
+job_status_code(complete) -> 2;
+job_status_code(error) -> 3;
+job_status_code(failed) -> 4;
+job_status_code(expired) -> 5;
+job_status_code(aborted) -> 6.
+job_status_atom(0) -> new;
+job_status_atom(1) -> executing;
+job_status_atom(2) -> complete;
+job_status_atom(3) -> error;
+job_status_atom(4) -> failed;
+job_status_atom(5) -> expired;
+job_status_atom(6) -> aborted.
 
 %% CHEF_COMMON CARGO_CULT
 %% chef_sql:flatten_record/1

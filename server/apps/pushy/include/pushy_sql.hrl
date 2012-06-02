@@ -5,21 +5,10 @@
 -type object_id() :: <<_:256>>.
 
 %% node heartbeat status
--type heartbeat_status() :: 1..4.
--define(HB_STATUS_IDLE, 1).
--define(HB_STATUS_READY, 2).
--define(HB_STATUS_RUNNING, 3).
--define(HB_STATUS_RESTARTING, 4).
+-type heartbeat_status() :: idle | ready | running | restarting.
 
 %% job status
--type job_status() :: 0..6.
--define(JOB_STATUS_NEW, 0).
--define(JOB_STATUS_EXECUTING, 1).
--define(JOB_STATUS_COMPLETE, 2).
--define(JOB_STATUS_ERROR, 3).
--define(JOB_STATUS_FAILED, 4).
--define(JOB_STATUS_EXPIRED, 5).
--define(JOB_STATUS_ABORTED, 6).
+-type job_status() :: new | executing | complete | error | failed | expired | aborted.
 
 %% random PoC hard-codings
 -define(POC_ORG_ID, <<"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa">>).
