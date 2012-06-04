@@ -67,8 +67,8 @@ handle_cast(_Msg, State) ->
 handle_info({zmq, _StatusSock, Header, [rcvmore]},
     #state{heartbeat_interval=HeartbeatInterval,dead_interval=DeadInterval}=State) ->
 
-    Body = read_body(),
-    case catch do_authenticate_message(Header, Body) of
+    Body = pushy_util:read_body(),
+    case catch pushy_util:do_authenticate_message(Header, Body) of
         ok ->
             send_heartbeat(Body, HeartbeatInterval, DeadInterval);
         {no_authn, bad_sig} ->
@@ -88,41 +88,6 @@ code_change(_OldVsn, State, _Extra) ->
 %% ------------------------------------------------------------------
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
-
-read_body() ->
-    receive
-        {zmq, _StatusSock, BodyFrame, []} ->
-            BodyFrame
-    end.
-
-do_authenticate_message(Header, Body) ->
-    SignedChecksum = signed_checksum_from_header(Header),
-    % TODO - query DB for public key of each client
-    {ok, PublicKey} = chef_keyring:get_key(client_public),
-    Decrypted = decrypt_sig(SignedChecksum, PublicKey),
-    Plain = chef_authn:hash_string(Body),
-    try
-        Decrypted = Plain,
-        ok
-    catch
-        error:{badmatch, _} ->
-            {no_authn, bad_sig}
-    end.
-
-% TODO - update chef_authn to export this function
-decrypt_sig(Sig, {'RSAPublicKey', _, _} = PK) ->
-    try
-        public_key:decrypt_public(base64:decode(Sig), PK)
-    catch
-        error:decrypt_failed ->
-            decrypt_failed
-    end.
-
-signed_checksum_from_header(Header) ->
-    HeaderParts = re:split(Header, <<":|;">>),
-    {_version, _Version, _signed_checksum, SignedChecksum}
-        = list_to_tuple(HeaderParts),
-    SignedChecksum.
 
 send_heartbeat(BodyFrame, HeartbeatInterval, DeadInterval) when is_binary(BodyFrame) ->
     case catch jiffy:decode(BodyFrame) of
