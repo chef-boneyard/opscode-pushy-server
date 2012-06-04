@@ -54,10 +54,9 @@ get_env(Section, Item, TypeCheck) ->
 %% Factor out common packet handling methods
 %%
 
-
 read_body() ->
     receive
-        {zmq, _StatusSock, BodyFrame, []} ->
+        {zmq, _Sock, BodyFrame, []} ->
             BodyFrame
     end.
 
