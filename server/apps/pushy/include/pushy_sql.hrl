@@ -5,7 +5,7 @@
 -type object_id() :: <<_:256>>.
 
 %% node heartbeat status
--type heartbeat_status() :: idle | ready | running | restarting.
+-type heartbeat_status() :: idle | ready | running | restarting | up | down | crashed.
 
 %% job status
 -type job_status() :: new | executing | complete | error | failed | expired | aborted.
