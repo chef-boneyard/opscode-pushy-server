@@ -53,12 +53,17 @@ heartbeat() ->
 %% ------------------------------------------------------------------
 
 init([Ctx]) ->
-    %error_logger:info_msg("Starting heartbeat generator."),
-    {ok, Interval} = application:get_env(pushy, heartbeat_interval),
-    % expect "tcp://*:port_id"
-    {ok, HeartbeatAddress} = application:get_env(pushy, server_heartbeat_socket),
+    % error_logger:info_msg("Starting heartbeat generator."),
+    Interval = pushy_util:get_env(pushy, heartbeat_interval, fun is_integer/1),
+
     {ok, HeartbeatSock} = erlzmq:socket(Ctx, pub),
     {ok, PrivateKey} = chef_keyring:get_key(server_private),
+
+    HeartbeatAddress = pushy_util:make_zmq_socket_addr(server_heartbeat_port),
+
+    error_logger:info_msg("Starting heartbeat generator listening on ~s~n.",[HeartbeatAddress]),
+
+
     ok = erlzmq:bind(HeartbeatSock, HeartbeatAddress),
     State = #state{heartbeat_sock = HeartbeatSock,
                    heartbeat_interval = Interval,
