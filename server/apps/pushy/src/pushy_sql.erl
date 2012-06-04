@@ -83,8 +83,9 @@ update_job_node(#pushy_job_node{job_id = JobId,
 -spec create_object(Object :: pushy_object()) -> {ok, non_neg_integer()} |
                                                            {error, term()}.
 %% @doc create an object given a pushy object record
-create_object(#pushy_node_status{}=NodeStatus) ->
-    create_object(insert_node_status, NodeStatus);
+create_object(#pushy_node_status{status=Status}=NodeStatus) ->
+    NodeStatus1 = NodeStatus#pushy_node_status{status=hb_status(Status)},
+    create_object(insert_node_status, NodeStatus1);
 %% This does not exactly follow the same pattern as it needs to
 %% insert a list of job_nodes into a separate table.
 create_object(#pushy_job{job_nodes = JobNodes}=Job) ->

@@ -150,8 +150,6 @@ watching(Action, Name) ->
             gen_fsm:send_all_state_event(Pid, {Action, self()})
     end.
 
-save_status(Status, State) when is_atom(Status) ->
-    save_status(status_code(Status), State);
 save_status(Status, #state{name=Name}=State) ->
     notify_status_change(Status, State),
     NodeStatus = pushy_object:new_record(pushy_node_status,
@@ -166,14 +164,6 @@ save_status(Status, #state{name=Name}=State) ->
         {error, _Error} ->
             State
     end.
-
-%% Map status atom to valid integer before storing in db
-status_code(up) ->
-    1;
-status_code(down) ->
-    0;
-status_code(crashed) ->
-    -1.
 
 notify_status_change(Status, State) ->
     Name = State#state.name,
