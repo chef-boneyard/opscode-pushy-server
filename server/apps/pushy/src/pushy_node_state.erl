@@ -153,6 +153,7 @@ watching(Action, Name) ->
 save_status(Status, State) when is_atom(Status) ->
     save_status(status_code(Status), State);
 save_status(Status, #state{name=Name}=State) ->
+    notify_status_change(Status, State),
     NodeStatus = pushy_object:new_record(pushy_node_status,
                                         ?POC_ORG_ID,
                                         [{<<"node">>, Name},{<<"type">>, Status}]),
@@ -173,6 +174,12 @@ status_code(down) ->
     0;
 status_code(crashed) ->
     -1.
+
+notify_status_change(Status, State) ->
+    Name = State#state.name,
+    Observers = State#state.observers,
+    [ Observer ! { Name,Status } || Observer <- Observers ].
+
 
 %% confirm that we have recieved enough heartbeats before coming up
 confirm_heartbeat_threshold(#state{heartbeats=HeartBeats}=State, StateName) ->
