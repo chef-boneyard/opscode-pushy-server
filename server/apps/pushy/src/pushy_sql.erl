@@ -10,8 +10,8 @@
          %% job ops
          fetch_job/1,
          create_job/1,
-         %update_job/1,
-         %update_job_node/1,
+         update_job/1,
+         update_job_node/1,
 
          sql_now/0,
          statements/1
@@ -59,6 +59,23 @@ fetch_job(JobId) ->
 
 create_job(#pushy_job{} = Job) ->
     create_object(Job).
+
+-spec update_job(#pushy_job{}) -> {ok, 1 | not_found} | {error, term()}.
+update_job(#pushy_job{id = JobId,
+                      status = Status,
+                      last_updated_by = LastUpdatedBy,
+                      updated_at = UpdatedAt}) ->
+    UpdateFields = [job_status(Status), LastUpdatedBy, UpdatedAt, JobId],
+    do_update(update_job_by_id, UpdateFields).
+
+-spec update_job_node(#pushy_job_node{}) -> {ok, 1 | not_found} | {error, term()}.
+update_job_node(#pushy_job_node{job_id = JobId,
+                                node_name = NodeName,
+                                org_id = OrgId,
+                                status = Status,
+                                updated_at = UpdatedAt}) ->
+    UpdateFields = [job_status(Status), UpdatedAt, OrgId, NodeName, JobId],
+    do_update(update_job_node_by_orgid_nodename_jobid, UpdateFields).
 
 -spec create_object(Object :: pushy_object()) -> {ok, non_neg_integer()} |
                                                            {error, term()}.
