@@ -118,6 +118,8 @@ do_send_multi(State, Clients, Message) ->
 process_message(State, Address, _Header, Body) ->
     case catch jiffy:decode(Body) of
         {Data} ->
+            ClientName = ej:get(Data, {<<"client">>} ),
+            JobName = ej:get(Data, {<<"job_id">>} ),
             
             ;
         {'EXIT', Error} ->
@@ -146,9 +148,20 @@ read_header() ->
 addr_node_map_new() ->
     { dict:new(), dict:new() }.
 
-addr_node_map_add({AddrToNode, NodeToAddr}, Addr, Node) ->
-    { dict:store(Addr, Node, AddrToNode),
-      dict:store(Node, Addr, NodeToAddr) }.
+kill_crossref(Forward, Backward, Key) ->
+    case dict:find(Forward, Key) of
+        {ok, OldValue} ->
+            dict:erase(OldValue, Backward);
+        error ->
+            Backward
+    end.
+
+addr_node_map_update({AddrToNode, NodeToAddr}, Addr, Node) ->
+    % purge any old references
+    NodeToAddr1 = kill_crossref(AddrToNode, NodeToAddr, Addr),
+    AddrToNode1 = kill_crossref(NodeToAddr, AddrToNode, Node),
+    { dict:store(Addr, Node, AddrToNode1),
+      dict:store(Node, Addr, NodeToAddr1) }.
 
 addr_node_map_lookup_by_addr({AddrToNode, _}, Addr) ->
     dict:fetch(Addr, AddrToNode).
