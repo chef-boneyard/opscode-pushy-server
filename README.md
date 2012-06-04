@@ -68,7 +68,7 @@ Start a client on your host:
 
     $ cd ~/oc/pushy/client
     $ bundle install
-    $ ./bin/pushy-client --config-service http://33.33.33.10:10003/organizations/pushy -n DERPY
+    $ ./bin/pushy-client -n DERPY
 
 Feel free to start multiple clients..just be sure to give them all a
 different name.
