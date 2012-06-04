@@ -23,14 +23,14 @@ sql_now() -> calendar:now_to_universal_time(os:timestamp()).
 
 -spec fetch_node_statuses(binary() | string()) -> {ok, list()} | {error, term()}.
 fetch_node_statuses(OrgId) ->
-  case sqerl:select(list_node_statuses_for_org, [OrgId]) of
-    {ok, none} ->
-      {ok, []};
-    {ok, Response} ->
-      {ok, Response};
-    {error, Reason} ->
-      {error, Reason}
-  end.
+    case sqerl:select(list_node_statuses_for_org, [OrgId]) of
+        {ok, none} ->
+            {ok, []};
+        {ok, Response} ->
+          {ok, Response};
+        {error, Reason} ->
+          {error, Reason}
+      end.
 
 -spec create_node_status(#pushy_node_status{}) -> {ok, 1} | {error, term()}.
 create_node_status(#pushy_node_status{}=NodeStatus) ->
@@ -67,11 +67,7 @@ create_object(#pushy_node_status{}=NodeStatus) ->
     create_object(insert_node_status, NodeStatus);
 %% This does not exactly follow the same pattern as it needs to
 %% insert a list of job_nodes into a separate table.
-create_object(#pushy_job{id = JobId,
-                          org_id = OrgId,
-                          created_at = CreatedAt,
-                          updated_at = UpdatedAt,
-                          job_nodes = JobNodes}=Job) ->
+create_object(#pushy_job{job_nodes = JobNodes}=Job) ->
     %% We're not dispatching to the general create_object/2 because creating a job
     %% involves adding multiple rows to multiple tables. Also, we currently embed a list of
     %% job nodes in the job record; this won't play nicely with the general
@@ -79,7 +75,7 @@ create_object(#pushy_job{id = JobId,
     %% prepared statement
     case create_object(insert_job, Job) of
       ok ->
-        case insert_job_nodes(JobNodes, OrgId, JobId, CreatedAt, UpdatedAt) of
+        case insert_job_nodes(JobNodes) of
           ok ->
               %% (Remember, create_object/1 should return {ok, Number})
               {ok, 1};
@@ -119,13 +115,18 @@ create_object(QueryName, Record) when is_atom(QueryName) ->
 %% Returns 'ok' if all records are inserted without issue. Returns an error tuple on the
 %% first checksum that fails to insert into the database for whatever reason. Further
 %% processing of the list is abandoned at that point.
-insert_job_nodes([], _OrgId, _JobId, _CreatedAt, _UpdatedAt) ->
+insert_job_nodes([]) ->
     ok;
-insert_job_nodes([{NodeName, Status, _CreatedAt, _UpdatedAt}|Rest], OrgId, JobId, CreatedAt, UpdatedAt) ->
-    case sqerl:statement(insert_job_node, [OrgId, NodeName, job_status(Status),
-          CreatedAt, UpdatedAt, JobId], count) of
+insert_job_nodes([#pushy_job_node{job_id=JobId,
+                                    org_id=OrgId,
+                                    node_name=NodeName,
+                                    status=Status,
+                                    created_at=CreatedAt,
+                                    updated_at=UpdatedAt}|Rest]) ->
+    case sqerl:statement(insert_job_node, [JobId, OrgId, NodeName,
+            job_status(Status), CreatedAt, UpdatedAt], count) of
         {ok, 1} ->
-            insert_job_nodes(Rest, OrgId, JobId, CreatedAt, UpdatedAt);
+            insert_job_nodes(Rest);
         {error, Reason} ->
             {error, Reason}
     end.
@@ -155,11 +156,13 @@ job_join_rows_to_record([Row|Rest], JobNodes ) ->
 
 %% @doc Convenience function for assembling a job_node tuple from a proplist
 proplist_to_job_node(Proplist) ->
-    {safe_get(<<"node_name">>, Proplist),
-     job_status(safe_get(<<"status">>, Proplist)),
-     safe_get(<<"created_at">>, Proplist),
-     safe_get(<<"updated_at">>, Proplist)
-     }.
+    #pushy_job_node{job_id=safe_get(<<"job_id">>, Proplist),
+                    org_id=safe_get(<<"org_id">>, Proplist),
+                    node_name=safe_get(<<"node_name">>, Proplist),
+                    status=job_status(safe_get(<<"status">>, Proplist)),
+                    created_at=safe_get(<<"created_at">>, Proplist),
+                    updated_at=safe_get(<<"updated_at">>, Proplist)
+                    }.
 
 %% Heartbeat Status translators
 hb_status(idle) -> 1;

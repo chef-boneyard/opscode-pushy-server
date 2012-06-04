@@ -29,12 +29,15 @@ new_record(pushy_job, OrgId, NodeNames) ->
     Id = chef_db:make_org_prefix_id(OrgId),
     #pushy_job{id = Id,
                 org_id = OrgId,
-                status = ?JOB_STATUS_NEW,
+                status = pushy_sql:job_status(new),
                 job_nodes = [
-                  {NodeName,
-                    ?JOB_STATUS_NEW,
-                    sql_date(now),
-                    sql_date(now)} || NodeName <- NodeNames]
+                  #pushy_job_node{job_id=Id,
+                                  org_id=OrgId,
+                                  node_name=NodeName,
+                                  status=pushy_sql:job_status(new),
+                                  created_at=sql_date(now),
+                                  updated_at=sql_date(now)} ||
+                                  NodeName <- NodeNames]
                 }.
 
 %% CHEF_COMMON CARGO_CULT
