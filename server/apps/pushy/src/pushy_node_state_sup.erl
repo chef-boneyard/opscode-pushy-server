@@ -43,7 +43,6 @@ load_children({ok, []}) ->
 load_children({ok, [FirstChild | OtherChildren]}) ->
     Name = proplists:get_value(<<"node_name">>, FirstChild),
     new(Name),
-    pushy_node_state:down(Name),
     load_children({ok, OtherChildren}).
 
 
