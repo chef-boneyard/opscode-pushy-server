@@ -15,6 +15,9 @@ depclean:
 compile: $(DEPS)
 	@rebar compile
 
+compile_app: $(DEPS)
+	@rebar skip_deps=true compile
+
 dialyzer:
 	@rm -rf apps/pushy/.eunit
 # Uncomment when stubbed functions in the FSM are complete
