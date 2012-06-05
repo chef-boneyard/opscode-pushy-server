@@ -9,6 +9,7 @@
 -export([
          make_zmq_socket_addr/1,
          make_zmq_socket_addr/2,
+         make_zmq_socket_addr/3,
          get_env/3
         ]).
 
@@ -20,6 +21,11 @@
 make_zmq_socket_addr(Port) ->
     Host = get_env(pushy, zeromq_listen_address, fun is_list/1),
     make_zmq_socket_addr(Host, Port).
+
+make_zmq_socket_addr(Host, PortName, tcp) ->
+    ProtoHost = io_lib:format("tcp://~s", [Host]),
+    make_zmq_socket_addr(ProtoHost, PortName).
+
 
 make_zmq_socket_addr(Host, PortName) when is_atom(PortName) ->
     Port = get_env(pushy, PortName, fun is_integer/1),

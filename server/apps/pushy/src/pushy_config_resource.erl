@@ -44,12 +44,16 @@ content_types_provided(Req, State) ->
 to_json(Req, State) ->
 
     Host = pushy_util:get_env(pushy, server_name, fun is_list/1),
-    HeartbeatAddress = iolist_to_binary(pushy_util:make_zmq_socket_addr(Host, server_heartbeat_port)),
-    StatusAddress = iolist_to_binary(pushy_util:make_zmq_socket_addr(Host, node_status_port)),
+    HeartbeatAddress = iolist_to_binary(
+        pushy_util:make_zmq_socket_addr(Host, server_heartbeat_port, tcp)),
+    StatusAddress = iolist_to_binary(
+        pushy_util:make_zmq_socket_addr(Host, node_status_port, tcp)),
+    HeartbeatInterval = pushy_util:get_env(pushy, heartbeat_interval, fun is_integer/1),
 
 %% TODO: Figure out how to get public key out of chef_keyring in encoded form!
     {ok, PublicKeyR} = chef_keyring:get_key(server_public),
-    PublicKey = public_key:pem_encode([public_key:pem_entry_encode('SubjectPublicKeyInfo', PublicKeyR)]),
+    PublicKey = public_key:pem_encode(
+        [public_key:pem_entry_encode('SubjectPublicKeyInfo', PublicKeyR)]),
 
     ConfigurationStruct =
         {[{<<"type">>, <<"config">>},
@@ -58,7 +62,7 @@ to_json(Req, State) ->
                    {[{<<"heartbeat">>,
                       {[{<<"out_addr">>, HeartbeatAddress},
                         {<<"in_addr">>, StatusAddress},
-                        {<<"interval">>, 15},
+                        {<<"interval">>, HeartbeatInterval/1000},
                         {<<"offline_threshold">>, 3},
                         {<<"online_threshold">>, 2}
                        ]}}]}},

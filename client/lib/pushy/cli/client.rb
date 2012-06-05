@@ -51,7 +51,7 @@ module Pushy
       option :config_service,
         :short => "-s HOST",
         :long => "--config-service HOST",
-        :default => "localhost:10003/organizations/clownco",
+        :default => "http://33.33.33.10:10003/organizations/pushy",
         :description => "URL pointing to configuration service (eventually same as chef)"
 
       option :verbose,

@@ -14,7 +14,7 @@ Run ALL THE THINGS
 ## Ensure host-based checkouts of all projects are on the correct branches
 
 * `opscode-omnibus` => OC-18/pushy
-* `mixlib-authorization` => OC-18/pushy
+* `mixlib-authorization` => OC-1066/pushy-jobs
 * `pushy` => master (cut a feature branch)
 
 ## Build or steal an OPC deb
@@ -29,10 +29,10 @@ Decision time.  You can either:
         $ cd ~/oc/opscode-omnibus
         $ vagrant omnibus build ubuntu-10.04 private-chef
 
-2. Grab a recent Pushy-aware deb from S3 (signed URL expires on 6/6/2012):
+2. Grab a recent Pushy-aware deb from the seabuild1 ReadyNAS:
 
         $ cd ~/oc/opscode-omnibus/pkg
-        $ wget https://opscode-east-collab.s3.amazonaws.com/opscode-omnibus/pkg/private-chef_1.1.19-128-g2616125-1.ubuntu.10.04_amd64.deb?AWSAccessKeyId=AKIAICIM7JE4OBF3OXVA&Expires=1339025284&Signature=ezWQKh0tUcwEt9v94zv7Y8mqYQ4%3D
+        $ wget https://readynas1.seabuild1.opscode.com/dev-general/opscode-east/opscode-omnibus/pkg/private-chef_1.1.19-133-geb2e9be-1.ubuntu.10.04_amd64.deb
 
 ## Stand up a dev-vm
 
@@ -68,7 +68,10 @@ Start a client on your host:
 
     $ cd ~/oc/pushy/client
     $ bundle install
-    $ bin/pushy-client -v -n DERPY -s http://33.33.33.10:10003
+    $ bin/pushy-client -v -n DERPY
+
+    # If you need to point to a different configuration endpoint:
+    $ bin/pushy-client -v -s http://33.33.33.10:10003 -n DERPY
 
 Feel free to start multiple clients..just be sure to give them all a
 different name.
