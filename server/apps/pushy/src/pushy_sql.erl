@@ -12,9 +12,6 @@
          create_job/1,
          update_job/1,
          update_job_node/1,
-         %% status
-         hb_status/1,
-         job_status/1,
 
          sql_now/0,
          statements/1
