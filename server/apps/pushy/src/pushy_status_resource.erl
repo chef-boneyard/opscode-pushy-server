@@ -1,10 +1,9 @@
 %% -*- erlang-indent-level: 4;indent-tabs-mode: nil; fill-column: 92 -*-
 %% ex: ts=4 sw=4 et
-%%% @author Kevin Smith <kevin@opscode.com>
-%%% @author Seth Falcon <seth@opscode.com>
-%%% @copyright Copyright 2011-2012 Opscode Inc.
+%%% @author Mark Anderson <mark@opscode.com>
+%%% @copyright Copyright 2012-2012 Opscode Inc.
 %%% @doc
-%%% REST resource for monitoring status of erchef
+%%% REST resource for monitoring status of pushy. Extracted from work done by Seth Falcon and Kevin Smith for erchef
 %%% @end
 -module(pushy_status_resource).
 
