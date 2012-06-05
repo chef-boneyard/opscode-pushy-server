@@ -2,20 +2,22 @@ module Pushy
   class Reaper
     # Kills a client after specified lifetime
 
-    attr_reader :lifetime, :client, :timer
+    attr_reader :lifetime, :app, :timer
 
-    def watch!(options)
+    def self.watch!(options)
       new(options).tap(&:start)
     end
 
     def initialize(options)
       @lifetime = options[:lifetime]
-      @client = options[:client]
+      @app = options[:app]
     end
 
     def start
+      Pushy::Log.info "Reaper: will reap in #{lifetime} seconds"
       @timer = EM::Timer.new(lifetime) do
-        Pushy::Client.reload!(client)
+        Pushy::Log.info "Reaper: Timeout (#{lifetime}) reached, killing and restart client"
+        app.reload
       end
     end
 
