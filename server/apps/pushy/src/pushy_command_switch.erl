@@ -119,9 +119,11 @@ process_message(State, Address, _Header, Body) ->
     case catch jiffy:decode(Body) of
         {Data} ->
             ClientName = ej:get(Data, {<<"client">>} ),
-            JobName = ej:get(Data, {<<"job_id">>} ),
-            
-            ;
+            _JobName = ej:get(Data, {<<"job_id">>} ),
+            State2 = addr_node_map_update(State, Address, ClientName),
+            %%% TODO SETH ADDS call here
+            %%% 
+            State2;
         {'EXIT', Error} ->
             error_logger:error_msg("Status message JSON parsing failed: body=~s, error=~s~n", [Body,Error]),
             State
@@ -156,6 +158,8 @@ kill_crossref(Forward, Backward, Key) ->
             Backward
     end.
 
+addr_node_map_update(#state{addr_node_map = AddrNodeMap} = State, Addr, Node) ->
+    State#state{addr_node_map = addr_node_map_update(AddrNodeMap, Addr, Node)};
 addr_node_map_update({AddrToNode, NodeToAddr}, Addr, Node) ->
     % purge any old references
     NodeToAddr1 = kill_crossref(AddrToNode, NodeToAddr, Addr),
@@ -163,9 +167,13 @@ addr_node_map_update({AddrToNode, NodeToAddr}, Addr, Node) ->
     { dict:store(Addr, Node, AddrToNode1),
       dict:store(Node, Addr, NodeToAddr1) }.
 
+addr_node_map_lookup_by_addr(#state{addr_node_map = AddrNodeMap}, Addr) ->
+    addr_node_map_lookup_by_addr(AddrNodeMap, Addr);
 addr_node_map_lookup_by_addr({AddrToNode, _}, Addr) ->
     dict:fetch(Addr, AddrToNode).
 
+addr_node_map_lookup_by_node(#state{addr_node_map = AddrNodeMap}, Node) ->
+    addr_node_map_lookup_by_addr(AddrNodeMap, Node);
 addr_node_map_lookup_by_node({_, NodeToAddr}, Node) ->
     dict:fetch(Node, NodeToAddr).
 
