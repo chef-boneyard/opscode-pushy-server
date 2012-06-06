@@ -16,9 +16,14 @@ module Pushy
     attr_accessor :client_private_key
     attr_accessor :server_public_key
     attr_accessor :node_name
+    attr_accessor :state
+    attr_accessor :subscriber
+    attr_accessor :push_socket
+    attr_accessor :cmd_socket
 
     def initialize(_app, options)
       @app = _app
+      @state = "starting"
 
       @monitor = Pushy::Monitor.new(options)
       @ctx = EM::ZeroMQ::Context.new(1)
@@ -36,6 +41,22 @@ module Pushy
       @node_name = app.node_name
       @client_private_key = load_key(app.client_private_key_path)
       @server_public_key = OpenSSL::PKey::RSA.new(options[:server_public_key]) || load_key(options[:server_public_key_path])
+    end
+
+    def change_state(state)
+      self.state = state
+      send_heartbeat
+    end
+
+    def send_heartbeat
+      return unless monitor.online?
+
+      message = {:node => node_name,
+        :org => "ORG",
+        :state => state,
+        :timestamp => Time.now.httpdate}
+
+      send_signed_json(self.push_socket, message)
     end
 
     class << self
@@ -79,44 +100,30 @@ module Pushy
 
       # Subscribe to heartbeat from the server
       Pushy::Log.info "Worker: Listening for server heartbeat at #{out_address}"
-      subscriber = ctx.socket(ZMQ::SUB, Pushy::Handler::Heartbeat.new(monitor, self))
-      subscriber.connect(out_address)
-      subscriber.setsockopt(ZMQ::SUBSCRIBE, "")
+      self.subscriber = ctx.socket(ZMQ::SUB, Pushy::Handler::Heartbeat.new(monitor, self))
+      self.subscriber.connect(out_address)
+      self.subscriber.setsockopt(ZMQ::SUBSCRIBE, "")
 
       # Push heartbeat to server
       Pushy::Log.info "Worker: Broadcasting heartbeat at #{in_address}"
-      push_socket = ctx.socket(ZMQ::PUSH)
-      push_socket.setsockopt(ZMQ::LINGER, 0)
-      push_socket.connect(in_address)
+      self.push_socket = ctx.socket(ZMQ::PUSH)
+      self.push_socket.setsockopt(ZMQ::LINGER, 0)
+      self.push_socket.connect(in_address)
 
       # command socket for server
       Pushy::Log.info "Worker: Connecting to command channel at #{cmd_address}"
       # TODO
       # This needs to be set up to be able to handle bidirectional messages; right now this is Tx only
       # Probably need to set it up with a handler, like the subscriber socket above.
-      cmd_socket = ctx.socket(ZMQ::DEALER, Pushy::Handler::Command.new(self))
-      cmd_socket.setsockopt(ZMQ::LINGER, 0)
-      cmd_socket.connect(cmd_address)
+      self.cmd_socket = ctx.socket(ZMQ::DEALER, Pushy::Handler::Command.new(self))
+      self.cmd_socket.setsockopt(ZMQ::LINGER, 0)
+      self.cmd_socket.connect(cmd_address)
 
       monitor.start
 
-      seq = 0
-
       Pushy::Log.debug "Worker: Setting heartbeat at every #{interval} seconds"
       @timer = EM::PeriodicTimer.new(interval) do
-        if monitor.online?
-
-          message = {:node => node_name,
-              :client => (`hostname`).chomp,
-              :org => "ORG",
-              :sequence => seq,
-              :timestamp => Time.now.httpdate}
-          
-          send_signed_json(push_socket, message)
-
-          # NOTE: Sequence gets reset whenever the client reloads
-          seq += 1
-        end
+        send_heartbeat
       end
 
       # TODO
