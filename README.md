@@ -75,3 +75,21 @@ Start a client on your host:
 
 Feel free to start multiple clients..just be sure to give them all a
 different name.
+
+## Create (and run) a Job
+
+These commands should be entered in the console of the running pushy server.
+
+First, insert a job record into the database:
+
+    %% ensure the console knows about our records
+    rr("/srv/piab/mounts/pushy/rel/pushy/lib/pushy/include/pushy_sql.hrl").
+    %% list of nodes that should run job
+    NodeNames = [<<"DERPY">>,<<"RAINBOWDASH">>].
+    %% create an embroyonic job record
+    Job = pushy_object:new_record(pushy_job, <<"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa">>, NodeNames).
+    %% set the command and maxium duration
+    Job1 = Job#pushy_job{command= <<"sleep 5">>, duration= 3600}.
+    %% insert job into the DB
+    pushy_object:create_object(create_job, Job1, <<"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb">>).
+
