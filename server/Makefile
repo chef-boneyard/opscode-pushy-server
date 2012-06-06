@@ -1,4 +1,4 @@
-DEPS = deps/erlzmq deps/jiffy deps/gproc deps/ej deps/chef_common deps/sqerl
+DEPS = deps/erlzmq deps/jiffy deps/gproc deps/ej deps/chef_common deps/sqerl deps/mixer
 
 all: compile all_tests
 
