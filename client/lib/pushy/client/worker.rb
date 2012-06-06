@@ -90,9 +90,7 @@ module Pushy
 
       Pushy::Log.debug "Worker: Setting heartbeat at every #{interval} seconds"
       @timer = EM::PeriodicTimer.new(interval) do
-        Pushy::Log.debug "Worker: Attempting heartbeat"
         if monitor.online?
-          Pushy::Log debug "Worker: monitor online"
 
           json = Yajl::Encoder.encode({:node => node_name,
                                       :client => (`hostname`).chomp,

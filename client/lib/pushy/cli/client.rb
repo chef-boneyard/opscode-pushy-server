@@ -48,9 +48,9 @@ module Pushy
         :default => "tcp://127.0.0.1:10001",
         :description => "URL pointing to the server's node state tracking service"
 
-      option :config_service,
+      option :service_url_base,
         :short => "-s HOST",
-        :long => "--config-service HOST",
+        :long => "--service-url-base HOST",
         :default => "http://33.33.33.10:10003/organizations/pushy",
         :description => "URL pointing to configuration service (eventually same as chef)"
 
@@ -115,7 +115,7 @@ module Pushy
       def run
         reconfigure
         app = Pushy::App.new \
-                :service_url_base        => config[:config_service],
+                :service_url_base        => config[:service_url_base],
                 :client_private_key_path => config[:client_private_key_path],
                 :node_name               => config[:node_name]
 
