@@ -95,8 +95,8 @@ create_object(#pushy_job{status = Status, job_nodes = JobNodes}=Job) ->
     %% job nodes in the job record; this won't play nicely with the general
     %% 'create_object' logic, which passes all record fields (in order) as parameters for a
     %% prepared statement
-    case create_object(insert_job, Job) of
-      ok ->
+    case create_object(insert_job, Fields) of
+      {ok, 1} ->
         case insert_job_nodes(JobNodes) of
           ok ->
               %% (Remember, create_object/1 should return {ok, Number})
