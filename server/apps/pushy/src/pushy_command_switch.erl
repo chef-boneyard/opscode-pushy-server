@@ -85,12 +85,9 @@ handle_info({zmq, _CommandSock, Address, [rcvmore]},
     error_logger:info_msg("Receiving message with address ~w~n", [Address]),
 
     Header = read_header(),
-    ?debugVal(Address),
-    ?debugVal(Header),
     Body = pushy_util:read_body(),
-    ?debugVal(Body),
 
-    error_logger:info_msg("Received message with address ~p~n~p~n~p~n", [Address, Header, Body]),
+    error_logger:info_msg("Received message~n\tA ~p~n\tH ~s~n\tB ~s~n", [Address, Header, Body]),
     State1 = case catch pushy_util:do_authenticate_message(Header, Body) of
                  ok ->
                      process_message(State, Address, Header, Body);
@@ -124,19 +121,21 @@ do_send_multi(State, Org, Nodes, Message) ->
 process_message(State, Address, _Header, Body) ->
     case catch jiffy:decode(Body) of
         {Data} ->
-            ?debugVal(Data),
+            Type = ej:get({<<"type">>}, Data ),
             NodeName = ej:get({<<"node">>}, Data ),
-            ?debugVal(NodeName),
             OrgName  = ej:get({<<"org">>}, Data ),
-            ?debugVal(OrgName),
             ClientName = ej:get({<<"client">>}, Data ),
-            ?debugVal(ClientName),
-            _JobName = ej:get({<<"job_id">>}, Data, unknown ),
-
+            JobName = ej:get({<<"job_id">>}, Data, unknown ),
             State2 = addr_node_map_update(State, Address, {OrgName, NodeName}),
-            %%% TODO SETH ADDS call here
-            %%% send_to_job_controller(JobName, Body)
-            State2;
+            error_logger:info_msg("Got message type ~s from Org ~s Node ~s Client ~s with job id ~s",
+                                  [Type, OrgName, NodeName, ClientName, JobName]),
+            case Type of
+                "ready" -> State2;
+                _Else ->
+                    %% TODO SETH ADDS call here
+                    %% send_to_job_controller(JobName, Body)
+                    State2
+            end;
         {'EXIT', Error} ->
             error_logger:error_msg("Status message JSON parsing failed: body=~s, error=~s~n", [Body,Error]),
             State
@@ -169,8 +168,6 @@ addr_node_map_new() ->
     { dict:new(), dict:new() }.
 
 kill_crossref(Forward, Backward, Key) ->
-    ?debugVal(Forward),
-    ?debugVal(Backward),
     case dict:find(Key, Forward) of
         {ok, OldValue} ->
             dict:erase(OldValue, Backward);

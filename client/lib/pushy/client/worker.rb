@@ -90,7 +90,7 @@ module Pushy
       push_socket.connect(in_address)
 
       # command socket for server
-      Pushy::Log.info "Worker: Connecting to command channel at #{in_address}"
+      Pushy::Log.info "Worker: Connecting to command channel at #{cmd_address}"
       cmd_socket = ctx.socket(ZMQ::DEALER)
       cmd_socket.setsockopt(ZMQ::LINGER, 0)
       cmd_socket.connect(cmd_address)
