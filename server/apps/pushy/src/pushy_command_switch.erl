@@ -15,8 +15,8 @@
 %% ------------------------------------------------------------------
 
 -export([start_link/1,
-         send_command/2,
-         send_multi_command/2]).
+         send_command/3,
+         send_multi_command/3]).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Exports
@@ -47,10 +47,10 @@
 start_link(Ctx) ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [Ctx], []).
 
-send_command(ClientName, Message) ->
-    gen_server:cast(?MODULE, {send, ClientName, Message}).
-send_multi_command(Clients, Message) ->
-    gen_server:cast(?MODULE, {send_multi, Clients, Message}).
+send_command(OrgName, NodeName, Message) ->
+    gen_server:cast(?MODULE, {send, OrgName, NodeName, Message}).
+send_multi_command(OrgName, Nodes, Message) ->
+    gen_server:cast(?MODULE, {send_multi, OrgName, Nodes, Message}).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
@@ -71,20 +71,26 @@ init([Ctx]) ->
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
-handle_cast({send, ClientName, Message}, #state{}=State) ->
-    do_send(State, ClientName, Message),
+handle_cast({send, OrgName, NodeName, Message}, #state{}=State) ->
+    do_send(State, OrgName, NodeName, Message),
     {noreply, State};
-handle_cast({send_multi, ClientName, Message}, #state{}=State) ->
-    do_send_multi(State, ClientName, Message),
+handle_cast({send_multi, OrgName, Nodes, Message}, #state{}=State) ->
+    do_send_multi(State, OrgName, Nodes, Message),
     {noreply, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
 handle_info({zmq, _CommandSock, Address, [rcvmore]},
             State) ->
-    read_address_separator(),
+    error_logger:info_msg("Receiving message with address ~w~n", [Address]),
+
     Header = read_header(),
+    ?debugVal(Address),
+    ?debugVal(Header),
     Body = pushy_util:read_body(),
+    ?debugVal(Body),
+
+    error_logger:info_msg("Received message with address ~p~n~p~n~p~n", [Address, Header, Body]),
     State1 = case catch pushy_util:do_authenticate_message(Header, Body) of
                  ok ->
                      process_message(State, Address, Header, Body);
@@ -108,21 +114,28 @@ code_change(_OldVsn, State, _Extra) ->
 
 do_send(#state{addr_node_map = AddrNodeMap,
                command_sock = CommandSocket},
-        ClientName, Message) ->
-    Address = addr_node_map_lookup_by_node(AddrNodeMap, ClientName),
+        Org, Node, Message) ->
+    Address = addr_node_map_lookup_by_node(AddrNodeMap, {Org, Node}),
     send_multipart(CommandSocket, Address, Message).
 
-do_send_multi(State, Clients, Message) ->
-    [ do_send(State,Client,Message) || Client <- Clients ].
+do_send_multi(State, Org, Nodes, Message) ->
+    [ do_send(State, Org, Node, Message) || Node <- Nodes ].
 
 process_message(State, Address, _Header, Body) ->
     case catch jiffy:decode(Body) of
         {Data} ->
-            ClientName = ej:get(Data, {<<"client">>} ),
-            _JobName = ej:get(Data, {<<"job_id">>} ),
-            State2 = addr_node_map_update(State, Address, ClientName),
+            ?debugVal(Data),
+            NodeName = ej:get({<<"node">>}, Data ),
+            ?debugVal(NodeName),
+            OrgName  = ej:get({<<"org">>}, Data ),
+            ?debugVal(OrgName),
+            ClientName = ej:get({<<"client">>}, Data ),
+            ?debugVal(ClientName),
+            _JobName = ej:get({<<"job_id">>}, Data, unknown ),
+
+            State2 = addr_node_map_update(State, Address, {OrgName, NodeName}),
             %%% TODO SETH ADDS call here
-            %%% 
+            %%% send_to_job_controller(JobName, Body)
             State2;
         {'EXIT', Error} ->
             error_logger:error_msg("Status message JSON parsing failed: body=~s, error=~s~n", [Body,Error]),
@@ -134,23 +147,30 @@ process_message(State, Address, _Header, Body) ->
 %% Utility functions; we should generalize these and move elsewhere.
 %%
 
-read_address_separator() ->
-    receive
-        {zmq, _Sock, <<>>, [rcvmore]} ->
-            ok
-    end.
+%read_address_separator() ->
+%    receive
+%        {zmq, _Sock, <<>>, [rcvmore]} ->
+%            ok;
+%        {zmq, _Sock, Msg, Opts} ->
+%            ?debugVal(Msg), ?debugVal(Opts),
+%            error
+%    end.
 
 read_header() ->
     receive
         {zmq, _Sock, HeaderFrame, [rcvmore]} ->
-            HeaderFrame
+            HeaderFrame;
+        {zmq, _Sock, Msg, Opts} ->
+            ?debugVal(Msg), ?debugVal(Opts),
+            error
     end.
-
 
 addr_node_map_new() ->
     { dict:new(), dict:new() }.
 
 kill_crossref(Forward, Backward, Key) ->
+    ?debugVal(Forward),
+    ?debugVal(Backward),
     case dict:find(Forward, Key) of
         {ok, OldValue} ->
             dict:erase(OldValue, Backward);
