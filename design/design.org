@@ -493,6 +493,21 @@ Version=1.0;Checksum=vQiGY85BzEAi5k7noSiN3A==
        ready for execution. If the client is currently executing a job, it will reply with a NACK
        message and the server will mark that node as ineligible to start the command.
 
+****** Client message formate
+#+begin_example
+{
+  "client": "client_name",                # OPC host name
+  "type": "job_command",                  # message type
+  "job_id": "1234",                       # job id
+  "state": "ack"                          # command to execute
+  "detail": 
+}
+#+end_example
+
+State can be "ack", "nack" (with detail specificing the reason)
+
+
+
 ***** Modifying Job Initiation
       Users can place additional restrictions on the initiation of a push job.
       These restrictions are expressed by passing additional flags to the knife

@@ -10,7 +10,9 @@
          make_zmq_socket_addr/1,
          make_zmq_socket_addr/2,
          make_zmq_socket_addr/3,
-         get_env/3
+         get_env/3,
+         read_body/0,
+         do_authenticate_message/2
         ]).
 
 -include_lib("eunit/include/eunit.hrl").
@@ -47,4 +49,43 @@ get_env(Section, Item, TypeCheck) ->
             error_logger:error_msg("Bad config item for ~p ~p ~n", [Section, Item]),
             error(config_missing_item)
     end.
+
+%%
+%% Factor out common packet handling methods
+%%
+
+read_body() ->
+    receive
+        {zmq, _Sock, BodyFrame, []} ->
+            BodyFrame
+    end.
+
+do_authenticate_message(Header, Body) ->
+    SignedChecksum = signed_checksum_from_header(Header),
+    % TODO - query DB for public key of each client
+    {ok, PublicKey} = chef_keyring:get_key(client_public),
+    Decrypted = decrypt_sig(SignedChecksum, PublicKey),
+    Plain = chef_authn:hash_string(Body),
+    try
+        Decrypted = Plain,
+        ok
+    catch
+        error:{badmatch, _} ->
+            {no_authn, bad_sig}
+    end.
+
+% TODO - update chef_authn to export this function
+decrypt_sig(Sig, {'RSAPublicKey', _, _} = PK) ->
+    try
+        public_key:decrypt_public(base64:decode(Sig), PK)
+    catch
+        error:decrypt_failed ->
+            decrypt_failed
+    end.
+
+signed_checksum_from_header(Header) ->
+    HeaderParts = re:split(Header, <<":|;">>),
+    {_version, _Version, _signed_checksum, SignedChecksum}
+        = list_to_tuple(HeaderParts),
+    SignedChecksum.
 
