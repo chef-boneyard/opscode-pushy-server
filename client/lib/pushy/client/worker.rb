@@ -91,6 +91,9 @@ module Pushy
 
       # command socket for server
       Pushy::Log.info "Worker: Connecting to command channel at #{cmd_address}"
+      # TODO
+      # This needs to be set up to be able to handle bidirectional messages; right now this is Tx only
+      # Probably need to set it up with a handler, like the subscriber socket above.
       cmd_socket = ctx.socket(ZMQ::DEALER)
       cmd_socket.setsockopt(ZMQ::LINGER, 0)
       cmd_socket.connect(cmd_address)
@@ -116,7 +119,10 @@ module Pushy
         end
       end
 
-      @command = EM::PeriodicTimer.new(interval) do
+      # TODO
+      # This whole section is test code; I just wanted to send a message to the server to verify things work
+      # We want to send a 'ready' message on startup, and whenever we lose the connection to the server or otherwise reconfigure
+      @command = EM::PeriodicTimer.new(interval*5) do
           message = {:node => node_name,
           :client => (`hostname`).chomp,
           :org => "ORG",

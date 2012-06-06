@@ -82,6 +82,8 @@ handle_cast(_Msg, State) ->
 
 handle_info({zmq, _CommandSock, Address, [rcvmore]},
             State) ->
+    %% TODO: This needs a more graceful way of handling message sequences. I really feel like we need to
+    %% abstract out some more generalized routines to handle the message receipt process.
     error_logger:info_msg("Receiving message with address ~w~n", [Address]),
 
     Header = read_header(),
@@ -122,14 +124,19 @@ process_message(State, Address, _Header, Body) ->
     case catch jiffy:decode(Body) of
         {Data} ->
             Type = ej:get({<<"type">>}, Data ),
+
+            % This essentially debug code.
             NodeName = ej:get({<<"node">>}, Data ),
             OrgName  = ej:get({<<"org">>}, Data ),
             ClientName = ej:get({<<"client">>}, Data ),
             JobName = ej:get({<<"job_id">>}, Data, unknown ),
-            State2 = addr_node_map_update(State, Address, {OrgName, NodeName}),
             error_logger:info_msg("Got message type ~s from Org ~s Node ~s Client ~s with job id ~s",
                                   [Type, OrgName, NodeName, ClientName, JobName]),
+
+            %% Every time we get a message from a node, we update it's Addr->Name mapping entry
+            State2 = addr_node_map_update(State, Address, {OrgName, NodeName}),
             case Type of
+                % ready messages only are used to initialze 
                 "ready" -> State2;
                 _Else ->
                     %% TODO SETH ADDS call here
