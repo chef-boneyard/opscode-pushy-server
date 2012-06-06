@@ -51,6 +51,7 @@ module Pushy
         new app,
           :in_address        => config['push_jobs']['heartbeat']['in_addr'],
           :out_address       => config['push_jobs']['heartbeat']['out_addr'],
+          :cmd_address       => config['push_jobs']['heartbeat']['command_addr'],
           :interval          => config['push_jobs']['heartbeat']['interval'],
           :offline_threshold => config['push_jobs']['heartbeat']['offline_threshold'],
           :online_threshold  => config['push_jobs']['heartbeat']['online_threshold'],
