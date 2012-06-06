@@ -95,7 +95,9 @@ restarting(current_state, _From, State) ->
 
 handle_event({start_watching, Who}, StateName, #state{observers=Observers}=State) ->
     State1 = case lists:member(Who, Observers) of
-        false -> State#state{observers=[Who|Observers]};
+        false ->
+            erlang:monitor(process, Who),
+            State#state{observers=[Who|Observers]};
         true -> State
     end,
     {next_state, StateName, State1};
@@ -107,6 +109,11 @@ handle_event(_Event, StateName, State) ->
 
 handle_sync_event(_Event, _From, StateName, State) ->
     {reply, ignored, StateName, State}.
+
+handle_info({'DOWN', _MonitorRef, _Type, Object, _Info}, StateName, State) ->
+    Observers = State#state.observers,
+    State1 = State#state{observers=lists:delete(Object,Observers)},
+    {next_state, StateName, State1};
 
 handle_info(heartbeat, up, State) ->
     {next_state, up, reset_timer(State)};
@@ -159,10 +166,8 @@ save_status(Status, #state{name=Name}=State) ->
             State
     end.
 
-notify_status_change(Status, State) ->
-    Name = State#state.name,
-    Observers = State#state.observers,
-    [ Observer ! { Name,Status } || Observer <- Observers ].
+notify_status_change(Status, #state{name=Name,observers=Observers}) ->
+    [ Observer ! { Name,self(),Status } || Observer <- Observers ].
 
 
 %% confirm that we have recieved enough heartbeats before coming up
