@@ -30,20 +30,22 @@ module Pushy
 
     class Command
 
-      def initialize(client)
-        @client = client
+      def initialize(worker)
+        @worker = worker
       end
 
       def on_readable(socket, parts)
         return unless valid?(parts)
         command_hash = Utils.parse_json(parts[1].copy_out_string)
+        @worker.change_state "running"
         puts "Executed Command:", system(command_hash['command'])
+        @worker.change_state "idle"
       end
 
       private
 
       def valid?(parts)
-        Utils.valid?(parts, @client.server_public_key)
+        Utils.valid?(parts, @worker.server_public_key)
       end
 
     end
