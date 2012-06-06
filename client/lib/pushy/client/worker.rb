@@ -141,6 +141,8 @@ module Pushy
         send_signed_json(cmd_socket, message)
       end
 
+      change_state "idle"
+
     end
 
     def stop
