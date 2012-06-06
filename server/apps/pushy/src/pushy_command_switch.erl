@@ -223,7 +223,7 @@ addr_node_map_lookup_by_node({_, NodeToAddr}, Node) ->
 
 send_multipart(Socket, Address, Message) ->
     erlzmq:send(Socket, Address, [sndmore]),
-    erlzmq:send(Socket, <<>>, [sndmore]),
+    %erlzmq:send(Socket, <<>>, [sndmore]),
     send_multipart(Socket, Message).
 
 send_multipart(_Socket, []) ->

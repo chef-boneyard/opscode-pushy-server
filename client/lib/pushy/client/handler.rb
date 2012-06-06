@@ -30,9 +30,20 @@ module Pushy
 
     class Command
 
+      def initialize(client)
+        @client = client
+      end
+
       def on_readable(socket, parts)
-        puts "COMMAND #{socket.inspect}"
-        puts parts.inspect
+        return unless valid?(parts)
+        command_hash = Utils.parse_json(parts[1].copy_out_string)
+        ap [:command_exec, command_hash['command']]
+      end
+
+      private
+
+      def valid?(parts)
+        Utils.valid?(parts, @client.server_public_key)
       end
 
     end
@@ -50,10 +61,8 @@ module Pushy
       end
 
       def self.parse_json(json)
-        body_hash = Yajl::Parser.new.parse(json)
-
-        body_hash.keys.each do |key|
-          puts "#{key}: #{body_hash[key]}"
+        Yajl::Parser.new.parse(json).tap do |body_hash|
+          ap body_hash
         end
       end
 

@@ -94,7 +94,7 @@ module Pushy
       # TODO
       # This needs to be set up to be able to handle bidirectional messages; right now this is Tx only
       # Probably need to set it up with a handler, like the subscriber socket above.
-      cmd_socket = ctx.socket(ZMQ::DEALER, Pushy::Handler::Command.new())
+      cmd_socket = ctx.socket(ZMQ::DEALER, Pushy::Handler::Command.new(self))
       cmd_socket.setsockopt(ZMQ::LINGER, 0)
       cmd_socket.connect(cmd_address)
 
