@@ -186,12 +186,12 @@ job_join_rows_to_record([Row|Rest], JobNodes ) ->
 
 %% @doc Convenience function for assembling a job_node tuple from a proplist
 proplist_to_job_node(Proplist) ->
-    #pushy_job_node{job_id=safe_get(<<"job_id">>, Proplist),
-                    org_id=safe_get(<<"org_id">>, Proplist),
-                    node_name=safe_get(<<"node_name">>, Proplist),
-                    status=job_status(safe_get(<<"status">>, Proplist)),
-                    created_at=safe_get(<<"created_at">>, Proplist),
-                    updated_at=safe_get(<<"updated_at">>, Proplist)
+    #pushy_job_node{job_id = safe_get(<<"id">>, Proplist),
+                    org_id = safe_get(<<"org_id">>, Proplist),
+                    node_name = safe_get(<<"node_name">>, Proplist),
+                    status = job_status(safe_get(<<"status">>, Proplist)),
+                    created_at = safe_get(<<"created_at">>, Proplist),
+                    updated_at = safe_get(<<"updated_at">>, Proplist)
                     }.
 
 %% Heartbeat Status translators
