@@ -126,6 +126,7 @@ is covered in [[Server and Node Discovery]].
                      "heartbeat": {
                                     "out_addr": "tcp://10.10.1.5:10000",
                                     "in_addr": "tcp://10.10.1.5:10001",
+                                    "command_addr": "tcp://10.10.1.5:10001",
                                     "interval": 15,
                                     "offline_threshold": 3,
                                     "online_threshold": 2
