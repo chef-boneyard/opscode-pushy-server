@@ -126,7 +126,8 @@ module Pushy
           message = {:node => node_name,
           :client => (`hostname`).chomp,
           :org => "ORG",
-          :type => "ready",
+          :type => "echo",
+          :command => "ps aux",
           :timestamp => Time.now.httpdate
           }
         pp ["Sending message:", message]

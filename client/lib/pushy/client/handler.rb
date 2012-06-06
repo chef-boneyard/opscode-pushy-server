@@ -50,5 +50,6 @@ module Pushy
       end
 
     end
+
   end
 end

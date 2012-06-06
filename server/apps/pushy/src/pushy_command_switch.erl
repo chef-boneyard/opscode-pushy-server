@@ -37,7 +37,8 @@
 
 -record(state,
         {command_sock,
-         addr_node_map :: {dictionary(), dictionary()}
+         addr_node_map :: {dictionary(), dictionary()},
+         private_key
         }).
 
 %% ------------------------------------------------------------------
@@ -59,12 +60,15 @@ send_multi_command(OrgName, Nodes, Message) ->
 init([Ctx]) ->
     CommandAddress = pushy_util:make_zmq_socket_addr(command_port),
 
+    {ok, PrivateKey} = chef_keyring:get_key(server_private),
+
     error_logger:info_msg("Starting command mux listening on ~s~n.", [CommandAddress]),
 
     {ok, CommandSock} = erlzmq:socket(Ctx, [router, {active, true}]),
     ok = erlzmq:bind(CommandSock, CommandAddress),
     State = #state{command_sock = CommandSock,
-                   addr_node_map = addr_node_map_new()
+                   addr_node_map = addr_node_map_new(),
+                   private_key = PrivateKey
                   },
     {ok, State}.
 
@@ -136,12 +140,23 @@ process_message(State, Address, Header, Body) ->
             %% Every time we get a message from a node, we update it's Addr->Name mapping entry
             State2 = addr_node_map_update(State, Address, {OrgName, NodeName}),
             case Type of
-                % ready messages only are used to initialze 
+                % ready messages only are used to initialze
                 <<"ready">> ->
                     send_multipart(State#state.command_sock, Address, [Header, Body]),
                     State2;
                 <<"echo">> ->
-                    send_multipart(State#state.command_sock, Address, [Header, Body]),
+                    {ok, Hostname} = inet:gethostname(),
+                    Msg = {[{server, list_to_binary(Hostname)},
+                            {type, <<"job_command">>},
+                            {job_id, JobName},
+                            {command, ej:get({<<"command">>}, Data)}]},
+                    BodyFrame = jiffy:encode(Msg),
+                    HeaderParts = sign_message(State#state.private_key, BodyFrame),
+                    Headers = [join_bins(tuple_to_list(Part), <<":">>) || Part <- HeaderParts],
+                    SignedHeader = join_bins(Headers, <<";">>),
+                    error_logger:info_msg("SIGNEDHEADER:~p~n HEADER:~p~n", [SignedHeader, Header]),
+                    send_multipart(State#state.command_sock,
+                                   Address, [SignedHeader, BodyFrame]),
                     State2;
                 _Else ->
                     %% TODO SETH ADDS call here
@@ -218,3 +233,22 @@ send_multipart(Socket, [Msg | []]) ->
 send_multipart(Socket, [Head | Tail]) ->
     erlzmq:send(Socket, Head, [sndmore]),
     send_multipart(Socket, Tail).
+
+
+%% Copied from pushy_heartbeat_generator
+%% TODO This needs to be put into a standard library
+sign_message(PrivateKey, Body) ->
+    HashedBody = chef_authn:hash_string(Body),
+    SignedChecksum = base64:encode(public_key:encrypt_private(HashedBody, PrivateKey)),
+    [{<<"Version">>, <<"1.0">>},
+     {<<"SignedChecksum">>, SignedChecksum}].
+
+join_bins([], _Sep) ->
+    <<>>;
+join_bins(Bins, Sep) when is_binary(Sep) ->
+    join_bins(Bins, Sep, []).
+
+join_bins([B], _Sep, Acc) ->
+    iolist_to_binary(lists:reverse([B|Acc]));
+join_bins([B|Rest], Sep, Acc) ->
+    join_bins(Rest, Sep, [Sep, B | Acc]).
