@@ -147,6 +147,7 @@ module Pushy
 
     def stop
       Pushy::Log.debug "Worker: Stopping ..."
+      change_state "restarting"
       monitor.stop
       timer.cancel
       command.cancel
