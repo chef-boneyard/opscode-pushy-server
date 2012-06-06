@@ -79,7 +79,7 @@ module Pushy
 
       # Subscribe to heartbeat from the server
       Pushy::Log.info "Worker: Listening for server heartbeat at #{out_address}"
-      subscriber = ctx.socket(ZMQ::SUB, Pushy::Handler.new(monitor, self))
+      subscriber = ctx.socket(ZMQ::SUB, Pushy::Handler::Heartbeat.new(monitor, self))
       subscriber.connect(out_address)
       subscriber.setsockopt(ZMQ::SUBSCRIBE, "")
 
@@ -94,7 +94,7 @@ module Pushy
       # TODO
       # This needs to be set up to be able to handle bidirectional messages; right now this is Tx only
       # Probably need to set it up with a handler, like the subscriber socket above.
-      cmd_socket = ctx.socket(ZMQ::DEALER)
+      cmd_socket = ctx.socket(ZMQ::DEALER, Pushy::Handler::Command.new())
       cmd_socket.setsockopt(ZMQ::LINGER, 0)
       cmd_socket.connect(cmd_address)
 

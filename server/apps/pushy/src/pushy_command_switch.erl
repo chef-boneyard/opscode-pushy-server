@@ -120,7 +120,7 @@ do_send(#state{addr_node_map = AddrNodeMap,
 do_send_multi(State, Org, Nodes, Message) ->
     [ do_send(State, Org, Node, Message) || Node <- Nodes ].
 
-process_message(State, Address, _Header, Body) ->
+process_message(State, Address, Header, Body) ->
     case catch jiffy:decode(Body) of
         {Data} ->
             Type = ej:get({<<"type">>}, Data ),
@@ -137,7 +137,12 @@ process_message(State, Address, _Header, Body) ->
             State2 = addr_node_map_update(State, Address, {OrgName, NodeName}),
             case Type of
                 % ready messages only are used to initialze 
-                "ready" -> State2;
+                <<"ready">> ->
+                    send_multipart(State#state.command_sock, Address, [Header, Body]),
+                    State2;
+                <<"echo">> ->
+                    send_multipart(State#state.command_sock, Address, [Header, Body]),
+                    State2;
                 _Else ->
                     %% TODO SETH ADDS call here
                     %% send_to_job_controller(JobName, Body)
@@ -209,7 +214,7 @@ send_multipart(Socket, Address, Message) ->
 send_multipart(_Socket, []) ->
     ok;
 send_multipart(Socket, [Msg | []]) ->
-    erlzqm:send(Socket, Msg, []);
+    erlzmq:send(Socket, Msg, []);
 send_multipart(Socket, [Head | Tail]) ->
     erlzmq:send(Socket, Head, [sndmore]),
     send_multipart(Socket, Tail).
