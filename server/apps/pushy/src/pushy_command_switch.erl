@@ -171,7 +171,7 @@ addr_node_map_new() ->
 kill_crossref(Forward, Backward, Key) ->
     ?debugVal(Forward),
     ?debugVal(Backward),
-    case dict:find(Forward, Key) of
+    case dict:find(Key, Forward) of
         {ok, OldValue} ->
             dict:erase(OldValue, Backward);
         error ->
