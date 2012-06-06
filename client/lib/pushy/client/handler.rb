@@ -37,7 +37,7 @@ module Pushy
       def on_readable(socket, parts)
         return unless valid?(parts)
         command_hash = Utils.parse_json(parts[1].copy_out_string)
-        ap [:command_exec, command_hash['command']]
+        puts "Executed Command:", system(command_hash['command'])
       end
 
       private
