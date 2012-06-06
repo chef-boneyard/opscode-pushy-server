@@ -3,11 +3,12 @@ require 'pp'
 
 module Pushy
   class Worker
-    attr_reader :app, :monitor, :timer
+    attr_reader :app, :monitor, :timer, :command
 
     attr_accessor :ctx
     attr_accessor :out_address
     attr_accessor :in_address
+    attr_accessor :cmd_address
     attr_accessor :interval
     attr_accessor :offline_threshold
     attr_accessor :online_threshold
@@ -23,6 +24,7 @@ module Pushy
       @ctx = EM::ZeroMQ::Context.new(1)
       @out_address = options[:out_address]
       @in_address = options[:in_address]
+      @cmd_address = options[:cmd_address]
       @interval = options[:interval]
       @client_key_path = options[:client_key]
       @server_key_path = options[:server_key]
@@ -72,6 +74,8 @@ module Pushy
 
     def start
 
+      # TODO: Define hwm behavior for sockets below
+
       # Subscribe to heartbeat from the server
       Pushy::Log.info "Worker: Listening for server heartbeat at #{out_address}"
       subscriber = ctx.socket(ZMQ::SUB, Pushy::Handler.new(monitor, self))
@@ -84,6 +88,12 @@ module Pushy
       push_socket.setsockopt(ZMQ::LINGER, 0)
       push_socket.connect(in_address)
 
+      # command socket for server
+      Pushy::Log.info "Worker: Connecting to command channel at #{in_address}"
+      cmd_socket = ctx.socket(ZMQ::DEALER)
+      cmd_socket.setsockopt(ZMQ::LINGER, 0)
+      cmd_socket.connect(cmd_address)
+
       monitor.start
 
       seq = 0
@@ -92,28 +102,37 @@ module Pushy
       @timer = EM::PeriodicTimer.new(interval) do
         if monitor.online?
 
-          json = Yajl::Encoder.encode({:node => node_name,
-                                      :client => (`hostname`).chomp,
-                                      :org => "ORG",
-                                      :sequence => seq,
-                                      :timestamp => Time.now.httpdate})
-
-          auth = "VersionId:0.0.1;SignedChecksum:#{sign_checksum(json)}"
-
-          Pushy::Log.debug "Sending Message #{json}"
-
-          push_socket.send_msg(auth, json)
+          message = {:node => node_name,
+              :client => (`hostname`).chomp,
+              :org => "ORG",
+              :sequence => seq,
+              :timestamp => Time.now.httpdate}
+          
+          send_signed_json(push_socket, message)
 
           # NOTE: Sequence gets reset whenever the client reloads
           seq += 1
         end
       end
+
+      @command = EM::PeriodicTimer.new(interval) do
+          message = {:node => node_name,
+          :client => (`hostname`).chomp,
+          :org => "ORG",
+          :type => "ready",
+          :timestamp => Time.now.httpdate
+          }
+        pp ["Sending message:", message]
+        send_signed_json(cmd_socket, message)
+      end
+
     end
 
     def stop
       Pushy::Log.debug "Worker: Stopping ..."
       monitor.stop
       timer.cancel
+      command.cancel
       Pushy::Log.debug "Worker: Stopped."
     end
 
@@ -127,6 +146,16 @@ module Pushy
     def sign_checksum(json)
       checksum = Mixlib::Authentication::Digester.hash_string(json)
       Base64.encode64(client_private_key.private_encrypt(checksum)).chomp
+    end
+
+    def send_signed_json(socket, message)
+      json = Yajl::Encoder.encode(message)
+      sig = sign_checksum(json)
+      auth = "VersionId:0.0.1;SignedChecksum:#{sig}"
+
+      Pushy::Log.debug "Sending Message #{json}"
+      
+      socket.send_msg(auth, json)
     end
 
   end
