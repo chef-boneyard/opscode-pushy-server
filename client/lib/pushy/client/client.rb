@@ -7,6 +7,7 @@ module Pushy
     attr_accessor :ctx
     attr_accessor :out_address
     attr_accessor :in_address
+    attr_accessor :cmd_address
     attr_accessor :interval
     attr_accessor :offline_threshold
     attr_accessor :online_threshold
@@ -50,6 +51,7 @@ module Pushy
       def from_hash(config)
         new :in_address      => config['push_jobs']['heartbeat']['in_addr'],
           :out_address       => config['push_jobs']['heartbeat']['out_addr'],
+          :cmd_address       => config['push_jobs']['heartbeat']['command_addr'],
           :interval          => config['push_jobs']['heartbeat']['interval'],
           :offline_threshold => config['push_jobs']['heartbeat']['offline_threshold'],
           :online_threshold  => config['push_jobs']['heartbeat']['online_threshold'],
@@ -75,6 +77,8 @@ module Pushy
 
       EM.run do
 
+        # TODO: Define hwm behavior for sockets below
+
         # Subscribe to heartbeat from the server
         subscriber = ctx.socket(ZMQ::SUB, Pushy::Handler.new(monitor, self))
         subscriber.connect(out_address)
@@ -84,6 +88,11 @@ module Pushy
         push_socket = ctx.socket(ZMQ::PUSH)
         push_socket.setsockopt(ZMQ::LINGER, 0)
         push_socket.connect(in_address)
+
+        # command socket for server
+        push_socket = ctx.socket(ZMQ::DEALER)
+        push_socket.setsockopt(ZMQ::LINGER, 0)
+        push_socket.connect(cmd_address)
 
         monitor.start
 
