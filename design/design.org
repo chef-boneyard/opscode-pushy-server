@@ -498,14 +498,19 @@ Version=1.0;Checksum=vQiGY85BzEAi5k7noSiN3A==
 #+begin_example
 {
   "client": "client_name",                # OPC host name
-  "type": "job_command",                  # message type
-  "job_id": "1234",                       # job id
-  "state": "ack"                          # command to execute
-  "detail": 
+  "node": "node_name",
+  "org": "organization",
+  "type": "ready",                       # message type
+  "job_info": {        # not all types send this
+     "job_id": "1234",                       # job id
+     "state": "ready"                        # command to execute 
+  }
+  "timestamp": timestamp
 }
 #+end_example
 
-State can be "ack", "nack" (with detail specificing the reason)
+The the type can be "ready", "ack", "nack" (with detail specificing
+the reason), "started", "finished" (with success failure)
 
 
 
