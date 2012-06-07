@@ -59,13 +59,14 @@ module Pushy
       send_signed_json(self.push_socket, message)
     end
 
-    def send_ready_message
+    def send_command_message(message_type, job_id=nil)
       message = {:node => node_name,
         :client => (`hostname`).chomp,
         :org => "pushy",
-        :type => "ready",
+        :type => message_type.to_s,
         :timestamp => Time.now.httpdate
       }
+      message[:job_id] = job_id if job_id
       send_signed_json(self.cmd_socket, message)
     end
 
@@ -132,7 +133,7 @@ module Pushy
       monitor.start
 
       monitor.callback :after_online do
-        send_ready_message
+        send_command_message(:ready)
       end
 
       Pushy::Log.debug "Worker: Setting heartbeat at every #{interval} seconds"
