@@ -10,7 +10,10 @@
 -export([init/1,
          allowed_methods/2,
          content_types_provided/2,
+         is_authorized/2,
          to_json/2]).
+
+-include("pushy_sql.hrl").
 
 -include_lib("webmachine/include/webmachine.hrl").
 
@@ -28,11 +31,12 @@ init(_Config) ->
 %% then in console: wmtrace_resource:add_dispatch_rule("wmtrace", "/tmp/traces").
 %% then go to localhost:WXYZ/wmtrace
 
-%is_authorized(Req, State) ->
-%    OrgName =  wrq:path_info(Req, organization),
-%    ?debugVal(OrgName),
-%    State2 = State#config_state{orgname = OrgName},
-%    {{true, foo}, Req, State2}.
+is_authorized(Req, State) ->
+    OrgId =  wrq:path_info(organization_id, Req),
+    %?debugVal(OrgName),
+    % OrgGuid = OrgName, %%% TODO: Need to actually look this up! see chef_common chef_db:fetch_org_id for an approach.
+    State2 = State#config_state{orgname = OrgId},
+    {true, Req, State2}.
 
 allowed_methods(Req, State) ->
     {['GET'], Req, State}.
@@ -41,17 +45,18 @@ content_types_provided(Req, State) ->
     {[{"application/json", to_json}], Req, State}.
 
 to_json(Req, State) ->
-
-    OrgId = <<"ORG">>,
-
+    OrgName = wrq:path_info(organization_id, Req),%  State#config_state.orgname,
+    OrgId = OrgName, %%% TODO: Need to actually look this up! see chef_common chef_db:fetch_org_id for an approach.
     {ok, StatusList} = pushy_sql:fetch_node_statuses(OrgId),
-    ?debugVal(StatusList),
 
-    ConfigurationStruct = [{E} || E <- StatusList],
-    ?debugVal(ConfigurationStruct),
-
+    ConfigurationStruct = [node_to_json_struct(E) || E <- StatusList],
+    %% ?debugVal(ConfigurationStruct),
     ConfigurationJson = ejson:encode(ConfigurationStruct),
-
-    ?debugVal(ConfigurationJson),
-
     {ConfigurationJson, Req, State}.
+
+node_to_json_struct(#pushy_node_status{node_name=Name, status=Status, updated_at=UpdatedAt}) ->
+    UpdatedAtDate =  iolist_to_binary(httpd_util:rfc1123_date(UpdatedAt)),
+    {[ {<<"node_name">>, Name},
+       {<<"status">>, Status},
+       {<<"updated_at">>, UpdatedAtDate}
+     ]}.
