@@ -233,22 +233,3 @@ send_multipart(Socket, [Msg | []]) ->
 send_multipart(Socket, [Head | Tail]) ->
     erlzmq:send(Socket, Head, [sndmore]),
     send_multipart(Socket, Tail).
-
-
-%% Copied from pushy_heartbeat_generator
-%% TODO This needs to be put into a standard library
-sign_message(PrivateKey, Body) ->
-    HashedBody = chef_authn:hash_string(Body),
-    SignedChecksum = base64:encode(public_key:encrypt_private(HashedBody, PrivateKey)),
-    [{<<"Version">>, <<"1.0">>},
-     {<<"SignedChecksum">>, SignedChecksum}].
-
-join_bins([], _Sep) ->
-    <<>>;
-join_bins(Bins, Sep) when is_binary(Sep) ->
-    join_bins(Bins, Sep, []).
-
-join_bins([B], _Sep, Acc) ->
-    iolist_to_binary(lists:reverse([B|Acc]));
-join_bins([B|Rest], Sep, Acc) ->
-    join_bins(Rest, Sep, [Sep, B | Acc]).
