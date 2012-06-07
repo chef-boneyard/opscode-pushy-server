@@ -47,7 +47,7 @@ to_json(Req, State) ->
     {ok, StatusList} = pushy_sql:fetch_node_statuses(OrgId),
     ?debugVal(StatusList),
 
-    ConfigurationStruct = {[{<<"status">>, StatusList}]},
+    ConfigurationStruct = [{E} || E <- StatusList],
     ?debugVal(ConfigurationStruct),
 
     ConfigurationJson = ejson:encode(ConfigurationStruct),
@@ -55,4 +55,3 @@ to_json(Req, State) ->
     ?debugVal(ConfigurationJson),
 
     {ConfigurationJson, Req, State}.
-
