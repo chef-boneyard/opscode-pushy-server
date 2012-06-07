@@ -14,16 +14,7 @@
 -export([start_link/1]).
 
 -export([load_from_db/2,
-         register_process/2,
-         execute/1]).
-
-%% Event handlers
-
--define(NO_JOB, {error, no_job_tracker}).
--define(JOB_EVENT(Event), Event(JobId) -> case catch gproc:send({n,l,JobId}, Event) of
-                                              {'EXIT', _} -> ?NO_JOB;
-                                              _ -> ok
-                                          end).
+         register_process/2]).
 
 -include_lib("pushy_sql.hrl").
 
@@ -37,8 +28,6 @@
          handle_info/3,
          terminate/3,
          code_change/4]).
-
-?JOB_EVENT(execute).
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
@@ -69,8 +58,7 @@ register_process(timeout, #pushy_job{id=JobId, duration=Duration}=Job) ->
             %% TODO compute timeout based on existing created_at
             erlang:send_after(Duration*1000, self(), expired),
             error_logger:info_msg("Beginning execution of job ~s~n", [JobId]),
-            execute(JobId),
-            {next_state, executing, Job};
+            {next_state, executing, register_node_status_watchers(save_job_status(executing, Job))};
         false ->
             error_logger:error_msg("Failed to register job tracker process ~p for ~p~n", [JobId, self()]),
             {stop, shutdown, Job}
@@ -82,12 +70,6 @@ handle_event(_Event, StateName, Job) ->
 handle_sync_event(_Event, _From, StateName, Job) ->
     {reply, ok, StateName, Job}.
 
-handle_info(execute, executing, Job) ->
-    error_logger:info_msg("JOB STATUS EXECUTING~n"),
-    {next_state, executing, save_job_status(executing, Job)};
-handle_info(executing, new, Job) ->
-    error_logger:info_msg("JOB STATUS EXECUTING~n"),
-    {next_state, executing, save_job_status(executing, Job)};
 handle_info(error, executing, Job) ->
     error_logger:info_msg("JOB STATUS ERROR~n"),
     {next_state, error, save_job_status(error, Job)};
@@ -119,6 +101,14 @@ code_change(_OldVsn, StateName, Job, _Extra) ->
 %% ------------------------------------------------------------------
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
+register_node_status_watchers([], Job) ->
+    Job;
+register_node_status_watchers([#pushy_job_node{node_name = NodeName}|Rest], Job) ->
+    pushy_node_state:start_watching(NodeName),
+    register_node_status_watchers(Rest, Job).
+register_node_status_watchers(#pushy_job{job_nodes=JobNodes}=Job) ->
+    register_node_status_watchers(JobNodes, Job).
+
 
 status_complete(#pushy_job_node{status=Status}) ->
     lists:member(Status, ?COMPLETE_STATUS).
