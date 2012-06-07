@@ -28,7 +28,7 @@ fetch_node_statuses(OrgId) ->
         {ok, none} ->
             {ok, []};
         {ok, Response} ->
-          {ok, Response};
+          {ok, [node_status_row_to_record(Row) || Row <- Response]};
         {error, Reason} ->
           {error, Reason}
       end.
@@ -40,9 +40,9 @@ fetch_node_status(OrgId, Node) ->
         {ok, none} ->
             {ok, []};
         {ok, Response} ->
-          {ok, Response};
+            {ok, [node_status_row_to_record(Row) || Row <-Response] };
         {error, Reason} ->
-          {error, Reason}
+            {error, Reason}
       end.
 
 -spec create_node_status(#pushy_node_status{}) -> {ok, 1} | {error, term()}.
@@ -161,6 +161,23 @@ insert_job_nodes([#pushy_job_node{job_id=JobId,
         {error, Reason} ->
             {error, Reason}
     end.
+
+%% sequel returns seconds as float, while many erlang functions want integer
+%% we trunc instead of rounding because if it's 59.6 we don't want to round to 60!
+%% TODO: Move this fn to some common code
+%%
+trunc_date_time_to_second({{YY,MM,DD},{H,M,S}}) ->
+    {{YY,MM,DD},{H,M, erlang:trunc(S)}}.
+
+%% @doc Transforms the proplist representing a node_status query row into a record
+%%
+node_status_row_to_record(Row) ->
+    #pushy_node_status{org_id = safe_get(<<"org_id">>, Row),
+                       node_name = safe_get(<<"node_name">>, Row),
+                       status = hb_status(safe_get(<<"status">>, Row)),
+                       last_updated_by = safe_get(<<"last_updated_by">>, Row),
+                       created_at = trunc_date_time_to_second(safe_get(<<"created_at">>, Row)),
+                       updated_at = trunc_date_time_to_second(safe_get(<<"updated_at">>, Row))}.
 
 %% @doc Transforms a collection of proplists representing a job / job_nodes join query
 %% result and collapses them all into a single job record. There is a row for each
