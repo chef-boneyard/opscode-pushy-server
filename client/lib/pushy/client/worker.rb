@@ -129,19 +129,19 @@ module Pushy
       # TODO
       # This whole section is test code; I just wanted to send a message to the server to verify things work
       # We want to send a 'ready' message on startup, and whenever we lose the connection to the server or otherwise reconfigure
-      @command = EM::PeriodicTimer.new(interval*5) do
-          message = {:node => node_name,
-          :client => (`hostname`).chomp,
-          :org => "ORG",
-          :type => "echo",
-          :command => "ps aux",
-          :timestamp => Time.now.httpdate
-          }
-        pp ["Sending message:", message]
-        send_signed_json(cmd_socket, message)
-      end
+      #@command = EM::PeriodicTimer.new(interval*5) do
+      #    message = {:node => node_name,
+      #    :client => (`hostname`).chomp,
+      #    :org => "ORG",
+      #    :type => "echo",
+      #    :command => "ps aux",
+      #    :timestamp => Time.now.httpdate
+      #    }
+      #  pp ["Sending message:", message]
+      #  send_signed_json(cmd_socket, message)
+      #end
 
-      change_state "idle"
+      change_state "running"
 
     end
 

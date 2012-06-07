@@ -58,7 +58,7 @@ register_process(timeout, #pushy_job{id=JobId, duration=Duration}=Job) ->
             %% TODO compute timeout based on existing created_at
             erlang:send_after(Duration*1000, self(), expired),
             error_logger:info_msg("Beginning execution of job ~s~n", [JobId]),
-            {next_state, executing, register_node_status_watchers(save_job_status(executing, Job))};
+            {next_state, executing, execute_job(Job)};
         false ->
             error_logger:error_msg("Failed to register job tracker process ~p for ~p~n", [JobId, self()]),
             {stop, shutdown, Job}
@@ -102,6 +102,12 @@ code_change(_OldVsn, StateName, Job, _Extra) ->
 %% ------------------------------------------------------------------
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
+execute_job(#pushy_job{command=Command, job_nodes=JobNodes}=Job) ->
+    Nodes = [ Name || Name <- JobNodes#job_nodes.name ],
+    save_job_status(executing, register_node_status_watchers(Job))
+
+    pushy_command_switch:send_multi_command(?POC_ORG_NAME, Nodes, Message)
+
 register_node_status_watchers([], Job) ->
     Job;
 register_node_status_watchers([#pushy_job_node{node_name = NodeName}|Rest], Job) ->
