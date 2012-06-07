@@ -59,6 +59,16 @@ module Pushy
       send_signed_json(self.push_socket, message)
     end
 
+    def send_ready_message
+      message = {:node => node_name,
+        :client => (`hostname`).chomp,
+        :org => "pushy",
+        :type => "ready",
+        :timestamp => Time.now.httpdate
+      }
+      send_signed_json(self.cmd_socket, message)
+    end
+
     class << self
       def load!(app)
         from_hash(app, get_config_json(app))
@@ -121,6 +131,10 @@ module Pushy
 
       monitor.start
 
+      monitor.callback :after_online do
+        send_ready_message
+      end
+
       Pushy::Log.debug "Worker: Setting heartbeat at every #{interval} seconds"
       @timer = EM::PeriodicTimer.new(interval) do
         send_heartbeat
@@ -141,8 +155,7 @@ module Pushy
       #  send_signed_json(cmd_socket, message)
       #end
 
-      change_state "running"
-
+      change_state "idle"
     end
 
     def stop

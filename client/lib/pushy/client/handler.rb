@@ -56,6 +56,9 @@ module Pushy
         auth = parts[0].copy_out_string.split(':')[2]
         body = parts[1].copy_out_string
 
+        pp auth
+        pp body
+
         decrypted_checksum = server_public_key.public_decrypt(Base64.decode64(auth))
         hashed_body = Mixlib::Authentication::Digester.hash_string(body)
 

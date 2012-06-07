@@ -116,15 +116,17 @@ code_change(_OldVsn, State, _Extra) ->
 %% ------------------------------------------------------------------
 
 do_send(#state{addr_node_map = AddrNodeMap,
-               command_sock = CommandSocket},
+               command_sock = CommandSocket,
+               private_key = PrivateKey},
         Org, Node, Message) ->
     Address = addr_node_map_lookup_by_node(AddrNodeMap, {Org, Node}),
-    send_multipart(CommandSocket, Address, Message).
+    send_multipart(CommandSocket, Address,
+        [pushy_util:signed_header_from_message(PrivateKey, Message), Message]).
 
 do_send_multi(State, Org, Nodes, Message) ->
     [ do_send(State, Org, Node, Message) || Node <- Nodes ].
 
-process_message(State, Address, Header, Body) ->
+process_message(State, Address, _Header, Body) ->
     case catch jiffy:decode(Body) of
         {Data} ->
             Type = ej:get({<<"type">>}, Data ),
@@ -142,7 +144,7 @@ process_message(State, Address, Header, Body) ->
             case Type of
                 % ready messages only are used to initialze
                 <<"ready">> ->
-                    send_multipart(State#state.command_sock, Address, [Header, Body]),
+                    %send_multipart(State#state.command_sock, Address, [Header, Body]),
                     State2;
                 % <<"echo">> ->
 

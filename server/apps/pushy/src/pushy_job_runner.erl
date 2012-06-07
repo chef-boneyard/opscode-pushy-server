@@ -103,13 +103,13 @@ code_change(_OldVsn, StateName, Job, _Extra) ->
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
 execute_job(#pushy_job{job_nodes=JobNodes}=Job) ->
-    NodeNames = [ Name || Name <- JobNodes#pushy_job_node.node_name ],
+    NodeNames = [ JobNode#pushy_job_node.node_name || JobNode <- JobNodes ],
     register_node_status_watchers(NodeNames),
     pushy_command_switch:send_multi_command(?POC_ORG_NAME, NodeNames, create_command_message(Job)),
-    save_job_status(executing, register_node_status_watchers(Job)).
+    save_job_status(executing, Job).
 
 create_command_message(#pushy_job{id=JobId, command=Command}) ->
-    Host = pushy_util:get_env(pushy, server_nafme, fun is_list/1),
+    Host = pushy_util:get_env(pushy, server_name, fun is_list/1),
     jiffy:encode({[{server, list_to_binary(Host)},
                     {type, <<"job_command">>},
                     {job_id, JobId},
