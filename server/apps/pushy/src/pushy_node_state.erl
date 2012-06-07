@@ -8,7 +8,6 @@
 
 %% API
 -export([current_state/1,
-         down/1,
          heartbeat/1,
          restarting/1,
          start_link/3]).
@@ -54,7 +53,6 @@ start_link(Name, HeartbeatInterval, DeadIntervalCount) ->
 
 ?NODE_EVENT(restarting).
 
-?NODE_EVENT(down).
 
 current_state(Name) ->
     case catch gproc:lookup_pid({n,l,Name}) of
@@ -123,15 +121,6 @@ handle_info(heartbeat, down, State) ->
     confirm_heartbeat_threshold(State, down);
 handle_info(heartbeat, restarting, State) ->
     {next_state, up, reset_timer(save_status(up, State))};
-handle_info(crashed, up, State) ->
-    {next_state, crashed, save_status(crashed, State#state{heartbeats=0})};
-handle_info(restarting, up, State) ->
-    {next_state, restarting, save_status(restarting, State)};
-handle_info(restarting, crashed, State) ->
-    {next_state, restarting, save_status(restarting, State)};
-handle_info(down, down, State) ->
-    {next_state, down, save_status(down, State)};
-
 handle_info(_Info, StateName, State) ->
     {next_state, StateName, State}.
 
@@ -184,5 +173,5 @@ reset_timer(#state{dead_interval=Interval, tref=undefined}=State) ->
     State#state{tref=TRef};
 reset_timer(#state{dead_interval=Interval, tref=TRef}=State) ->
     erlang:cancel_timer(TRef),
-    TRef1 = erlang:send_after(Interval, self(), crashed),
+    TRef1 = erlang:send_after(Interval, self(), down),
     State#state{tref=TRef1}.
