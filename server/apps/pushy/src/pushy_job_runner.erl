@@ -6,6 +6,7 @@
 -module(pushy_job_runner).
 -behaviour(gen_fsm).
 -define(SERVER, ?MODULE).
+-define(NO_JOB, {error, no_job}).
 
 %% ------------------------------------------------------------------
 %% API Function Exports
@@ -26,6 +27,7 @@
          handle_event/3,
          handle_sync_event/4,
          handle_info/3,
+         node_state_change/3,
          terminate/3,
          code_change/4]).
 
@@ -64,6 +66,13 @@ register_process(timeout, #pushy_job{id=JobId, duration=Duration}=Job) ->
             {stop, shutdown, Job}
     end.
 
+node_state_change(JobId, NodeName, Type) ->
+    case catch gproc:send({n,l,JobId},
+            {node_state_change, NodeName, Type}) of
+        {'EXIT', _} -> ?NO_JOB;
+        _ -> ok
+    end.
+
 handle_event(_Event, StateName, Job) ->
     {next_state, StateName, Job}.
 
@@ -86,9 +95,13 @@ handle_info(aborted, executing, Job) ->
     error_logger:info_msg("JOB STATUS ABORTED~n"),
     {next_state, aborted, save_job_status(aborted, Job)};
 handle_info({node_state_change, NodeName, running}, StateName, Job) ->
-    error_logger:info_msg("JOB STATUS NODE STATE CHANGE~n"),
+    error_logger:info_msg("JOB STATUS NODE STATE CHANGE RUNNING~n"),
     {next_state, StateName,
         job_complete_check(save_job_node_status(executing, NodeName, Job))};
+handle_info({node_state_change, NodeName, finished}, StateName, Job) ->
+    error_logger:info_msg("JOB STATUS NODE STATE CHANGE FINISHED~n"),
+    {next_state, StateName,
+        job_complete_check(save_job_node_status(complete, NodeName, Job))};
 handle_info(Info, StateName, Job) ->
     error_logger:info_msg("JOB STATUS CATCH ALL: Info->~p StateName->~p~n", [Info,StateName]),
     {next_state, StateName, Job}.

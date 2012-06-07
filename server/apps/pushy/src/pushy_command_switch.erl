@@ -135,15 +135,17 @@ process_message(State, Address, _Header, Body) ->
             NodeName = ej:get({<<"node">>}, Data ),
             OrgName  = ej:get({<<"org">>}, Data ),
             ClientName = ej:get({<<"client">>}, Data ),
-            JobName = ej:get({<<"job_id">>}, Data, unknown ),
+            JobId = ej:get({<<"job_id">>}, Data, unknown ),
             error_logger:info_msg("Got message type ~s from Org ~s Node ~s Client ~s with job id ~s",
-                                  [Type, OrgName, NodeName, ClientName, JobName]),
+                                  [Type, OrgName, NodeName, ClientName, JobId]),
 
             %% Every time we get a message from a node, we update it's Addr->Name mapping entry
             State2 = addr_node_map_update(State, Address, {OrgName, NodeName}),
+            error_logger:info_msg("Type:~p~n", [Type]),
             case Type of
                 % ready messages only are used to initialze
                 <<"ready">> ->
+                    error_logger:info_msg("READY"),
                     %send_multipart(State#state.command_sock, Address, [Header, Body]),
                     State2;
                 % <<"echo">> ->
@@ -151,9 +153,11 @@ process_message(State, Address, _Header, Body) ->
                 %     send_multipart(State#state.command_sock,
                 %                    Address, [SignedHeader, BodyFrame]),
                 %     State2;
+                <<"finished">> ->
+                    error_logger:info_msg("FINISHED JobId:~p~n NodeName:~p~n", [JobId,NodeName]),
+                    pushy_job_runner:node_state_change(JobId, NodeName, finished),
+                    State2;
                 _Else ->
-                    %% TODO SETH ADDS call here
-                    %% send_to_job_controller(JobName, Body)
                     State2
             end;
         {'EXIT', Error} ->
