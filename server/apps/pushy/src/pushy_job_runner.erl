@@ -102,20 +102,24 @@ code_change(_OldVsn, StateName, Job, _Extra) ->
 %% ------------------------------------------------------------------
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
-execute_job(#pushy_job{command=Command, job_nodes=JobNodes}=Job) ->
-    Nodes = [ Name || Name <- JobNodes#job_nodes.name ],
-    save_job_status(executing, register_node_status_watchers(Job))
+execute_job(#pushy_job{job_nodes=JobNodes}=Job) ->
+    NodeNames = [ Name || Name <- JobNodes#pushy_job_node.node_name ],
+    register_node_status_watchers(NodeNames),
+    pushy_command_switch:send_multi_command(?POC_ORG_NAME, NodeNames, create_command_message(Job)),
+    save_job_status(executing, register_node_status_watchers(Job)).
 
-    pushy_command_switch:send_multi_command(?POC_ORG_NAME, Nodes, Message)
+create_command_message(#pushy_job{id=JobId, command=Command}) ->
+    Host = pushy_util:get_env(pushy, server_nafme, fun is_list/1),
+    jiffy:encode({[{server, list_to_binary(Host)},
+                    {type, <<"job_command">>},
+                    {job_id, JobId},
+                    {command, Command}]}).
 
-register_node_status_watchers([], Job) ->
-    Job;
-register_node_status_watchers([#pushy_job_node{node_name = NodeName}|Rest], Job) ->
+register_node_status_watchers([]) ->
+    ok;
+register_node_status_watchers([NodeName|Rest]) ->
     pushy_node_state:start_watching(NodeName),
-    register_node_status_watchers(Rest, Job).
-register_node_status_watchers(#pushy_job{job_nodes=JobNodes}=Job) ->
-    register_node_status_watchers(JobNodes, Job).
-
+    register_node_status_watchers(Rest).
 
 status_complete(#pushy_job_node{status=Status}) ->
     lists:member(Status, ?COMPLETE_STATUS).
