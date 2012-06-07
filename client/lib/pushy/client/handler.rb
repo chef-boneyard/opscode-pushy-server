@@ -1,3 +1,5 @@
+require 'eventmachine'
+
 module Pushy
   module Handler
     class Heartbeat
@@ -38,8 +40,14 @@ module Pushy
         return unless valid?(parts)
         command_hash = Utils.parse_json(parts[1].copy_out_string)
         @worker.change_state "running"
-        puts "Executed Command:", system(command_hash['command'])
-        @worker.change_state "idle"
+        @worker.send_command_message(:started)
+        ap command_hash
+        command = EM::DeferrableChildProcess.open(command_hash['command'])
+        command.callback do |data_from_child|
+          puts data_from_child
+          @worker.change_state "idle"
+          @worker.send_command_message(:finished, command_hash['job_id'])
+        end
       end
 
       private
