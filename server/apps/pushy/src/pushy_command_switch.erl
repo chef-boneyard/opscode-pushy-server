@@ -144,20 +144,11 @@ process_message(State, Address, Header, Body) ->
                 <<"ready">> ->
                     send_multipart(State#state.command_sock, Address, [Header, Body]),
                     State2;
-                <<"echo">> ->
-                    {ok, Hostname} = inet:gethostname(),
-                    Msg = {[{server, list_to_binary(Hostname)},
-                            {type, <<"job_command">>},
-                            {job_id, JobName},
-                            {command, ej:get({<<"command">>}, Data)}]},
-                    BodyFrame = jiffy:encode(Msg),
-                    HeaderParts = sign_message(State#state.private_key, BodyFrame),
-                    Headers = [join_bins(tuple_to_list(Part), <<":">>) || Part <- HeaderParts],
-                    SignedHeader = join_bins(Headers, <<";">>),
-                    error_logger:info_msg("SIGNEDHEADER:~p~n HEADER:~p~n", [SignedHeader, Header]),
-                    send_multipart(State#state.command_sock,
-                                   Address, [SignedHeader, BodyFrame]),
-                    State2;
+                % <<"echo">> ->
+
+                %     send_multipart(State#state.command_sock,
+                %                    Address, [SignedHeader, BodyFrame]),
+                %     State2;
                 _Else ->
                     %% TODO SETH ADDS call here
                     %% send_to_job_controller(JobName, Body)
