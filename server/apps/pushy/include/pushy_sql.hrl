@@ -5,10 +5,24 @@
 -type object_id() :: <<_:256>>.
 
 %% node heartbeat status
--type heartbeat_status() :: idle | ready | running | restarting | up | down | crashed.
+-type heartbeat_status() :: idle |
+                            ready |
+                            running |
+                            restarting |
+                            up |
+                            down |
+                            crashed.
 
 %% job status
--type job_status() :: new | executing | complete | error | failed | expired | aborted.
+-type job_status() :: new |
+                      executing |
+                      complete | % DONE
+                      error | % DONE
+                      failed | % DONE
+                      expired | % DONE
+                      aborted. % DONE
+
+-define(COMPLETE_STATUS, [complete, error, failed, expired, aborted]).
 
 %% random PoC hard-codings
 -define(POC_ORG_ID, <<"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa">>).
