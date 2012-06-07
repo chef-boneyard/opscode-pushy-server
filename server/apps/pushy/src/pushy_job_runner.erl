@@ -85,9 +85,10 @@ handle_info(expired, executing, Job) ->
 handle_info(aborted, executing, Job) ->
     error_logger:info_msg("JOB STATUS ABORTED~n"),
     {next_state, aborted, save_job_status(aborted, Job)};
-handle_info({node_state_change, NodeName, Status}, StateName, Job) ->
+handle_info({node_state_change, NodeName, running}, StateName, Job) ->
     error_logger:info_msg("JOB STATUS NODE STATE CHANGE~n"),
-    {next_state, StateName, job_complete_check(save_job_node_status(Status, NodeName, Job))};
+    {next_state, StateName,
+        job_complete_check(save_job_node_status(executing, NodeName, Job))};
 handle_info(Info, StateName, Job) ->
     error_logger:info_msg("JOB STATUS CATCH ALL: Info->~p StateName->~p~n", [Info,StateName]),
     {next_state, StateName, Job}.
@@ -116,7 +117,9 @@ status_complete(#pushy_job_node{status=Status}) ->
 job_complete_check(#pushy_job{job_nodes=JobNodes}=Job) ->
     case lists:all(fun status_complete/1, JobNodes) of
         true ->
-            gen_fsm:send_event(self(), {next_state, complete, Job})
+            gen_fsm:send_event(self(), {next_state, complete, Job});
+        false ->
+            error_logger:info_msg("Job ~p Still Running~n", [Job#pushy_job.id])
     end,
     Job.
 
