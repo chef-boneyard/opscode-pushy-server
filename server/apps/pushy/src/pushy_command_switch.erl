@@ -154,7 +154,7 @@ process_message(#state{job=Job}=State, Address, _Header, Body) ->
                 <<"ready">> ->
                     error_logger:info_msg("Node ~p ready to RAWK this command party.~n", [NodeName]),
                     %% TODO - do we notify the job runner?
-                
+                    State2;
                 <<"ack">> ->
                     error_logger:info_msg("ACK"),
                     {OrgName, Nodes, Message} = Job,
