@@ -38,7 +38,8 @@
 -record(state,
         {command_sock,
          addr_node_map :: {dictionary(), dictionary()},
-         private_key
+         private_key,
+         job
         }).
 
 %% ------------------------------------------------------------------
@@ -79,8 +80,10 @@ handle_cast({send, OrgName, NodeName, Message}, #state{}=State) ->
     do_send(State, OrgName, NodeName, Message),
     {noreply, State};
 handle_cast({send_multi, OrgName, Nodes, Message}, #state{}=State) ->
-    do_send_multi(State, OrgName, Nodes, Message),
-    {noreply, State};
+    State1 = State#state{job={OrgName, Nodes, Message}},
+    ack(State, OrgName, Nodes),
+    %do_send_multi(State, OrgName, Nodes, Message),
+    {noreply, State1};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -126,7 +129,14 @@ do_send(#state{addr_node_map = AddrNodeMap,
 do_send_multi(State, Org, Nodes, Message) ->
     [ do_send(State, Org, Node, Message) || Node <- Nodes ].
 
-process_message(State, Address, _Header, Body) ->
+ack(State, OrgName, Nodes) ->
+    Host = pushy_util:get_env(pushy, server_name, fun is_list/1),
+    Message = jiffy:encode({[{server, list_to_binary(Host)},
+                {type, <<"ack">>}]}),
+    do_send_multi(State, OrgName, Nodes, Message).
+
+
+process_message(#state{job=Job}=State, Address, _Header, Body) ->
     case catch jiffy:decode(Body) of
         {Data} ->
             Type = ej:get({<<"type">>}, Data ),
@@ -141,12 +151,21 @@ process_message(State, Address, _Header, Body) ->
 
             %% Every time we get a message from a node, we update it's Addr->Name mapping entry
             State2 = addr_node_map_update(State, Address, {OrgName, NodeName}),
-            error_logger:info_msg("Type:~p~n", [Type]),
             case Type of
                 % ready messages only are used to initialze
                 <<"ready">> ->
                     error_logger:info_msg("READY"),
                     %send_multipart(State#state.command_sock, Address, [Header, Body]),
+                    State2;
+                <<"ack">> ->
+                    error_logger:info_msg("ACK"),
+                    {OrgName, Nodes, Message} = Job,
+                    do_send_multi(State, OrgName, Nodes, Message),
+                    State2;
+                <<"nack">> ->
+                    error_logger:info_msg("NACK"),
+                    {OrgName, Nodes, _Message} = Job,
+                    ack(State, OrgName, Nodes),
                     State2;
                 % <<"echo">> ->
 
