@@ -144,19 +144,17 @@ process_message(#state{job=Job}=State, Address, _Header, Body) ->
             % This essentially debug code.
             NodeName = ej:get({<<"node">>}, Data ),
             OrgName  = ej:get({<<"org">>}, Data ),
-            ClientName = ej:get({<<"client">>}, Data ),
+            _ClientName = ej:get({<<"client">>}, Data ),
             JobId = ej:get({<<"job_id">>}, Data, unknown ),
-            error_logger:info_msg("Got message type ~s from Org ~s Node ~s Client ~s with job id ~s",
-                                  [Type, OrgName, NodeName, ClientName, JobId]),
 
             %% Every time we get a message from a node, we update it's Addr->Name mapping entry
             State2 = addr_node_map_update(State, Address, {OrgName, NodeName}),
             case Type of
                 % ready messages only are used to initialze
                 <<"ready">> ->
-                    error_logger:info_msg("READY"),
-                    %send_multipart(State#state.command_sock, Address, [Header, Body]),
-                    State2;
+                    error_logger:info_msg("Node ~p ready to RAWK this command party.~n", [NodeName]),
+                    %% TODO - do we notify the job runner?
+                
                 <<"ack">> ->
                     error_logger:info_msg("ACK"),
                     {OrgName, Nodes, Message} = Job,
@@ -167,16 +165,12 @@ process_message(#state{job=Job}=State, Address, _Header, Body) ->
                     {OrgName, Nodes, _Message} = Job,
                     ack(State, OrgName, Nodes),
                     State2;
-                % <<"echo">> ->
-
-                %     send_multipart(State#state.command_sock,
-                %                    Address, [SignedHeader, BodyFrame]),
-                %     State2;
                 <<"finished">> ->
-                    error_logger:info_msg("FINISHED JobId:~p~n NodeName:~p~n", [JobId,NodeName]),
-                    pushy_job_runner:node_state_change(JobId, NodeName, finished),
+                    error_logger:info_msg("Node ~p finished running Job ~p~n", [NodeName, JobId]),
+                    pushy_job_runner:node_state_change(JobId, NodeName, type_to_job_status(Type)),
                     State2;
                 _Else ->
+                    error_logger:info_msg("I don't know anything about ~p~n", [Type]),
                     State2
             end;
         {'EXIT', Error} ->
@@ -188,6 +182,13 @@ process_message(#state{job=Job}=State, Address, _Header, Body) ->
 %%
 %% Utility functions; we should generalize these and move elsewhere.
 %%
+
+%% TODO - do we really need these small diferences between message type value and
+%%        actual underlying job status.
+type_to_job_status(<<"started">>) ->
+    executing;
+type_to_job_status(<<"finished">>) ->
+    complete.
 
 %read_address_separator() ->
 %    receive

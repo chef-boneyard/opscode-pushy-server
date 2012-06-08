@@ -2,6 +2,9 @@
 %% ex: ts=4 sw=4 et
 %% @author Seth Chisamore <schisamo@opscode.com>
 %% @copyright 2012 Opscode, Inc.
+%%% @doc
+%%% FSM encapsulating life cycle of a single job.
+%%% @end
 
 -module(pushy_job_runner).
 -behaviour(gen_fsm).
@@ -80,28 +83,28 @@ handle_sync_event(_Event, _From, StateName, Job) ->
     {reply, ok, StateName, Job}.
 
 handle_info(error, executing, Job) ->
-    error_logger:info_msg("JOB STATUS ERROR~n"),
+    error_logger:info_msg("JOB ERROR~n"),
     {next_state, error, save_job_status(error, Job)};
 handle_info(failed, executing, Job) ->
-    error_logger:info_msg("JOB STATUS FAILED~n"),
+    error_logger:info_msg("JOB FAILED~n"),
     {next_state, failed, save_job_status(failed, Job)};
 handle_info(expired, new, Job) ->
-    error_logger:info_msg("JOB STATUS EXPIRED~n"),
+    error_logger:info_msg("JOB EXPIRED~n"),
     {next_state, expired, save_job_status(expired, Job)};
 handle_info(expired, executing, Job) ->
-    error_logger:info_msg("JOB STATUS EXPIRED~n"),
+    error_logger:info_msg("JOB EXPIRED~n"),
     {next_state, expired, save_job_status(expired, Job)};
 handle_info(aborted, executing, Job) ->
-    error_logger:info_msg("JOB STATUS ABORTED~n"),
+    error_logger:info_msg("JOB ABORTED~n"),
     {next_state, aborted, save_job_status(aborted, Job)};
-handle_info({node_state_change, NodeName, running}, StateName, Job) ->
-    error_logger:info_msg("JOB STATUS NODE STATE CHANGE RUNNING~n"),
-    {next_state, StateName,
-        job_complete_check(save_job_node_status(executing, NodeName, Job))};
-handle_info({node_state_change, NodeName, finished}, StateName, Job) ->
-    error_logger:info_msg("JOB STATUS NODE STATE CHANGE FINISHED~n"),
-    {next_state, StateName,
-        job_complete_check(save_job_node_status(complete, NodeName, Job))};
+handle_info(complete, executing, Job) ->
+    error_logger:info_msg("JOB COMPLETE~n"),
+    %% TODO - clean up job
+    {next_state, complete, save_job_status(complete, Job)};
+handle_info({node_state_change, NodeName, NodeState}, StateName, Job) ->
+    TranslatedNodeState = hb_to_job_status(NodeState),
+    error_logger:info_msg("JOB NODE ~p STATE CHANGE ~p~n", [NodeName, TranslatedNodeState]),
+    job_complete_check(save_job_node_status(TranslatedNodeState, NodeName, Job), StateName);
 handle_info(Info, StateName, Job) ->
     error_logger:info_msg("JOB STATUS CATCH ALL: Info->~p StateName->~p~n", [Info,StateName]),
     {next_state, StateName, Job}.
@@ -115,6 +118,16 @@ code_change(_OldVsn, StateName, Job, _Extra) ->
 %% ------------------------------------------------------------------
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
+
+%% TODO - do we really need these small diferences between heartbeat types and
+%%        actual underlying job status.
+hb_to_job_status(running) ->
+    executing;
+hb_to_job_status(idle) ->
+    complete;
+hb_to_job_status(CatchAll) ->
+    CatchAll.
+
 execute_job(#pushy_job{job_nodes=JobNodes}=Job) ->
     NodeNames = [ JobNode#pushy_job_node.node_name || JobNode <- JobNodes ],
     register_node_status_watchers(NodeNames),
@@ -137,14 +150,13 @@ register_node_status_watchers([NodeName|Rest]) ->
 status_complete(#pushy_job_node{status=Status}) ->
     lists:member(Status, ?COMPLETE_STATUS).
 
-job_complete_check(#pushy_job{job_nodes=JobNodes}=Job) ->
+job_complete_check(#pushy_job{job_nodes=JobNodes}=Job, CurrentState) ->
     case lists:all(fun status_complete/1, JobNodes) of
         true ->
-            gen_fsm:send_event(self(), {next_state, complete, Job});
+            {next_state, complete, save_job_status(complete, Job)};
         false ->
-            error_logger:info_msg("Job ~p Still Running~n", [Job#pushy_job.id])
-    end,
-    Job.
+            {next_state, CurrentState, Job}
+    end.
 
 save_job_status(Status, Job) ->
     Job1 = Job#pushy_job{status=Status},
