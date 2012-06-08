@@ -39,6 +39,29 @@ module Pushy
       def on_readable(socket, parts)
         return unless valid?(parts)
         command_hash = Utils.parse_json(parts[1].copy_out_string)
+
+        if command_hash['type'] == "ack"
+          ack
+        else
+          run_command(command_hash)
+        end
+
+      end
+
+      private
+
+      def ack
+        if @worker.state == "idle"
+          message = :ack
+        else
+          @worker.change_state "idle"
+          message = :nack
+        end
+
+        @worker.send_command_message(message)
+      end
+
+      def run_command(command_hash)
         @worker.change_state "running"
         @worker.send_command_message(:started)
         command = EM::DeferrableChildProcess.open(command_hash['command'])
@@ -48,8 +71,6 @@ module Pushy
           @worker.send_command_message(:finished, command_hash['job_id'])
         end
       end
-
-      private
 
       def valid?(parts)
         Utils.valid?(parts, @worker.server_public_key)
