@@ -41,10 +41,9 @@ module Pushy
         command_hash = Utils.parse_json(parts[1].copy_out_string)
         @worker.change_state "running"
         @worker.send_command_message(:started)
-        ap command_hash
         command = EM::DeferrableChildProcess.open(command_hash['command'])
         command.callback do |data_from_child|
-          puts data_from_child
+          #puts data_from_child
           @worker.change_state "idle"
           @worker.send_command_message(:finished, command_hash['job_id'])
         end
@@ -64,9 +63,6 @@ module Pushy
         auth = parts[0].copy_out_string.split(':')[2]
         body = parts[1].copy_out_string
 
-        pp auth
-        pp body
-
         decrypted_checksum = server_public_key.public_decrypt(Base64.decode64(auth))
         hashed_body = Mixlib::Authentication::Digester.hash_string(body)
 
@@ -75,7 +71,7 @@ module Pushy
 
       def self.parse_json(json)
         Yajl::Parser.new.parse(json).tap do |body_hash|
-          ap body_hash
+          #ap body_hash
         end
       end
 
