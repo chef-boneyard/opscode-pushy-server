@@ -40,28 +40,30 @@ module Pushy
         return unless valid?(parts)
         command_hash = Utils.parse_json(parts[1].copy_out_string)
 
-        if command_hash['type'] == "ack"
-          ack
-        else
-          run_command(command_hash)
+        if command_hash['type'] == "job_command"
+          ack_nack(command_hash)
+        elsif command_hash['type'] == "job_execute"
+          run_command
         end
 
       end
 
       private
 
-      def ack
+      def ack_nack(command_hash)
         if @worker.state == "idle"
+          @worker.change_state "ready"
+          @worker.command_hash  command_hash
           message = :ack
         else
-          @worker.change_state "idle"
           message = :nack
         end
 
         @worker.send_command_message(message)
       end
 
-      def run_command(command_hash)
+      def run_command
+        command_hash = @worker.command_hash
         @worker.change_state "running"
         @worker.send_command_message(:started)
         command = EM::DeferrableChildProcess.open(command_hash['command'])

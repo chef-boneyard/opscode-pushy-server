@@ -20,6 +20,7 @@ module Pushy
     attr_accessor :subscriber
     attr_accessor :push_socket
     attr_accessor :cmd_socket
+    attr_accessor :command_hash
 
     def initialize(_app, options)
       @app = _app
