@@ -1,0 +1,95 @@
+Product meeting
+* Invite Mark, Kevin, SC, CB, George 
+* Agenda written up with questions
+* Reference document
+* Hold off until after demos on tuesday.
+* Later in the day on tues
+* Tech level low
+** target platform
+** what features needed 
+
+* Brief overview of system as a whole
+** Server
+** Client
+** Knife command/control
+** No webui
+** Scaling targets: 8k nodes, etc
+
+* Product plans
+** Who are our lead customers?
+** Are there specific aspects of our competitors systems we must have for business reasons?
+What are those 'must have features'
+** Is this a separate SKU than OPC?
+*** Affects how deeply integrated can/should the two be
+*** E.g. Should the search endpoint understand job states?
+** Open source vs closed source
+*** Preferred open source license is apache, yes?
+*** There are generalized trust issues; an open source implementation may be more 
+*** Client: Open source vs closed source?
+**** Open source the client (*)
+It simplifies things without giving away much useful
+**** If closed source this is the first closed source item we install on client; much broader distribution
+**** If closed source do we want to obfuscate it ? Do we want a compiled version?
+*** Server: Open source vs closed source?
+**** May be best to leave it closed source as product differentiation item (*)
+**** However we may be under immediate pressure to open source it (FB?)
+*** License audit: Make sure every dependency we take is compatible with final license choice
+
+** Target platform and installation method for client
+*** Current prototype could be installed as a ruby gem, just like chef client (*)
+*** Do we want an omnibus installer? What is the value add?
+*** What platforms do we target for the client
+**** Tier one: Platforms we support for OPC (linux redhat/centos, ubuntu/debian)
+**** What about windows?
+**** Tier two: other linux and bsd operating systems (how much packaging/testing can/will we do)
+
+** Target platform acceptable footprint
+*** Is it ok to bring in a bunch of gems (zmq, eventmachine, mixlib-shellout?)
+*** How much ram can we use full time: Is 50MB ok?
+*** Or will we have to rewrite it in some other langage (C) to keep people happy.
+
+** Metrics and logging
+*** This should be tied to some extent into our metrics system; 
+Q: how much do the metrics matter to OPC customers?
+*** Logging: What kinds of logs/audit trails do we need? On client? On server?
+*** Does this need integration with our logging audit work
+*** Should this delay first product release
+
+** Authorization model:
+*** Who can start jobs? 
+*** How is that controlled?
+
+** Knife command model; is simple syntax adequate? 
+knife push [search SEARCH_TERM] [nodes NODE LIST] 'command' 
+
+** GUI/Webui yet to be designed
+Can we ship without it?
+
+** Search integration
+We will want some method to integrate search results existing search
+with states of clients and job results.
+*** Is it required for MVP?
+*** Integrate at knife level; 
+Easy, and if we limit the syntax not terribly hard. However it will
+not 
+*** Job results and node status updated in search index; 
+substantial update rate; may load index system at scale.
+
+** Entity group integration: 
+*** Do we defer pushy release until we get entity groups in place? 
+*** Or is it ok to pass node lists in for v1
+
+** resource limits
+* Webui/gui component
+* closed/source
+* 
+
+
+** Feature set
+*** Timeouts?
+*** quora
+
+** resource limits
+* Webui/gui component
+* closed/source
+* 
