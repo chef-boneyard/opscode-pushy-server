@@ -195,20 +195,16 @@ proplist_to_job_node(Proplist) ->
                     }.
 
 %% Heartbeat Status translators
-hb_status(crashed) -> -1;
 hb_status(down) -> 0;
-hb_status(up) -> 1;
-hb_status(idle) -> 2;
-hb_status(ready) -> 3;
-hb_status(running) -> 4;
-hb_status(restarting) -> 5;
-hb_status(-1) -> crashed;
+hb_status(idle) -> 1;
+hb_status(ready) -> 2;
+hb_status(running) -> 3;
+hb_status(restarting) -> 4;
 hb_status(0) -> down;
-hb_status(1) -> up;
-hb_status(2) -> idle;
-hb_status(3) -> ready;
-hb_status(4) -> running;
-hb_status(5) -> restarting.
+hb_status(1) -> idle;
+hb_status(2) -> ready;
+hb_status(3) -> running;
+hb_status(4) -> restarting.
 
 %% Job Status translators
 job_status(new) -> 0;

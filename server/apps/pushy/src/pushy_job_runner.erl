@@ -2,6 +2,9 @@
 %% ex: ts=4 sw=4 et
 %% @author Seth Chisamore <schisamo@opscode.com>
 %% @copyright 2012 Opscode, Inc.
+%%% @doc
+%%% FSM encapsulating life cycle of a single job.
+%%% @end
 
 -module(pushy_job_runner).
 -behaviour(gen_fsm).
@@ -16,6 +19,17 @@
 -export([load_from_db/2,
          register_process/2]).
 
+-define(NO_JOB, {error, no_job}).
+-define(JOB_NODE_EVENT(Event), Event(JobId, NodeName, Type) -> case catch gproc:send({n,l,JobId}, {Event, NodeName, Type}) of
+                                              {'EXIT', _} -> ?NO_JOB;
+                                              _ -> ok
+                                          end).
+
+-record(state, {job_id,
+                job,
+                acked_nodes=[],
+                nacked_nodes=[]}).
+
 -include_lib("pushy_sql.hrl").
 
 %% ------------------------------------------------------------------
@@ -26,6 +40,8 @@
          handle_event/3,
          handle_sync_event/4,
          handle_info/3,
+         node_command_event/3,
+         node_heartbeat_event/3,
          terminate/3,
          code_change/4]).
 
@@ -41,114 +57,135 @@ start_link(JobId) ->
 %% ------------------------------------------------------------------
 
 init([JobId]) ->
-    {ok, load_from_db, #pushy_job{id=JobId}, 0}.
+    {ok, load_from_db, #state{job_id=JobId}, 0}.
 
-load_from_db(timeout, #pushy_job{id=JobId}=Job) ->
+load_from_db(timeout, #state{job_id=JobId}=State) ->
     case pushy_sql:fetch_job(JobId) of
-        {ok, #pushy_job{}=Job1} ->
-            {next_state, register_process, Job1, 0};
+        {ok, #pushy_job{}=Job} ->
+            {next_state, register_process, State#state{job=Job}, 0};
         {ok, not_found} ->
             error_logger:error_msg("Failed to find job ~p for ~p~n", [JobId, self()]),
-            {stop, not_found, Job}
+            {stop, not_found, State}
     end.
 
-register_process(timeout, #pushy_job{id=JobId, duration=Duration}=Job) ->
+register_process(timeout, #state{job_id=JobId, job=#pushy_job{duration=Duration}}=State) ->
     case gproc:reg({n, l, JobId}) of
         true ->
             %% TODO compute timeout based on existing created_at
             erlang:send_after(Duration*1000, self(), expired),
             error_logger:info_msg("Beginning execution of job ~s~n", [JobId]),
-            {next_state, executing, register_node_status_watchers(save_job_status(executing, Job))};
+            {next_state, executing, execute_job(State)};
         false ->
             error_logger:error_msg("Failed to register job tracker process ~p for ~p~n", [JobId, self()]),
-            {stop, shutdown, Job}
+            {stop, shutdown, State}
     end.
 
-handle_event(_Event, StateName, Job) ->
-    {next_state, StateName, Job}.
+?JOB_NODE_EVENT(node_heartbeat_event).
+?JOB_NODE_EVENT(node_command_event).
 
-handle_sync_event(_Event, _From, StateName, Job) ->
-    {reply, ok, StateName, Job}.
+handle_event(complete, _StateName, #state{job_id=JobId}=State) ->
+    error_logger:info_msg("Job [~p] complete.~n", [JobId]),
+    {stop, job_complete, save_job_status(complete, State)};
+handle_event(_Event, StateName, State) ->
+    {next_state, StateName, State}.
 
-handle_info(error, executing, Job) ->
-    error_logger:info_msg("JOB STATUS ERROR~n"),
-    {next_state, error, save_job_status(error, Job)};
-handle_info(failed, executing, Job) ->
-    error_logger:info_msg("JOB STATUS FAILED~n"),
-    {next_state, failed, save_job_status(failed, Job)};
-handle_info(expired, new, Job) ->
-    error_logger:info_msg("JOB STATUS EXPIRED~n"),
-    {next_state, expired, save_job_status(expired, Job)};
-handle_info(expired, executing, Job) ->
-    error_logger:info_msg("JOB STATUS EXPIRED~n"),
-    {next_state, expired, save_job_status(expired, Job)};
-handle_info(aborted, executing, Job) ->
-    error_logger:info_msg("JOB STATUS ABORTED~n"),
-    {next_state, aborted, save_job_status(aborted, Job)};
-handle_info({node_state_change, NodeName, Status}, StateName, Job) ->
-    error_logger:info_msg("JOB STATUS NODE STATE CHANGE~n"),
-    {next_state, StateName, job_complete_check(save_job_node_status(Status, NodeName, Job))};
-handle_info(Info, StateName, Job) ->
+handle_sync_event(_Event, _From, StateName, State) ->
+    {reply, ok, StateName, State}.
+
+
+handle_info(expired, _StateName, #state{job_id=JobId}=State) ->
+    error_logger:info_msg("Job [~p] expired.~n", [JobId]),
+    {stop, job_expired, save_job_status(expired, State)};
+handle_info({node_command_event, NodeName, ack}, StateName,
+                #state{job_id=JobId, acked_nodes=AckedNodes}=State) ->
+    error_logger:info_msg("Job [~p] ACK received for node [~p].~n", [JobId, NodeName]),
+    {next_state, StateName,
+        execute_start_check(State#state{acked_nodes = [NodeName|AckedNodes]})};
+handle_info({node_command_event, NodeName, nack}, StateName,
+                #state{job_id=JobId, nacked_nodes=NackedNodes}=State) ->
+    error_logger:info_msg("Job [~p] NACK received for node [~p].~n", [JobId, NodeName]),
+    {next_state, StateName,
+        execute_start_check(State#state{nacked_nodes = [NodeName|NackedNodes]})};
+handle_info({node_command_event, NodeName, CommandEvent}, StateName, State) ->
+    Status = event_to_job_status(CommandEvent),
+    error_logger:info_msg("Node [~p] job status changed [~p]~n", [NodeName, Status]),
+    {next_state, StateName, job_complete_check(save_job_node_status(Status, NodeName, State))};
+handle_info({node_heartbeat_event, NodeName, down}, StateName, State) ->
+    error_logger:info_msg("Node [~p] job status changed [failed]~n", [NodeName]),
+    {next_state, StateName, job_complete_check(save_job_node_status(failed, NodeName, State))};
+handle_info(Info, StateName, State) ->
     error_logger:info_msg("JOB STATUS CATCH ALL: Info->~p StateName->~p~n", [Info,StateName]),
-    {next_state, StateName, Job}.
+    {next_state, StateName, State}.
 
-terminate(_Reason, _StateName, _Job) ->
+terminate(_Reason, _StateName, _State) ->
     ok.
 
-code_change(_OldVsn, StateName, Job, _Extra) ->
-    {ok, StateName, Job}.
+code_change(_OldVsn, StateName, State, _Extra) ->
+    {ok, StateName, State}.
 
 %% ------------------------------------------------------------------
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
-register_node_status_watchers([], Job) ->
-    Job;
-register_node_status_watchers([#pushy_job_node{node_name = NodeName}|Rest], Job) ->
-    pushy_node_state:start_watching(NodeName),
-    register_node_status_watchers(Rest, Job).
-register_node_status_watchers(#pushy_job{job_nodes=JobNodes}=Job) ->
-    register_node_status_watchers(JobNodes, Job).
 
+%% TODO - do we really need these small diferences between heartbeat types and
+%%        actual underlying job status.
+event_to_job_status(started) ->
+    executing;
+event_to_job_status(finished) ->
+    complete.
+
+execute_job(#state{job=#pushy_job{job_nodes=JobNodes}=Job}=State) ->
+    NodeNames = [ JobNode#pushy_job_node.node_name || JobNode <- JobNodes ],
+    %[ pushy_node_state:start_watching(NodeName) || NodeName <- NodeNames],
+    pushy_command_switch:send_multi_command(?POC_ORG_NAME, NodeNames, create_message({command, Job})),
+    save_job_status(executing, State).
+
+create_message(Data) when is_list(Data) ->
+    Host = pushy_util:get_env(pushy, server_name, fun is_list/1),
+    jiffy:encode({[{server, list_to_binary(Host)} | Data]});
+create_message({command, #pushy_job{id=JobId, command=Command}}) ->
+    create_message([{type, <<"job_command">>},
+                    {job_id, JobId},
+                    {command, Command}]);
+create_message({execute, #pushy_job{id=JobId}}) ->
+    create_message([{type, <<"job_execute">>},
+                    {job_id, JobId}]).
 
 status_complete(#pushy_job_node{status=Status}) ->
     lists:member(Status, ?COMPLETE_STATUS).
 
-job_complete_check(#pushy_job{job_nodes=JobNodes}=Job) ->
+job_complete_check(#state{job=#pushy_job{job_nodes=JobNodes}}=State) ->
     case lists:all(fun status_complete/1, JobNodes) of
         true ->
-            gen_fsm:send_event(self(), {next_state, complete, Job})
-    end,
-    Job.
+            gen_fsm:send_all_state_event(self(), complete),
+            State;
+        false ->
+            State
+    end.
 
-save_job_status(Status, Job) ->
+execute_start_check(#state{acked_nodes=AckedNodes, nacked_nodes=NackedNodes,
+                        job=#pushy_job{job_nodes=JobNodes}=Job}=State) ->
+    case lists:flatlength(JobNodes) == lists:flatlength([AckedNodes|NackedNodes]) of
+        true ->
+            pushy_command_switch:send_multi_command(?POC_ORG_NAME, AckedNodes, create_message({execute, Job})),
+            State;
+        false ->
+            State
+    end.
+
+save_job_status(Status, #state{job=Job}=State) ->
     Job1 = Job#pushy_job{status=Status},
     case pushy_object:update_object(update_job, Job1, ?POC_ACTOR_ID) of
         {ok, _} ->
-            Job1;
+            State#state{job=Job1};
         {error, _Error} ->
-            Job1
+            State#state{job=Job1}
     end.
 
-% Option 1
-% save_job_node_status(Status, NodeName, #pushy_job{job_nodes=Nodes}=Job) ->
-%     Fun1 = fun(#pushy_job_node{node_name=Name}=Node) ->
-%                 if
-%                     Name =:= NodeName ->
-%                         Node1 = Node#pushy_job_node{status=Status},
-%                         pushy_object:update_object(update_job_node, Node1),
-%                         Node1;
-%                     true ->
-%                         Node
-%                 end
-%             end,
-%     Nodes1 = lists:map(Fun1, Nodes),
-%     Job#pushy_job{job_nodes=Nodes1}.
-
-% Option 2
-save_job_node_status(Status, NodeName, #pushy_job{job_nodes=Nodes}=Job) ->
+save_job_node_status(Status, NodeName, #state{job=#pushy_job{job_nodes=Nodes}=Job}=State) ->
     Fun1 = fun(#pushy_job_node{node_name=Name}) -> Name =:= NodeName end,
     {[Node | _], Rest} = lists:partition(Fun1, Nodes),
     Node1 = Node#pushy_job_node{status=Status},
     pushy_object:update_object(update_job_node, Node1),
-    Job#pushy_job{job_nodes=[Node1 | Rest]}.
+    State#state{job=Job#pushy_job{job_nodes=[Node1 | Rest]}}.
 

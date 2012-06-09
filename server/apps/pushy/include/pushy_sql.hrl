@@ -9,9 +9,8 @@
                             ready |
                             running |
                             restarting |
-                            up |
-                            down |
-                            crashed.
+                            down.
+
 
 %% job status
 -type job_status() :: new |

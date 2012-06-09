@@ -89,7 +89,7 @@ First, insert a job record into the database:
     %% create an embroyonic job record
     Job = pushy_object:new_record(pushy_job, <<"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa">>, NodeNames).
     %% set the command and a max duration of 20 seconds
-    Job1 = Job#pushy_job{command= <<"echo SONIC RAINBOOM">>, duration= 20}.
+    Job1 = Job#pushy_job{command= <<"ohai">>, duration= 300}.
     %% insert job into the DB
     pushy_object:create_object(create_job, Job1, <<"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb">>).
 

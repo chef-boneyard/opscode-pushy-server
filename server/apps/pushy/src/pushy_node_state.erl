@@ -8,9 +8,7 @@
 
 %% API
 -export([current_state/1,
-         down/1,
          heartbeat/1,
-         restarting/1,
          start_link/3]).
 
 %% Observers
@@ -26,10 +24,6 @@
          up/3]).
 
 -define(NO_NODE, {error, no_node}).
--define(NODE_EVENT(Event), Event(Name) -> case catch gproc:send({n,l,Name}, Event) of
-                                              {'EXIT', _} -> ?NO_NODE;
-                                              _ -> ok
-                                          end).
 
 %% gen_fsm callbacks
 -export([code_change/4,
@@ -50,11 +44,13 @@
 start_link(Name, HeartbeatInterval, DeadIntervalCount) ->
     gen_fsm:start_link(?MODULE, [Name, HeartbeatInterval, DeadIntervalCount], []).
 
-?NODE_EVENT(heartbeat).
+heartbeat({heartbeat, NodeName, NodeState}) ->
+    case catch gproc:send({n,l,NodeName},
+            {heartbeat, NodeName, status_to_atom(NodeState)}) of
+        {'EXIT', _} -> ?NO_NODE;
+        _ -> ok
+    end.
 
-?NODE_EVENT(restarting).
-
-?NODE_EVENT(down).
 
 current_state(Name) ->
     case catch gproc:lookup_pid({n,l,Name}) of
@@ -110,30 +106,24 @@ handle_event(_Event, StateName, State) ->
 handle_sync_event(_Event, _From, StateName, State) ->
     {reply, ignored, StateName, State}.
 
+
 handle_info({'DOWN', _MonitorRef, _Type, Object, _Info}, StateName, State) ->
     Observers = State#state.observers,
     State1 = State#state{observers=lists:delete(Object,Observers)},
     {next_state, StateName, State1};
-
-handle_info(heartbeat, up, State) ->
-    {next_state, up, reset_timer(State)};
-handle_info(heartbeat, crashed, State) ->
-    confirm_heartbeat_threshold(State, crashed);
-handle_info(heartbeat, down, State) ->
-    confirm_heartbeat_threshold(State, down);
-handle_info(heartbeat, restarting, State) ->
-    {next_state, up, reset_timer(save_status(up, State))};
-handle_info(crashed, up, State) ->
-    {next_state, crashed, save_status(crashed, State#state{heartbeats=0})};
-handle_info(restarting, up, State) ->
-    {next_state, restarting, save_status(restarting, State)};
-handle_info(restarting, crashed, State) ->
-    {next_state, restarting, save_status(restarting, State)};
-handle_info(down, down, State) ->
-    {next_state, down, save_status(down, State)};
-
+handle_info({heartbeat, _NodeName, NodeState},
+    StateName, #state{heartbeats=HeartBeats}=State) ->
+    %error_logger:info_msg("Heartbeat recieved from ~p Currently ~p~n", [NodeName, NodeState]),
+    if HeartBeats >= ?POC_HB_THRESHOLD  ->
+            {next_state, NodeState, reset_timer(save_status(NodeState, State))};
+       true ->
+           {next_state, StateName, State#state{heartbeats=HeartBeats+1}}
+    end;
+handle_info(down, _StateName, State) ->
+    {next_state, down, save_status(down, State#state{heartbeats=0})};
 handle_info(_Info, StateName, State) ->
     {next_state, StateName, State}.
+
 
 terminate(_Reason, _StateName, _State) ->
     ok.
@@ -167,22 +157,21 @@ save_status(Status, #state{name=Name}=State) ->
     end.
 
 notify_status_change(Status, #state{name=Name,observers=Observers}) ->
-    [ Observer ! { Name,self(),Status } || Observer <- Observers ].
+    [ Observer ! { node_heartbeat_event, Name, Status } || Observer <- Observers ].
 
-
-%% confirm that we have recieved enough heartbeats before coming up
-confirm_heartbeat_threshold(#state{heartbeats=HeartBeats}=State, StateName) ->
-    if HeartBeats >= ?POC_HB_THRESHOLD  ->
-            {next_state, up, reset_timer(save_status(up, State))};
-       true ->
-            State1 = State#state{heartbeats=HeartBeats+1},
-            {next_state, StateName, reset_timer(State1)}
-    end.
+status_to_atom(<<"idle">>) ->
+    idle;
+status_to_atom(<<"ready">>) ->
+    ready;
+status_to_atom(<<"running">>) ->
+    running;
+status_to_atom(<<"restarting">>) ->
+    restarting.
 
 reset_timer(#state{dead_interval=Interval, tref=undefined}=State) ->
     TRef = erlang:send_after(Interval, self(), no_heartbeats),
     State#state{tref=TRef};
 reset_timer(#state{dead_interval=Interval, tref=TRef}=State) ->
     erlang:cancel_timer(TRef),
-    TRef1 = erlang:send_after(Interval, self(), crashed),
+    TRef1 = erlang:send_after(Interval, self(), down),
     State#state{tref=TRef1}.

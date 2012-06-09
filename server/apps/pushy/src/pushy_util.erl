@@ -12,13 +12,11 @@
          make_zmq_socket_addr/3,
          get_env/3,
          read_body/0,
-         do_authenticate_message/2
+         do_authenticate_message/2,
+         signed_header_from_message/2
         ]).
 
 -include_lib("eunit/include/eunit.hrl").
-
-
-
 
 make_zmq_socket_addr(Port) ->
     Host = get_env(pushy, zeromq_listen_address, fun is_list/1),
@@ -60,6 +58,8 @@ read_body() ->
             BodyFrame
     end.
 
+%% DECODE/DECRYPT
+
 do_authenticate_message(Header, Body) ->
     SignedChecksum = signed_checksum_from_header(Header),
     % TODO - query DB for public key of each client
@@ -89,3 +89,21 @@ signed_checksum_from_header(Header) ->
         = list_to_tuple(HeaderParts),
     SignedChecksum.
 
+%% ENCODE/ENCRYPT
+
+signed_header_from_message(PrivateKey, Body) ->
+    HashedBody = chef_authn:hash_string(Body),
+    SignedChecksum = base64:encode(public_key:encrypt_private(HashedBody, PrivateKey)),
+    Headers = [join_bins(tuple_to_list(Part), <<":">>) || Part <- [{<<"Version">>, <<"1.0">>},
+                    {<<"SignedChecksum">>, SignedChecksum}]],
+    join_bins(Headers, <<";">>).
+
+join_bins([], _Sep) ->
+    <<>>;
+join_bins(Bins, Sep) when is_binary(Sep) ->
+    join_bins(Bins, Sep, []).
+
+join_bins([B], _Sep, Acc) ->
+    iolist_to_binary(lists:reverse([B|Acc]));
+join_bins([B|Rest], Sep, Acc) ->
+    join_bins(Rest, Sep, [Sep, B | Acc]).
