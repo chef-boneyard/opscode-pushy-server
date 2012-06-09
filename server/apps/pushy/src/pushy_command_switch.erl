@@ -38,8 +38,7 @@
 -record(state,
         {command_sock,
          addr_node_map :: {dictionary(), dictionary()},
-         private_key,
-         job
+         private_key
         }).
 
 %% ------------------------------------------------------------------
@@ -80,10 +79,8 @@ handle_cast({send, OrgName, NodeName, Message}, #state{}=State) ->
     do_send(State, OrgName, NodeName, Message),
     {noreply, State};
 handle_cast({send_multi, OrgName, Nodes, Message}, #state{}=State) ->
-    State1 = State#state{job={OrgName, Nodes, Message}},
-    ack(State, OrgName, Nodes),
-    %do_send_multi(State, OrgName, Nodes, Message),
-    {noreply, State1};
+    do_send_multi(State, OrgName, Nodes, Message),
+    {noreply, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -91,12 +88,12 @@ handle_info({zmq, _CommandSock, Address, [rcvmore]},
             State) ->
     %% TODO: This needs a more graceful way of handling message sequences. I really feel like we need to
     %% abstract out some more generalized routines to handle the message receipt process.
-    error_logger:info_msg("Receiving message with address ~w~n", [Address]),
+    % error_logger:info_msg("Receiving message with address ~w~n", [Address]),
 
     Header = read_header(),
     Body = pushy_util:read_body(),
 
-    error_logger:info_msg("Received message~n\tA ~p~n\tH ~s~n\tB ~s~n", [Address, Header, Body]),
+    % error_logger:info_msg("Received message~n\tA ~p~n\tH ~s~n\tB ~s~n", [Address, Header, Body]),
     State1 = case catch pushy_util:do_authenticate_message(Header, Body) of
                  ok ->
                      process_message(State, Address, Header, Body);
@@ -129,14 +126,7 @@ do_send(#state{addr_node_map = AddrNodeMap,
 do_send_multi(State, Org, Nodes, Message) ->
     [ do_send(State, Org, Node, Message) || Node <- Nodes ].
 
-ack(State, OrgName, Nodes) ->
-    Host = pushy_util:get_env(pushy, server_name, fun is_list/1),
-    Message = jiffy:encode({[{server, list_to_binary(Host)},
-                {type, <<"ack">>}]}),
-    do_send_multi(State, OrgName, Nodes, Message).
-
-
-process_message(#state{job=Job}=State, Address, _Header, Body) ->
+process_message(State, Address, _Header, Body) ->
     case catch jiffy:decode(Body) of
         {Data} ->
             Type = ej:get({<<"type">>}, Data ),
@@ -152,20 +142,21 @@ process_message(#state{job=Job}=State, Address, _Header, Body) ->
             case Type of
                 % ready messages only are used to initialze
                 <<"ready">> ->
-                    error_logger:info_msg("Node ~p ready to RAWK this command party.~n", [NodeName]),
-                    %% TODO - do we notify the job runner?
+                    error_logger:info_msg("Node [~p] ready to RAWK this command party.~n", [NodeName]),
                     State2;
                 <<"ack">> ->
-                    error_logger:info_msg("ACK"),
-                    {OrgName, Nodes, Message} = Job,
-                    do_send_multi(State, OrgName, Nodes, Message),
+                    pushy_job_runner:node_command_event(JobId, NodeName, ack),
                     State2;
                 <<"nack">> ->
-                    error_logger:info_msg("NACK"),
-                    {OrgName, Nodes, _Message} = Job,
-                    ack(State, OrgName, Nodes),
+                    pushy_job_runner:node_command_event(JobId, NodeName, nack),
+                    State2;
+                <<"started">> ->
+                    error_logger:info_msg("Node [~p] started running Job [~p]~n", [NodeName, JobId]),
+                    pushy_job_runner:node_command_event(JobId, NodeName, started),
                     State2;
                 <<"finished">> ->
+                    error_logger:info_msg("Node [~p] finished running Job [~p]~n", [NodeName, JobId]),
+                    pushy_job_runner:node_command_event(JobId, NodeName, finished),
                     State2;
                 _Else ->
                     error_logger:info_msg("I don't know anything about ~p~n", [Type]),
@@ -180,13 +171,6 @@ process_message(#state{job=Job}=State, Address, _Header, Body) ->
 %%
 %% Utility functions; we should generalize these and move elsewhere.
 %%
-
-%% TODO - do we really need these small diferences between message type value and
-%%        actual underlying job status.
-type_to_job_status(<<"started">>) ->
-    executing;
-type_to_job_status(<<"finished">>) ->
-    complete.
 
 %read_address_separator() ->
 %    receive
