@@ -20,10 +20,8 @@
           orgname :: string(),
           organization_guid :: string() }).
 
-init(Config) ->
-    ?debugVal(Config),
+init(_Config) ->
     State = #config_state{},
-    ?debugVal(State),
     {ok, State}.
 %%    {{trace, "/tmp/traces"}, State}.
 %% then in console: wmtrace_resource:add_dispatch_rule("wmtrace", "/tmp/traces").
