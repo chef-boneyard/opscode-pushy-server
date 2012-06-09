@@ -42,6 +42,7 @@ module Pushy
 
         if command_hash['type'] == "job_command"
           ack_nack(command_hash)
+          @worker.command_hash = command_hash
         elsif command_hash['type'] == "job_execute"
           run_command
         end
@@ -53,24 +54,23 @@ module Pushy
       def ack_nack(command_hash)
         if @worker.state == "idle"
           @worker.change_state "ready"
-          @worker.command_hash  command_hash
           message = :ack
         else
           message = :nack
         end
 
-        @worker.send_command_message(message)
+        @worker.send_command_message(message, command_hash['job_id'])
       end
 
       def run_command
         command_hash = @worker.command_hash
         @worker.change_state "running"
-        @worker.send_command_message(:started)
+        @worker.send_command_message(:started, @worker.command_hash['job_id'])
         command = EM::DeferrableChildProcess.open(command_hash['command'])
         command.callback do |data_from_child|
-          #puts data_from_child
+          # puts data_from_child
           @worker.change_state "idle"
-          @worker.send_command_message(:finished, command_hash['job_id'])
+          @worker.send_command_message(:finished, @worker.command_hash['job_id'])
         end
       end
 
