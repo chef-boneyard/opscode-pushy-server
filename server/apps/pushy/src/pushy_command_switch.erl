@@ -166,8 +166,6 @@ process_message(#state{job=Job}=State, Address, _Header, Body) ->
                     ack(State, OrgName, Nodes),
                     State2;
                 <<"finished">> ->
-                    error_logger:info_msg("Node ~p finished running Job ~p~n", [NodeName, JobId]),
-                    pushy_job_runner:node_state_change(JobId, NodeName, type_to_job_status(Type)),
                     State2;
                 _Else ->
                     error_logger:info_msg("I don't know anything about ~p~n", [Type]),

@@ -157,7 +157,7 @@ save_status(Status, #state{name=Name}=State) ->
     end.
 
 notify_status_change(Status, #state{name=Name,observers=Observers}) ->
-    [ Observer ! { node_state_change, Name, Status } || Observer <- Observers ].
+    [ Observer ! { node_heartbeat_event, Name, Status } || Observer <- Observers ].
 
 status_to_atom(<<"idle">>) ->
     idle;

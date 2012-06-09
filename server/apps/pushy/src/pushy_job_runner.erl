@@ -101,11 +101,10 @@ handle_info(complete, executing, Job) ->
     error_logger:info_msg("JOB COMPLETE~n"),
     %% TODO - clean up job
     {next_state, complete, save_job_status(complete, Job)};
-handle_info({node_state_change, NodeName, NodeState}, StateName, Job) ->
-    TranslatedNodeState = hb_to_job_status(NodeState),
-    error_logger:info_msg("JOB NODE ~p STATE CHANGE ~p~n", [NodeName, TranslatedNodeState]),
-    job_complete_check(save_job_node_status(TranslatedNodeState, NodeName, Job), StateName);
 handle_info(Info, StateName, Job) ->
+handle_info({node_heartbeat_event, NodeName, down}, StateName, State) ->
+    error_logger:info_msg("Node [~p] job status changed [failed]~n", [NodeName]),
+    {next_state, StateName, job_complete_check(save_job_node_status(failed, NodeName, State))};
     error_logger:info_msg("JOB STATUS CATCH ALL: Info->~p StateName->~p~n", [Info,StateName]),
     {next_state, StateName, Job}.
 
