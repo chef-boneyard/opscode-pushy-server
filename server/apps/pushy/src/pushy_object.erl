@@ -11,6 +11,7 @@
 
 -export([
           create_object/3,
+          update_object/2,
           update_object/3,
           new_record/3,
 
@@ -52,8 +53,12 @@ create_object(Fun, Object, ActorId) ->
 %% @doc Generic update for Pushy object types. `Fun' is the appropriate function in the
 %% `pushy_sql' module. `Object' is a Pushy object (record) with updated data.
 update_object(Fun, Object, ActorId) ->
-  Object1 = set_updated(Object, ActorId),
-  pushy_sql:Fun(Object1).
+    Object1 = set_updated(Object, ActorId),
+    pushy_sql:Fun(Object1).
+
+update_object(Fun, Object) ->
+    Object1 = set_updated(Object),
+    pushy_sql:Fun(Object1).
 
 %% CHEF_COMMON CARGO_CULT
 %% chef_db ?MAKE_SET_UPDATED
@@ -65,12 +70,18 @@ update_object(Fun, Object, ActorId) ->
 %% Here's a place where something like the ct_expand parse_transform would be really nice.
 %% NOTE: a downside of this setup is that you can't easily jump to the definition of
 %% `set_updated' using standard emacs code tools.
--define(MAKE_SET_UPDATED(Rec),
+-define(MAKE_SET_UPDATED_WITH_ACTOR(Rec),
         set_updated(#Rec{}=Object, ActorId) ->
-               Object#Rec{updated_at = sql_date(now), last_updated_by = ActorId}).
+            Object#Rec{updated_at = sql_date(now), last_updated_by = ActorId}).
 
-?MAKE_SET_UPDATED(pushy_node_status);
-?MAKE_SET_UPDATED(pushy_job).
+-define(MAKE_SET_UPDATED(Rec),
+        set_updated(#Rec{}=Object) ->
+            Object#pushy_job_node{updated_at = sql_date(now)}).
+
+?MAKE_SET_UPDATED_WITH_ACTOR(pushy_node_status);
+?MAKE_SET_UPDATED_WITH_ACTOR(pushy_job).
+
+?MAKE_SET_UPDATED(pushy_job_node).
 
 %% Similar to MAKE_SET_UPDATED, a helper for generating a set_created function that sets
 %% created_at, updated_at, and last_updated_by on any of the Chef object types.

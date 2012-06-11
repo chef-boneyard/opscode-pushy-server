@@ -98,10 +98,9 @@ send_heartbeat(BodyFrame, HeartbeatInterval, DeadInterval) when is_binary(BodyFr
     end;
 send_heartbeat(Hash, HeartbeatInterval, DeadInterval) ->
     NodeName = proplists:get_value(<<"node">>, Hash),
+    NodeState = proplists:get_value(<<"state">>, Hash),
 
-    error_logger:info_msg("Heartbeat recieved from ~p~n", [NodeName]),
-
-    case catch pushy_node_state:heartbeat(NodeName) of
+    case catch pushy_node_state:heartbeat({heartbeat, NodeName, NodeState}) of
         {error, no_node} ->
             pushy_node_state_sup:new(NodeName, HeartbeatInterval, DeadInterval),
             send_heartbeat(Hash, HeartbeatInterval, DeadInterval);

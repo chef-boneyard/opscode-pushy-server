@@ -98,14 +98,18 @@ create_object(#pushy_node_status{status=Status}=NodeStatus) ->
     create_object(insert_node_status, NodeStatus1);
 %% This does not exactly follow the same pattern as it needs to
 %% insert a list of job_nodes into a separate table.
-create_object(#pushy_job{job_nodes = JobNodes}=Job) ->
+create_object(#pushy_job{status = Status, job_nodes = JobNodes}=Job) ->
+    %% convert status into an integer
+    Job1 = Job#pushy_job{status=job_status(Status)},
+    Fields0 = flatten_record(Job1),
+    Fields = job_fields_for_insert(Fields0),
     %% We're not dispatching to the general create_object/2 because creating a job
     %% involves adding multiple rows to multiple tables. Also, we currently embed a list of
     %% job nodes in the job record; this won't play nicely with the general
     %% 'create_object' logic, which passes all record fields (in order) as parameters for a
     %% prepared statement
-    case create_object(insert_job, Job) of
-      ok ->
+    case create_object(insert_job, Fields) of
+      {ok, 1} ->
         case insert_job_nodes(JobNodes) of
           ok ->
               %% (Remember, create_object/1 should return {ok, Number})
@@ -127,8 +131,8 @@ create_object(#pushy_job{job_nodes = JobNodes}=Job) ->
     end.
 
 -spec create_object(atom(), tuple() | list()) -> {ok, non_neg_integer()} | {error, term()}.
-create_object(QueryName, Record) when is_atom(QueryName) ->
-    case sqerl:statement(QueryName, flatten_record(Record), count) of
+create_object(QueryName, Args) when is_atom(QueryName), is_list(Args) ->
+    case sqerl:statement(QueryName, Args, count) of
         {ok, N} ->
             {ok, N};
         {error, Reason} ->
@@ -137,7 +141,15 @@ create_object(QueryName, Record) when is_atom(QueryName) ->
         %% FIXME: original code for create_node had the following match, but seems like
         %% crashing would be better if we get an unexpected error.
         %% Error -> Error
-    end.
+    end;
+create_object(QueryName, Record) when is_atom(QueryName) ->
+    List = flatten_record(Record),
+    create_object(QueryName, List).
+
+-spec job_fields_for_insert(CbFields:: list()) -> list().
+job_fields_for_insert(CbFields) ->
+   %% We drop the last record field - job_nodes
+   lists:reverse(tl(lists:reverse(CbFields))).
 
 %% @doc Inserts job_nodes records into the database. All records are timestamped
 %% with the same stamp, namely `CreatedAt`, which is a binary string in SQL date time
@@ -204,29 +216,25 @@ job_join_rows_to_record([Row|Rest], JobNodes ) ->
 
 %% @doc Convenience function for assembling a job_node tuple from a proplist
 proplist_to_job_node(Proplist) ->
-    #pushy_job_node{job_id=safe_get(<<"job_id">>, Proplist),
-                    org_id=safe_get(<<"org_id">>, Proplist),
-                    node_name=safe_get(<<"node_name">>, Proplist),
-                    status=job_status(safe_get(<<"status">>, Proplist)),
-                    created_at=safe_get(<<"created_at">>, Proplist),
-                    updated_at=safe_get(<<"updated_at">>, Proplist)
+    #pushy_job_node{job_id = safe_get(<<"id">>, Proplist),
+                    org_id = safe_get(<<"org_id">>, Proplist),
+                    node_name = safe_get(<<"node_name">>, Proplist),
+                    status = job_status(safe_get(<<"status">>, Proplist)),
+                    created_at = safe_get(<<"created_at">>, Proplist),
+                    updated_at = safe_get(<<"updated_at">>, Proplist)
                     }.
 
 %% Heartbeat Status translators
-hb_status(crashed) -> -1;
 hb_status(down) -> 0;
-hb_status(up) -> 1;
-hb_status(idle) -> 2;
-hb_status(ready) -> 3;
-hb_status(running) -> 4;
-hb_status(restarting) -> 5;
-hb_status(-1) -> crashed;
+hb_status(idle) -> 1;
+hb_status(ready) -> 2;
+hb_status(running) -> 3;
+hb_status(restarting) -> 4;
 hb_status(0) -> down;
-hb_status(1) -> up;
-hb_status(2) -> idle;
-hb_status(3) -> ready;
-hb_status(4) -> running;
-hb_status(5) -> restarting.
+hb_status(1) -> idle;
+hb_status(2) -> ready;
+hb_status(3) -> running;
+hb_status(4) -> restarting.
 
 %% Job Status translators
 job_status(new) -> 0;

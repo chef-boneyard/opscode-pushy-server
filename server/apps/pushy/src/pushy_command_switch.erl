@@ -37,7 +37,8 @@
 
 -record(state,
         {command_sock,
-         addr_node_map :: {dictionary(), dictionary()}
+         addr_node_map :: {dictionary(), dictionary()},
+         private_key
         }).
 
 %% ------------------------------------------------------------------
@@ -59,12 +60,15 @@ send_multi_command(OrgName, Nodes, Message) ->
 init([Ctx]) ->
     CommandAddress = pushy_util:make_zmq_socket_addr(command_port),
 
+    {ok, PrivateKey} = chef_keyring:get_key(server_private),
+
     error_logger:info_msg("Starting command mux listening on ~s~n.", [CommandAddress]),
 
     {ok, CommandSock} = erlzmq:socket(Ctx, [router, {active, true}]),
     ok = erlzmq:bind(CommandSock, CommandAddress),
     State = #state{command_sock = CommandSock,
-                   addr_node_map = addr_node_map_new()
+                   addr_node_map = addr_node_map_new(),
+                   private_key = PrivateKey
                   },
     {ok, State}.
 
@@ -84,12 +88,12 @@ handle_info({zmq, _CommandSock, Address, [rcvmore]},
             State) ->
     %% TODO: This needs a more graceful way of handling message sequences. I really feel like we need to
     %% abstract out some more generalized routines to handle the message receipt process.
-    error_logger:info_msg("Receiving message with address ~w~n", [Address]),
+    % error_logger:info_msg("Receiving message with address ~w~n", [Address]),
 
     Header = read_header(),
     Body = pushy_util:read_body(),
 
-    error_logger:info_msg("Received message~n\tA ~p~n\tH ~s~n\tB ~s~n", [Address, Header, Body]),
+    % error_logger:info_msg("Received message~n\tA ~p~n\tH ~s~n\tB ~s~n", [Address, Header, Body]),
     State1 = case catch pushy_util:do_authenticate_message(Header, Body) of
                  ok ->
                      process_message(State, Address, Header, Body);
@@ -112,10 +116,12 @@ code_change(_OldVsn, State, _Extra) ->
 %% ------------------------------------------------------------------
 
 do_send(#state{addr_node_map = AddrNodeMap,
-               command_sock = CommandSocket},
+               command_sock = CommandSocket,
+               private_key = PrivateKey},
         Org, Node, Message) ->
     Address = addr_node_map_lookup_by_node(AddrNodeMap, {Org, Node}),
-    send_multipart(CommandSocket, Address, Message).
+    send_multipart(CommandSocket, Address,
+        [pushy_util:signed_header_from_message(PrivateKey, Message), Message]).
 
 do_send_multi(State, Org, Nodes, Message) ->
     [ do_send(State, Org, Node, Message) || Node <- Nodes ].
@@ -128,19 +134,32 @@ process_message(State, Address, _Header, Body) ->
             % This essentially debug code.
             NodeName = ej:get({<<"node">>}, Data ),
             OrgName  = ej:get({<<"org">>}, Data ),
-            ClientName = ej:get({<<"client">>}, Data ),
-            JobName = ej:get({<<"job_id">>}, Data, unknown ),
-            error_logger:info_msg("Got message type ~s from Org ~s Node ~s Client ~s with job id ~s",
-                                  [Type, OrgName, NodeName, ClientName, JobName]),
+            _ClientName = ej:get({<<"client">>}, Data ),
+            JobId = ej:get({<<"job_id">>}, Data, unknown ),
 
             %% Every time we get a message from a node, we update it's Addr->Name mapping entry
             State2 = addr_node_map_update(State, Address, {OrgName, NodeName}),
             case Type of
-                % ready messages only are used to initialze 
-                "ready" -> State2;
+                % ready messages only are used to initialze
+                <<"ready">> ->
+                    error_logger:info_msg("Node [~p] ready to RAWK this command party.~n", [NodeName]),
+                    State2;
+                <<"ack">> ->
+                    pushy_job_runner:node_command_event(JobId, NodeName, ack),
+                    State2;
+                <<"nack">> ->
+                    pushy_job_runner:node_command_event(JobId, NodeName, nack),
+                    State2;
+                <<"started">> ->
+                    error_logger:info_msg("Node [~p] started running Job [~p]~n", [NodeName, JobId]),
+                    pushy_job_runner:node_command_event(JobId, NodeName, started),
+                    State2;
+                <<"finished">> ->
+                    error_logger:info_msg("Node [~p] finished running Job [~p]~n", [NodeName, JobId]),
+                    pushy_job_runner:node_command_event(JobId, NodeName, finished),
+                    State2;
                 _Else ->
-                    %% TODO SETH ADDS call here
-                    %% send_to_job_controller(JobName, Body)
+                    error_logger:info_msg("I don't know anything about ~p~n", [Type]),
                     State2
             end;
         {'EXIT', Error} ->
@@ -203,13 +222,13 @@ addr_node_map_lookup_by_node({_, NodeToAddr}, Node) ->
 
 send_multipart(Socket, Address, Message) ->
     erlzmq:send(Socket, Address, [sndmore]),
-    erlzmq:send(Socket, <<>>, [sndmore]),
+    %erlzmq:send(Socket, <<>>, [sndmore]),
     send_multipart(Socket, Message).
 
 send_multipart(_Socket, []) ->
     ok;
 send_multipart(Socket, [Msg | []]) ->
-    erlzqm:send(Socket, Msg, []);
+    erlzmq:send(Socket, Msg, []);
 send_multipart(Socket, [Head | Tail]) ->
     erlzmq:send(Socket, Head, [sndmore]),
     send_multipart(Socket, Tail).
