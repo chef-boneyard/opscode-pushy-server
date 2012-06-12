@@ -17,10 +17,14 @@
 
 -define(SERVER, ?MODULE).
 
+%% ------------------------------------------------------------------
+%% API Function Definitions
+%% ------------------------------------------------------------------
+
 start_link() ->
     case supervisor:start_link({local, ?SERVER}, ?MODULE, []) of
         {ok, Pid} ->
-            load_children(),
+            load_from_db(),
             {ok, Pid};
         Error ->
             Error
@@ -35,18 +39,31 @@ new(Name) ->
     {ok, DeadIntervalCount} = application:get_env(pushy, dead_interval),
     new(Name, HeartbeatInterval, DeadIntervalCount).
 
-load_children() ->
-    load_children(pushy_sql:fetch_node_statuses(?POC_ORG_ID)).
-
-load_children({ok, []}) ->
-    {ok, done};
-load_children({ok, [FirstChild | OtherChildren]}) ->
-    Name = proplists:get_value(<<"node_name">>, FirstChild),
-    new(Name),
-    load_children({ok, OtherChildren}).
-
+%% ------------------------------------------------------------------
+%% supervisor Function Definitions
+%% ------------------------------------------------------------------
 
 init([]) ->
     {ok, {{simple_one_for_one, 0, 1},
           [{pushy_node_state, {pushy_node_state, start_link, []},
             transient, brutal_kill, worker, [pushy_node_state]}]}}.
+
+%% ------------------------------------------------------------------
+%% Internal Function Definitions
+%% ------------------------------------------------------------------
+
+load_from_db() ->
+    case pushy_sql:fetch_node_statuses(?POC_ORG_ID) of
+        {ok, none} ->
+            error_logger:info_msg("No existing node status records found in database, FSM proceses will not be pre-created.");
+        {ok, NodeStatuses} ->
+            create_processes(NodeStatuses);
+        {error, Reason} ->
+            error_logger:info_msg("Error loading existing node status records from the database: ~p~n", [Reason])
+    end.
+
+create_processes([]) ->
+    {ok, done};
+create_processes([#pushy_node_status{node_name=NodeName} | Rest]) ->
+    new(NodeName),
+    create_processes(Rest).
