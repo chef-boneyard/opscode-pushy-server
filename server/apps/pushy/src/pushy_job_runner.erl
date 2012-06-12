@@ -121,12 +121,12 @@ handle_sync_event(_Event, _From, StateName, State) ->
 handle_info({expired, Reason}, _StateName, #state{job_id=JobId}=State) ->
     error_logger:info_msg("Job [~p] expired for reason: ~p.~n", [JobId,Reason]),
     %% TODO - instruct all nodes to ABORT
-    {stop, {error, job_expired}, save_job_status(expired, State)};
+    {stop, normal, save_job_status(expired, State)};
 %% ANYTHING -> failed
 handle_info({failed, Reason}, _StateName, #state{job_id=JobId}=State) ->
     error_logger:info_msg("Job [~p] failed for reason: ~p.~n", [JobId,Reason]),
     %% TODO - instruct all nodes to ABORT
-    {stop, {error, job_failed}, save_job_status(failed, State)};
+    {stop, normal, save_job_status(failed, State)};
 
 %% out of band messages (mostly other process updating us of our nodes' progress)
 handle_info({node_command_event, NodeName, ack}, StateName,
@@ -222,7 +222,7 @@ execute_start_check(CurrentState,
                     error_logger:info_msg("Beginning execution of Job [~p].~n", [JobId]),
                     {next_state, execute, start_executing(State)};
                 false ->
-                    {stop, {error, no_quorum}, State}
+                    {stop, normal, save_job_status(failed, State)}
                 end;
         false ->
             {next_state, CurrentState, State}
@@ -241,7 +241,7 @@ job_complete_check(CurrentState, #state{job_id=JobId,
         true ->
             error_logger:info_msg("Job [~p] complete.~n", [JobId]),
             %% TODO - mark job status 'error' if any nodes encountered issues
-            {stop, {ok, job_complete}, save_job_status(complete, State)};
+            {stop, normal, save_job_status(complete, State)};
         false ->
             {next_state, CurrentState, State}
     end.
