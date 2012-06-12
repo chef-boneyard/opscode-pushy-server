@@ -238,19 +238,21 @@ hb_status(4) -> restarting.
 
 %% Job Status translators
 job_status(new) -> 0;
-job_status(executing) -> 1;
-job_status(complete) -> 2;
-job_status(error) -> 3;
-job_status(failed) -> 4;
-job_status(expired) -> 5;
-job_status(aborted) -> 6;
+job_status(voting) -> 1;
+job_status(executing) -> 2;
+job_status(complete) -> 3;
+job_status(error) -> 4;
+job_status(failed) -> 5;
+job_status(expired) -> 6;
+job_status(aborted) -> 7;
 job_status(0) -> new;
-job_status(1) -> executing;
-job_status(2) -> complete;
-job_status(3) -> error;
-job_status(4) -> failed;
-job_status(5) -> expired;
-job_status(6) -> aborted.
+job_status(1) -> voting;
+job_status(2) -> executing;
+job_status(3) -> complete;
+job_status(4) -> error;
+job_status(5) -> failed;
+job_status(6) -> expired;
+job_status(7) -> aborted.
 
 %% CHEF_COMMON CARGO_CULT
 %% chef_sql:flatten_record/1
