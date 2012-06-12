@@ -74,7 +74,7 @@ to_json(Req, State) ->
 
     ConfigurationJson = ejson:encode(ConfigurationStruct),
 
-    ?debugVal(ConfigurationJson),
+    % ?debugVal(ConfigurationJson),
 
     {ConfigurationJson, Req, State}.
 

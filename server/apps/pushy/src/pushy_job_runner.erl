@@ -144,8 +144,8 @@ handle_info({node_command_event, NodeName, CommandEvent}, StateName, State) ->
 handle_info({node_heartbeat_event, NodeName, down}, StateName, State) ->
     error_logger:info_msg("Node [~p] job status changed [failed]~n", [NodeName]),
     job_complete_check(StateName, save_job_node_status(failed, NodeName, State));
-handle_info(Info, StateName, State) ->
-    error_logger:info_msg("Job runner catch-all: Message -> ~p Current State -> ~p~n", [Info,StateName]),
+handle_info(_Info, StateName, State) ->
+    % error_logger:info_msg("Job runner catch-all: Message -> ~p Current State -> ~p~n", [Info,StateName]),
     {next_state, StateName, State}.
 
 terminate(_Reason, _StateName, _State) ->
@@ -222,6 +222,7 @@ execute_start_check(CurrentState,
                     error_logger:info_msg("Beginning execution of Job [~p].~n", [JobId]),
                     {next_state, execute, start_executing(State)};
                 false ->
+                    error_logger:info_msg("Quorum could not be met, Job [~p] will not be run.~n", [JobId]),
                     {stop, normal, save_job_status(failed, State)}
                 end;
         false ->

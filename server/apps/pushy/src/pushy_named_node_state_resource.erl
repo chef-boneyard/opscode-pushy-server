@@ -24,7 +24,7 @@
           organization_guid :: string() }).
 
 init(_Config) ->
-    ?debugVal(_Config),
+    % ?debugVal(_Config),
     State = #config_state{},
     {ok, State}.
 %%    {{trace, "/tmp/traces"}, State}.
