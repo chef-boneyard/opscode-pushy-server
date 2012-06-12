@@ -14,6 +14,7 @@
 
 %% job status
 -type job_status() :: new |
+                      voting |
                       executing |
                       complete | % DONE
                       error | % DONE
