@@ -189,7 +189,7 @@ start_voting(#state{job=#pushy_job{duration=Duration, job_nodes=JobNodes}=Job}=S
     %% quorum timeout - we can only wait a set time for ACK/NACKs from this Job's nodes
     QTRef = erlang:send_after(?JOB_QUORUM_THRESHOLD_TIMEOUT, self(), {failed, no_quorum}),
     %% subscribe to real-time node status updates via the heartbeat channel
-    % [ pushy_node_state:start_watching(NodeName) || NodeName <- NodeNames],
+    [ pushy_node_state:start_watching(NodeName) || NodeName <- NodeNames],
     %% Send the voting message out; we expect an ACK/NACK back from our nodes.
     %% The quorum timeout should cover the case where some nodes don't vote (how rude).
     pushy_command_switch:send_multi_command(?POC_ORG_NAME, NodeNames, create_message({command, Job})),
