@@ -10,6 +10,7 @@
 -include("pushy_sql.hrl").
 
 -export([
+          fetch_org_id/1,
           create_object/3,
           update_object/2,
           update_object/3,
@@ -18,6 +19,9 @@
           make_org_prefix_id/1,
           make_org_prefix_id/2
         ]).
+
+fetch_org_id(_OrgName) ->
+  ?POC_ORG_ID.
 
 new_record(pushy_node_status, OrgId, NodeStatusData) ->
     Name = proplists:get_value(<<"node">>, NodeStatusData),

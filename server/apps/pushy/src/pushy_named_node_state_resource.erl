@@ -32,10 +32,9 @@ init(_Config) ->
 %% then go to localhost:WXYZ/wmtrace
 
 is_authorized(Req, State) ->
-    OrgId =  wrq:path_info(organization_id, Req),
+    OrgName =  wrq:path_info(organization_id, Req),
     %?debugVal(OrgName),
-    % OrgGuid = OrgName, %%% TODO: Need to actually look this up! see chef_common chef_db:fetch_org_id for an approach.
-    State2 = State#config_state{orgname = OrgId},
+    State2 = State#config_state{organization_guid = pushy_object:fetch_org_id(OrgName) },
     {true, Req, State2}.
 
 allowed_methods(Req, State) ->
@@ -44,11 +43,10 @@ allowed_methods(Req, State) ->
 content_types_provided(Req, State) ->
     {[{"application/json", to_json}], Req, State}.
 
-to_json(Req, State) ->
-    OrgName = wrq:path_info(organization_id, Req),
+to_json(Req, #config_state{organization_guid=OrgId}=State) ->
 
     NodeName = wrq:path_info(node_name, Req),
-    {ok, StatusList} = pushy_sql:fetch_node_status(OrgName, NodeName),
+    {ok, StatusList} = pushy_sql:fetch_node_status(OrgId, NodeName),
 
     ConfigurationStruct = [node_to_json_struct(E) || E <- StatusList],
     ConfigurationJson = ejson:encode(ConfigurationStruct),
