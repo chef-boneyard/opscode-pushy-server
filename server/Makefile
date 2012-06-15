@@ -4,6 +4,11 @@ all: compile all_tests
 
 all_tests: dialyzer eunit
 
+ifeq ($(use_locked_config),USE_REBAR_LOCKED)
+  rebar_config = rebar.config.lock
+else
+  rebar_config = rebar.config
+endif
 REBAR = ./rebar -C $(rebar_config)
 
 #clean:
