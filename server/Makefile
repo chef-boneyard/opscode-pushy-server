@@ -10,7 +10,7 @@ ifeq ($(use_locked_config),USE_REBAR_LOCKED)
 else
   rebar_config = rebar.config
 endif
-REBAR = ./rebar -C $(rebar_config)
+REBAR = rebar -C $(rebar_config)
 
 #clean:
 	#@rebar skip_deps=true clean
