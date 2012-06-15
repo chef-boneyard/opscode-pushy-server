@@ -51,3 +51,7 @@ devrel: rel
 
 update: compile
 	@cd rel/pushy;bin/pushy restart
+
+distclean: relclean
+	@rm -rf deps
+	@$(REBAR) clean
