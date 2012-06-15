@@ -12,11 +12,8 @@ else
 endif
 REBAR = rebar -C $(rebar_config)
 
-#clean:
-	#@rebar skip_deps=true clean
-
 clean:
-	@$(REBAR) clean
+	$(REBAR) clean
 
 allclean: depclean clean
 
@@ -24,10 +21,10 @@ depclean:
 	@rm -rf deps
 
 compile: $(DEPS)
-	@$(REBAR) compile
+	$(REBAR) compile
 
 compile_app: $(DEPS)
-	@$(REBAR) skip_deps=true compile
+	$(REBAR) skip_deps=true compile
 
 dialyzer:
 	@rm -rf apps/pushy/.eunit
@@ -35,10 +32,10 @@ dialyzer:
 # @dialyzer -Wrace_conditions -Wunderspecs -r apps --src
 
 $(DEPS):
-	@$(REBAR) get-deps
+	$(REBAR) get-deps
 
 eunit: compile
-	@$(REBAR) eunit app=pushy
+	$(REBAR) eunit app=pushy
 
 test: eunit
 
@@ -65,4 +62,4 @@ update: compile
 
 distclean: relclean
 	@rm -rf deps
-	@$(REBAR) clean
+	$(REBAR) clean
