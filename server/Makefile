@@ -4,6 +4,7 @@ all: compile all_tests
 
 all_tests: dialyzer eunit
 
+use_locked_config = $(wildcard USE_REBAR_LOCKED)
 ifeq ($(use_locked_config),USE_REBAR_LOCKED)
   rebar_config = rebar.config.lock
 else
@@ -23,10 +24,10 @@ depclean:
 	@rm -rf deps
 
 compile: $(DEPS)
-	@rebar compile
+	@$(REBAR) compile
 
 compile_app: $(DEPS)
-	@rebar skip_deps=true compile
+	@$(REBAR) skip_deps=true compile
 
 dialyzer:
 	@rm -rf apps/pushy/.eunit
@@ -34,10 +35,10 @@ dialyzer:
 # @dialyzer -Wrace_conditions -Wunderspecs -r apps --src
 
 $(DEPS):
-	@rebar get-deps
+	@$(REBAR) get-deps
 
 eunit: compile
-	@rebar eunit app=pushy
+	@$(REBAR) eunit app=pushy
 
 test: eunit
 
@@ -46,7 +47,7 @@ tags:
 
 rel: compile rel/pushy
 rel/pushy:
-	@cd rel;rebar generate overlay_vars=db_vars.config
+	@cd rel;$(REBAR) generate overlay_vars=db_vars.config
 
 relclean:
 	@rm -rf rel/pushy
