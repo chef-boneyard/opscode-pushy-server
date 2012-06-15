@@ -7,6 +7,9 @@ all_tests: dialyzer eunit
 clean:
 	@rebar skip_deps=true clean
 
+#clean:
+	#@$(REBAR) clean
+
 allclean: depclean clean
 
 depclean:
@@ -54,4 +57,4 @@ update: compile
 
 distclean: relclean
 	@rm -rf deps
-	@$(REBAR) clean
+	@rebar clean
