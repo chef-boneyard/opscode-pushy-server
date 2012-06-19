@@ -60,7 +60,7 @@ send_multi_command(OrgName, Nodes, Message) ->
 init([Ctx]) ->
     CommandAddress = pushy_util:make_zmq_socket_addr(command_port),
 
-    {ok, PrivateKey} = chef_keyring:get_key(server_private),
+    {ok, PrivateKey} = chef_keyring:get_key(pushy_priv),
 
     error_logger:info_msg("Starting command mux listening on ~s~n.", [CommandAddress]),
 

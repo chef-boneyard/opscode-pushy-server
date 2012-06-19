@@ -57,7 +57,7 @@ init([Ctx]) ->
     Interval = pushy_util:get_env(pushy, heartbeat_interval, fun is_integer/1),
 
     {ok, HeartbeatSock} = erlzmq:socket(Ctx, pub),
-    {ok, PrivateKey} = chef_keyring:get_key(server_private),
+    {ok, PrivateKey} = chef_keyring:get_key(pushy_priv),
 
     HeartbeatAddress = pushy_util:make_zmq_socket_addr(server_heartbeat_port),
 

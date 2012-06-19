@@ -52,7 +52,7 @@ to_json(Req, State) ->
     HeartbeatInterval = pushy_util:get_env(pushy, heartbeat_interval, fun is_integer/1),
 
 %% TODO: Figure out how to get public key out of chef_keyring in encoded form!
-    {ok, PublicKeyR} = chef_keyring:get_key(server_public),
+    {ok, PublicKeyR} = chef_keyring:get_key(pushy_pub),
     PublicKey = public_key:pem_encode(
         [public_key:pem_entry_encode('SubjectPublicKeyInfo', PublicKeyR)]),
 
