@@ -1,0 +1,99 @@
+
+Product meeting
+* Invite
+** Mark
+** Kevin
+** SC
+** CB
+** George 
+* Agenda written up with questions
+* Reference document
+* Hold off until after demos on tuesday.
+* Later in the day on tues
+* Tech level low
+** target platform
+** what features needed 
+** resource limits
+* Webui/gui component
+* closed/source
+* 
+
+How does client know orgname name
+*Message type values status node status in heartbeat vs messages via
+ command channel
+* Job/node state in context of job
+* Job acks and never gets a 
+
+Generally, what do we need to have to be production ready?
+
+Need to gather list
+
+TODO;
+* Windows testing and support!
+* Memory footprint 
+* Authorization model!!!
+* What metrics and logging do we need.
+* Timeouts for job 
+* Timeout for ack/nack
+* Timeout for cmd on client
+
+Refactoring and common code with erchef.
+* node data?
+* client (name, key)
+* user (name, key) to validate
+* org name to guid mapping...
+* authz usage
+
+Fix 1571 to have 'run task'
+
+
+
+* Future pushy work
+
+** Refactor webmachine inteface
+** client footprint 
+
+* Scalability and integration tests
+** 8000 clients running against server
+** Develop test matrix
+*** failing jobs/nodes
+*** stuck node
+*** restart/crashes of server
+*** restart/crashes of client machine 
+* Protocol
+** Authorization and authentication of all requests
+** Integration with erchef system
+*** Usage of same dbs
+*** config/setup pluggability
+** Org->Guid caching ???
+** Consistient use of node and clients
+** Error handling and recovery
+*** Failed node handling
+*** full state diagram of node transition
+** Simplification of heartbeat channel and command channel process
+** Detection of server restart (how to handle)
+** Client and 
+* Client
+** Client installation and footprint.
+*** C/Restricted ruby/
+*** Omnibus installer?
+*** platforms: Windows/BSD/non omnibus platforms
+** Details for command running on client
+*** chef-client; 
+*** interaction with daemoized
+*** interaction with other running chef-clients
+*** ohai (data return? if no return, then why bother?)
+** Testing for client? Where in production side
+* Server
+** Scalability changes
+** logging and error handling code (not currently there)
+** webmachine interface
+*** Job management (start/stop/status)
+*** Node status
+* Other
+** knife plugin work
+** Searchability of jobs status: erchef integration?
+** entity groups
+** opscode omnibus installer for pushy
+** chef common refactor
+

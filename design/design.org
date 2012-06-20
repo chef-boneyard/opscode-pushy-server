@@ -481,20 +481,21 @@ Version=1.0;Checksum=vQiGY85BzEAi5k7noSiN3A==
        hash. The payload contains the job id, command to be executed, the host name
        of the OPC server, and the URL of the PULL socket used to collect node ACK/NAKs.
 
-#+begin_example
+#+NAME: command message
+#+BEGIN_SRC js
 {
-  "server": "opc1.foo.com",               # OPC host name
-  "type": "job_command",                  # message type
-  "job_id": "1234",                       # job id
-  "command": "chef-client"                # command to execute
+    "server": "opc1.foo.com",               # OPC host name
+    "type": "job_command",                  # message type
+    "job_id": "1234",                       # job id
+    "command": "chef-client"                # command to execute
 }
-#+end_example
+#+END_SRC
 
        On receipt of this command the client will reply with an ACK message and will be marked as
        ready for execution. If the client is currently executing a job, it will reply with a NACK
        message and the server will mark that node as ineligible to start the command.
 
-****** Client message formate
+****** Client message format
 #+begin_example
 {
   "client": "client_name",                # OPC host name

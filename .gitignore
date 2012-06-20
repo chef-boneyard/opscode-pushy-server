@@ -1,6 +1,8 @@
 .bundle/
 design/*.tex
 design/*.log
+design/*.out
+design/*.toc
 design/*.aux
 prototype/ebin
 prototype/deps

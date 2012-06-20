@@ -1,0 +1,90 @@
+
+* Future pushy work
+
+** Refactor webmachine inteface
+** client footprint 
+
+* Scalability and integration tests
+** 8000 clients running against server
+** Develop test matrix
+*** failing jobs/nodes
+*** stuck node
+*** restart/crashes of server
+*** restart/crashes of client machine 
+* Protocol
+** Authorization and authentication of all requests
+** Integration with erchef system
+*** Usage of same dbs
+*** config/setup pluggability
+** Org->Guid caching ???
+** Consistient use of node and clients
+** Error handling and recovery
+*** Failed node handling
+*** full state diagram of node transition
+** Simplification of heartbeat channel and command channel process
+** Detection of server restart (how to handle)
+** Client and 
+* Client
+** Client installation and footprint.
+*** C/Restricted ruby/
+*** Omnibus installer?
+*** platforms: Windows/BSD/non omnibus platforms
+** Details for command running on client
+*** chef-client; 
+*** interaction with daemoized
+*** interaction with other running chef-clients
+*** ohai (data return? if no return, then why bother?)
+** Testing for client? Where in production side
+* Server
+** Scalability changes
+** logging and error handling code (not currently there)
+** webmachine interface
+*** Job management (start/stop/status)
+*** Node status
+* Other
+** knife plugin work
+** Searchability of jobs status: erchef integration?
+** entity groups
+** opscode omnibus installer for pushy
+** chef common refactor
+** factor out erchef deps; make them as separate as possible
+*** DB schema separation
+*** erchef access points
+
+
+* Push jobs based on node queries.
+  Do we want to be able to broadcast a job with an implicit query; do
+  this job if the query is true. (V2)
+  Can be composed via predicate jobs, sort of.
+
+* Pipelining jobs
+  Right now the set of nodes in a job is fixed at beginning. Do we
+  want to be able to pipeline jobs, where as nodes finish one job they
+  get added to the runlist of another job (V2)
+
+* Predicate jobs
+  A job that returns a simple boolean predicate (extend to be more
+  complex value) Useful for chaining. Should be a 'pure function'. 
+  May require relaxing the one job at a time on a node rule.
+
+* Permissions
+  Extend authz for push job permissions. Probably want an 'execute'
+  priviledge for each node in the system and ACLs on that.
+
+* Disambiguate clients vs nodes.
+
+* Abort logic (mentioned in command vocabulary, and FSM, but not fleshed out)
+
+
+* Separation from erchef
+** Authn; we need to be able to take a user/client and verify a message
+** Authz; we need to be able to take a org-user, org-client, org-node and perform 
+   perms checks WRT them.
+
+* DOCUMENT TODOS: fix header (opscode logo is huge)
+
+* Interlocking with chef client runs; 'pseudojobs'?
+
+* Restart; some commands may cause restarts.
+* Client should detect clean restart and send alert to server.
+
