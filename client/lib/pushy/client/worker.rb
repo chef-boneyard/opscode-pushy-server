@@ -140,6 +140,7 @@ module Pushy
       # thing right now in the future we will probably want to send some sort of state
       # update to compensate for lost packets and the like.
       monitor.callback :server_restart do
+        Pushy::Log.info "Detected server restart"
         send_command_message(:ready)
       end
 

@@ -21,6 +21,7 @@ module Pushy
       if (@server_incarnation_id == nil) 
         @server_incarnation_id = data["incarnation_id"]
       elsif (@server_incarnation_id !=  data["incarnation_id"])
+        @server_incarnation_id = data["incarnation_id"]
         # server has changed id; trigger reconnect
         fire_callback(:server_restart)
       end
