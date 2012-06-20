@@ -7,6 +7,7 @@ module Pushy
       @on_counter = @off_counter = 0
       @online = false
       @callbacks = {}
+      @server_incarnation_id = nil 
     end
 
     def callback(type, &block)
@@ -14,7 +15,16 @@ module Pushy
       @callbacks[type.to_sym] << block
     end
 
-    def checkin!
+    def checkin!(data)
+      # check to see if the incarnation has changed; that indicates a server restart.
+      incarnation_id = data["incarnation_id"]
+      if (@server_incarnation_id == nil) 
+        @server_incarnation_id = data["incarnation_id"]
+      elsif (@server_incarnation_id !=  data["incarnation_id"])
+        # server has changed id; trigger reconnect
+        
+      end
+
       @off_counter = 0
 
       if @on_counter > @on_threshold

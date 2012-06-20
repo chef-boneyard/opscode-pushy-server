@@ -14,7 +14,10 @@
          get_env/4,
          read_body/0,
          do_authenticate_message/2,
-         signed_header_from_message/2
+         signed_header_from_message/2,
+         rand_bytes/1,
+         guid_v4/0,
+         gen_req_id_using_rand/2
         ]).
 
 -include_lib("eunit/include/eunit.hrl").
@@ -127,3 +130,30 @@ join_bins([B], _Sep, Acc) ->
     iolist_to_binary(lists:reverse([B|Acc]));
 join_bins([B|Rest], Sep, Acc) ->
     join_bins(Rest, Sep, [Sep, B | Acc]).
+
+
+%%% R15 introduces strong_rand_bytes, which is preferable, but we still need to work on older versions.
+-spec rand_bytes(non_neg_integer()) -> binary().
+rand_bytes(NBytes) ->
+    case lists:member(strong_rand_bytes, crypto:info()) of
+        false -> crypto:rand_bytes(NBytes);
+        true -> crypto:strong_rand_bytes(NBytes)
+    end.
+
+% RFC4122 V4 GUID
+% Version 4 UUIDs have the form xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
+% where x is any hexadecimal digit and
+% y is one of 8, 9, A, or B
+-spec guid_v4() -> string().
+guid_v4() ->
+    <<TL:32, TM:16, TH:12, CS:14, N:48, _:6>> = rand_bytes(16),
+    THV = TH bor (4 bsl 12),
+    CSV = CS bor (2 bsl 14), % see section 4.4 of RFV (set high order bits to '10XX_XXXX_XXXX_XXXX')
+    lists:flatten(io_lib:format("~8.16.0b-~4.16.0b-~4.16.0b-~4.16.0b-~12.16.0b", [TL, TM, THV, CSV, N])).
+
+-spec gen_req_id_using_rand(string() | binary(), non_neg_integer()) -> binary().
+gen_req_id_using_rand(Prefix, NBytes) ->
+    RandBytes = rand_bytes(NBytes),
+    NBits = NBytes*8,
+    <<RandValue:NBits, _/binary>> = RandBytes,
+    iolist_to_binary([Prefix, integer_to_list(RandValue, 16)]).

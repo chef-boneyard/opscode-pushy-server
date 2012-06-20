@@ -33,20 +33,24 @@
          code_change/3]).
 
 -include_lib("eunit/include/eunit.hrl").
+-include("pushy.hrl").
 -include_lib("pushy_metrics.hrl").
 
+
+%% TODO: tighten typedefs up
 -record(state,
-        {heartbeat_sock,
-         heartbeat_interval,
-         beat_count,
-         private_key}).
+        {heartbeat_sock :: any(),
+         heartbeat_interval :: integer(),
+         beat_count :: integer(),
+         private_key :: any(),
+         incarnation_id :: binary()}).
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
 %% ------------------------------------------------------------------
 
-start_link(Ctx) ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [Ctx], []).
+start_link(PushyState) ->
+    gen_server:start_link({local, ?SERVER}, ?MODULE, [PushyState], []).
 
 stats() ->
     gen_server:call(?SERVER, stats, infinity).
@@ -59,8 +63,9 @@ heartbeat() ->
 %% gen_server Function Definitions
 %% ------------------------------------------------------------------
 
-init([Ctx]) ->
-    lager:info("Starting heartbeat generator."),
+
+init([#pushy_state{ctx=Ctx, incarnation_id=IncarnationId }]) ->
+    lager:info("Starting heartbeat generator with incarnation id ~s.", [IncarnationId]),
     Interval = pushy_util:get_env(pushy, heartbeat_interval, fun is_integer/1),
 
     {ok, HeartbeatSock} = erlzmq:socket(Ctx, pub),
@@ -74,7 +79,8 @@ init([Ctx]) ->
     State = #state{heartbeat_sock = HeartbeatSock,
                    heartbeat_interval = Interval,
                    beat_count = 0,
-                   private_key = PrivateKey
+                   private_key = PrivateKey,
+                   incarnation_id = IncarnationId
                   },
     timer:apply_interval(Interval, ?MODULE, heartbeat, []),
     {ok, State}.

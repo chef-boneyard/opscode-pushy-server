@@ -13,6 +13,8 @@
 -include_lib("eunit/include/eunit.hrl").
 %-endif.
 
+-include("pushy.hrl").
+
 %% ===================================================================
 %% Application callbacks
 %% ===================================================================
@@ -21,10 +23,13 @@ start(_StartType, _StartArgs) ->
     %% TODO - find a better spot for this log setup
     % Logs all job message to a specific file
     lager:trace_file("log/jobs.log", [{job_id, '*'}]),
+    IncarnationId = list_to_binary(pushy_util:guid_v4()),
+
+    error_logger:info_msg("Starting Pushy incarnation ~s.~n", [IncarnationId]),
 
     case erlzmq:context() of
         {ok, Ctx} ->
-            case pushy_sup:start_link(Ctx) of
+            case pushy_sup:start_link(#pushy_state{ctx=Ctx, incarnation_id=IncarnationId}) of
                 {ok, Pid} -> {ok, Pid, Ctx};
                 Error -> Error
             end;

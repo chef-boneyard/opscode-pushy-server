@@ -16,6 +16,8 @@
 -include_lib("eunit/include/eunit.hrl").
 %-endif.
 
+-include("pushy.hrl").
+
 %% Helper macro for declaring children of supervisor
 -define(SUP(I, Args), {I, {I, start_link, Args}, permanent, infinity, supervisor, [I]}).
 -define(WORKER(I, Args), {I, {I, start_link, Args}, permanent, 5000, worker, [I]}).
@@ -31,7 +33,7 @@ start_link(Ctx) ->
 %% Supervisor callbacks
 %% ===================================================================
 
-init([Ctx]) ->
+init([#pushy_state{ctx=Ctx} = PushyState]) ->
     %% DEBUGGING AID; having the context available can help
     Tbl = ets:new(debug, [named_table]),
     ets:insert(Tbl, {context, Ctx}),
@@ -53,16 +55,15 @@ init([Ctx]) ->
                         {dispatch, Dispatch},
                         {enable_perf_logger, true}],
     ?debugVal(WebMachineConfig),
-    _ = WebMachineConfig, _ = Ctx,
     {ok, {{one_for_one, 3, 60},
                [?SUP(pushy_node_state_sup, []),
                 ?SUP(pushy_job_runner_sup, []),
                 ?SUP(folsom_sup, []),
                 ?WORKER(chef_keyring, []),
-                ?WORKER(pushy_heartbeat_generator, [Ctx]),
-                ?WORKER(pushy_node_status_tracker, [Ctx]),
                 ?WORKER(pushy_node_status_updater, []),
-                ?WORKER(pushy_command_switch, [Ctx]),
+                ?WORKER(pushy_heartbeat_generator, [PushyState]),
+                ?WORKER(pushy_node_status_tracker, [PushyState]),
+                ?WORKER(pushy_command_switch, [PushyState]),
                 ?WORKERNL(webmachine_mochiweb, [WebMachineConfig])  %% FIXME start or start_link here?
                ]}}.
 
