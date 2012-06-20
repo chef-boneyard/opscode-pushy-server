@@ -136,6 +136,12 @@ module Pushy
       monitor.callback :after_online do
         send_command_message(:ready)
       end
+      # This should be logically separate from after online, even though it does the same
+      # thing right now in the future we will probably want to send some sort of state
+      # update to compensate for lost packets and the like.
+      monitor.callback :server_restart do
+        send_command_message(:ready)
+      end
 
       Pushy::Log.debug "Worker: Setting heartbeat at every #{interval} seconds"
       @timer = EM::PeriodicTimer.new(interval) do
