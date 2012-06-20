@@ -13,7 +13,8 @@
                   jiffy,
                   gproc,
                   sqerl,
-                  webmachine
+                  webmachine,
+                  lager
                  ]},
   {included_applications, [chef_common]},
   {mod, { pushy_app, []}},
