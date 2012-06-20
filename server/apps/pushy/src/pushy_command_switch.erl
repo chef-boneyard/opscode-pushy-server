@@ -84,14 +84,13 @@ handle_cast({send_multi, OrgName, Nodes, Message}, #state{}=State) ->
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
-handle_info({zmq, _CommandSock, Address, [rcvmore]},
+handle_info({zmq, CommandSock, Frame, [rcvmore]},
             State) ->
     %% TODO: This needs a more graceful way of handling message sequences. I really feel like we need to
     %% abstract out some more generalized routines to handle the message receipt process.
     % error_logger:info_msg("Receiving message with address ~w~n", [Address]),
 
-    Header = read_header(),
-    Body = pushy_util:read_body(),
+    [Address, Header, Body] = pushy_messaging:receive_message_async(CommandSock, Frame),
 
     % error_logger:info_msg("Received message~n\tA ~p~n\tH ~s~n\tB ~s~n", [Address, Header, Body]),
     State1 = case catch pushy_util:do_authenticate_message(Header, Body) of
@@ -120,11 +119,15 @@ do_send(#state{addr_node_map = AddrNodeMap,
                private_key = PrivateKey},
         Org, Node, Message) ->
     Address = addr_node_map_lookup_by_node(AddrNodeMap, {Org, Node}),
-    send_multipart(CommandSocket, Address,
-        [pushy_util:signed_header_from_message(PrivateKey, Message), Message]).
+    push_messaging:send_message(CommandSocket, [Address, pushy_util:signed_header_from_message(PrivateKey, Message), Message]).
 
-do_send_multi(State, Org, Nodes, Message) ->
-    [ do_send(State, Org, Node, Message) || Node <- Nodes ].
+do_send_multi(#state{addr_node_map = AddrNodeMap,
+                     command_sock = CommandSocket,
+                     private_key = PrivateKey},
+              Org, Nodes, Message) ->
+    FrameList = [ pushy_util:signed_header_from_message(PrivateKey, Message), Message],
+    AddressList = [addr_node_map_lookup_by_node(AddrNodeMap, {Org, Node}) || Node <- Nodes],
+    pushy_messaging:send_message_multi(CommandSocket, AddressList, FrameList).
 
 process_message(State, Address, _Header, Body) ->
     case catch jiffy:decode(Body) of
@@ -172,23 +175,6 @@ process_message(State, Address, _Header, Body) ->
 %% Utility functions; we should generalize these and move elsewhere.
 %%
 
-%read_address_separator() ->
-%    receive
-%        {zmq, _Sock, <<>>, [rcvmore]} ->
-%            ok;
-%        {zmq, _Sock, Msg, Opts} ->
-%            ?debugVal(Msg), ?debugVal(Opts),
-%            error
-%    end.
-
-read_header() ->
-    receive
-        {zmq, _Sock, HeaderFrame, [rcvmore]} ->
-            HeaderFrame;
-        {zmq, _Sock, Msg, Opts} ->
-            ?debugVal(Msg), ?debugVal(Opts),
-            error
-    end.
 
 addr_node_map_new() ->
     { dict:new(), dict:new() }.
@@ -220,15 +206,4 @@ addr_node_map_lookup_by_node(#state{addr_node_map = AddrNodeMap}, Node) ->
 addr_node_map_lookup_by_node({_, NodeToAddr}, Node) ->
     dict:fetch(Node, NodeToAddr).
 
-send_multipart(Socket, Address, Message) ->
-    erlzmq:send(Socket, Address, [sndmore]),
-    %erlzmq:send(Socket, <<>>, [sndmore]),
-    send_multipart(Socket, Message).
 
-send_multipart(_Socket, []) ->
-    ok;
-send_multipart(Socket, [Msg | []]) ->
-    erlzmq:send(Socket, Msg, []);
-send_multipart(Socket, [Head | Tail]) ->
-    erlzmq:send(Socket, Head, [sndmore]),
-    send_multipart(Socket, Tail).
