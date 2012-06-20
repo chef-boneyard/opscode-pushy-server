@@ -18,7 +18,10 @@
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
-%    sys:statistics(
+    %% TODO - find a better spot for this log setup
+    % Logs all job message to a specific file
+    lager:trace_file("log/jobs.log", [{job_id, '*'}]),
+
     case erlzmq:context() of
         {ok, Ctx} ->
             case pushy_sup:start_link(Ctx) of

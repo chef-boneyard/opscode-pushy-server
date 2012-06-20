@@ -82,7 +82,7 @@ load_from_db(timeout, #state{job_id=JobId}=State) ->
             Quorum = lists:flatlength(JobNodes),
             {next_state, register_process, State#state{quorum=Quorum, job=Job}, 0};
         {ok, not_found} ->
-            error_logger:error_msg("Failed to find job ~p for ~p~n", [JobId, self()]),
+            lager:warning("Failed to find job ~p for ~p~n", [JobId, self()]),
             {stop, {error, not_found}, State}
     end.
 
@@ -91,12 +91,12 @@ register_process(timeout, #state{job_id=JobId}=State) ->
         true ->
             {next_state, start_vote, State, 0};
         false ->
-            error_logger:error_msg("Failed to register job tracker process ~p for ~p~n", [JobId, self()]),
+            lager:error("Failed to register job tracker process ~p for ~p~n", [JobId, self()]),
             {stop, {error, not_registered}, State}
     end.
 
 start_vote(timeout, #state{job_id=JobId}=State) ->
-    error_logger:info_msg("Commencing vote for job ~s~n", [JobId]),
+    lager:info([{job_id, JobId}], "Commencing vote for job ~s~n", [JobId]),
     {next_state, tally_vote, start_voting(State)}.
 
 %% ------------------------------------------------------------------
@@ -119,33 +119,33 @@ handle_sync_event(_Event, _From, StateName, State) ->
 %% Timeout message handlers..triggered by a erlang:send_after/3
 %% ANYTHING -> expired
 handle_info({expired, Reason}, _StateName, #state{job_id=JobId}=State) ->
-    error_logger:info_msg("Job [~p] expired for reason: ~p.~n", [JobId,Reason]),
+    lager:warning([{job_id, JobId}], "Job [~p] expired for reason: ~p.~n", [JobId,Reason]),
     %% TODO - instruct all nodes to ABORT
     {stop, normal, save_job_status(expired, State)};
 %% ANYTHING -> failed
 handle_info({failed, Reason}, _StateName, #state{job_id=JobId}=State) ->
-    error_logger:info_msg("Job [~p] failed for reason: ~p.~n", [JobId,Reason]),
+    lager:error([{job_id, JobId}], "Job [~p] failed for reason: ~p.~n", [JobId,Reason]),
     %% TODO - instruct all nodes to ABORT
     {stop, normal, save_job_status(failed, State)};
 
 %% out of band messages (mostly other process updating us of our nodes' progress)
 handle_info({node_command_event, NodeName, ack}, StateName,
                 #state{job_id=JobId, acked_nodes=AckedNodes}=State) ->
-    error_logger:info_msg("Job [~p] ACK received for node [~p].~n", [JobId, NodeName]),
+    lager:info([{job_id, JobId}], "Job [~p] ACK received for node [~p].~n", [JobId, NodeName]),
     execute_start_check(StateName, State#state{acked_nodes = [NodeName|AckedNodes]});
 handle_info({node_command_event, NodeName, nack}, StateName,
                 #state{job_id=JobId, nacked_nodes=NackedNodes}=State) ->
-    error_logger:info_msg("Job [~p] NACK received for node [~p].~n", [JobId, NodeName]),
+    lager:info([{job_id, JobId}], "Job [~p] NACK received for node [~p].~n", [JobId, NodeName]),
     execute_start_check(StateName, State#state{nacked_nodes = [NodeName|NackedNodes]});
-handle_info({node_command_event, NodeName, CommandEvent}, StateName, State) ->
+handle_info({node_command_event, NodeName, CommandEvent}, StateName, #state{job_id=JobId}=State) ->
     Status = event_to_job_status(CommandEvent),
-    error_logger:info_msg("Node [~p] job status changed [~p]~n", [NodeName, Status]),
+    lager:info([{job_id, JobId}], "Node [~p] job status changed [~p]~n", [NodeName, Status]),
     job_complete_check(StateName, save_job_node_status(Status, NodeName, State));
-handle_info({node_heartbeat_event, NodeName, down}, StateName, State) ->
-    error_logger:info_msg("Node [~p] job status changed [failed]~n", [NodeName]),
+handle_info({node_heartbeat_event, NodeName, down}, StateName, #state{job_id=JobId}=State) ->
+    lager:info([{job_id, JobId}], "Node [~p] job status changed [failed]~n", [NodeName]),
     job_complete_check(StateName, save_job_node_status(failed, NodeName, State));
-handle_info(_Info, StateName, State) ->
-    % error_logger:info_msg("Job runner catch-all: Message -> ~p Current State -> ~p~n", [Info,StateName]),
+handle_info(Info, StateName, State) ->
+    lager:debug("Job runner catch-all: Message -> ~p Current State -> ~p~n", [Info,StateName]),
     {next_state, StateName, State}.
 
 terminate(_Reason, _StateName, _State) ->
@@ -219,10 +219,10 @@ execute_start_check(CurrentState,
                 true ->
                     %% cancel the quorom wait timeout timer
                     erlang:cancel_timer(QTRef),
-                    error_logger:info_msg("Beginning execution of Job [~p].~n", [JobId]),
+                    lager:info([{job_id, JobId}], "Beginning execution of Job [~p].~n", [JobId]),
                     {next_state, execute, start_executing(State)};
                 false ->
-                    error_logger:info_msg("Quorum could not be met, Job [~p] will not be run.~n", [JobId]),
+                    lager:warning([{job_id, JobId}], "Quorum could not be met, Job [~p] will not be run.~n", [JobId]),
                     {stop, normal, save_job_status(failed, State)}
                 end;
         false ->
@@ -240,7 +240,7 @@ job_complete_check(CurrentState, #state{job_id=JobId,
             end,
             JobNodes) of
         true ->
-            error_logger:info_msg("Job [~p] complete.~n", [JobId]),
+            lager:info([{job_id, JobId}], "Job [~p] complete.~n", [JobId]),
             %% TODO - mark job status 'error' if any nodes encountered issues
             {stop, normal, save_job_status(complete, State)};
         false ->
@@ -264,4 +264,3 @@ save_job_node_status(Status, NodeName, #state{job=#pushy_job{job_nodes=Nodes}=Jo
     Node1 = Node#pushy_job_node{status=Status},
     pushy_object:update_object(update_job_node, Node1),
     State#state{job=Job#pushy_job{job_nodes=[Node1 | Rest]}}.
-
