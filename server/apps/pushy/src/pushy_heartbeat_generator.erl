@@ -91,10 +91,7 @@ handle_cast(heartbeat,
     HeaderParts = sign_message(PrivateKey, BodyFrame),
     Headers = [join_bins(tuple_to_list(Part), <<":">>) || Part <- HeaderParts],
     HeaderFrame = join_bins(Headers, <<";">>),
-    erlzmq:send(HeartbeatSock, HeaderFrame, [sndmore]),
-    %?debugVal(HeaderFrame),
-    % Send Body
-    erlzmq:send(HeartbeatSock, BodyFrame),
+    pushy_messaging:send_message(HeartbeatSock, [HeaderFrame, BodyFrame]),
     %?debugVal(BodyFrame),
     %error_logger:info_msg("Heartbeat sent: header=~s,body=~s~n",[HeaderFrame, BodyFrame]),
     {noreply, State#state{beat_count=Count+1}};

@@ -64,10 +64,9 @@ handle_call(_Request, _From, State) ->
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
-handle_info({zmq, _StatusSock, Header, [rcvmore]},
+handle_info({zmq, StatusSock, Frame, [rcvmore]},
     #state{heartbeat_interval=HeartbeatInterval,dead_interval=DeadInterval}=State) ->
-
-    Body = pushy_util:read_body(),
+    [Header, Body] = pushy_messaging:receive_message_async(StatusSock, Frame),
     case catch pushy_util:do_authenticate_message(Header, Body) of
         ok ->
             send_heartbeat(Body, HeartbeatInterval, DeadInterval);
