@@ -57,6 +57,7 @@ init([Ctx]) ->
     {ok, {{one_for_one, 3, 60},
                [?SUP(pushy_node_state_sup, []),
                 ?SUP(pushy_job_runner_sup, []),
+                ?SUP(folsom_sup, []),
                 ?WORKER(chef_keyring, []),
                 ?WORKER(pushy_heartbeat_generator, [Ctx]),
                 ?WORKER(pushy_node_status_tracker, [Ctx]),
