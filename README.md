@@ -32,7 +32,7 @@ Decision time.  You can either:
 2. Grab a recent Pushy-aware deb from the seabuild1 ReadyNAS:
 
         $ cd ~/oc/opscode-omnibus/pkg
-        $ wget https://readynas1.seabuild1.opscode.com/dev-general/opscode-east/opscode-omnibus/pkg/private-chef_1.1.19-133-geb2e9be-1.ubuntu.10.04_amd64.deb
+        $ wget https://readynas1.seabuild1.opscode.com/dev-general/opscode-east/opscode-omnibus/pkg/private-chef_1.2.1-49-g1acbb36-1.ubuntu.10.04_amd64.deb
 
 ## Stand up a dev-vm
 
