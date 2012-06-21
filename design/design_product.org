@@ -914,3 +914,5 @@ knife job create role:database chef-client --quorum=3
 #+begin_example
 knife job create role:database chef-client --duration=10
 #+end_example
+
+* TODO Add future work section here [2012-06-20 Wed]
