@@ -110,7 +110,6 @@ do_receive(CommandSock, Frame, State) ->
     %% TODO: This needs a more graceful way of handling message sequences. I really feel like we need to
     %% abstract out some more generalized routines to handle the message receipt process.
     % error_logger:info_msg("Receiving message with address ~w~n", [Address]),
-
     [Address, Header, Body] = pushy_messaging:receive_message_async(CommandSock, Frame),
 
     % error_logger:info_msg("Received message~n\tA ~p~n\tH ~s~n\tB ~s~n", [Address, Header, Body]),
@@ -125,21 +124,23 @@ do_receive(CommandSock, Frame, State) ->
 
 do_send(#state{addr_node_map = AddrNodeMap,
                command_sock = CommandSocket,
-               private_key = PrivateKey},
+               private_key = PrivateKey}=State,
         Org, Node, Message) ->
     Address = addr_node_map_lookup_by_node(AddrNodeMap, {Org, Node}),
     push_messaging:send_message(CommandSocket, [Address,
         ?TIME_IT(pushy_util, signed_header_from_message, (PrivateKey, Message)),
-        Message]).
+        Message]),
+    State.
 
 do_send_multi(#state{addr_node_map = AddrNodeMap,
                      command_sock = CommandSocket,
-                     private_key = PrivateKey},
+                     private_key = PrivateKey}=State,
               Org, Nodes, Message) ->
     FrameList = [
         ?TIME_IT(pushy_util, signed_header_from_message, (PrivateKey, Message)), Message],
     AddressList = [addr_node_map_lookup_by_node(AddrNodeMap, {Org, Node}) || Node <- Nodes],
-    pushy_messaging:send_message_multi(CommandSocket, AddressList, FrameList).
+    pushy_messaging:send_message_multi(CommandSocket, AddressList, FrameList),
+    State.
 
 process_message(State, Address, _Header, Body) ->
     case catch jiffy:decode(Body) of
