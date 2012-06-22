@@ -158,7 +158,7 @@ process_message(State, Address, _Header, Body) ->
             case Type of
                 % ready messages only are used to initialze
                 <<"ready">> ->
-                    lager:info("Node [~p] ready to RAWK this command party.~n", [NodeName]),
+                    lager:info("Node [~p] ready to RAWK this command party.", [NodeName]),
                     State2;
                 <<"ack">> ->
                     pushy_job_runner:node_command_event(JobId, NodeName, ack),
@@ -167,19 +167,19 @@ process_message(State, Address, _Header, Body) ->
                     pushy_job_runner:node_command_event(JobId, NodeName, nack),
                     State2;
                 <<"started">> ->
-                    lager:info([{job_id, JobId}], "Node [~p] started running Job [~p]~n", [NodeName, JobId]),
+                    lager:info([{job_id, JobId}], "Node [~p] started running Job [~p]", [NodeName, JobId]),
                     pushy_job_runner:node_command_event(JobId, NodeName, started),
                     State2;
                 <<"finished">> ->
-                    lager:info([{job_id, JobId}], "Node [~p] finished running Job [~p]~n", [NodeName, JobId]),
+                    lager:info([{job_id, JobId}], "Node [~p] finished running Job [~p]", [NodeName, JobId]),
                     pushy_job_runner:node_command_event(JobId, NodeName, finished),
                     State2;
                 _Else ->
-                    lager:info("I don't know anything about ~p~n", [Type]),
+                    lager:info("I don't know anything about ~p", [Type]),
                     State2
             end;
         {'EXIT', Error} ->
-            lager:error("Status message JSON parsing failed: body=~s, error=~s~n", [Body,Error]),
+            lager:error("Status message JSON parsing failed: body=~s, error=~s", [Body,Error]),
             State
     end.
 

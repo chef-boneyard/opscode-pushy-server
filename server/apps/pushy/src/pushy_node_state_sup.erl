@@ -34,7 +34,7 @@ new(Name, HeartbeatInterval, DeadIntervalCount) ->
     supervisor:start_child(?SERVER, [Name, HeartbeatInterval, DeadIntervalCount]).
 
 new(Name) ->
-    lager:info("Creating Process For ~s~n", [Name]),
+    lager:info("Creating Process For ~s", [Name]),
     {ok, HeartbeatInterval} = application:get_env(pushy, heartbeat_interval),
     {ok, DeadIntervalCount} = application:get_env(pushy, dead_interval),
     new(Name, HeartbeatInterval, DeadIntervalCount).
@@ -59,7 +59,7 @@ load_from_db() ->
         {ok, NodeStatuses} ->
             create_processes(NodeStatuses);
         {error, Reason} ->
-            lager:info("Error loading existing node status records from the database: ~p~n", [Reason])
+            lager:error("Error loading existing node status records from the database: ~p", [Reason])
     end.
 
 create_processes([]) ->

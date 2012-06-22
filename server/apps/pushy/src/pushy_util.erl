@@ -39,12 +39,12 @@ get_env(Section, Item, TypeCheck) ->
             case TypeCheck(Value) of
                 true -> Value;
                 Error ->
-                    lager:error("Bad typecheck for config item for ~p ~p (~p(~p) -> ~p)~n",
+                    lager:error("Bad typecheck for config item for ~p ~p (~p(~p) -> ~p)",
                                            [Section, Item, TypeCheck, Value, Error]),
                     error(config_bad_item)
             end;
         undefined ->
-            lager:error("Bad config item for ~p ~p ~n", [Section, Item]),
+            lager:error("Bad config item for ~p ~p ", [Section, Item]),
             error(config_missing_item)
     end.
 
