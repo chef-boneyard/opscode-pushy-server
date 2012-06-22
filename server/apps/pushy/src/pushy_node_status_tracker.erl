@@ -13,6 +13,12 @@
 -export([start_link/1]).
 
 %% ------------------------------------------------------------------
+%% Private Exports - only exported for instrumentation
+%% ------------------------------------------------------------------
+
+-export([do_receive/3]).
+
+%% ------------------------------------------------------------------
 %% gen_server Function Exports
 %% ------------------------------------------------------------------
 
@@ -25,6 +31,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("public_key/include/public_key.hrl").
+-include_lib("pushy_metrics.hrl").
 
 -record(state,
         {status_sock,
@@ -64,17 +71,8 @@ handle_call(_Request, _From, State) ->
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
-handle_info({zmq, StatusSock, Frame, [rcvmore]},
-    #state{heartbeat_interval=HeartbeatInterval,dead_interval=DeadInterval}=State) ->
-    [Header, Body] = pushy_messaging:receive_message_async(StatusSock, Frame),
-    case catch pushy_util:do_authenticate_message(Header, Body) of
-        ok ->
-            send_heartbeat(Body, HeartbeatInterval, DeadInterval);
-        {no_authn, bad_sig} ->
-            error_logger:error_msg("Status message failed verification: header=~s~n", [Header])
-    end,
-
-    {noreply, State};
+handle_info({zmq, StatusSock, Frame, [rcvmore]}, State) ->
+    {noreply, ?TIME_IT(?MODULE, do_receive, (StatusSock, Frame, State))};
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -87,6 +85,17 @@ code_change(_OldVsn, State, _Extra) ->
 %% ------------------------------------------------------------------
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
+
+do_receive(StatusSock, Frame,
+    #state{heartbeat_interval=HeartbeatInterval,dead_interval=DeadInterval}=State) ->
+    [Header, Body] = pushy_messaging:receive_message_async(StatusSock, Frame),
+    case ?TIME_IT(pushy_util, do_authenticate_message, (Header, Body)) of
+        ok ->
+            send_heartbeat(Body, HeartbeatInterval, DeadInterval);
+        {no_authn, bad_sig} ->
+            error_logger:error_msg("Status message failed verification: header=~s~n", [Header])
+    end,
+    State.
 
 send_heartbeat(BodyFrame, HeartbeatInterval, DeadInterval) when is_binary(BodyFrame) ->
     case catch jiffy:decode(BodyFrame) of
