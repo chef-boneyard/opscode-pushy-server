@@ -16,6 +16,12 @@
         ]).
 
 %% ------------------------------------------------------------------
+%% Private Exports - only exported for instrumentation
+%% ------------------------------------------------------------------
+
+-export([do_send/1]).
+
+%% ------------------------------------------------------------------
 %% gen_server Function Exports
 %% ------------------------------------------------------------------
 
@@ -27,6 +33,7 @@
          code_change/3]).
 
 -include_lib("eunit/include/eunit.hrl").
+-include_lib("pushy_metrics.hrl").
 
 -record(state,
         {heartbeat_sock,
@@ -63,7 +70,6 @@ init([Ctx]) ->
 
     error_logger:info_msg("Starting heartbeat generator listening on ~s~n.",[HeartbeatAddress]),
 
-
     ok = erlzmq:bind(HeartbeatSock, HeartbeatAddress),
     State = #state{heartbeat_sock = HeartbeatSock,
                    heartbeat_interval = Interval,
@@ -78,23 +84,8 @@ handle_call(stats, _From, State) ->
 handle_call(_Request, _From, State) ->
     {noreply, ok, State}.
 
-handle_cast(heartbeat,
-    #state{heartbeat_sock=HeartbeatSock, beat_count=Count, private_key=PrivateKey}=State) ->
-    {ok, Hostname} = inet:gethostname(),
-    Msg = {[{server, list_to_binary(Hostname)},
-            {timestamp, list_to_binary(httpd_util:rfc1123_date())},
-            {type, heartbeat}]},
-    % JSON encode message
-    BodyFrame = jiffy:encode(Msg),
-
-    % Send Header (including signed checksum)
-    HeaderParts = sign_message(PrivateKey, BodyFrame),
-    Headers = [join_bins(tuple_to_list(Part), <<":">>) || Part <- HeaderParts],
-    HeaderFrame = join_bins(Headers, <<";">>),
-    pushy_messaging:send_message(HeartbeatSock, [HeaderFrame, BodyFrame]),
-    %?debugVal(BodyFrame),
-    %error_logger:info_msg("Heartbeat sent: header=~s,body=~s~n",[HeaderFrame, BodyFrame]),
-    {noreply, State#state{beat_count=Count+1}};
+handle_cast(heartbeat, State) ->
+    {noreply, ?TIME_IT(?MODULE, do_send, (State))};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -107,27 +98,21 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
+do_send(#state{heartbeat_sock=HeartbeatSock, beat_count=Count, private_key=PrivateKey}=State) ->
+    {ok, Hostname} = inet:gethostname(),
+    Msg = {[{server, list_to_binary(Hostname)},
+            {timestamp, list_to_binary(httpd_util:rfc1123_date())},
+            {type, heartbeat}]},
+    % JSON encode message
+    BodyFrame = jiffy:encode(Msg),
+
+    % Send Header (including signed checksum)
+    HeaderFrame = ?TIME_IT(pushy_util, signed_header_from_message, (PrivateKey, BodyFrame)),
+    pushy_messaging:send_message(HeartbeatSock, [HeaderFrame, BodyFrame]),
+    %?debugVal(BodyFrame),
+    %error_logger:info_msg("Heartbeat sent: header=~s,body=~s~n",[HeaderFrame, BodyFrame]),
+    State#state{beat_count=Count+1}.
+
 %% ------------------------------------------------------------------
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
-
-%% @doc Sign a heartbeat message so it can be published to the clients
-%%
-%% Returns a list of header tuples that should be included in the
-%% final ZMQ message.
-%%
-sign_message(PrivateKey, Body) ->
-    HashedBody = chef_authn:hash_string(Body),
-    SignedChecksum = base64:encode(public_key:encrypt_private(HashedBody, PrivateKey)),
-    [{<<"Version">>, <<"1.0">>},
-     {<<"SignedChecksum">>, SignedChecksum}].
-
-join_bins([], _Sep) ->
-    <<>>;
-join_bins(Bins, Sep) when is_binary(Sep) ->
-    join_bins(Bins, Sep, []).
-
-join_bins([B], _Sep, Acc) ->
-    iolist_to_binary(lists:reverse([B|Acc]));
-join_bins([B|Rest], Sep, Acc) ->
-    join_bins(Rest, Sep, [Sep, B | Acc]).

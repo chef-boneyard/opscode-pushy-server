@@ -90,7 +90,6 @@ signed_checksum_from_header(Header) ->
     SignedChecksum.
 
 %% ENCODE/ENCRYPT
-
 signed_header_from_message(PrivateKey, Body) ->
     HashedBody = chef_authn:hash_string(Body),
     SignedChecksum = base64:encode(public_key:encrypt_private(HashedBody, PrivateKey)),

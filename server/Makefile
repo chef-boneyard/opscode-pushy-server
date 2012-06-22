@@ -1,4 +1,6 @@
-DEPS = deps/erlzmq deps/jiffy deps/gproc deps/ej deps/chef_common deps/sqerl deps/mixer
+DEPS = deps/erlzmq deps/jiffy deps/gproc deps/ej \
+	     deps/chef_common deps/sqerl deps/mixer deps\lager \
+	     deps/folsom
 
 all: compile all_tests
 
