@@ -109,15 +109,15 @@ code_change(_OldVsn, State, _Extra) ->
 do_receive(CommandSock, Frame, State) ->
     %% TODO: This needs a more graceful way of handling message sequences. I really feel like we need to
     %% abstract out some more generalized routines to handle the message receipt process.
-    % error_logger:info_msg("Receiving message with address ~w~n", [Address]),
     [Address, Header, Body] = pushy_messaging:receive_message_async(CommandSock, Frame),
+    lager:debug("Receiving message with address ~w", [Address]),
 
-    % error_logger:info_msg("Received message~n\tA ~p~n\tH ~s~n\tB ~s~n", [Address, Header, Body]),
+    lager:debug("Received message~n\tA ~p~n\tH ~s~n\tB ~s", [Address, Header, Body]),
     State1 = case catch ?TIME_IT(pushy_util, do_authenticate_message, (Header, Body)) of
                  ok ->
                      process_message(State, Address, Header, Body);
                  {no_authn, bad_sig} ->
-                     error_logger:error_msg("Command message failed verification: header=~s~n", [Header]),
+                     lager:error("Command message failed verification: header=~s", [Header]),
                      State
              end,
     State1.

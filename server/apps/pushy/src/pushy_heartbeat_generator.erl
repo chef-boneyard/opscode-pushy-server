@@ -110,7 +110,7 @@ do_send(#state{heartbeat_sock=HeartbeatSock, beat_count=Count, private_key=Priva
     HeaderFrame = ?TIME_IT(pushy_util, signed_header_from_message, (PrivateKey, BodyFrame)),
     pushy_messaging:send_message(HeartbeatSock, [HeaderFrame, BodyFrame]),
     %?debugVal(BodyFrame),
-    %error_logger:info_msg("Heartbeat sent: header=~s,body=~s~n",[HeaderFrame, BodyFrame]),
+    lager:debug("Heartbeat sent: header=~s,body=~s",[HeaderFrame, BodyFrame]),
     State#state{beat_count=Count+1}.
 
 %% ------------------------------------------------------------------
