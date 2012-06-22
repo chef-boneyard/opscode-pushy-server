@@ -162,7 +162,7 @@ the metrics.
      966,942,995,935,904,902,852,849,995,992,931,905,963,897,979|...]
 
 
-Loging with Lager
+Logging with Lager
 =================
 
 Logging in Pushy is done using [Lager](https://github.com/basho/lager).
