@@ -34,7 +34,7 @@ new(Name, HeartbeatInterval, DeadIntervalCount) ->
     supervisor:start_child(?SERVER, [Name, HeartbeatInterval, DeadIntervalCount]).
 
 new(Name) ->
-    error_logger:info_msg("Creating Process For ~s~n", [Name]),
+    lager:info("Creating Process For ~s~n", [Name]),
     {ok, HeartbeatInterval} = application:get_env(pushy, heartbeat_interval),
     {ok, DeadIntervalCount} = application:get_env(pushy, dead_interval),
     new(Name, HeartbeatInterval, DeadIntervalCount).
@@ -55,11 +55,11 @@ init([]) ->
 load_from_db() ->
     case pushy_sql:fetch_node_statuses(?POC_ORG_ID) of
         {ok, none} ->
-            error_logger:info_msg("No existing node status records found in database, FSM proceses will not be pre-created.");
+            lager:info("No existing node status records found in database, FSM proceses will not be pre-created.");
         {ok, NodeStatuses} ->
             create_processes(NodeStatuses);
         {error, Reason} ->
-            error_logger:info_msg("Error loading existing node status records from the database: ~p~n", [Reason])
+            lager:info("Error loading existing node status records from the database: ~p~n", [Reason])
     end.
 
 create_processes([]) ->

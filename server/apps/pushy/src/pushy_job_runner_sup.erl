@@ -28,7 +28,7 @@ start_link() ->
 
 %% Creates a gen_fsm tracker for the job
 execute(JobId) ->
-    error_logger:info_msg("Creating runner process for job [~s]~n", [JobId]),
+    lager:info("Creating runner process for job [~s]~n", [JobId]),
     supervisor:start_child(?SERVER, [JobId]).
 
 init([]) ->

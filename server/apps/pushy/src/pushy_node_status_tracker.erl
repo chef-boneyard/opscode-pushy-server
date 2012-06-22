@@ -50,13 +50,13 @@ start_link(Ctx) ->
 %% ------------------------------------------------------------------
 
 init([Ctx]) ->
-    error_logger:info_msg("Starting node status tracker.~n"),
+    lager:info("Starting node status tracker.~n"),
     StatusAddress = pushy_util:make_zmq_socket_addr(node_status_port),
 
     HeartbeatInterval = pushy_util:get_env(pushy, heartbeat_interval, fun is_integer/1),
     DeadInterval = pushy_util:get_env(pushy, dead_interval, fun is_integer/1),
 
-    error_logger:info_msg("Starting node status tracker listening on ~s~n.", [StatusAddress]),
+    lager:info("Starting node status tracker listening on ~s~n.", [StatusAddress]),
 
     {ok, StatusSock} = erlzmq:socket(Ctx, [pull, {active, true}]),
     ok = erlzmq:bind(StatusSock, StatusAddress),
@@ -102,7 +102,7 @@ send_heartbeat(BodyFrame, HeartbeatInterval, DeadInterval) when is_binary(BodyFr
         {Hash} ->
             send_heartbeat(Hash, HeartbeatInterval, DeadInterval);
         {'EXIT', Error} ->
-            error_logger:error_msg("Status message JSON parsing failed: body=~s, error=~s~n", [BodyFrame,Error])
+            lager:error("Status message JSON parsing failed: body=~s, error=~s~n", [BodyFrame,Error])
     end;
 send_heartbeat(Hash, HeartbeatInterval, DeadInterval) ->
     NodeName = proplists:get_value(<<"node">>, Hash),
@@ -113,6 +113,6 @@ send_heartbeat(Hash, HeartbeatInterval, DeadInterval) ->
             pushy_node_state_sup:new(NodeName, HeartbeatInterval, DeadInterval),
             send_heartbeat(Hash, HeartbeatInterval, DeadInterval);
         ok ->
-            %error_logger:info_msg("Heartbeat received from: ~s~n", [NodeName])
+            lager:info("Heartbeat received from: ~s~n", [NodeName]),
             ok
     end.

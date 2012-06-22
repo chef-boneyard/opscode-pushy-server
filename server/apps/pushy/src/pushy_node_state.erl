@@ -69,7 +69,7 @@ initializing(timeout, #state{name=Name}=State) ->
         true ->
             {next_state, down, reset_timer(save_status(down, State))};
         false ->
-            error_logger:error_msg("Failed to register:~p for ~p~n", [Name,self()]),
+            lager:error("Failed to register:~p for ~p~n", [Name,self()]),
             {stop, shutdown, State}
     end.
 
@@ -111,9 +111,9 @@ handle_info({'DOWN', _MonitorRef, _Type, Object, _Info}, StateName, State) ->
     Observers = State#state.observers,
     State1 = State#state{observers=lists:delete(Object,Observers)},
     {next_state, StateName, State1};
-handle_info({heartbeat, _NodeName, NodeState},
+handle_info({heartbeat, NodeName, NodeState},
     StateName, #state{heartbeats=HeartBeats}=State) ->
-    %error_logger:info_msg("Heartbeat recieved from ~p Currently ~p~n", [NodeName, NodeState]),
+    lager:info("Heartbeat recieved from ~p Currently ~p~n", [NodeName, NodeState]),
     if HeartBeats >= ?POC_HB_THRESHOLD  ->
             {next_state, NodeState, reset_timer(save_status(NodeState, State))};
        true ->

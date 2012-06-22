@@ -71,7 +71,7 @@ init([Ctx]) ->
 
     {ok, PrivateKey} = chef_keyring:get_key(pushy_priv),
 
-    error_logger:info_msg("Starting command mux listening on ~s~n.", [CommandAddress]),
+    lager:info("Starting command mux listening on ~s.", [CommandAddress]),
 
     {ok, CommandSock} = erlzmq:socket(Ctx, [router, {active, true}]),
     ok = erlzmq:bind(CommandSock, CommandAddress),
@@ -158,7 +158,7 @@ process_message(State, Address, _Header, Body) ->
             case Type of
                 % ready messages only are used to initialze
                 <<"ready">> ->
-                    error_logger:info_msg("Node [~p] ready to RAWK this command party.~n", [NodeName]),
+                    lager:info("Node [~p] ready to RAWK this command party.~n", [NodeName]),
                     State2;
                 <<"ack">> ->
                     pushy_job_runner:node_command_event(JobId, NodeName, ack),
@@ -167,19 +167,19 @@ process_message(State, Address, _Header, Body) ->
                     pushy_job_runner:node_command_event(JobId, NodeName, nack),
                     State2;
                 <<"started">> ->
-                    error_logger:info_msg("Node [~p] started running Job [~p]~n", [NodeName, JobId]),
+                    lager:info([{job_id, JobId}], "Node [~p] started running Job [~p]~n", [NodeName, JobId]),
                     pushy_job_runner:node_command_event(JobId, NodeName, started),
                     State2;
                 <<"finished">> ->
-                    error_logger:info_msg("Node [~p] finished running Job [~p]~n", [NodeName, JobId]),
+                    lager:info([{job_id, JobId}], "Node [~p] finished running Job [~p]~n", [NodeName, JobId]),
                     pushy_job_runner:node_command_event(JobId, NodeName, finished),
                     State2;
                 _Else ->
-                    error_logger:info_msg("I don't know anything about ~p~n", [Type]),
+                    lager:info("I don't know anything about ~p~n", [Type]),
                     State2
             end;
         {'EXIT', Error} ->
-            error_logger:error_msg("Status message JSON parsing failed: body=~s, error=~s~n", [Body,Error]),
+            lager:error("Status message JSON parsing failed: body=~s, error=~s~n", [Body,Error]),
             State
     end.
 
