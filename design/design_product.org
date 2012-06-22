@@ -17,7 +17,7 @@
 #+LATEX_HEADER: \usepackage{fancyhdr}
 #+LATEX_HEADER: \usepackage{paralist}
 #+LATEX_HEADER: \pagestyle{fancy} \renewcommand{\headrulewidth}{0pt}
-#+LATEX_HEADER: \chead{\includegraphics[width=4cm]{Opscode_Logo_Small.png}}
+#+LATEX_HEADER: \chead{\includegraphics[width=2cm]{Opscode_Logo_Small.png}}
 #+LATEX_HEADER: \lhead{} \rhead{} \lfoot{\today}
 #+LATEX_HEADER: \cfoot{Opscode Confidential}\rfoot{\thepage}
 #+LATEX_HEADER: \renewcommand{\headrulewidth}{0pt}
