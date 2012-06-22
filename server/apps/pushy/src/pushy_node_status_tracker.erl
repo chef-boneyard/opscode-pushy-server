@@ -93,7 +93,7 @@ do_receive(StatusSock, Frame,
         ok ->
             send_heartbeat(Body, HeartbeatInterval, DeadInterval);
         {no_authn, bad_sig} ->
-            error_logger:error_msg("Status message failed verification: header=~s~n", [Header])
+            lager:error("Status message failed verification: header=~s", [Header])
     end,
     State.
 

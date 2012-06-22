@@ -160,3 +160,26 @@ the metrics.
     (pushy@127.0.0.1)5> folsom_metrics:get_metric_value(<<"receive.all.histogram">>).
     [917,880,965,833,962,978,960,864,899,891,928,945,970,962,
      966,942,995,935,904,902,852,849,995,992,931,905,963,897,979|...]
+
+
+Loging with Lager
+=================
+
+Logging in Pushy is done using [Lager](https://github.com/basho/lager).
+
+We define 3 log files located in /var/log/opscode/opscode-pushy:
+
+* console.log
+    * contains all log messages from the "info" level and above.
+* error.log
+    * contains all log messages from the "error" level and above.
+* jobs.log
+    * contains logs specific to jobs.
+
+By default the pushy console will display "info" level messages and above. The
+log level can be changed on the fly with lager. The log level can be set to any
+of: debug, info, notice, warning, error, critical, alert, emergency.
+
+    (pushy@127.0.0.1)1> lager:set_loglevel(lager_console_backend, debug).
+
+
