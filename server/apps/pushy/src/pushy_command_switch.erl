@@ -19,6 +19,14 @@
          send_multi_command/3]).
 
 %% ------------------------------------------------------------------
+%% Private Exports - only exported for instrumentation
+%% ------------------------------------------------------------------
+
+-export([do_receive/3,
+         do_send/4,
+         do_send_multi/4]).
+
+%% ------------------------------------------------------------------
 %% gen_server Function Exports
 %% ------------------------------------------------------------------
 
@@ -31,6 +39,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("public_key/include/public_key.hrl").
+-include_lib("pushy_metrics.hrl").
 
 %% TODO : figure out where this really should come from
 -opaque dictionary() :: any().
@@ -76,31 +85,14 @@ handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
 handle_cast({send, OrgName, NodeName, Message}, #state{}=State) ->
-    do_send(State, OrgName, NodeName, Message),
-    {noreply, State};
+    {noreply, ?TIME_IT(?MODULE, do_send, (State, OrgName, NodeName, Message))};
 handle_cast({send_multi, OrgName, Nodes, Message}, #state{}=State) ->
-    do_send_multi(State, OrgName, Nodes, Message),
-    {noreply, State};
+    {noreply, ?TIME_IT(?MODULE, do_send_multi, (State, OrgName, Nodes, Message))};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
-handle_info({zmq, CommandSock, Frame, [rcvmore]},
-            State) ->
-    %% TODO: This needs a more graceful way of handling message sequences. I really feel like we need to
-    %% abstract out some more generalized routines to handle the message receipt process.
-    % error_logger:info_msg("Receiving message with address ~w~n", [Address]),
-
-    [Address, Header, Body] = pushy_messaging:receive_message_async(CommandSock, Frame),
-
-    % error_logger:info_msg("Received message~n\tA ~p~n\tH ~s~n\tB ~s~n", [Address, Header, Body]),
-    State1 = case catch pushy_util:do_authenticate_message(Header, Body) of
-                 ok ->
-                     process_message(State, Address, Header, Body);
-                 {no_authn, bad_sig} ->
-                     error_logger:error_msg("Command message failed verification: header=~s~n", [Header]),
-                     State
-             end,
-    {noreply, State1};
+handle_info({zmq, CommandSock, Frame, [rcvmore]}, State) ->
+    {noreply, ?TIME_IT(?MODULE, do_receive, (CommandSock, Frame, State))};
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -114,18 +106,38 @@ code_change(_OldVsn, State, _Extra) ->
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
 
+do_receive(CommandSock, Frame, State) ->
+    %% TODO: This needs a more graceful way of handling message sequences. I really feel like we need to
+    %% abstract out some more generalized routines to handle the message receipt process.
+    % error_logger:info_msg("Receiving message with address ~w~n", [Address]),
+
+    [Address, Header, Body] = pushy_messaging:receive_message_async(CommandSock, Frame),
+
+    % error_logger:info_msg("Received message~n\tA ~p~n\tH ~s~n\tB ~s~n", [Address, Header, Body]),
+    State1 = case catch ?TIME_IT(pushy_util, do_authenticate_message, (Header, Body)) of
+                 ok ->
+                     process_message(State, Address, Header, Body);
+                 {no_authn, bad_sig} ->
+                     error_logger:error_msg("Command message failed verification: header=~s~n", [Header]),
+                     State
+             end,
+    State1.
+
 do_send(#state{addr_node_map = AddrNodeMap,
                command_sock = CommandSocket,
                private_key = PrivateKey},
         Org, Node, Message) ->
     Address = addr_node_map_lookup_by_node(AddrNodeMap, {Org, Node}),
-    push_messaging:send_message(CommandSocket, [Address, pushy_util:signed_header_from_message(PrivateKey, Message), Message]).
+    push_messaging:send_message(CommandSocket, [Address,
+        ?TIME_IT(pushy_util, signed_header_from_message, (PrivateKey, Message)),
+        Message]).
 
 do_send_multi(#state{addr_node_map = AddrNodeMap,
                      command_sock = CommandSocket,
                      private_key = PrivateKey},
               Org, Nodes, Message) ->
-    FrameList = [ pushy_util:signed_header_from_message(PrivateKey, Message), Message],
+    FrameList = [
+        ?TIME_IT(pushy_util, signed_header_from_message, (PrivateKey, Message)), Message],
     AddressList = [addr_node_map_lookup_by_node(AddrNodeMap, {Org, Node}) || Node <- Nodes],
     pushy_messaging:send_message_multi(CommandSocket, AddressList, FrameList).
 
