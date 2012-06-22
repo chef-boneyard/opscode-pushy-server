@@ -1,0 +1,55 @@
+
+We need to create an authorization model for erchef. Our permissions model allows fine grained
+control of most aspects of the node life cycle, and the push job system should not simply bypass
+that.
+
+We will need to provide some system to take a user, a command, and a set of nodes, and decide which
+nodes the user has rights to execute the job on.
+
+* Use cases and granularity
+
+** Node level granularity
+Nodes already carry ACLs, and we could extend that to allow decisions about jobs to be made on a per
+node basis.
+
+** Environment level granularity
+One common use case would be separate groups between environments; production and testing may have a
+different set of users allowed to run jobs. This might argue for the permission to be applied at the
+environment 
+
+** Job type granularity
+We may want to distinguish which commands a user could run. One simple distinction would be
+arbitrary commands vs 'canned' commands like chef-client runs. Fancier distinctions could be made
+via sudoers file like syntax.
+
+We want to provide fairly fine grained control over job execution (since we provide the same fine
+grained control over other aspects of nodes), yet this needs to be balanced against the cost of
+management for users not interested in that level of control.
+
+* Initial proposal
+
+  + No distinction is made at the command granularity; either they can run a command or not.
+  + Each node shall have an eXecute ACE in addition to the others.
+  + If an user is in the eXecute ACE for a node, they can run the job on the node
+  + We add a group 'pushy_users' to the system
+  + Admins can edit the membership of pushy_users, and the admins group is a member of pushy_users
+  + The nodes container defaults to providing an ACE containing the pushy_users
+
+  This poses some management issues:
+  
+  + What tools do we need to make the node based permissions behave well in the common case?
+  + How do we handle the common use case where we want the nodes to follow environments, and things
+    to just work? Adding an extra step for the user where they create a node in a particular
+    environment and then have to remember to fix permissions before they can do work seems
+    unpleasant.
+
+  We'll also want to provide 
+  + Bulk checks against authz API
+    Need to be able to POST a list of nodes and a user and get a list of 'OK' nodes and errors (batched)
+    Otherwise this will be painful.
+
+* Open source
+  We need to make whatever process we use for authorization pluggable enough that it fits well into
+  the open source system. The simple approach would either to make it wide open, or limit it to
+  admin users.
+
