@@ -1,10 +1,14 @@
+# -*- fill-column: 100
 
 We need to create an authorization model for erchef. Our permissions model allows fine grained
 control of most aspects of the node life cycle, and the push job system should not simply bypass
 that.
 
 We will need to provide some system to take a user, a command, and a set of nodes, and decide which
-nodes the user has rights to execute the job on.
+subset of those nodes the user has rights to execute the job on.
+
+We will also need a system to arbitrate who can look at a user's job, and get status information in
+both summary form and detailed fashion.
 
 * Use cases and granularity
 
@@ -26,14 +30,39 @@ We want to provide fairly fine grained control over job execution (since we prov
 grained control over other aspects of nodes), yet this needs to be balanced against the cost of
 management for users not interested in that level of control.
 
+** Job information
+There are several aspects to the job status information. There is the job, as initiated by the
+user with the command and a node list. There is the aggregate status, and there is the individual
+status information on a node's progress in the job. 
+
+There is also the process of listing all jobs that have run on a node.
+
+For the sake of simplicity we'll divide it into two basic processes: listing jobs or listing jobs on
+a node, and inspecting an individual job.
+
+
 * Initial proposal
 
+  Nodes
   + No distinction is made at the command granularity; either they can run a command or not.
   + Each node shall have an eXecute ACE in addition to the others.
   + If an user is in the eXecute ACE for a node, they can run the job on the node
   + We add a group 'pushy_users' to the system
   + Admins can edit the membership of pushy_users, and the admins group is a member of pushy_users
   + The nodes container defaults to providing an ACE containing the pushy_users
+
+  Jobs
+  + For queries that pertain to an individual job, it will have an ACL that determines who has CRUDG
+    privileges on the job. Following our current pattern the default setting would be copied from a
+    'jobs' container and the user creating the job would be added with full privileges.
+  + All activities pertaining to a single job, including current status, would be controlled by that ACL.
+  + The 'jobs' container determines who can list all jobs in the system. The default would be to
+    give the 'pushy_users' group CRUDG privileges.
+
+  + We may want to introduce an exception that allows a user to list all of the jobs started by
+    them; however this introduces the concept of 'ownership' of an object, which hasn't previously
+    existed. We should use the same container to determine who can list the jobs associated with a
+    node.
 
   This poses some management issues:
   
@@ -48,8 +77,12 @@ management for users not interested in that level of control.
     Need to be able to POST a list of nodes and a user and get a list of 'OK' nodes and errors (batched)
     Otherwise this will be painful.
 
+  There also is a migration process required, where we add a ACE to the nodes container for the
+  eXecute privilege, and update every node with that ACE. We would also add a jobs container to the
+  system to determine the
+
 * Open source
-  We need to make whatever process we use for authorization pluggable enough that it fits well into
+  We need to make whatever process we use for authorization plugable enough that it fits well into
   the open source system. The simple approach would either to make it wide open, or limit it to
   admin users.
 

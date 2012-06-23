@@ -872,7 +872,14 @@ TODO This state machine needs rework in a serious way.
      Detailed information about a nodes status in the job. (Do we really need this level of detail?)
 
 
-** Knife command syntax
+* Knife command syntax
+
+We will need syntax to allow users to create, alter and delete jobs, find out the state of jobs in flight in both
+summary and detailed fashion, and find out the jobs associated with a node.
+
+
+
+
 ***** Modifying Job Initiation
       Users can place additional restrictions on the initiation of a push job.
       These restrictions are expressed by passing additional flags to the knife
@@ -895,16 +902,14 @@ knife job create role:database chef-client --quorum=3
        The second example illustrates specifying quorum as an absolute count of nodes.
 
 ****** Lifetime
-       A job will have a specific lifetime; if execution has not completed by the timeout, nodes
-       with a command in flight will be aborted and the job state will be marked as timed out. There
-       should also be a default lifetime of a job set to some TBD value. (Is an hour a reasonable
-       time? Most chef-client runs should be done by then). There are obvious tradeoffs between
-       squelching laggarts and not being too hasty.
+       A job will have a specific lifetime; if execution has not completed by the timeout, nodes with a command in
+       flight will be aborted and the job state will be marked as timed out. There should also be a default lifetime of
+       a job set to some TBD value. (Is an hour a reasonable time? Most chef-client runs should be done by then). There
+       are obvious tradeoffs between squelching laggarts and not being too hasty.
 
 ****** Concurrency
-       In many cases we will want to limit how many simultaneous nodes are executing a job. This
-       will complicate the job manager, as it will need to track nodes completing or timing out and
-       start new nodes.
+       In many cases we will want to limit how many simultaneous nodes are executing a job. This will complicate the job
+       manager, as it will need to track nodes completing or timing out and start new nodes.
 
 ****** Job Expiry
        Users can also specify a maximum duration for a command on a
