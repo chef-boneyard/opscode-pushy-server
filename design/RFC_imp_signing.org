@@ -1,0 +1,100 @@
+# -*- fill-column: 100
+
+* Motivation
+Signing is looking like it is too expensive (~8ms on our VM). This isn't going to be good enough; 8k
+hosts * 8ms -> 64s to verify all of the signatures from one heartbeat response.
+
+This proposal discusses a number of methods for signing that should be lighter weight.
+
+* Threat model
+** We will assume that the network is insecure. 
+   Adversaries can intercept packets, perform man-in-the-middle attacks, and the like
+** We will assume that the server is currently secure. 
+   The server only acts through the APIs provided by pushy as they were intended to behave and there
+   are no ways to access or alter information on the server. The server may have been compromised in
+   the past, but we should design the system so that this does not create a permanent compromise.
+
+** The repository for client public keys may have been disclosed, but not altered.
+   An opponent capable of altering the client public keys can perform man in the middle attacks by
+   intercepting client communications, forwarding them using their altered keys, and then fixing up
+   the responses and returning them to the client.
+
+** Some clients will be compromised. 
+   Customers will manage systems of varying exposure levels via chef, and one (or many) compromised
+   clients should not open access for others.
+
+** We assume the Chef REST protocol is secure. 
+   *This isn't really true*
+
+   The client sends a signed request, validating it to the server, but nothing beyond SSL/TLS
+   protects the result from being spoofed. This implies that the API endpoint probably needs a valid
+   SSL certificate and knife/chef_rest needs to validate the chain of trust of the
+   certificate. Otherwise we should not trust any results coming from the server. This should be
+   fixed; if our goal is to become part of the infrastructure, we should expect that we will be
+   attacked like every other part of it.
+   
+   However, for the sake of discussion, let's assume that we actually do have a secure way to
+   distribute the server's public key.  
+
+* Key distribution
+One of the pain points for symmetric encryption algorithms is distributing the shared key. However
+in Chef we can assume much of this away, as we have already a public key infrastructure in
+place. The clients all have a public/private keypair, and the server can be assumed to have access
+to that key. The clients also can be assumed to be able to get a copy of the pushy server public key
+for verification via the Chef REST protocol (see above assumptions)
+
+This gives a natural channel for communicating a private key from the client to the server. The
+client can sign a randomly generated key using its private key (to prevent spoofing), and encrypt it
+using the server's public key (to keep it secret) to create a key blob. This key blob is sent to the
+server in every packet. We can use this key for validation based on symmetric encryption. While this
+requires two expensive RSA operations to extract the key from the blob, the result can be cached; we
+check the binary value of the key-blob, and use the cached key if it is unchanged. A timestamp can
+be added to protect against replay attacks.
+
+* Signing
+Once a symmetric key is in place, all communications between the client and the server can be
+verified using a HMAC using the key specific to that pair. HMAC-SHA1 or HMAC-SHA256 should be
+adequate.
+
+
+
+* Notes on speed of operations:
+This is on a vagrant instance running on my mac.
+
+vagrant@private-chef:/srv/piab/mounts/pushy$ openssl speed rsa1024 rsa2048
+Doing 1024 bit private rsa's for 10s: 33268 1024 bit private RSA's in 9.58s
+Doing 1024 bit public rsa's for 10s: 589249 1024 bit public RSA's in 9.33s
+Doing 2048 bit private rsa's for 10s: 5338 2048 bit private RSA's in 9.81s
+Doing 2048 bit public rsa's for 10s: 178813 2048 bit public RSA's in 9.91s
+OpenSSL 1.0.0f 4 Jan 2012
+built on: Tue May  1 22:49:08 UTC 2012
+options:bn(64,64) rc4(1x,char) des(idx,cisc,16,int) aes(partial) idea(int) blowfish(idx) 
+compiler: gcc -fPIC -DOPENSSL_PIC -DZLIB -DOPENSSL_THREADS -D_REENTRANT -DDSO_DLFCN -DHAVE_DLFCN_H -I/opt/opscode/embedded/include -Wa,--noexecstack -m64 -DL_ENDIAN -DTERMIO -O3 -Wall -DMD32_REG_T=int -DOPENSSL_IA32_SSE2 -DOPENSSL_BN_ASM_MONT -DSHA1_ASM -DSHA256_ASM -DSHA512_ASM -DMD5_ASM -DAES_ASM -DWHIRLPOOL_ASM
+                  sign    verify    sign/s verify/s
+rsa 1024 bits 0.000288s 0.000016s   3472.7  63156.4
+rsa 2048 bits 0.001838s 0.000055s    544.1  18043.7
+
+Also in VM:
+type             16 bytes     64 bytes    256 bytes   1024 bytes   8192 bytes
+hmac(md5)        44027.94k   137062.96k   327071.59k   500987.00k   588350.54k
+aes-256 cbc      71950.40k    75889.57k    76485.69k   187385.15k   187988.47k
+sha256           37479.65k    79908.17k   135798.75k   164611.75k   174371.79k
+sha512           29119.56k   116563.74k   167517.16k   241771.59k   272431.95k
+
+
+mark@Alecto% openssl speed rsa1024 rsa2048
+To get the most accurate results, try to run this
+program when this computer is idle.
+Doing 1024 bit private rsa's for 10s: 7734 1024 bit private RSA's in 10.00s
+Doing 1024 bit public rsa's for 10s: 176597 1024 bit public RSA's in 10.00s
+Doing 2048 bit private rsa's for 10s: 1326 2048 bit private RSA's in 10.00s
+Doing 2048 bit public rsa's for 10s: 53141 2048 bit public RSA's in 10.00s
+OpenSSL 0.9.8r 8 Feb 2011
+built on: Sep 16 2011
+options:bn(64,64) md2(int) rc4(ptr,char) des(idx,cisc,16,int) aes(partial) blowfish(ptr2) 
+compiler: -arch x86_64 -fmessage-length=0 -pipe -Wno-trigraphs -fpascal-strings -fasm-blocks -O3 -D_REENTRANT -DDSO_DLFCN -DHAVE_DLFCN_H -DL_ENDIAN -DMD32_REG_T=int -DOPENSSL_NO_IDEA -DOPENSSL_PIC -DOPENSSL_THREADS -DZLIB -mmacosx-version-min=10.6
+available timing options: TIMEB USE_TOD HZ=100 [sysconf value]
+timing function used: getrusage
+                  sign    verify    sign/s verify/s
+rsa 1024 bits 0.001293s 0.000057s    773.6  17660.5
+rsa 2048 bits 0.007541s 0.000188s    132.6   5315.2
