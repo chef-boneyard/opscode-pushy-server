@@ -283,7 +283,17 @@ parse_error(pgsql, {error,                      % error from sqerl
             {conflict, Message};
         _ ->
             {error, Message}
-    end.
+    end;
+%% TODO: we don't actually handle these errors anywhere...
+parse_error(_, no_connections) ->
+    catch throw(no_connections), % hack to capture the stack
+    error_logger:info_msg("Pooler had no connections for me, oh woe!~n~p~n", [erlang:get_stacktrace()] ),
+    {error, "Pooler out of connections"};
+parse_error(_, no_members) ->
+    catch throw(no_members), % hack to capture the stack
+    error_logger:info_msg("Pooler had no members for me, oh woe!~n~p~n", [erlang:get_stacktrace()]),
+    {error, "Pooler had no members"}.
+
 
 %% CHEF_COMMON CARGO_CULT
 %% chef_sql:do_update/2

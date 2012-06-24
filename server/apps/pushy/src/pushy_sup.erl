@@ -61,6 +61,7 @@ init([Ctx]) ->
                 ?WORKER(chef_keyring, []),
                 ?WORKER(pushy_heartbeat_generator, [Ctx]),
                 ?WORKER(pushy_node_status_tracker, [Ctx]),
+                ?WORKER(pushy_node_status_updater, []),
                 ?WORKER(pushy_command_switch, [Ctx]),
                 ?WORKERNL(webmachine_mochiweb, [WebMachineConfig])  %% FIXME start or start_link here?
                ]}}.

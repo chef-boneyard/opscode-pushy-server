@@ -23,6 +23,7 @@
          restarting/3,
          up/3]).
 
+-define(SAVE_MODE, direct).
 -define(NO_NODE, {error, no_node}).
 
 %% gen_fsm callbacks
@@ -67,7 +68,7 @@ init([Name, HeartbeatInterval, DeadIntervalCount]) ->
 initializing(timeout, #state{name=Name}=State) ->
     case gproc:reg({n, l, Name}) of
         true ->
-            {next_state, down, reset_timer(save_status(down, State))};
+            {next_state, down, reset_timer(save_status(?SAVE_MODE, down, State))};
         false ->
             lager:error("Failed to register:~p for ~p", [Name,self()]),
             {stop, shutdown, State}
@@ -115,12 +116,12 @@ handle_info({heartbeat, NodeName, NodeState},
     StateName, #state{heartbeats=HeartBeats}=State) ->
     lager:debug("Heartbeat recieved from ~p Currently ~p", [NodeName, NodeState]),
     if HeartBeats >= ?POC_HB_THRESHOLD  ->
-            {next_state, NodeState, reset_timer(save_status(NodeState, State))};
+            {next_state, NodeState, reset_timer(save_status(?SAVE_MODE, NodeState, State))};
        true ->
            {next_state, StateName, State#state{heartbeats=HeartBeats+1}}
     end;
 handle_info(down, _StateName, State) ->
-    {next_state, down, save_status(down, State#state{heartbeats=0})};
+    {next_state, down, save_status(?SAVE_MODE, down, State#state{heartbeats=0})};
 handle_info(_Info, StateName, State) ->
     {next_state, StateName, State}.
 
@@ -141,11 +142,13 @@ watching(Action, Name) ->
             gen_fsm:send_all_state_event(Pid, {Action, self()})
     end.
 
-save_status(Status, #state{name=Name}=State) ->
+save_status(direct, Status, #state{name=Name}=State) ->
     notify_status_change(Status, State),
     NodeStatus = pushy_object:new_record(pushy_node_status,
                                         ?POC_ORG_ID,
                                         [{<<"node">>, Name},{<<"type">>, Status}]),
+    %% This probably should be refactored into a 'init_status' and a 'save_status'; once the
+    %% FSM is started we should be able to assume the object exists, and go straight for update..
     case pushy_object:create_object(create_node_status, NodeStatus, ?POC_ACTOR_ID) of
         {ok, _} ->
             State;
@@ -153,8 +156,14 @@ save_status(Status, #state{name=Name}=State) ->
             pushy_object:update_object(update_node_status, NodeStatus, ?POC_ACTOR_ID),
             State;
         {error, _Error} ->
+            %% Droping the status on the floor is a bad thing. Probably should mark this as
+            %% needing retry somehow...
             State
-    end.
+    end;
+save_status(gen_server, Status, #state{name=Name}=State) ->
+    notify_status_change(Status, State),
+    pushy_node_status_updater:update(?POC_ORG_ID, Name, ?POC_ACTOR_ID, Status),
+    State.
 
 notify_status_change(Status, #state{name=Name,observers=Observers}) ->
     [ Observer ! { node_heartbeat_event, Name, Status } || Observer <- Observers ].
