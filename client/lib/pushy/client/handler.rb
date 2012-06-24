@@ -13,11 +13,9 @@ module Pushy
       end
 
       def on_readable(socket, parts)
-
-
         if valid?(parts)
-          monitor.checkin!
-          Utils.parse_json(parts[1].copy_out_string)
+          data = Utils.parse_json(parts[1].copy_out_string)
+          monitor.checkin!(data)
         end
 
       end

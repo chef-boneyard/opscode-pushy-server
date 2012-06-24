@@ -31,6 +31,8 @@
 
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("public_key/include/public_key.hrl").
+
+-include("pushy.hrl").
 -include_lib("pushy_metrics.hrl").
 
 -record(state,
@@ -42,14 +44,14 @@
 %% API Function Definitions
 %% ------------------------------------------------------------------
 
-start_link(Ctx) ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [Ctx], []).
+start_link(PushyState) ->
+    gen_server:start_link({local, ?SERVER}, ?MODULE, [PushyState], []).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
 %% ------------------------------------------------------------------
 
-init([Ctx]) ->
+init([#pushy_state{ctx=Ctx}]) ->
     lager:info("Starting node status tracker."),
     StatusAddress = pushy_util:make_zmq_socket_addr(node_status_port),
 

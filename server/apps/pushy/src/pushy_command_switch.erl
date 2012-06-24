@@ -39,6 +39,8 @@
 
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("public_key/include/public_key.hrl").
+
+-include("pushy.hrl").
 -include_lib("pushy_metrics.hrl").
 
 %% TODO : figure out where this really should come from
@@ -54,8 +56,8 @@
 %% API Function Definitions
 %% ------------------------------------------------------------------
 
-start_link(Ctx) ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [Ctx], []).
+start_link(PushyState) ->
+    gen_server:start_link({local, ?SERVER}, ?MODULE, [PushyState], []).
 
 send_command(OrgName, NodeName, Message) ->
     gen_server:cast(?MODULE, {send, OrgName, NodeName, Message}).
@@ -66,7 +68,7 @@ send_multi_command(OrgName, Nodes, Message) ->
 %% gen_server Function Definitions
 %% ------------------------------------------------------------------
 
-init([Ctx]) ->
+init([#pushy_state{ctx=Ctx}]) ->
     CommandAddress = pushy_util:make_zmq_socket_addr(command_port),
 
     {ok, PrivateKey} = chef_keyring:get_key(pushy_priv),
