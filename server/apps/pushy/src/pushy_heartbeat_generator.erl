@@ -104,11 +104,16 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-do_send(#state{heartbeat_sock=HeartbeatSock, beat_count=Count, private_key=PrivateKey}=State) ->
+do_send(#state{heartbeat_sock=HeartbeatSock, beat_count=Count, private_key=PrivateKey,
+               incarnation_id=IncarnationId}=State) ->
+
     {ok, Hostname} = inet:gethostname(),
     Msg = {[{server, list_to_binary(Hostname)},
             {timestamp, list_to_binary(httpd_util:rfc1123_date())},
-            {type, heartbeat}]},
+            {type, heartbeat},
+            {sequence, Count},
+            {incarnation_id, IncarnationId}
+           ]},
     % JSON encode message
     BodyFrame = jiffy:encode(Msg),
 
