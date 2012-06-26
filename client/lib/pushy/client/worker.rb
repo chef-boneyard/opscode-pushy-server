@@ -42,6 +42,11 @@ module Pushy
       @node_name = app.node_name
       @client_private_key = load_key(app.client_private_key_path)
       @server_public_key = OpenSSL::PKey::RSA.new(options[:server_public_key]) || load_key(options[:server_public_key_path])
+
+      @sequence = 0
+     
+      # TODO: This should be preserved across clean restarts...
+      @incarnation_id = UUIDTools::UUID.random_create
     end
 
     def change_state(state)
@@ -54,8 +59,13 @@ module Pushy
 
       message = {:node => node_name,
         :org => "ORG",
-        :state => state,
-        :timestamp => Time.now.httpdate}
+        :timestamp => Time.now.httpdate,
+        :type => "heartbeat",
+        :sequence => @sequence,
+        :incarnation_id = @incarnation_id,
+        :state => state}
+
+      @incarnation_id+=1
 
       send_signed_json(self.push_socket, message)
     end
