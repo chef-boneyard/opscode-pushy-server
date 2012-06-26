@@ -33,7 +33,7 @@
 -include_lib("public_key/include/public_key.hrl").
 
 -include("pushy.hrl").
--include_lib("pushy_metrics.hrl").
+-include("pushy_metrics.hrl").
 
 -record(state,
         {status_sock,
@@ -91,6 +91,7 @@ code_change(_OldVsn, State, _Extra) ->
 do_receive(StatusSock, Frame,
     #state{heartbeat_interval=HeartbeatInterval,dead_interval=DeadInterval}=State) ->
     [Header, Body] = pushy_messaging:receive_message_async(StatusSock, Frame),
+
     case ?TIME_IT(pushy_util, do_authenticate_message, (Header, Body)) of
         ok ->
             send_heartbeat(Body, HeartbeatInterval, DeadInterval);

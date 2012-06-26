@@ -10,12 +10,16 @@
          receive_message_async/2,
          send_message/2,
          send_message_multi/3,
-         parse_receive_message/3
+         parse_receive_message/3,
+
+         decrypt_sig/2
         ]).
 
 -include_lib("eunit/include/eunit.hrl").
+-include_lib("erlzmq/include/erlzmq.hrl").
 
 -include("pushy_messaging.hrl").
+-include("pushy_metrics.hrl").
 
 %% ZeroMQ can provide frames as messages to a process. While ZeroMQ guarantees that a message is all or nothing, I don't
 %% know if there is any possibility of frames of different messages being interleaved.
@@ -33,27 +37,35 @@ receive_frame_list(Socket, List) ->
 
 
 %%
-%% Many gen_servers have a handle_info({zmq, Socket, Frame, [rcvmore]}) call
+%% Many gen_servers have a handle_info({zmq, Socket, Frame, [rcvmore]}) call which
+%% immediately get a set of frames from zmq.
 %%
 receive_message_async(Socket, Frame) ->
     %% collect the full message
     receive_frame_list(Socket, [Frame]).
 
 
+%%
+%%
+%%
 parse_header(Header) ->
     HeaderParts = re:split(Header, <<":|;">>),
     {_version, Version, _signed_checksum, SignedChecksum} = list_to_tuple(HeaderParts),
     {Version, SignedChecksum}.
 
-
-decode_body(#message{raw=Raw} = Message) ->
-      case catch jiffy:decode(Raw) of
+%%
+%% Parse the json body of the message
+%%
+parse_body(#message{validated = ok_sofar,
+                    raw=Raw} = Message) ->
+      case catch ?TIME_IT(jiffy, decode, (Raw) ) of
         {Data} ->
               Message#message{body = Data};
         {'EXIT', Error} ->
-              error_logger:error_msg("Status message JSON parsing failed: body=~s, error=~s~n", [Raw,Error]),
+              lager:error("JSON parsing failed: data=~s, error=~s~n", [Raw,Error]),
               Message#message{validated = parse_fail}
-    end.
+      end;
+parse_body(Message) -> Message.
 
 % TODO - update chef_authn to export this function
 decrypt_sig(Sig, {'RSAPublicKey', _, _} = PK) ->
@@ -69,45 +81,45 @@ validate_signature(#message{validated = ok_sofar,
                             raw = Raw, body = _Body} = Message) ->
     %% TODO - query DB for public key of each client
     {ok, PublicKey} = chef_keyring:get_key(client_public),
+    Decrypted = ?TIME_IT(?MODULE, decrypt_sig, (SignedChecksum, PublicKey)),
 
-    Decrypted = decrypt_sig(SignedChecksum, PublicKey),
-    case chef_authn:hash_string(Raw) of
+    case ?TIME_IT(chef_authn, hash_string, (Raw)) of
         Decrypted -> Message;
-        _Else -> Message#message{validated={fail, bad_sig}}
-    end;
+        _Else ->
+            case pushy_util:get_env(pushy, ignore_signature_check, false, fun is_boolean/1) of
+                true -> ok;
+                false -> Message#message{validated={fail, bad_sig}}
+            end
+        end;
 validate_signature(Message) -> Message.
 
 
 finalize_msg(#message{validated = ok_sofar} = Message) ->
     Message#message{validated = ok}.
 
+%%
+%% Build a message record for the various parse and validation stages to process
+%%
+-spec build_message_record(Address::binary(), Header::binary(), Body::binary()) -> #message{}.
+build_message_record(Address, Header, Body) ->
+    {Version, SignedChecksum} = parse_header(Header),
+    #message{address = Address,
+             version = Version,
+             signature = SignedChecksum,
+             raw = Body,
+             validated = ok_sofar
+            }.
+
+-spec parse_receive_message(Socket::erlzmq_socket_type(), Frame::binary(), SigValidator::fun()) ->
+                                   #message{}.
 parse_receive_message(Socket, Frame, _SigValidator) ->
-    Msg = case receive_frame_list(Socket, [Frame]) of
-              [Header, Body] ->
-                  {Version, SignedChecksum} = parse_header(Header),
-                  #message{address = none,
-                           version = Version,
-                           signature = SignedChecksum,
-                           raw = Body,
-                           validated = ok_sofar
-                          };
-              [Address, Header, Body] ->
-                  {Version, SignedChecksum} = parse_header(Header),
-                  #message{address = Address,
-                           version = Version,
-                           signature = SignedChecksum,
-                           raw = Body,
-                           validated = ok_sofar
-                          }
+    Msg1 = case receive_frame_list(Socket, [Frame]) of
+              [Header, Body] -> build_message_record(none, Header, Body);
+              [Address, Header, Body] -> build_message_record(Address, Header, Body)
           end,
-    Msg2 = decode_body(Msg),
+    Msg2 = parse_body(Msg1),
     Msg3 = validate_signature(Msg2),
     finalize_msg(Msg3).
-
-
-
-
-
 
 %%
 %%
@@ -122,4 +134,3 @@ send_message(Socket, [ Frame | FrameList]) ->
 
 send_message_multi(Socket, AddressList, FrameList) ->
     [ send_message(Socket, [Address | FrameList] ) || Address <- AddressList ].
-
