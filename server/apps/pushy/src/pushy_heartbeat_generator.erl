@@ -115,7 +115,7 @@ do_send(#state{heartbeat_sock=HeartbeatSock, beat_count=Count, private_key=Priva
             {incarnation_id, IncarnationId}
            ]},
     % JSON encode message
-    BodyFrame = jiffy:encode(Msg),
+    BodyFrame = jiffy:encode(Msg), %?TIME_IT(jiffy, encode, (Msg)),
 
     % Send Header (including signed checksum)
     HeaderFrame = ?TIME_IT(pushy_util, signed_header_from_message, (PrivateKey, BodyFrame)),
