@@ -6,11 +6,11 @@
 %% @doc General messaging utilities for ZeroMQ
 
 -record(message,
-        {address :: binary() | 'none',
+        {validated :: 'ok_sofar' | 'ok' | {'fail', any()},
+         id :: reference(),
+         address :: binary() | 'none',
          version :: binary(),
          signature :: binary() | 'none',
-         validated :: 'ok_sofar' | 'ok' | {'fail', any()},
          raw  :: binary(),
          body :: any() % Get a viable json type here
         }).
-

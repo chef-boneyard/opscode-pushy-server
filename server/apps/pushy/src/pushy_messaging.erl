@@ -58,13 +58,17 @@ parse_header(Header) ->
 %%
 parse_body(#message{validated = ok_sofar,
                     raw=Raw} = Message) ->
-      case catch ?TIME_IT(jiffy, decode, (Raw) ) of
-        {Data} ->
-              Message#message{body = Data};
-        {'EXIT', Error} ->
-              lager:error("JSON parsing failed: data=~s, error=~s~n", [Raw,Error]),
-              Message#message{validated = parse_fail}
-      end;
+    io:format("Raw packet: ~w~n", [Raw]),
+    ?debugVal(Raw),
+    ?debugVal(jiffy:decode(Raw)),
+    try jiffy:decode(Raw) of
+         {Data} ->
+            Message#message{body = Data}
+    catch
+        exit:_Error ->
+            lager:error("JSON parsing failed with error: ~s", [error]),
+            Message#message{validated = parse_fail}
+    end;
 parse_body(Message) -> Message.
 
 % TODO - update chef_authn to export this function
@@ -81,14 +85,17 @@ validate_signature(#message{validated = ok_sofar,
                             raw = Raw, body = _Body} = Message) ->
     %% TODO - query DB for public key of each client
     {ok, PublicKey} = chef_keyring:get_key(client_public),
-    Decrypted = ?TIME_IT(?MODULE, decrypt_sig, (SignedChecksum, PublicKey)),
-
-    case ?TIME_IT(chef_authn, hash_string, (Raw)) of
+%    Decrypted = ?TIME_IT(?MODULE, decrypt_sig, (SignedChecksum, PublicKey)),
+    Decrypted = decrypt_sig(SignedChecksum, PublicKey),
+    ?debugVal(Decrypted),
+    case chef_authn:hash_string(Raw) of
         Decrypted -> Message;
         _Else ->
             case pushy_util:get_env(pushy, ignore_signature_check, false, fun is_boolean/1) of
                 true -> ok;
-                false -> Message#message{validated={fail, bad_sig}}
+                false ->
+                    lager:error("Validation failed ~s ~s~n", [Decrypted, _Else]),
+                    Message#message{validated={fail, bad_sig}}
             end
         end;
 validate_signature(Message) -> Message.
@@ -102,13 +109,19 @@ finalize_msg(#message{validated = ok_sofar} = Message) ->
 %%
 -spec build_message_record(Address::binary(), Header::binary(), Body::binary()) -> #message{}.
 build_message_record(Address, Header, Body) ->
+    Id = make_ref(),
     {Version, SignedChecksum} = parse_header(Header),
-    #message{address = Address,
+    lager:error("Received msg ~w (~w:~w:~w)",[Id, len_h(Address), len_h(Header), len_h(Body)]),
+    #message{validated = ok_sofar,
+             id = Id,
+             address = Address,
              version = Version,
              signature = SignedChecksum,
-             raw = Body,
-             validated = ok_sofar
+             raw = Body
             }.
+
+len_h(none) -> 0;
+len_h(B) when is_binary(B) -> erlang:byte_size(B).
 
 -spec parse_receive_message(Socket::erlzmq_socket_type(), Frame::binary(), SigValidator::fun()) ->
                                    #message{}.
@@ -118,7 +131,9 @@ parse_receive_message(Socket, Frame, _SigValidator) ->
               [Address, Header, Body] -> build_message_record(Address, Header, Body)
           end,
     Msg2 = parse_body(Msg1),
+    lager:error("Processed msg (2) ~p ~p", [Msg2#message.validated, Msg2#message.body]),
     Msg3 = validate_signature(Msg2),
+    lager:error("Processed msg (3) ~p ~p", [Msg3#message.validated, Msg3#message.body]),
     finalize_msg(Msg3).
 
 %%

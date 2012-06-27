@@ -33,6 +33,7 @@
 -include_lib("public_key/include/public_key.hrl").
 
 -include("pushy.hrl").
+-include("pushy_messaging.hrl").
 -include("pushy_metrics.hrl").
 
 -record(state,
@@ -90,13 +91,22 @@ code_change(_OldVsn, State, _Extra) ->
 
 do_receive(StatusSock, Frame,
     #state{heartbeat_interval=HeartbeatInterval,dead_interval=DeadInterval}=State) ->
-    [Header, Body] = pushy_messaging:receive_message_async(StatusSock, Frame),
 
-    case ?TIME_IT(pushy_util, do_authenticate_message, (Header, Body)) of
+
+%    [Header, Body] = pushy_messaging:receive_message_async(StatusSock, Frame),
+%
+%    case ?TIME_IT(pushy_util, do_authenticate_message, (Header, Body)) of
+%        ok ->
+%            send_heartbeat(Body, HeartbeatInterval, DeadInterval);
+%        {no_authn, bad_sig} ->
+%            lager:error("Status message failed verification: header=~s", [Header])
+%    end,
+    Packet = pushy_messaging:parse_receive_message(StatusSock, Frame, undefined),
+    case Packet#message.validated of
         ok ->
-            send_heartbeat(Body, HeartbeatInterval, DeadInterval);
-        {no_authn, bad_sig} ->
-            lager:error("Status message failed verification: header=~s", [Header])
+            send_heartbeat(Packet#message.body, HeartbeatInterval, DeadInterval);
+        Validation ->
+            lager:error("Heartbeat message failed verification: ~s", [Validation])
     end,
     State.
 
