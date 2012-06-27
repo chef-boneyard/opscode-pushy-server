@@ -62,10 +62,10 @@ module Pushy
         :timestamp => Time.now.httpdate,
         :type => "heartbeat",
         :sequence => @sequence,
-        :incarnation_id = @incarnation_id,
+        :incarnation_id => @incarnation_id,
         :state => state}
 
-      @incarnation_id+=1
+      @sequence+=1
 
       send_signed_json(self.push_socket, message)
     end
