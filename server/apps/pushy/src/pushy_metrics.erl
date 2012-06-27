@@ -37,6 +37,12 @@ label(pushy_node_status_tracker, do_receive) ->
     label('receive', all);
 label(pushy_command_switch, do_receive) ->
     label('receive', all);
+label(pushy_messaging, _) ->
+    label('messaging', all);
+label(chef_authn, _) ->
+    label('authn', all);
+label(authn, _) ->
+    label('authn', all);
 label(Prefix, Fun) when Prefix =:= send;
                         Prefix =:= 'receive'->
     PrefixBin = erlang:atom_to_binary(Prefix, utf8),
