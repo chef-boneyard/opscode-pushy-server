@@ -1,0 +1,68 @@
+require 'rubygems'
+require 'rubygems/package_task'
+require 'rubygems/specification'
+require 'date'
+require 'rspec/core/rake_task'
+
+
+task :default => :db
+
+namespace :db do
+  desc "Effectively drop the db and then migrate it to current"
+  task :remigrate do
+    sh("sequel -m db/migrate mysql2://root@127.0.0.1/opscode_pushy  -M 0")
+    sh("sequel -m db/migrate mysql2://root@127.0.0.1/opscode_pushy")
+  end
+
+  desc "Effectively drop the db and then migrate it to current"
+  task :remigrate_test do
+    sh("sequel -m db/migrate mysql2://root@127.0.0.1/opscode_pushy_test -M 0")
+    sh("sequel -m db/migrate mysql2://root@127.0.0.1/opscode_pushy_test")
+  end
+
+  namespace :production do
+    desc "MIGRATE PRODUCTION"
+    task :migrate do
+      # NOTE: For production we do the migration manually instead of shelling
+      # out to `sequel -m` so that we never enter the root database password in
+      # the argv of a command (where it could be seen in `ps`).
+      #
+      # This code duplicates the functionality of bin/sequel in the sequel gem.
+
+      require 'sequel'
+      require 'mysql2'
+      require 'highline'
+      require 'logger'
+      logger = Logger.new(STDOUT)
+      migrate_dir = File.expand_path("../db/migrate", __FILE__)
+
+      connection_string = "mysql2://root:%s@127.0.0.1/opscode_pushy"
+      puts "** MIGRATING PRODUCTION **"
+      puts connection_string % "PASSWORD"
+
+      root_passwd = HighLine.new.ask("Database root password: ") {|q| q.echo = false}
+      db = Sequel.connect(connection_string % root_passwd, :loggers => [logger])
+
+      Sequel.extension :migration
+      Sequel::Migrator.apply(db, migrate_dir, nil)
+
+    end
+  end
+
+end
+
+namespace :pg do
+  desc "(PG) Effectively drop the db and then migrate it to current"
+  task :remigrate do
+    sh("sequel -m db/migrate postgres://127.0.0.1/opscode_pushy  -M 0")
+    sh("sequel -m db/migrate postgres://127.0.0.1/opscode_pushy")
+  end
+
+  desc "(PG) Effectively drop the *test* db and then migrate it to current"
+  task :remigrate_test do
+    sh("sequel -m db/migrate postgres://127.0.0.1/opscode_pushy_test -M 0")
+    sh("sequel -m db/migrate postgres://127.0.0.1/opscode_pushy_test")
+  end
+end
+
+

@@ -183,3 +183,13 @@ of: debug, info, notice, warning, error, critical, alert, emergency.
     (pushy@127.0.0.1)1> lager:set_loglevel(lager_console_backend, debug).
 
 
+Database Migration hack
+=======================
+Moved database migrations into server/db 
+Run them under dev-vm as
+% bundle exec sequel --echo -m migrate postgres://opscode-pgsql@127.0.0.1/opscode_pushy
+TODO
+* Very likely will have to create the database; look at
+   opscode-dev-vm/cookbooks/piab/recipes/dev.rb and the create dev db
+* Also need changes to the recipe doing the pushy config to make sure we're
+  actually pointing at the opscode_pushy db.
