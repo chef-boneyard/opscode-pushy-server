@@ -4,13 +4,17 @@
 %% @copyright 2012 Opscode, Inc.
 
 %% @doc General messaging utilities for ZeroMQ
+-type json_term() :: any().
 
 -record(message,
         {validated :: 'ok_sofar' | 'ok' | {'fail', any()},
          id :: reference(),
          address :: binary() | 'none',
+         header  :: binary() | 'none',
+         raw  :: binary() | 'none',
+
          version :: binary(),
          signature :: binary() | 'none',
-         raw  :: binary(),
-         body :: any() % Get a viable json type here
+
+         body :: json_term() % Get a viable json type here
         }).

@@ -10,9 +10,13 @@
          receive_message_async/2,
          send_message/2,
          send_message_multi/3,
-         parse_receive_message/3,
 
-         decrypt_sig/2
+
+         parse_receive_message/3,
+         send_message_record/2,
+
+
+         build_outgoing_message/2
         ]).
 
 -include_lib("eunit/include/eunit.hrl").
@@ -20,6 +24,9 @@
 
 -include("pushy_messaging.hrl").
 -include("pushy_metrics.hrl").
+
+
+
 
 %% ZeroMQ can provide frames as messages to a process. While ZeroMQ guarantees that a message is all or nothing, I don't
 %% know if there is any possibility of frames of different messages being interleaved.
@@ -45,6 +52,40 @@ receive_message_async(Socket, Frame) ->
     receive_frame_list(Socket, [Frame]).
 
 
+-spec parse_receive_message(Socket::erlzmq_socket_type(), Frame::binary(), SigValidator::fun()) ->
+                                   #message{}.
+parse_receive_message(Socket, Frame, _SigValidator) ->
+    Msg1 = case receive_frame_list(Socket, [Frame]) of
+              [Header, Body] -> build_message_record(none, Header, Body);
+              [Address, Header, Body] -> build_message_record(Address, Header, Body)
+          end,
+    Msg2 = parse_body(Msg1),
+%    lager:error("Processed msg (2) ~p ~p", [Msg2#message.validated, Msg2#message.body]),
+    Msg3 = validate_signature(Msg2),
+%    lager:error("Processed msg (3) ~p ~p", [Msg3#message.validated, Msg3#message.body]),
+    finalize_msg(Msg3).
+
+
+%%
+%% Build a message record for the various parse and validation stages to process
+%%
+-spec build_message_record(Address::binary() | none, Header::binary(), Body::binary()) -> #message{}.
+build_message_record(Address, Header, Body) ->
+    Id = make_ref(),
+    {Version, SignedChecksum} = parse_header(Header),
+    lager:error("Received msg ~w (~w:~w:~w)",[Id, len_h(Address), len_h(Header), len_h(Body)]),
+    #message{validated = ok_sofar,
+             id = Id,
+             address = Address,
+             version = Version,
+             signature = SignedChecksum,
+             raw = Body
+            }.
+
+len_h(none) -> 0;
+len_h(B) when is_binary(B) -> erlang:byte_size(B).
+
+
 %%
 %%
 %%
@@ -58,9 +99,6 @@ parse_header(Header) ->
 %%
 parse_body(#message{validated = ok_sofar,
                     raw=Raw} = Message) ->
-    io:format("Raw packet: ~w~n", [Raw]),
-    ?debugVal(Raw),
-    ?debugVal(jiffy:decode(Raw)),
     try jiffy:decode(Raw) of
          {Data} ->
             Message#message{body = Data}
@@ -87,7 +125,6 @@ validate_signature(#message{validated = ok_sofar,
     {ok, PublicKey} = chef_keyring:get_key(client_public),
 %    Decrypted = ?TIME_IT(?MODULE, decrypt_sig, (SignedChecksum, PublicKey)),
     Decrypted = decrypt_sig(SignedChecksum, PublicKey),
-    ?debugVal(Decrypted),
     case chef_authn:hash_string(Raw) of
         Decrypted -> Message;
         _Else ->
@@ -104,41 +141,51 @@ validate_signature(Message) -> Message.
 finalize_msg(#message{validated = ok_sofar} = Message) ->
     Message#message{validated = ok}.
 
-%%
-%% Build a message record for the various parse and validation stages to process
-%%
--spec build_message_record(Address::binary(), Header::binary(), Body::binary()) -> #message{}.
-build_message_record(Address, Header, Body) ->
-    Id = make_ref(),
-    {Version, SignedChecksum} = parse_header(Header),
-    lager:error("Received msg ~w (~w:~w:~w)",[Id, len_h(Address), len_h(Header), len_h(Body)]),
-    #message{validated = ok_sofar,
-             id = Id,
-             address = Address,
-             version = Version,
-             signature = SignedChecksum,
-             raw = Body
-            }.
 
-len_h(none) -> 0;
-len_h(B) when is_binary(B) -> erlang:byte_size(B).
-
--spec parse_receive_message(Socket::erlzmq_socket_type(), Frame::binary(), SigValidator::fun()) ->
-                                   #message{}.
-parse_receive_message(Socket, Frame, _SigValidator) ->
-    Msg1 = case receive_frame_list(Socket, [Frame]) of
-              [Header, Body] -> build_message_record(none, Header, Body);
-              [Address, Header, Body] -> build_message_record(Address, Header, Body)
-          end,
-    Msg2 = parse_body(Msg1),
-    lager:error("Processed msg (2) ~p ~p", [Msg2#message.validated, Msg2#message.body]),
-    Msg3 = validate_signature(Msg2),
-    lager:error("Processed msg (3) ~p ~p", [Msg3#message.validated, Msg3#message.body]),
-    finalize_msg(Msg3).
 
 %%
 %%
 %%
+
+
+-spec send_message_record(Socket::erlzmq_socket_type(), Message::#message{} ) -> ok.
+send_message_record(Socket, #message{address=none, header=Header, raw=Body}) ->
+    send_message(Socket, [Header, Body]);
+send_message_record(Socket, #message{address=Address, header=Header, raw=Body}) ->
+    send_message(Socket, [Address, Header, Body]).
+
+%%
+%% build_message_record
+%%
+-spec build_outgoing_message(Version::atom(), JsonBody::json_term()) -> #message{}.
+build_outgoing_message(version_1, JsonBody) ->
+    Msg0 = #message{validated = json_only,
+                    id = make_ref(),
+                    address = none,
+                    header = none,
+                    raw = none,
+                    version = none,
+                    signature = none,
+                    body = JsonBody},
+    Msg1 = encode_json(Msg0),
+    sign_msg(Msg1).
+
+
+encode_json(#message{validated=json_only, body=Body}=Msg) ->
+    try
+        Raw = jiffy:encode(Body),
+        Msg#message{validated = raw_encoded,
+                    raw = Raw}
+    catch
+        error:Error ->
+            Msg#message{validated = Error}
+    end.
+
+sign_msg(Msg) ->
+    Msg.
+
+
+
 send_message(_Socket, []) ->
     ok;
 send_message(Socket, [Frame | [] ]) ->
