@@ -40,10 +40,11 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
-update(Org, Name, ActorId, Status) ->
-    gen_server:cast(?MODULE, {update, Org, Name, ActorId, Status}).
 create(Org, Name, ActorId, Status) ->
     gen_server:cast(?MODULE, {create, Org, Name, ActorId, Status}).
+update(Org, Name, ActorId, Status) ->
+    gen_server:cast(?MODULE, {update, Org, Name, ActorId, Status}).
+
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
