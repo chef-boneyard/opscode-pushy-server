@@ -25,7 +25,7 @@ depclean:
 compile: $(DEPS)
 	$(REBAR) compile
 
-compile_app: $(DEPS)
+compile_app:
 	$(REBAR) skip_deps=true compile
 
 dialyzer:
@@ -60,6 +60,9 @@ devrel: rel
 	@/bin/echo  Run \'make update\' to pick up changes in a running VM.
 
 update: compile
+	@cd rel/pushy;bin/pushy restart
+
+update_app: compile_app
 	@cd rel/pushy;bin/pushy restart
 
 distclean: relclean
