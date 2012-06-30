@@ -9,6 +9,7 @@
 %% API
 -export([current_state/1,
          heartbeat/1,
+         set_logging/2,
          start_link/3]).
 
 %% Observers
@@ -23,7 +24,7 @@
          restarting/3,
          up/3]).
 
--define(SAVE_MODE, direct).
+-define(SAVE_MODE, gen_server). % direct or gen_server
 -define(NO_NODE, {error, no_node}).
 
 %% gen_fsm callbacks
@@ -34,17 +35,32 @@
          init/1,
          terminate/3]).
 
--record(state, {dead_interval,
-                name,
-                heartbeats = 0,
+-include("pushy_sql.hrl").
+
+-type node_name() :: binary().
+-type node_state() :: binary().
+-type logging_level() :: 'verbose' | 'normal'.
+-type status_atom() :: 'idle' | 'ready' | 'restarting' | 'running'.
+-type status_binary() :: binary(). % <<"idle">> | <<"ready">> | <<"restarting">> | <<"running">>.
+-type gproc_error() :: ok | {error, no_node}.
+
+-record(state, {dead_interval    :: integer(),
+                name             :: binary(),
+                heartbeats = 0   :: integer(),
+                logging = normal :: logging_level(),
                 observers = [],
                 tref}).
 
--include("pushy_sql.hrl").
 
+%%%
+%%% External API
+%%%
+-spec start_link(node_name(),HeartbeatInterval::integer(),DeadIntervalCount::integer()) ->
+                        'ignore' | {'error',_} | {'ok',pid()}.
 start_link(Name, HeartbeatInterval, DeadIntervalCount) ->
     gen_fsm:start_link(?MODULE, [Name, HeartbeatInterval, DeadIntervalCount], []).
 
+-spec heartbeat({'heartbeat',node_name(),node_state()}) -> gproc_error().
 heartbeat({heartbeat, NodeName, NodeState}) ->
     case catch gproc:send({n,l,NodeName},
             {heartbeat, NodeName, status_to_atom(NodeState)}) of
@@ -52,7 +68,7 @@ heartbeat({heartbeat, NodeName, NodeState}) ->
         _ -> ok
     end.
 
-
+-spec current_state(node_name()) -> any().
 current_state(Name) ->
     case catch gproc:lookup_pid({n,l,Name}) of
         {'EXIT', _} ->
@@ -60,6 +76,39 @@ current_state(Name) ->
         Pid ->
             gen_fsm:sync_send_event(Pid, current_state, infinity)
     end.
+
+
+-spec set_logging(node_name(), logging_level()) ->  gproc_error().
+set_logging(Name, verbose) ->
+    set_logging(Name, verbose, ok);
+set_logging(Name, normal) ->
+    set_logging(Name, normal, ok).
+
+set_logging(Name, Level, ok) ->
+    case catch gproc:lookup_pid({n,l,Name}) of
+        {'EXIT', _} ->
+            ?NO_NODE;
+        Pid ->
+            gen_fsm:send_all_state_event(Pid, {logging, Level})
+    end.
+
+-spec start_watching(node_name()) -> gproc_error().
+start_watching(Name) ->
+    watching(start_watching, Name).
+
+-spec stop_watching(node_name()) -> gproc_error().
+stop_watching(Name) ->
+    watching(stop_watching, Name).
+
+-spec watching('start_watching' | 'stop_watching', node_name()) -> gproc_error().
+watching(Action, Name) ->
+    case catch gproc:lookup_pid({n,l,Name}) of
+        {'EXIT', _} ->
+            ?NO_NODE;
+        Pid ->
+            gen_fsm:send_all_state_event(Pid, {Action, self()})
+    end.
+
 
 init([Name, HeartbeatInterval, DeadIntervalCount]) ->
     {ok, initializing, #state{dead_interval=HeartbeatInterval * DeadIntervalCount,
@@ -74,13 +123,10 @@ initializing(timeout, #state{name=Name}=State) ->
             {stop, shutdown, State}
     end.
 
-start_watching(Name) ->
-    watching(start_watching, Name).
 
-stop_watching(Name) ->
-    watching(stop_watching, Name).
-
-
+%%%
+%%% State machine internals
+%%%
 up(current_state, _From, State) ->
     {reply, up, up, State}.
 
@@ -90,6 +136,9 @@ crashed(current_state, _From, State) ->
 restarting(current_state, _From, State) ->
     {reply, restarting, restarting, State}.
 
+%%
+%% These events are handled the same everywhere
+%%
 handle_event({start_watching, Who}, StateName, #state{observers=Observers}=State) ->
     State1 = case lists:member(Who, Observers) of
         false ->
@@ -101,7 +150,11 @@ handle_event({start_watching, Who}, StateName, #state{observers=Observers}=State
 handle_event({stop_watching, Who}, StateName, #state{observers=Observers}=State) ->
     State1 = State#state{observers=lists:delete(Who, Observers)},
     {next_state, StateName, State1};
-handle_event(_Event, StateName, State) ->
+handle_event({logging, Level}, StateName, State) ->
+    State1 = State#state{logging=Level},
+    {next_state, StateName, State1};
+handle_event(_Event, StateName, #state{name=Name}=State) ->
+    lager:error("FSM for ~p received unexpected event ~p", [Name, _Event]),
     {next_state, StateName, State}.
 
 handle_sync_event(_Event, _From, StateName, State) ->
@@ -113,8 +166,8 @@ handle_info({'DOWN', _MonitorRef, _Type, Object, _Info}, StateName, State) ->
     State1 = State#state{observers=lists:delete(Object,Observers)},
     {next_state, StateName, State1};
 handle_info({heartbeat, NodeName, NodeState},
-    StateName, #state{heartbeats=HeartBeats}=State) ->
-    lager:debug("Heartbeat recieved from ~p Currently ~p", [NodeName, NodeState]),
+            StateName, #state{logging=Level, heartbeats=HeartBeats}=State) ->
+    nlog(Level, "Heartbeat recieved from ~p Currently ~p", [NodeName, NodeState]),
     if HeartBeats >= ?POC_HB_THRESHOLD  ->
             {next_state, NodeState, reset_timer(save_status(?SAVE_MODE, NodeState, State))};
        true ->
@@ -134,19 +187,18 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 
 %% Internal functions
 
-watching(Action, Name) ->
-    case catch gproc:lookup_pid({n,l,Name}) of
-        {'EXIT', _} ->
-            ?NO_NODE;
-        Pid ->
-            gen_fsm:send_all_state_event(Pid, {Action, self()})
-    end.
-
-save_status(direct, Status, #state{name=Name}=State) ->
+save_status(direct, Status, State) ->
     notify_status_change(Status, State),
+    save_status_directly(Status, State);
+save_status(gen_server, Status, #state{name=Name}=State) ->
+    notify_status_change(Status, State),
+    pushy_node_status_updater:update(?POC_ORG_ID, Name, ?POC_ACTOR_ID, Status),
+    State.
+
+save_status_directly(Status, #state{name=Name}=State) ->
     NodeStatus = pushy_object:new_record(pushy_node_status,
-                                        ?POC_ORG_ID,
-                                        [{<<"node">>, Name},{<<"type">>, Status}]),
+                                         ?POC_ORG_ID,
+                                         [{<<"node">>, Name},{<<"type">>, Status}]),
     %% This probably should be refactored into a 'init_status' and a 'save_status'; once the
     %% FSM is started we should be able to assume the object exists, and go straight for update..
     case pushy_object:create_object(create_node_status, NodeStatus, ?POC_ACTOR_ID) of
@@ -159,15 +211,13 @@ save_status(direct, Status, #state{name=Name}=State) ->
             %% Droping the status on the floor is a bad thing. Probably should mark this as
             %% needing retry somehow...
             State
-    end;
-save_status(gen_server, Status, #state{name=Name}=State) ->
-    notify_status_change(Status, State),
-    pushy_node_status_updater:update(?POC_ORG_ID, Name, ?POC_ACTOR_ID, Status),
-    State.
+    end.
 
 notify_status_change(Status, #state{name=Name,observers=Observers}) ->
+    lager:info("Status change for ~s : ~s", [Name, Status]),
     [ Observer ! { node_heartbeat_event, Name, Status } || Observer <- Observers ].
 
+-spec status_to_atom(status_binary()) -> status_atom().
 status_to_atom(<<"idle">>) ->
     idle;
 status_to_atom(<<"ready">>) ->
@@ -177,6 +227,9 @@ status_to_atom(<<"running">>) ->
 status_to_atom(<<"restarting">>) ->
     restarting.
 
+%
+% Question: Why isn't the gen_fsm:start_timer/cancel_timer used here?
+%
 reset_timer(#state{dead_interval=Interval, tref=undefined}=State) ->
     TRef = erlang:send_after(Interval, self(), no_heartbeats),
     State#state{tref=TRef};
@@ -184,3 +237,8 @@ reset_timer(#state{dead_interval=Interval, tref=TRef}=State) ->
     erlang:cancel_timer(TRef),
     TRef1 = erlang:send_after(Interval, self(), down),
     State#state{tref=TRef1}.
+
+nlog(normal, Format, Args) ->
+    lager:debug(Format, Args);
+nlog(verbose, Format, Args) ->
+    lager:info(Format, Args).
