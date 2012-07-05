@@ -37,6 +37,8 @@
 
 -include("pushy_sql.hrl").
 
+-include_lib("eunit/include/eunit.hrl").
+
 -type node_name() :: binary().
 -type node_state() :: binary().
 -type logging_level() :: 'verbose' | 'normal'.
@@ -44,13 +46,39 @@
 -type status_binary() :: binary(). % <<"idle">> | <<"ready">> | <<"restarting">> | <<"running">>.
 -type gproc_error() :: ok | {error, no_node}.
 
+-record(eavg, {acc = 0 :: integer(),
+               avg = 0 :: float(),
+               n = 0   :: integer(),
+               tick_interval :: integer(),
+               tref   :: reference()
+              }).
+
 -record(state, {dead_interval    :: integer(),
                 name             :: binary(),
                 heartbeats = 0   :: integer(),
                 logging = normal :: logging_level(),
                 observers = [],
-                tref}).
+                tref,
+                heartbeat_rate   :: #eavg{}
+               }).
 
+-spec eavg_init(integer(), integer()) -> #eavg{}.
+eavg_init(N, I) ->
+    TRef = erlang:start_timer(I, self(), update_avg),
+    #eavg{acc=0, avg=0, n=N, tick_interval=I, tref=TRef}.
+
+-spec eavg_tick(#eavg{}) -> #eavg{}.
+eavg_tick(#eavg{acc=Acc, avg=Avg, n=N, tick_interval=I}=EAvg) ->
+    ?debugVal(EAvg),
+    NAvg = (Avg * (N-1) + Acc)/N,
+    TRef = erlang:start_timer(I, self(), update_avg),
+    EAvg#eavg{acc=0, avg=NAvg, tref=TRef}.
+
+eavg_inc(#eavg{acc=Acc}=EAvg, Count) ->
+    EAvg#eavg{acc=Acc+Count}.
+
+eavg_value(#eavg{avg=Avg}) ->
+    Avg.
 
 %%%
 %%% External API
@@ -111,8 +139,12 @@ watching(Action, Name) ->
 
 
 init([Name, HeartbeatInterval, DeadIntervalCount]) ->
-    {ok, initializing, #state{dead_interval=HeartbeatInterval * DeadIntervalCount,
-                              name=Name}, 0}.
+    {ok, initializing,
+     #state{dead_interval=HeartbeatInterval * DeadIntervalCount,
+            name=Name,
+            heartbeat_rate=eavg_init(DeadIntervalCount, HeartbeatInterval)
+           },
+     0}.
 
 initializing(timeout, #state{name=Name}=State) ->
     case gproc:reg({n, l, Name}) of
@@ -166,16 +198,27 @@ handle_info({'DOWN', _MonitorRef, _Type, Object, _Info}, StateName, State) ->
     State1 = State#state{observers=lists:delete(Object,Observers)},
     {next_state, StateName, State1};
 handle_info({heartbeat, NodeName, NodeState},
-            StateName, #state{logging=Level, heartbeats=HeartBeats}=State) ->
-    nlog(Level, "Heartbeat recieved from ~p Currently ~p", [NodeName, NodeState]),
-    if HeartBeats >= ?POC_HB_THRESHOLD  ->
-            {next_state, NodeState, reset_timer(save_status(?SAVE_MODE, NodeState, State))};
-       true ->
-           {next_state, StateName, State#state{heartbeats=HeartBeats+1}}
+            StateName, #state{logging=Level, heartbeats=HeartBeats, heartbeat_rate=HRate}=State) ->
+    nlog(Level, "Heartbeat recieved from ~p Currently ~p ~p", [NodeName, NodeState, HRate]),
+    eavg_value(HRate),
+    %% Note that we got a heartbeat
+    State1 = State#state{heartbeat_rate=eavg_inc(HRate,1)},
+
+    case HeartBeats of
+        ?POC_HB_THRESHOLD - 1 ->
+            State2 = reset_timer(save_status(?SAVE_MODE, NodeState, State1)),
+            {next_state, NodeState, State2#state{heartbeats=HeartBeats + 1}};
+        ?POC_HB_THRESHOLD ->
+            {next_state, StateName, State1};
+        _ ->
+            {next_state, NodeState, reset_timer(save_status(?SAVE_MODE, NodeState, State1))}
     end;
 handle_info(down, _StateName, State) ->
     {next_state, down, save_status(?SAVE_MODE, down, State#state{heartbeats=0})};
-handle_info(_Info, StateName, State) ->
+handle_info({timeout, _Ref, update_avg}, StateName, #state{heartbeat_rate=HRate}=State) ->
+    {next_state, StateName, State#state{heartbeat_rate=eavg_tick(HRate)} };
+handle_info(Info, StateName, State) ->
+    lager:error("Strange message ~p received in state ~p", [Info, StateName]),
     {next_state, StateName, State}.
 
 
@@ -242,3 +285,5 @@ nlog(normal, Format, Args) ->
     lager:debug(Format, Args);
 nlog(verbose, Format, Args) ->
     lager:info(Format, Args).
+
+
