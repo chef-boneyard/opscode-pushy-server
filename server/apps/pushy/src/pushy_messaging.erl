@@ -73,7 +73,7 @@ parse_receive_message(Socket, Frame, _SigValidator) ->
 build_message_record(Address, Header, Body) ->
     Id = make_ref(),
     {Version, SignedChecksum} = parse_header(Header),
-    lager:error("Received msg ~w (~w:~w:~w)",[Id, len_h(Address), len_h(Header), len_h(Body)]),
+    lager:debug("Received msg ~w (~w:~w:~w)",[Id, len_h(Address), len_h(Header), len_h(Body)]),
     #message{validated = ok_sofar,
              id = Id,
              address = Address,
