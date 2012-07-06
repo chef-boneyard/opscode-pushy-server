@@ -41,9 +41,11 @@
 
 -type node_name() :: binary().
 -type node_state() :: binary().
+-type fsm_states() :: 'up' | 'down' | 'crashed' | 'restarting'.
 -type logging_level() :: 'verbose' | 'normal'.
--type status_atom() :: 'idle' | 'ready' | 'restarting' | 'running'.
--type status_binary() :: binary(). % <<"idle">> | <<"ready">> | <<"restarting">> | <<"running">>.
+-type status_atom() :: 'idle' | 'ready' | 'restarting' | 'running' | 'down'.
+-type status_binary() :: binary(). % <<"idle">> | <<"ready">> | <<"restarting">> |
+                                   % <<"running">> | <<"down">>
 -type gproc_error() :: ok | {error, no_node}.
 
 -record(eavg, {acc = 0 :: integer(),
@@ -53,10 +55,11 @@
                tref   :: reference()
               }).
 
--record(state, {dead_interval    :: integer(),
-                name             :: binary(),
-                heartbeats = 0   :: integer(),
-                logging = normal :: logging_level(),
+-record(state, {name                  :: binary(),
+                dead_interval         :: integer(),
+                heartbeats = 0        :: integer(),
+                logging = normal      :: logging_level(),
+                current_status = down :: status_atom(),
                 observers = [],
                 tref,
                 heartbeat_rate   :: #eavg{}
@@ -69,7 +72,6 @@ eavg_init(N, I) ->
 
 -spec eavg_tick(#eavg{}) -> #eavg{}.
 eavg_tick(#eavg{acc=Acc, avg=Avg, n=N, tick_interval=I}=EAvg) ->
-    ?debugVal(EAvg),
     NAvg = (Avg * (N-1) + Acc)/N,
     TRef = erlang:start_timer(I, self(), update_avg),
     EAvg#eavg{acc=0, avg=NAvg, tref=TRef}.
@@ -88,10 +90,10 @@ eavg_value(#eavg{avg=Avg}) ->
 start_link(Name, HeartbeatInterval, DeadIntervalCount) ->
     gen_fsm:start_link(?MODULE, [Name, HeartbeatInterval, DeadIntervalCount], []).
 
--spec heartbeat({'heartbeat',node_name(),node_state()}) -> gproc_error().
-heartbeat({heartbeat, NodeName, NodeState}) ->
+-spec heartbeat({'heartbeat', node_name(), node_state()}) -> gproc_error().
+heartbeat({heartbeat, NodeName, NodeStatus}) ->
     case catch gproc:send({n,l,NodeName},
-            {heartbeat, NodeName, status_to_atom(NodeState)}) of
+            {heartbeat, NodeName, status_to_atom(NodeStatus)}) of
         {'EXIT', _} -> ?NO_NODE;
         _ -> ok
     end.
@@ -140,9 +142,11 @@ watching(Action, Name) ->
 
 init([Name, HeartbeatInterval, DeadIntervalCount]) ->
     {ok, initializing,
-     #state{dead_interval=HeartbeatInterval * DeadIntervalCount,
-            name=Name,
-            heartbeat_rate=eavg_init(DeadIntervalCount, HeartbeatInterval)
+     #state{name = Name,
+            dead_interval = HeartbeatInterval * DeadIntervalCount,
+            heartbeats = 0,
+            current_status = down, % TODO Fetch this from the db someday
+            heartbeat_rate = eavg_init(DeadIntervalCount, HeartbeatInterval)
            },
      0}.
 
@@ -159,18 +163,19 @@ initializing(timeout, #state{name=Name}=State) ->
 %%%
 %%% State machine internals
 %%%
-up(current_state, _From, State) ->
-    {reply, up, up, State}.
+up(current_state, _From, #state{heartbeat_rate=HRate}=State) ->
+    {reply, {up, eavg_value(HRate)}, up, State}.
 
-crashed(current_state, _From, State) ->
-    {reply, crashed, crashed, State}.
+crashed(current_state, _From, #state{heartbeat_rate=HRate}=State) ->
+    {reply, {crashed, eavg_value(HRate)}, crashed, State}.
 
-restarting(current_state, _From, State) ->
-    {reply, restarting, restarting, State}.
+restarting(current_state, _From, #state{heartbeat_rate=HRate}=State) ->
+    {reply, {restarting, eavg_value(HRate)}, restarting, State}.
 
 %%
-%% These events are handled the same everywhere
+%% These events are handled the same for every state
 %%
+-spec handle_event(any(), fsm_states(), #state{}) -> {any(), fsm_states(), #state{}}.
 handle_event({start_watching, Who}, StateName, #state{observers=Observers}=State) ->
     State1 = case lists:member(Who, Observers) of
         false ->
@@ -185,48 +190,64 @@ handle_event({stop_watching, Who}, StateName, #state{observers=Observers}=State)
 handle_event({logging, Level}, StateName, State) ->
     State1 = State#state{logging=Level},
     {next_state, StateName, State1};
-handle_event(_Event, StateName, #state{name=Name}=State) ->
-    lager:error("FSM for ~p received unexpected event ~p", [Name, _Event]),
+handle_event(Event, StateName, #state{name=Name}=State) ->
+    lager:error("FSM for ~p received unexpected event ~p", [Name, Event]),
     {next_state, StateName, State}.
 
-handle_sync_event(_Event, _From, StateName, State) ->
+handle_sync_event(Event, _From, StateName, #state{name=Name}=State) ->
+    lager:error("FSM for ~p received unexpected sync event ~p", [Name, Event]),
     {reply, ignored, StateName, State}.
 
-
-handle_info({'DOWN', _MonitorRef, _Type, Object, _Info}, StateName, State) ->
+%%
+%% Handle info
+%% 
+handle_info({'DOWN', _MonitorRef, _Type, Object, _Info}, CurState, State) ->
     Observers = State#state.observers,
     State1 = State#state{observers=lists:delete(Object,Observers)},
-    {next_state, StateName, State1};
-handle_info({heartbeat, NodeName, NodeState},
-            StateName, #state{logging=Level, heartbeats=HeartBeats, heartbeat_rate=HRate}=State) ->
-    nlog(Level, "Heartbeat recieved from ~p Currently ~p ~p", [NodeName, NodeState, HRate]),
-    eavg_value(HRate),
+    {next_state, CurState, State1};
+handle_info({heartbeat, NodeName, NodeStatus},
+            CurState,
+            #state{heartbeats=HeartBeats, logging=Level, current_status=CurStatus, heartbeat_rate=HRate}=State) ->
+    nlog(Level, "Heartbeat recieved from ~p Currently ~p ~p", [NodeName, NodeStatus, HRate]),
+
     %% Note that we got a heartbeat
-    State1 = State#state{heartbeat_rate=eavg_inc(HRate,1)},
+    State1 = State#state{heartbeat_rate=eavg_inc(HRate,1), current_status=NodeStatus},
+    %% Reset the timer
+    State2 = reset_timer(State1),
 
     case HeartBeats of
-        ?POC_HB_THRESHOLD - 1 ->
-            State2 = reset_timer(save_status(?SAVE_MODE, NodeState, State1)),
-            {next_state, NodeState, State2#state{heartbeats=HeartBeats + 1}};
-        ?POC_HB_THRESHOLD ->
-            {next_state, StateName, State1};
-        _ ->
-            {next_state, NodeState, reset_timer(save_status(?SAVE_MODE, NodeState, State1))}
+        ?POC_HB_THRESHOLD - 1 -> % transitioning up
+            save_status(?SAVE_MODE, NodeStatus, State2),
+            {next_state, up, State2#state{heartbeats=HeartBeats + 1}};
+        ?POC_HB_THRESHOLD -> % up, only do something if status changes
+            case NodeStatus of
+                CurStatus -> ok;
+                _Else -> save_status(?SAVE_MODE, NodeStatus, State2)
+            end,
+            {next_state, up, State2};
+        _ -> % we're down, don't save state changes
+            {next_state, CurState, State2#state{heartbeats=HeartBeats +1}}
     end;
-handle_info(down, _StateName, State) ->
+handle_info(down, down, State) ->
+    {next_state, down, State};
+handle_info(down, _CurState, State) ->
     {next_state, down, save_status(?SAVE_MODE, down, State#state{heartbeats=0})};
-handle_info({timeout, _Ref, update_avg}, StateName, #state{heartbeat_rate=HRate}=State) ->
-    {next_state, StateName, State#state{heartbeat_rate=eavg_tick(HRate)} };
-handle_info(Info, StateName, State) ->
-    lager:error("Strange message ~p received in state ~p", [Info, StateName]),
-    {next_state, StateName, State}.
+handle_info({timeout, _Ref, update_avg}, CurState, #state{heartbeat_rate=HRate}=State) ->
+    {next_state, CurState, State#state{heartbeat_rate=eavg_tick(HRate)} };
+handle_info(no_heartbeats, _CurState, State) ->
+    State1 = State#state{heartbeats=0, tref=undefined},
+    save_status(?SAVE_MODE, down, State1),
+    {next_state, down, State1};
+handle_info(Info, CurState, State) ->
+    lager:error("Strange message ~p received in state ~p", [Info, CurState]),
+    {next_state, CurState, State}.
 
 
-terminate(_Reason, _StateName, _State) ->
+terminate(_Reason, _CurState, _State) ->
     ok.
 
-code_change(_OldVsn, StateName, State, _Extra) ->
-    {ok, StateName, State}.
+code_change(_OldVsn, CurState, State, _Extra) ->
+    {ok, CurState, State}.
 
 %% Internal functions
 
@@ -268,7 +289,9 @@ status_to_atom(<<"ready">>) ->
 status_to_atom(<<"running">>) ->
     running;
 status_to_atom(<<"restarting">>) ->
-    restarting.
+    restarting;
+status_to_atom(<<"down">>) ->
+    down.
 
 %
 % Question: Why isn't the gen_fsm:start_timer/cancel_timer used here?
