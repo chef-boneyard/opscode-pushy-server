@@ -151,12 +151,27 @@ init([Name, HeartbeatInterval, DeadIntervalCount]) ->
      0}.
 
 initializing(timeout, #state{name=Name}=State) ->
-    case gproc:reg({n, l, Name}) of
-        true ->
-            {next_state, down, reset_timer(save_status(?SAVE_MODE, down, State))};
-        false ->
-            lager:error("Failed to register:~p for ~p", [Name,self()]),
-            {stop, shutdown, State}
+    try
+        %% gproc:reg can only return true or throw
+        true = gproc:reg({n, l, Name}),
+        {next_state, down, reset_timer(save_status(?SAVE_MODE, down, State))}
+    catch
+        error:badarg ->
+            %% When we start up from a previous run, we have two ways that the FSM might be started; 
+            %% from an incoming packet, or the database record for a prior run
+            %% There may be some nasty race conditions surrounding this.
+            %% We may also want to *not* automatically reanimate FSMs for nodes that aren't
+            %% actively reporting; but rather keep them in a 'limbo' waiting for the first
+            %% packet, and if one doesn't arrive within a certain time mark them down.
+            lager:error("Failed to register:~p for ~p (already exists as ~p?)",
+                        [Name,self(), gproc:lookup_pid({n,l,Name}) ]),
+            {stop, shutdown, State};
+        error:_E -> ?debugVal(Name),
+                    ?debugVal(State),
+                    ?debugVal(_E),
+                    ?debugVal(erlang:get_stacktrace()),
+                    ?debugVal(gproc:lookup_pid({n,l,Name}));
+        throw:_E -> ?debugVal(_E)
     end.
 
 
