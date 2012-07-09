@@ -28,8 +28,17 @@ compile: $(DEPS)
 compile_app:
 	$(REBAR) skip_deps=true compile
 
-dialyzer:
-	@rm -rf apps/pushy/.eunit
+plt_clean:
+	@dialyzer --build_plt --apps erts kernel stdlib crypto public_key ssl eunit xmerl inets mnesia snmp debugger syntax_tools
+
+plt:
+	@dialyzer --add_to_plt deps/*/ebin
+
+dialyze:
+	dialyzer --src -Wunmatched_returns -Werror_handling -Wrace_conditions -r apps/authorization/src -I deps
+
+#dialyzer:
+#	@rm -rf apps/pushy/.eunit
 # Uncomment when stubbed functions in the FSM are complete
 # @dialyzer -Wrace_conditions -Wunderspecs -r apps --src
 
