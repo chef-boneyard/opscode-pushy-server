@@ -36,7 +36,7 @@ This proposal discusses a number of methods for signing that should be lighter w
    However, for the sake of discussion, let's assume that we actually do have a secure way to
    distribute the server's public key.  
 
-* Key distribution
+* Key transport
 One of the pain points for symmetric encryption algorithms is distributing the shared key. However
 in Chef we can assume much of this away, as we have already a public key infrastructure in
 place. The clients all have a public/private keypair, and the server can be assumed to have access
@@ -44,17 +44,50 @@ to that key. The clients also can be assumed to be able to get a copy of the pus
 for verification via the Chef REST protocol (see above assumptions)
 
 This gives a natural channel for communicating a private key from the client to the server. The
-client can sign a randomly generated key using its private key (to prevent spoofing), and encrypt it
-using the server's public key (to keep it secret) to create a key blob. This key blob is sent to the
-server in every packet. We can use this key for validation based on symmetric encryption. While this
-requires two expensive RSA operations to extract the key from the blob, the result can be cached; we
-check the binary value of the key-blob, and use the cached key if it is unchanged. A timestamp can
-be added to protect against replay attacks.
+client signs a randomly generated key using its private key (to prevent spoofing), and encrypts the
+key and a timestamp, using the server's public key (to keep it secret) to create a key blob. This
+key blob is sent to the server in every packet. We can use this key for validation based on
+symmetric encryption. While this requires two expensive RSA operations to extract the key from the
+blob, the result can be cached; we check the binary value of the key-blob, and use the cached key if
+it is unchanged. A timestamp should be added to protect against replay attacks.
+
+Using a 160 bit key plus a 32 bit signed integer timestamp (seconds since UNIX epoch) would add 24
+bytes to each message. Using a 256 bit key plus a 32 bit timestamp would add 36 bytes to the
+message. While either key size seems to be adequate as of 2012, both the key size and timestamp size
+will likely need revision before 2038, when the timestamp overflows. 
+
+The server will establish a maximum age for an acceptable key, and reject all keys older than
+that. If presented with two signed keys, the server will choose the newer one that isn't too far in
+the future.
+
+
+This is basically the NIST key transport family KTS-OAEP with an additional timestamp
+expiration process.
+
+This establishes a 1-1 mapping between a client and the particular client key, and 
+
+* Threats
+
+If a client is compromised (presumably including RSA private keys) all future communications will be compromised
+until it is rekeyed. Since the symmetric key is established via RSA, it will be
+compromised. However, other clients keys should be safe, since 
+
 
 * Signing
 Once a symmetric key is in place, all communications between the client and the server can be
-verified using a HMAC using the key specific to that pair. HMAC-SHA1 or HMAC-SHA256 should be
-adequate.
+verified using a HMAC using the key specific to that pair. Our signing protocol would be modified to
+use HMAC signature 
+
+
+* Key changes
+Key changes need to be infrequent enough to allow the cost of RSA decryption to be spread over
+multiple messages. However this still allows keys to be generated on every restart of the client and
+still be worthwhile. Keys will never need to be stored in persistient storage.
+
+* References
+** NIST SP 800-56B 
+   Recommendation for for Pair-Wise Key Establishment Schemes Using Integer Factorization Cryptography
+   http://csrc.nist.gov/publications/nistpubs/800-56B/sp800-56B.pdf
 
 
 
