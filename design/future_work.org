@@ -88,3 +88,11 @@
 * Restart; some commands may cause restarts.
 * Client should detect clean restart and send alert to server.
 
+
+* What happens if client socket get stuck? See 
+http://lucumr.pocoo.org/2012/6/26/disconnects-are-good-for-you/
+Build test cases. req-Rep may be part of the problem.
+
+* Look at issues people are having scaling salt to see if we can learn from it.
+
+* Client: C# for windows might be nice
