@@ -66,7 +66,7 @@ Load `mixlib-authorization` and migrate the database:
 
 Start a client on your host:
 
-    $ cd ~/oc/pushy/client
+    $ cd ~/oc/opscode-pushy-client
     $ bundle install
     $ bin/pushy-client -v -n DERPY
 
@@ -185,7 +185,7 @@ of: debug, info, notice, warning, error, critical, alert, emergency.
 
 Database Migration hack
 =======================
-Moved database migrations into server/db 
+Moved database migrations into db
 Run them under dev-vm as
 % bundle exec sequel --echo -m migrate postgres://opscode-pgsql@127.0.0.1/opscode_pushy
 TODO
