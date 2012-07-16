@@ -11,3 +11,4 @@ server/apps/pushy/ebin
 server/deps
 server/apps/pushy/.eunit
 .DS_STORE
+deps
