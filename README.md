@@ -64,6 +64,10 @@ Load `mixlib-authorization` and migrate the database:
 
 ## Start a client
 
+Before you can start a client, install zeromq.
+
+    OS X: brew install zeromq
+
 Start a client on your host:
 
     $ cd ~/oc/opscode-pushy-client
