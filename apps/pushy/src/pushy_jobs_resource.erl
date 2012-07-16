@@ -28,8 +28,7 @@
 init(_Config) ->
     % ?debugVal(_Config),
     State = #config_state{},
-    {{trace, "/tmp"}, State}.
-%    {ok, State}.
+    {ok, State}.
 %%    {{trace, "/tmp/traces"}, State}.
 %% then in console: wmtrace_resource:add_dispatch_rule("wmtrace", "/tmp/traces").
 %% then go to localhost:WXYZ/wmtrace
