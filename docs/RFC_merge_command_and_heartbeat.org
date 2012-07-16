@@ -1,0 +1,1 @@
+We should merge the command and heartbeat channels 

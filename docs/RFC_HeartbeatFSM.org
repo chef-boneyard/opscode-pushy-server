@@ -1,0 +1,34 @@
+# -*- fill-column: 100 -*-
+
+* Motivation
+We need to track incoming heartbeats and if too many are missed go to a down state. However we don't
+want to generate too many transitions. The state machine we use for heartbeats is complex and hard
+to describe. Let's simplify it.
+
+* Proposal
+
+Currently we have a FSM built around counting packets and their arrival times. However given that
+real networks have delay and jitter, we end up doing a lot of state transitions. Instead, let's
+focus on the packet arrival rate. If the heart beat rate is once a minute we'd expect to recieve on
+average one heartbeat in any given one minute interval. If the heartbeat is arriving near the edge
+of the sampling interval, sometimes a heartbeat may slide over into the next interval; one interval
+will have zero beats, while the next might have two.
+
+So we have heartbeats generated at a regular rate, but arriving at possibly irregular intervals. If
+we simply count how many beats arrive in each expected interval we might get exactly one tick per
+interval, but we might also get 0 or 2, or in extreme situations even more. Jitter like this is to
+be expected in real networks. This is a form of noise, and we want to remove it from our signal (is
+the node up or down?). We can remove noise by averaging over multiple intervals. We also don't
+really care to much about things in the past, so we can throw away old data. One possibility would
+be to average over a sliding window, but that requires us to keep the old samples around.
+
+Instead we could do an exponential decaying average. This requires less state, and has the advantage
+of being strongly weighted towards the present. There are two basic 
+
+
+
+
+
+* Theory
+A sliding window average is a FIR (finite impulse response filter). An exponentially decaying
+average is a simple IIR (infinite impulse repsonse) filter. 
