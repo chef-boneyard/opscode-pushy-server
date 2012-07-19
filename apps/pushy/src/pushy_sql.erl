@@ -207,8 +207,8 @@ job_join_rows_to_record([LastRow|[]], JobNodes) ->
                   status = job_status(safe_get(<<"status">>, LastRow)),
                   duration = safe_get(<<"duration">>, LastRow),
                   last_updated_by = safe_get(<<"last_updated_by">>, LastRow),
-                  created_at = safe_get(<<"created_at">>, LastRow),
-                  updated_at = safe_get(<<"updated_at">>, LastRow),
+                  created_at = trunc_date_time_to_second(safe_get(<<"created_at">>, LastRow)),
+                  updated_at = trunc_date_time_to_second(safe_get(<<"updated_at">>, LastRow)),
                   job_nodes = lists:reverse([C|JobNodes])};
 job_join_rows_to_record([Row|Rest], JobNodes ) ->
     C = proplist_to_job_node(Row),
@@ -220,8 +220,8 @@ proplist_to_job_node(Proplist) ->
                     org_id = safe_get(<<"org_id">>, Proplist),
                     node_name = safe_get(<<"node_name">>, Proplist),
                     status = job_status(safe_get(<<"status">>, Proplist)),
-                    created_at = safe_get(<<"created_at">>, Proplist),
-                    updated_at = safe_get(<<"updated_at">>, Proplist)
+                    created_at = trunc_date_time_to_second(safe_get(<<"created_at">>, Proplist)),
+                    updated_at = trunc_date_time_to_second(safe_get(<<"updated_at">>, Proplist))
                     }.
 
 %% Heartbeat Status translators
