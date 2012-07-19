@@ -154,7 +154,7 @@ initializing(timeout, #state{name=Name}=State) ->
     try
         %% gproc:reg can only return true or throw
         true = gproc:reg({n, l, Name}),
-        {next_state, down, reset_timer(save_status(?SAVE_MODE, down, State))}
+        {next_state, down, reset_timer(create_status_record(?SAVE_MODE, down, State))}
     catch
         error:badarg ->
             %% When we start up from a previous run, we have two ways that the FSM might be started; 
@@ -232,12 +232,12 @@ handle_info({heartbeat, NodeName, NodeStatus},
 
     case HeartBeats of
         ?POC_HB_THRESHOLD - 1 -> % transitioning up
-            save_status(?SAVE_MODE, NodeStatus, State2),
+            update_status(?SAVE_MODE, NodeStatus, State2),
             {next_state, up, State2#state{heartbeats=HeartBeats + 1}};
         ?POC_HB_THRESHOLD -> % up, only do something if status changes
             case NodeStatus of
                 CurStatus -> ok;
-                _Else -> save_status(?SAVE_MODE, NodeStatus, State2)
+                _Else -> update_status(?SAVE_MODE, NodeStatus, State2)
             end,
             {next_state, up, State2};
         _ -> % we're down, don't save state changes
@@ -246,12 +246,12 @@ handle_info({heartbeat, NodeName, NodeStatus},
 handle_info(down, down, State) ->
     {next_state, down, State};
 handle_info(down, _CurState, State) ->
-    {next_state, down, save_status(?SAVE_MODE, down, State#state{heartbeats=0})};
+    {next_state, down, update_status(?SAVE_MODE, down, State#state{heartbeats=0})};
 handle_info({timeout, _Ref, update_avg}, CurState, #state{heartbeat_rate=HRate}=State) ->
     {next_state, CurState, State#state{heartbeat_rate=eavg_tick(HRate)} };
 handle_info(no_heartbeats, _CurState, State) ->
     State1 = State#state{heartbeats=0, tref=undefined},
-    save_status(?SAVE_MODE, down, State1),
+    update_status(?SAVE_MODE, down, State1),
     {next_state, down, State1};
 handle_info(Info, CurState, State) ->
     lager:error("Strange message ~p received in state ~p", [Info, CurState]),
@@ -266,19 +266,27 @@ code_change(_OldVsn, CurState, State, _Extra) ->
 
 %% Internal functions
 
-save_status(direct, Status, State) ->
+create_status_record(direct, Status, State) ->
     notify_status_change(Status, State),
-    save_status_directly(Status, State);
-save_status(gen_server, Status, #state{name=Name}=State) ->
+    update_status_directly(Status, State);
+create_status_record(gen_server, Status, #state{name=Name}=State) ->
+    notify_status_change(Status, State),
+    pushy_node_status_updater:create(?POC_ORG_ID, Name, ?POC_ACTOR_ID, Status),
+    State.
+
+update_status(direct, Status, State) ->
+    notify_status_change(Status, State),
+    update_status_directly(Status, State);
+update_status(gen_server, Status, #state{name=Name}=State) ->
     notify_status_change(Status, State),
     pushy_node_status_updater:update(?POC_ORG_ID, Name, ?POC_ACTOR_ID, Status),
     State.
 
-save_status_directly(Status, #state{name=Name}=State) ->
+update_status_directly(Status, #state{name=Name}=State) ->
     NodeStatus = pushy_object:new_record(pushy_node_status,
                                          ?POC_ORG_ID,
                                          [{<<"node">>, Name},{<<"type">>, Status}]),
-    %% This probably should be refactored into a 'init_status' and a 'save_status'; once the
+    %% This probably should be refactored into a 'init_status' and a 'update_status'; once the
     %% FSM is started we should be able to assume the object exists, and go straight for update..
     case pushy_object:create_object(create_node_status, NodeStatus, ?POC_ACTOR_ID) of
         {ok, _} ->
