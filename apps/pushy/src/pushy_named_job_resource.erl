@@ -72,12 +72,21 @@ job_to_json(#pushy_job{
     id = Id,
     command = Command,
     status = Status,
-    duration = Duration
+    duration = Duration,
+    created_at = CreatedAt,
+    updated_at = UpdatedAt
+    % job_nodes = Nodes
     }) ->
+    io:format("DATE ~p~n", [ CreatedAt ]),
+    io:format("STRING ~p~n", [ httpd_util:rfc1123_date(CreatedAt) ]),
+    CreatedAtDate =  iolist_to_binary(httpd_util:rfc1123_date(CreatedAt)),
+    UpdatedAtDate =  iolist_to_binary(httpd_util:rfc1123_date(UpdatedAt)),
     {[ {<<"id">>, iolist_to_binary(Id)},
        {<<"command">>, iolist_to_binary(Command)},
        {<<"status">>, atom_to_binary(Status, utf8)},
-       {<<"duration">>, Duration}
+       {<<"duration">>, Duration},
+       {<<"created_at">>, CreatedAtDate},
+       {<<"updated_at">>, UpdatedAtDate}
     ]}.
 
 error_response(Req, State, ErrorCode, Error) ->
