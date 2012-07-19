@@ -23,7 +23,8 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -record(config_state, {
-          organization_guid :: string() }).
+          organization_guid :: string(),
+          job :: #pushy_job{} | undefined }).
 
 init(_Config) ->
     % ?debugVal(_Config),
@@ -53,18 +54,24 @@ content_types_provided(Req, State) ->
 %   'nodes' = [ 'DERPY', 'RAINBOWDASH' ]
 % }
 
-from_json(Req, #config_state{organization_guid = OrgId} = State) ->
-    [ Command, NodeNames ] = parse_post_body(Req),
-    Job = create_job(OrgId, Command, NodeNames),
-    pushy_job_runner_sup:execute(Job#pushy_job.id),
-    Req2 = wrq:set_resp_body("{}", Req),
-    {true, Req2, State}.
-
 post_is_create(Req, State) ->
     {true, Req, State}.
 
-create_path(Req, State) ->
-    {"hi", Req, State}.
+% This creates the job object and returns the path.
+create_path(Req, #config_state{organization_guid = OrgId} = State) ->
+    [ Command, NodeNames ] = parse_post_body(Req),
+    Job = create_job(OrgId, Command, NodeNames),
+    State2 = State#config_state{job = Job},
+    {binary_to_list(Job#pushy_job.id), Req, State2}.
+
+% This processes POST /pushy/jobs
+from_json(Req, #config_state{job = Job} = State) ->
+    % TODO figure out what return value to expect
+    pushy_job_runner_sup:execute(Job#pushy_job.id),
+    Req2 = ripped_from_chef_rest:set_uri_of_created_resource(Req),
+    {true, Req2, State}.
+
+% Private stuff
 
 parse_post_body(Req) ->
     Body = wrq:req_body(Req),
@@ -76,5 +83,5 @@ parse_post_body(Req) ->
 create_job(OrgId, Command, NodeNames) ->
     Job = pushy_object:new_record(pushy_job, OrgId, NodeNames),
     Job1 = Job#pushy_job{command = Command, duration= 300},
-    pushy_object:create_object(create_job, Job1, <<"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb">>),
+    {ok,1} = pushy_object:create_object(create_job, Job1, <<"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb">>),
     Job1.
