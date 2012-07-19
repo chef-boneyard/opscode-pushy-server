@@ -74,20 +74,33 @@ job_to_json(#pushy_job{
     status = Status,
     duration = Duration,
     created_at = CreatedAt,
-    updated_at = UpdatedAt
-    % job_nodes = Nodes
+    updated_at = UpdatedAt,
+    job_nodes = Nodes
     }) ->
-    io:format("DATE ~p~n", [ CreatedAt ]),
-    io:format("STRING ~p~n", [ httpd_util:rfc1123_date(CreatedAt) ]),
     CreatedAtDate =  iolist_to_binary(httpd_util:rfc1123_date(CreatedAt)),
     UpdatedAtDate =  iolist_to_binary(httpd_util:rfc1123_date(UpdatedAt)),
+    NodesJson = job_nodes_json_by_status(Nodes),
     {[ {<<"id">>, iolist_to_binary(Id)},
        {<<"command">>, iolist_to_binary(Command)},
        {<<"status">>, atom_to_binary(Status, utf8)},
        {<<"duration">>, Duration},
+       {<<"nodes">>, NodesJson},
        {<<"created_at">>, CreatedAtDate},
        {<<"updated_at">>, UpdatedAtDate}
     ]}.
+
+job_nodes_json_by_status(Nodes) ->
+    NodesByStatus = job_nodes_by_status(Nodes, dict:new()),
+    {[
+        { erlang:atom_to_binary(Status, utf8), dict:fetch(Status, NodesByStatus) }
+        || Status <- dict:fetch_keys(NodesByStatus)
+    ]}.
+
+job_nodes_by_status([], Dict) ->
+    Dict;
+job_nodes_by_status([#pushy_job_node{node_name = Name, status = Status} | Nodes], Dict) ->
+    Dict2 = dict:append(Status, Name, Dict),
+    job_nodes_by_status(Nodes, Dict2).
 
 error_response(Req, State, ErrorCode, Error) ->
     Req2 = wrq:set_resp_body(ejson:encode({[{<<"error">>, Error}]}), Req),
