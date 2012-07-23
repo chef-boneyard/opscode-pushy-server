@@ -13,6 +13,7 @@
          to_json/2]).
 
 -include_lib("webmachine/include/webmachine.hrl").
+-include_lib("eunit/include/eunit.hrl").
 
 init(_Any) ->
     {ok, <<"{}">>}.
@@ -34,5 +35,10 @@ to_json(Req, State) ->
 %% private functions
 
 check_health(_Req, _State) ->
-    {pong, ejson:encode({[{<<"status">>, <<"it's alive">> }]})}. 
+    Status = {[
+               {<<"status">>, <<"it's alive">> },
+               {<<"node_states">>,
+                {[ {atom_to_binary(S, utf8), V} || {S,V} <- pushy_counters:get_aggregate_counters()]}}
+              ]},
+    {pong, ejson:encode(Status)}.
 

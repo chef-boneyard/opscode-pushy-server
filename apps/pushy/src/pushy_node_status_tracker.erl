@@ -32,6 +32,7 @@
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("public_key/include/public_key.hrl").
 
+-include("pushy_sql.hrl").
 -include("pushy.hrl").
 -include("pushy_messaging.hrl").
 -include("pushy_metrics.hrl").
@@ -55,6 +56,9 @@ start_link(PushyState) ->
 init([#pushy_state{ctx=Ctx}]) ->
     lager:info("Starting node status tracker."),
     StatusAddress = pushy_util:make_zmq_socket_addr(node_status_port),
+
+    % find a smarter place for this
+    pushy_counters:setup_aggregate_counters(),
 
     HeartbeatInterval = pushy_util:get_env(pushy, heartbeat_interval, fun is_integer/1),
     DeadInterval = pushy_util:get_env(pushy, dead_interval, fun is_integer/1),
@@ -129,3 +133,4 @@ send_heartbeat(Hash, HeartbeatInterval, DeadInterval) ->
             lager:debug("Heartbeat received from: ~s", [NodeName]),
             ok
     end.
+

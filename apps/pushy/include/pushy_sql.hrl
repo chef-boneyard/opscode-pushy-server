@@ -11,6 +11,8 @@
                             restarting |
                             down.
 
+-define(HEARTBEAT_STATES, [down, idle, ready, running, restarting]).
+
 
 %% job status
 -type job_status() :: new |
