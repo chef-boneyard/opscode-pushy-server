@@ -135,6 +135,8 @@ create_object(QueryName, Args) when is_atom(QueryName), is_list(Args) ->
     case sqerl:statement(QueryName, Args, count) of
         {ok, N} ->
             {ok, N};
+        {conflict, Reason} ->
+            {conflict, Reason};
         {error, Reason} ->
             {ok, DbType} = application:get_env(sqerl, db_type),
             parse_error(DbType, Reason)
