@@ -38,7 +38,14 @@ state_change(Old, New) ->
     update_counter(New,  1).
 
 update_counter(State, Incr) ->
-    gproc:update_counter({c,l,mk_state(State)},  Incr).
+    try
+        gproc:update_counter({c,l,mk_state(State)},  Incr)
+    catch
+        error:X ->
+            ?debugVal(gproc:lookup_local_counters(mk_state(State))),
+            ?debugVal(X),
+            ?debugVal(erlang:get_stacktrace())
+    end.
 
 mk_state(State) ->
     {node_state, State}.

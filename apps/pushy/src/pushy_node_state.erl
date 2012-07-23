@@ -141,21 +141,16 @@ watching(Action, Name) ->
 
 
 init([Name, HeartbeatInterval, DeadIntervalCount]) ->
-    {ok, initializing,
-     #state{name = Name,
-            dead_interval = HeartbeatInterval * DeadIntervalCount,
-            heartbeats = 0,
-            current_status = down, % TODO Fetch this from the db someday
-            heartbeat_rate = eavg_init(DeadIntervalCount, HeartbeatInterval)
-           },
-     0}.
-
-initializing(timeout, #state{name=Name}=State) ->
+    State = #state{name = Name,
+                   dead_interval = HeartbeatInterval * DeadIntervalCount,
+                   heartbeats = 0,
+                   current_status = down, % TODO Fetch this from the db someday
+                   heartbeat_rate = eavg_init(DeadIntervalCount, HeartbeatInterval)
+                  },
     try
-        %% gproc:reg can only return true or throw
-        true = gproc:reg({n, l, Name}),
         pushy_counters:setup_counters(down),
-        {next_state, down, reset_timer(create_status_record(?SAVE_MODE, down, State))}
+        %% gproc:reg can only return true or throw
+        {ok, initializing, reset_timer(create_status_record(?SAVE_MODE, down, State)), 0}
     catch
         error:badarg ->
             %% When we start up from a previous run, we have two ways that the FSM might be started; 
@@ -175,6 +170,9 @@ initializing(timeout, #state{name=Name}=State) ->
         throw:_E -> ?debugVal(_E)
     end.
 
+initializing(timeout, #state{name=Name}=State) ->
+    true = gproc:reg({n, l, Name}),
+    {next_state, down, State}.
 
 %%%
 %%% State machine internals
