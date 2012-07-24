@@ -139,25 +139,26 @@ watching(Action, Name) ->
             gen_fsm:send_all_state_event(Pid, {Action, self()})
     end.
 
-
+%
+% This is split into two phases: an 'upper half' to get the minimimal work done required to wire things up
+% and a 'lower half' that takes care of things that can wait
+% 
 init([Name, HeartbeatInterval, DeadIntervalCount]) ->
-    {ok, initializing,
-     #state{name = Name,
-            dead_interval = HeartbeatInterval * DeadIntervalCount,
-            heartbeats = 0,
-            current_status = down, % TODO Fetch this from the db someday
-            heartbeat_rate = eavg_init(DeadIntervalCount, HeartbeatInterval)
-           },
-     0}.
 
-initializing(timeout, #state{name=Name}=State) ->
+    State = #state{name = Name,
+                   dead_interval = HeartbeatInterval * DeadIntervalCount,
+                   heartbeats = 0,
+                   current_status = down, % Fetch from db later
+                   heartbeat_rate = eavg_init(DeadIntervalCount, HeartbeatInterval)},
     try
-        %% gproc:reg can only return true or throw
+        %% The most important thing to have happen is this registration; we need to get this
+        %% assigned before anyone else tries to start things up gproc:reg can only return
+        %% true or throw
         true = gproc:reg({n, l, Name}),
-        {next_state, down, reset_timer(create_status_record(?SAVE_MODE, down, State))}
+        {ok, initializing, State, 0}
     catch
         error:badarg ->
-            %% When we start up from a previous run, we have two ways that the FSM might be started; 
+            %% When we start up from a previous run, we have two ways that the FSM might be started;
             %% from an incoming packet, or the database record for a prior run
             %% There may be some nasty race conditions surrounding this.
             %% We may also want to *not* automatically reanimate FSMs for nodes that aren't
@@ -165,15 +166,17 @@ initializing(timeout, #state{name=Name}=State) ->
             %% packet, and if one doesn't arrive within a certain time mark them down.
             lager:error("Failed to register:~p for ~p (already exists as ~p?)",
                         [Name,self(), gproc:lookup_pid({n,l,Name}) ]),
-            {stop, shutdown, State};
-        error:_E -> ?debugVal(Name),
-                    ?debugVal(State),
-                    ?debugVal(_E),
-                    ?debugVal(erlang:get_stacktrace()),
-                    ?debugVal(gproc:lookup_pid({n,l,Name}));
-        throw:_E -> ?debugVal(_E)
+            {stop, shutdown, State}
     end.
 
+%
+% Lower half of initialization; we have more time for complex work here.
+%
+initializing(timeout, #state{}=StateData) ->
+    StateData2 = StateData#state{
+                   current_status = down % TODO Fetch this from the db someday
+                   },
+    {next_state, down, reset_timer(create_status_record(?SAVE_MODE, down, StateData2))}.
 
 %%%
 %%% State machine internals
