@@ -139,25 +139,26 @@ watching(Action, Name) ->
             gen_fsm:send_all_state_event(Pid, {Action, self()})
     end.
 
-
+%
+% This is split into two phases: an 'upper half' to get the minimimal work done required to wire things up
+% and a 'lower half' that takes care of things that can wait
+% 
 init([Name, HeartbeatInterval, DeadIntervalCount]) ->
-    {ok, initializing,
-     #state{name = Name,
-            dead_interval = HeartbeatInterval * DeadIntervalCount,
-            heartbeats = 0,
-            current_status = down, % TODO Fetch this from the db someday
-            heartbeat_rate = eavg_init(DeadIntervalCount, HeartbeatInterval)
-           },
-     0}.
 
-initializing(timeout, #state{name=Name}=State) ->
+    State = #state{name = Name,
+                   dead_interval = HeartbeatInterval * DeadIntervalCount,
+                   heartbeats = 0,
+                   current_status = down, % Fetch from db later
+                   heartbeat_rate = eavg_init(DeadIntervalCount, HeartbeatInterval)},
     try
-        %% gproc:reg can only return true or throw
+        %% The most important thing to have happen is this registration; we need to get this
+        %% assigned before anyone else tries to start things up gproc:reg can only return
+        %% true or throw
         true = gproc:reg({n, l, Name}),
-        {next_state, down, reset_timer(save_status(?SAVE_MODE, down, State))}
+        {ok, initializing, State, 0}
     catch
         error:badarg ->
-            %% When we start up from a previous run, we have two ways that the FSM might be started; 
+            %% When we start up from a previous run, we have two ways that the FSM might be started;
             %% from an incoming packet, or the database record for a prior run
             %% There may be some nasty race conditions surrounding this.
             %% We may also want to *not* automatically reanimate FSMs for nodes that aren't
@@ -165,15 +166,17 @@ initializing(timeout, #state{name=Name}=State) ->
             %% packet, and if one doesn't arrive within a certain time mark them down.
             lager:error("Failed to register:~p for ~p (already exists as ~p?)",
                         [Name,self(), gproc:lookup_pid({n,l,Name}) ]),
-            {stop, shutdown, State};
-        error:_E -> ?debugVal(Name),
-                    ?debugVal(State),
-                    ?debugVal(_E),
-                    ?debugVal(erlang:get_stacktrace()),
-                    ?debugVal(gproc:lookup_pid({n,l,Name}));
-        throw:_E -> ?debugVal(_E)
+            {stop, shutdown, State}
     end.
 
+%
+% Lower half of initialization; we have more time for complex work here.
+%
+initializing(timeout, #state{}=StateData) ->
+    StateData2 = StateData#state{
+                   current_status = down % TODO Fetch this from the db someday
+                   },
+    {next_state, down, reset_timer(create_status_record(?SAVE_MODE, down, StateData2))}.
 
 %%%
 %%% State machine internals
@@ -232,12 +235,12 @@ handle_info({heartbeat, NodeName, NodeStatus},
 
     case HeartBeats of
         ?POC_HB_THRESHOLD - 1 -> % transitioning up
-            save_status(?SAVE_MODE, NodeStatus, State2),
+            update_status(?SAVE_MODE, NodeStatus, State2),
             {next_state, up, State2#state{heartbeats=HeartBeats + 1}};
         ?POC_HB_THRESHOLD -> % up, only do something if status changes
             case NodeStatus of
                 CurStatus -> ok;
-                _Else -> save_status(?SAVE_MODE, NodeStatus, State2)
+                _Else -> update_status(?SAVE_MODE, NodeStatus, State2)
             end,
             {next_state, up, State2};
         _ -> % we're down, don't save state changes
@@ -246,12 +249,12 @@ handle_info({heartbeat, NodeName, NodeStatus},
 handle_info(down, down, State) ->
     {next_state, down, State};
 handle_info(down, _CurState, State) ->
-    {next_state, down, save_status(?SAVE_MODE, down, State#state{heartbeats=0})};
+    {next_state, down, update_status(?SAVE_MODE, down, State#state{heartbeats=0})};
 handle_info({timeout, _Ref, update_avg}, CurState, #state{heartbeat_rate=HRate}=State) ->
     {next_state, CurState, State#state{heartbeat_rate=eavg_tick(HRate)} };
 handle_info(no_heartbeats, _CurState, State) ->
     State1 = State#state{heartbeats=0, tref=undefined},
-    save_status(?SAVE_MODE, down, State1),
+    update_status(?SAVE_MODE, down, State1),
     {next_state, down, State1};
 handle_info(Info, CurState, State) ->
     lager:error("Strange message ~p received in state ~p", [Info, CurState]),
@@ -266,19 +269,27 @@ code_change(_OldVsn, CurState, State, _Extra) ->
 
 %% Internal functions
 
-save_status(direct, Status, State) ->
+create_status_record(direct, Status, State) ->
     notify_status_change(Status, State),
-    save_status_directly(Status, State);
-save_status(gen_server, Status, #state{name=Name}=State) ->
+    update_status_directly(Status, State);
+create_status_record(gen_server, Status, #state{name=Name}=State) ->
+    notify_status_change(Status, State),
+    pushy_node_status_updater:create(?POC_ORG_ID, Name, ?POC_ACTOR_ID, Status),
+    State.
+
+update_status(direct, Status, State) ->
+    notify_status_change(Status, State),
+    update_status_directly(Status, State);
+update_status(gen_server, Status, #state{name=Name}=State) ->
     notify_status_change(Status, State),
     pushy_node_status_updater:update(?POC_ORG_ID, Name, ?POC_ACTOR_ID, Status),
     State.
 
-save_status_directly(Status, #state{name=Name}=State) ->
+update_status_directly(Status, #state{name=Name}=State) ->
     NodeStatus = pushy_object:new_record(pushy_node_status,
                                          ?POC_ORG_ID,
                                          [{<<"node">>, Name},{<<"type">>, Status}]),
-    %% This probably should be refactored into a 'init_status' and a 'save_status'; once the
+    %% This probably should be refactored into a 'init_status' and a 'update_status'; once the
     %% FSM is started we should be able to assume the object exists, and go straight for update..
     case pushy_object:create_object(create_node_status, NodeStatus, ?POC_ACTOR_ID) of
         {ok, _} ->
