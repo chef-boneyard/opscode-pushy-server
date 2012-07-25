@@ -32,8 +32,8 @@ start_link() ->
 
 new(Name) ->
     lager:info("Creating Process For ~s", [Name]),
-    {ok, HeartbeatInterval} = application:get_env(pushy, heartbeat_interval),
-    {ok, DeadIntervalCount} = application:get_env(pushy, dead_interval),
+    HeartbeatInterval = pushy_util:get_env(pushy, heartbeat_interval, fun is_integer/1),
+    DeadIntervalCount = pushy_util:get_env(pushy, dead_interval, fun is_integer/1),
     new(Name, HeartbeatInterval, DeadIntervalCount).
 
 new(Name, HeartbeatInterval, DeadIntervalCount) ->
