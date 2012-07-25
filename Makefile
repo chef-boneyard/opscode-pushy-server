@@ -35,7 +35,7 @@ plt:
 	@dialyzer --add_to_plt deps/*/ebin
 
 dialyze:
-	dialyzer --src -Wunmatched_returns -Werror_handling -Wrace_conditions -r apps/authorization/src -I deps
+	dialyzer --src -Wunmatched_returns -Werror_handling -Wrace_conditions -r apps/pushy/src -I deps
 
 #dialyzer:
 #	@rm -rf apps/pushy/.eunit
