@@ -10,8 +10,7 @@
 
 %% API
 -export([start_link/0,
-         new/1,
-         new/3]).
+         new/1]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -31,14 +30,14 @@ start_link() ->
             Error
     end.
 
-new(Name, HeartbeatInterval, DeadIntervalCount) ->
-    supervisor:start_child(?SERVER, [Name, HeartbeatInterval, DeadIntervalCount]).
-
 new(Name) ->
     lager:info("Creating Process For ~s", [Name]),
     {ok, HeartbeatInterval} = application:get_env(pushy, heartbeat_interval),
     {ok, DeadIntervalCount} = application:get_env(pushy, dead_interval),
     new(Name, HeartbeatInterval, DeadIntervalCount).
+
+new(Name, HeartbeatInterval, DeadIntervalCount) ->
+    supervisor:start_child(?SERVER, [Name, HeartbeatInterval, DeadIntervalCount]).
 
 %% ------------------------------------------------------------------
 %% supervisor Function Definitions
