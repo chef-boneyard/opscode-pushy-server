@@ -44,8 +44,6 @@ to_json(Req, State) ->
     Host = pushy_util:get_env(pushy, server_name, fun is_list/1),
     HeartbeatAddress = iolist_to_binary(
         pushy_util:make_zmq_socket_addr(Host, server_heartbeat_port, tcp)),
-    StatusAddress = iolist_to_binary(
-        pushy_util:make_zmq_socket_addr(Host, node_status_port, tcp)),
     CommandAddress = iolist_to_binary(
         pushy_util:make_zmq_socket_addr(Host, command_port, tcp)),
 
@@ -62,7 +60,6 @@ to_json(Req, State) ->
                   {<<"push_jobs">>,
                    {[{<<"heartbeat">>,
                       {[{<<"out_addr">>, HeartbeatAddress},
-                        {<<"in_addr">>, StatusAddress},
                         {<<"command_addr">>, CommandAddress},
                         {<<"interval">>, HeartbeatInterval/1000},
                         {<<"offline_threshold">>, 3},
