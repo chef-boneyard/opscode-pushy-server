@@ -8,7 +8,7 @@
 
 %% API
 -export([current_state/1,
-         heartbeat/1,
+         heartbeat/2,
          set_logging/2,
          start_link/3]).
 
@@ -90,11 +90,14 @@ eavg_value(#eavg{avg=Avg}) ->
 start_link(Name, HeartbeatInterval, DeadIntervalCount) ->
     gen_fsm:start_link(?MODULE, [Name, HeartbeatInterval, DeadIntervalCount], []).
 
--spec heartbeat({'heartbeat', node_name(), node_state()}) -> gproc_error().
-heartbeat({heartbeat, NodeName, NodeStatus}) ->
+-spec heartbeat(node_name(), node_state()) -> 'ok'.
+heartbeat(NodeName, NodeStatus) ->
     case catch gproc:send({n,l,NodeName},
             {heartbeat, NodeName, status_to_atom(NodeStatus)}) of
-        {'EXIT', _} -> ?NO_NODE;
+        {'EXIT', _} ->
+            % TODO this fails to take into account a failed initialize/gproc registration
+            pushy_node_state_sup:new(NodeName),
+            heartbeat(NodeName, NodeStatus);
         _ -> ok
     end.
 
@@ -157,7 +160,7 @@ initializing(timeout, #state{name=Name}=State) ->
         {next_state, down, reset_timer(save_status(?SAVE_MODE, down, State))}
     catch
         error:badarg ->
-            %% When we start up from a previous run, we have two ways that the FSM might be started; 
+            %% When we start up from a previous run, we have two ways that the FSM might be started;
             %% from an incoming packet, or the database record for a prior run
             %% There may be some nasty race conditions surrounding this.
             %% We may also want to *not* automatically reanimate FSMs for nodes that aren't
@@ -215,7 +218,7 @@ handle_sync_event(Event, _From, StateName, #state{name=Name}=State) ->
 
 %%
 %% Handle info
-%% 
+%%
 handle_info({'DOWN', _MonitorRef, _Type, Object, _Info}, CurState, State) ->
     Observers = State#state.observers,
     State1 = State#state{observers=lists:delete(Object,Observers)},
