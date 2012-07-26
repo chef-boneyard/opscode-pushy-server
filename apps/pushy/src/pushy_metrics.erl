@@ -33,8 +33,6 @@ label(pushy_command_switch, do_send) ->
     label(send, all);
 label(pushy_command_switch, do_send_multi) ->
     label(send, all);
-label(pushy_node_status_tracker, do_receive) ->
-    label('receive', all);
 label(pushy_command_switch, do_receive) ->
     label('receive', all);
 label(pushy_messaging, _) ->
