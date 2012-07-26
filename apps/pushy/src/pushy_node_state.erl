@@ -8,7 +8,7 @@
 
 %% API
 -export([current_state/1,
-         heartbeat/1,
+         heartbeat/2,
          set_logging/2,
          start_link/3]).
 
@@ -90,11 +90,14 @@ eavg_value(#eavg{avg=Avg}) ->
 start_link(Name, HeartbeatInterval, DeadIntervalCount) ->
     gen_fsm:start_link(?MODULE, [Name, HeartbeatInterval, DeadIntervalCount], []).
 
--spec heartbeat({'heartbeat', node_name(), node_state()}) -> gproc_error().
-heartbeat({heartbeat, NodeName, NodeStatus}) ->
+-spec heartbeat(node_name(), node_state()) -> 'ok'.
+heartbeat(NodeName, NodeStatus) ->
     case catch gproc:send({n,l,NodeName},
             {heartbeat, NodeName, status_to_atom(NodeStatus)}) of
-        {'EXIT', _} -> ?NO_NODE;
+        {'EXIT', _} ->
+            % TODO this fails to take into account a failed initialize/gproc registration
+            pushy_node_state_sup:new(NodeName),
+            heartbeat(NodeName, NodeStatus);
         _ -> ok
     end.
 
@@ -218,7 +221,7 @@ handle_sync_event(Event, _From, StateName, #state{name=Name}=State) ->
 
 %%
 %% Handle info
-%% 
+%%
 handle_info({'DOWN', _MonitorRef, _Type, Object, _Info}, CurState, State) ->
     Observers = State#state.observers,
     State1 = State#state{observers=lists:delete(Object,Observers)},

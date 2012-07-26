@@ -176,6 +176,11 @@ process_message(State, Address, _Header, Body) ->
                     lager:info([{job_id, JobId}], "Node [~p] finished running Job [~p]", [NodeName, JobId]),
                     pushy_job_runner:node_command_event(JobId, NodeName, finished),
                     State2;
+                <<"heartbeat">> ->
+                    NodeState = ej:get({<<"state">>}, Data),
+                    lager:info("Node [~p] sent a heartbeat in state [~p]", [NodeName, NodeState]),
+                    ok = pushy_node_state:heartbeat(NodeName, NodeState),
+                    State2;
                 _Else ->
                     lager:info("I don't know anything about ~p", [Type]),
                     State2
@@ -184,7 +189,6 @@ process_message(State, Address, _Header, Body) ->
             lager:error("Status message JSON parsing failed: body=~s, error=~s", [Body,Error]),
             State
     end.
-
 
 %%
 %% Utility functions; we should generalize these and move elsewhere.
