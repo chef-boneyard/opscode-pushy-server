@@ -847,8 +847,46 @@ TODO This state machine needs rework in a serious way.
    + Stuck process detected (more complicated on windows)
    + Add timeout for waiting state.
 
-** Server job execution state machine
-   PLACEHOLDER
+** Server job per-node execution state machine
+|-------------+-------------------------------+---------------------------+----------------------|
+| State       | Event                         | Action                    | Next State           |
+|-------------+-------------------------------+---------------------------+----------------------|
+| NEW         |                               |                           |                      |
+|-------------+-------------------------------+---------------------------+----------------------|
+| IDLE        | Start Job                     | Send command/init to node | VOTING               |
+| IDLE        | Abort                         |                           | FINISHED/aborted     |
+|-------------+-------------------------------+---------------------------+----------------------|
+| VOTING      | Recv NACK                     | mark unavail              | FINISHED/unavailable |
+| VOTING      | Recv ACK                      | mark ready                | READY                |
+| VOTING      | Node goes down                | mark unavail              | ABORTING             |
+| VOTING      | Abort                         |                           | ABORTING             |
+| VOTING      | Heartbeat ready/this job      | mark ready                | READY                |
+| VOTING      | Heartbeat any other state     | mark unavail              | HB_RECOVERY          |
+| VOTING      | Timed out                     | mark timed out            | ABORTING             |
+|-------------+-------------------------------+---------------------------+----------------------|
+| READY       | Start execution               | send start msg            | TRIGGERED            |
+| READY       | Node goes down                |                           |                      |
+| READY       | Abort                         |                           | ABORTING             |
+| READY       | Heartbeat ready/this job      |                           | READY                |
+| READY       | Heartbeat any other state     | mark failed/noexec        | HB_RECOVERY          |
+|-------------+-------------------------------+---------------------------+----------------------|
+| TRIGGERED   | Recv started message          |                           | EXECUTING            |
+| TRIGGERED   | Abort                         |                           | ABORTING             |
+| TRIGGERED   | Heartbeat executing/this job  |                           | EXECUTING            |
+| TRIGGERED   | Heartbeat any other state     |                           | HB_RECOVERY          |
+| TRIGGERED   | Timed out                     |                           | ABORTING             |
+|-------------+-------------------------------+---------------------------+----------------------|
+| EXECUTING   | Recv Completed (success/fail) |                           | FINISHED             |
+| EXECUTING   | Abort                         |                           | ABORTING             |
+| EXECUTING   | Execution timed out           |                           | ABORTING             |
+| EXECUTING   | Heartbeat executing this job  |                           | EXECUTING            |
+| EXECUTING   | Heartbeat any other state     |                           | HB_RECOVERY          |
+|-------------+-------------------------------+---------------------------+----------------------|
+| HB_RECOVERY |                               | Process/update from HB    | ABORTING             |
+|-------------+-------------------------------+---------------------------+----------------------|
+| ABORTING    |                               | Send abort msg            | ABORT                |
+|-------------+-------------------------------+---------------------------+----------------------|
+
 
 ** REST API for job control
     Job control will be done via a rest api in the pushy server. API requests are signed like any
