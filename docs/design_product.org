@@ -863,23 +863,14 @@ There are three types of object we track state for: jobs, nodes, and job-nodes.
 
 *** Events
 
-All state transitions are triggered by events.  This is a list of all events in
-the system.
+All state transitions are triggered by events.  This is a list of all source
+events in the system.  Note that most state machine changes are proximately
+triggered by changes in other machines' state.
 
-- Node State changes:: when node state changes to and from up/down, it notifies
-  the Node Execution State for the node.
-- Job State changes:: when job state changes, it notifies all nodes that are
-  active in the job.
-- Enter Job:: when a job starts, it sends Enter Job to all Node Execution States
-  associated with it.
-- State Changes:: when one thing's state changes, it can trigger others.  For
-  example, when a node heartbeats that it is in the "idle" state, an "executing"
-  job node needs to move to "finished".
 - REST API:: the user can affect jobs through the REST API.
-  - Start Job: this creates a job and job nodes, and initializes them in voting
-  state.
+  - Start Job: this creates a job, and initializes it in voting state.
   - Abort Job: this triggers an abort for a job.
-- Node Reports:: nodes report in over ZeroMQ periodically, telling us abou
+- Node Reports:: nodes report in over ZeroMQ periodically, telling us about
   things they are doing / have done.
   - Heartbeat: nodes periodically tell us their state with this.
   - ACK/NACK: response to a command message, saying whether the node
@@ -890,15 +881,6 @@ the system.
 - Node Down Detection:: we detect whether a node is down or flapping based on
   how often it sends heartbeat messages.  "node up" happens when a heartbeat
   occurs.
-- Aggregate Detection:: when job nodes move to ready or finished state, or nodes
-   go down and come back up, quorum detection can run.  There are four things that
-   can be detected this way:
-  - Quorum failed: when enough nodes say "nack," we abort the job.
-  - Quorum succeeded: when enough nodes say "ack," we move a job to "executing."
-  - All aborted: when a job is aborting, and all nodes finish or are marked "down,"
-    we mark the job finished (aborted).
-  - All complete: when a job is executing, and all nodes finish, we mark the job
-    finished (aborted).
 - Timeouts:: there are timeouts for each phase of a job:
   - Voting timeout: when voting times out, quorum fails and we abort the job.
   - Executing timeout: when execution times out, we abort the job.
@@ -910,81 +892,46 @@ the system.
 
 *** Node Execution State
 
-This represents the server's knowledge of the node's current progress on its
-current job.  A node can only have one job associated with it, and this state
-machine tracks that.
+This represents the server's knowledge of the node's current progress with
+respect to its current job.  A node can only have one job associated with it,
+and this state machine tracks that.
 
-The states are aspirational:
+The primary states are IDLE -> READY -> EXECUTING and movement into these
+states is *always* driven by reports from the node (they are always reflective
+of things the node told us).
 
-Some states (IDLE, READY, EXECUTING and FINISHED) *always* represent the state
-of the client.  Others (VOTING, TRIGGERED and ABORTING) are intermediate states for server tracking purposes--
-in general, because we are waiting for state back from the client.  Note that
-a job node will *never* transition to FINISHED without the actual node reporting
-back.
+The ABORTING state is an aspirational state where we're trying to get the node
+to abort.
 
-The Job Node State machine is created as-needed (when we have changes to the
-Job Node to process) and is notified of changes by its corresponding Job and Node
-automatically.  The Job Node State machine will create the corresponding Job state
-machine so that it can notify it of changes.
-
-The Job Node State machine is also responsible for all command messages sent to
-the client.
-
-|-----------+------------------------------------+----------------------|
-| State     | Event                              | Action               |
-|-----------+------------------------------------+----------------------|
-| IDLE      | Node Report -> other               | ->ABORTING           |
-| IDLE      | Node Report -> ready               | ->READY              |
-|-----------+------------------------------------+----------------------+
-| READY     | Job State -> EXECUTING             | ->TRIGGERED          |
-| READY     | Node Report -> non-ready+this job  | ->ABORTING           |
-| READY     | Job State -> ABORTING/FINISHED     | ->ABORTING           |
-|-----------+------------------------------------+----------------------|
-| EXECUTING | Enter/Load State                   | Send start message   |
-| EXECUTING | Node Report -> idle+executed this  | finish->IDLE         |
-| EXECUTING | Node Report -> ready               | resend               |
-| EXECUTING | Node State -> up                   | resend               |
-| EXECUTING | Node Report -> other+non-executing | ->ABORTING           |
-| EXECUTING | Job State -> ABORTING/FINISHED     | ->ABORTING           |
-|-----------+------------------------------------+----------------------|
-| ABORTING  | Enter/Load State                   | Send abort message   |
-| ABORTING  | Node Report -> idle+last job=this  | finish->IDLE         |
-| ABORTING  | Node Report -> anything else       | resend               |
-| ABORTING  | Node State -> up                   | resend               |
-|-----------+------------------------------------+----------------------|
+|-----------+------------------------------------+--------------------------|
+| State     | Event                              | Action                   |
+|-----------+------------------------------------+--------------------------|
+| IDLE      | Node Report -> ready               | READY                    |
+| IDLE      | Node Report -> other               | ->ABORTING               |
+|-----------+------------------------------------+--------------------------|
+| READY     | Job State -> EXECUTING             | Send start message       |
+| READY     | Node State -> up                   | Resend if job executing  |
+| READY     | Node Report -> ready+this job      | Resend if job executing  |
+| READY     | Node Report -> executing+this job  | ->EXECUTING              |
+| READY     | Node Report -> other               | ->ABORTING               |
+| READY     | Job State -> ABORTING/FINISHED     | ->ABORTING               |
+|-----------+------------------------------------+--------------------------|
+| EXECUTING | Node Report -> idle+executed this  | finish->IDLE             |
+| EXECUTING | Node Report -> ready+other job     | finish->READY            |
+| EXECUTING | Node Report -> executing this      | <nothing>                |
+| EXECUTING | Node Report -> other+non-executing | ->ABORTING               |
+| EXECUTING | Job State -> ABORTING/FINISHED     | ->ABORTING               |
+|-----------+------------------------------------+--------------------------|
+| ABORTING  | Enter/Load State                   | Send abort message       |
+| ABORTING  | Node Report -> idle+last job=this  | finish->IDLE             |
+| ABORTING  | Node Report -> ready               | finish->READY            |
+| ABORTING  | Node Report -> anything else       | resend                   |
+| ABORTING  | Node State -> up                   | resend                   |
+|-----------+------------------------------------+--------------------------|
 
 "Enter Job" in any other state than VOTING will cause the Node Execution state machine to
 
 When the Node State moves to up, VOTING, TRIGGERED and ABORTING states will resend their message.
-
-*** Node State
-
-This represents what the node is actually doing.  This state is only ever set by
-(a) the node telling us what it is doing or (b) the node not contacting us in a
-while (in which case we set it to down).
-
-Nodes have four states: IDLE, READY, EXECUTING, and DOWN.  The node state machine
-merely records the present state of the node and performs no logic.  All
-node-state-related logic is handled by Jobs and Job Nodes subscribed to events
-on the node.
-
-The Node state machine is instantiated as-needed when messages are received.
-When it is instantiated, it determines if there is an active (non-finished) job
-associated with it, and if so, it instantiates that Job Node so that it can send
-state changes.
-
-Anytime a Node's state changes, it notifies the Job Node of the change.  When the
-state changes to/from down, the Job Node will notify the Job.
-
-|-------------+----------------------------------+----------------------|
-| State       | Event                            | Next State           |
-|-------------+----------------------------------+----------------------|
-| Any         | Recv Heartbeat                   | <from heartbeat>     |
-| Any         | Recv ACK                         | READY                |
-| Any         | Recv Started                     | EXECUTING            |
-| Any         | Recv Completed                   | IDLE                 |
-| Any         | Down Detected                    | DOWN                 |
-|-------------+----------------------------------+----------------------|
 
 *** Job State
 
@@ -992,45 +939,50 @@ This represents the aggregate state of the job as it moves through its three
 major phases (voting, executing and finished).  It is affected by timeouts and
 REST commands, and aggregates calculated from job state and node up/down.
 
-The Job state machine is instantiated when a job is created, and non-finished jobs
-are loaded on startup; finished jobs may be laoded in rare circumstances if
-non-finished Job Nodes are instantiated, so that they can send notifications.
+Jobs keep track of which nodes have agreed to be part of it (READY state), which
+nodes have finished the job, and whether the nodes are up or down.  These events
+affect Aggregate Detection and caused it to run.
 
-|-------------+--------------------------+----------------------------------+----------------------|
-| State       | Action on Entering State | Event                            | Action               |
-|-------------+--------------------------+----------------------------------+----------------------|
-| VOTING      | Send command to nodes    | Quorum Success                   | ->EXECUTING          |
-| VOTING      |                          | Quorum Failure                   | ->ABORTING           |
-| VOTING      |                          | Voting Timeout                   | ->ABORTING           |
-| VOTING      |                          | NACK                             | Aggregate Detection  |
-| VOTING      |                          | Node Execution State -> READY    | Aggregate Detection  |
-|-------------+--------------------------+----------------------------------+----------------------|
-| EXECUTING   |                          | All Nodes Finished               | FINISHED             |
-| EXECUTING   |                          | Execution Timeout                | ABORTING             |
-| EXECUTING   |                          | Node Execution State -> FINISHED | Aggregate Detection  |
-|-------------+--------------------------+----------------------------------+----------------------|
-| FINISHED    |                          |                                  |                      |
-|-------------+--------------------------+----------------------------------+----------------------|
-| ABORTING    |                          | All Nodes Finished               | FINISHED             |
-| ABORTING    |                          | Aborting Timeout                 | FINISHED             |
-| ABORTING    |                          | Node Execution State -> FINISHED | Aggregate Detection  |
-|-------------+--------------------------+----------------------------------+----------------------|
+|-------------+----------------------------------+-----------------------|
+| State       | Event                            | Action                |
+|-------------+----------------------------------+-----------------------|
+| VOTING      | Initializing or loading state    | Send command to nodes |
+| VOTING      | Quorum Success                   | EXECUTING             |
+| VOTING      | Quorum Failure                   | ABORTING              |
+| VOTING      | Voting Timeout                   | ABORTING              |
+|-------------+----------------------------------+-----------------------|
+| EXECUTING   | All Nodes Finished               | FINISHED              |
+| EXECUTING   | Execution Timeout                | ABORTING              |
+|-------------+----------------------------------+-----------------------|
+| FINISHED    |                                  |                       |
+|-------------+----------------------------------+-----------------------|
+| ABORTING    | All Nodes Finished               | FINISHED              |
+| ABORTING    | Aborting Timeout                 | FINISHED              |
+|-------------+----------------------------------+-----------------------|
 
-TODO do we need an INITIALIZING state to track whether all Node Execution States
-have been asked to enter the job?
+**** Aggregate Detection
 
-*** Aggregate Detection
-
-The Job state machine keeps a tally of which nodes are in which states, so that
-it can calculate some tallies and take care of quorum conditions:
+The Job state machine keeps a tally of which nodes are running the job and
+which nodes are down, so that it can calculate some tallies and take care
+of quorum conditions:
 
 - Quorum Success:: if we are voting, and "ready" nodes > X%.
 - Quorum Failure:: if we are voting, and nacked/down nodes > Y% or there are no nodes.
 - All Nodes Finished:: if all nodes that started the job are finished.
 
-*** Node Down Detection
+On initialization, Aggregate Detection subscribes to node status for all nodes in the
+job, and Aggregate Detection listens for NACK, Node State=Up/Down, and Node Execution
+State = READY/FINISHED, and updates the list of nodes accordingly.
 
-TODO: insert this.
+*** Node State
+
+A node can be in up or down state.  This machine listens for heartbeats and
+uses timers and statistics to decide whether a machine is presently UP or DOWN.
+
+Node status is always sent to the Node Execution State, and jobs can subscribe
+to node status.
+
+TODO: describe new algorithm.
 
 ** REST API for job control
     Job control will be done via a rest api in the pushy server. API requests are signed like any
