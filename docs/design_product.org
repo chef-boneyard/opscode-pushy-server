@@ -909,11 +909,8 @@ to abort.
 | IDLE      | Node Report -> ready               | READY                    |
 | IDLE      | Node Report -> other               | ->ABORTING               |
 |-----------+------------------------------------+--------------------------|
-| READY     | Job State -> EXECUTING             | Send start message       |
-| READY     | Node State -> up                   | Resend if job executing  |
-| READY     | Node Report -> ready+this job      | Resend if job executing  |
 | READY     | Node Report -> executing+this job  | ->EXECUTING              |
-| READY     | Node Report -> other               | ->ABORTING               |
+| READY     | Node Report -> other+non-ready     | ->ABORTING               |
 | READY     | Job State -> ABORTING/FINISHED     | ->ABORTING               |
 |-----------+------------------------------------+--------------------------|
 | EXECUTING | Node Report -> idle+executed this  | finish->IDLE             |
@@ -950,25 +947,30 @@ affect Aggregate Detection and caused it to run.
 | VOTING      | Quorum Success                   | EXECUTING             |
 | VOTING      | Quorum Failure                   | ABORTING              |
 | VOTING      | Voting Timeout                   | ABORTING              |
+| VOTING      | non-voted Node State -> up       | Resend command to node|
 |-------------+----------------------------------+-----------------------|
-| EXECUTING   | All Nodes Finished               | FINISHED              |
+| EXECUTING   | Initializing or loading state    | Send start to nodes   |
+| EXECUTING   | All Nodes Exited                 | FINISHED              |
 | EXECUTING   | Execution Timeout                | ABORTING              |
+| EXECUTING   | acked Node State -> up           | Resend start to node  |
 |-------------+----------------------------------+-----------------------|
 | FINISHED    |                                  |                       |
 |-------------+----------------------------------+-----------------------|
-| ABORTING    | All Nodes Finished               | FINISHED              |
+| ABORTING    | All Nodes Exited                 | FINISHED              |
 | ABORTING    | Aborting Timeout                 | FINISHED              |
 |-------------+----------------------------------+-----------------------|
 
+TODO what if the client missed the command or start message because it restarted?
+
 **** Aggregate Detection
 
-The Job state machine keeps a tally of which nodes are running the job and
+The Job state machine keeps a tally of which nodes acknowledged the job and
 which nodes are down, so that it can calculate some tallies and take care
 of quorum conditions:
 
 - Quorum Success:: if we are voting, and "ready" nodes > X%.
 - Quorum Failure:: if we are voting, and nacked/down nodes > Y% or there are no nodes.
-- All Nodes Finished:: if all nodes that started the job are finished.
+- All Nodes Exited:: if all nodes that started the job are finished or down.
 
 On initialization, Aggregate Detection subscribes to node status for all nodes in the
 job, and Aggregate Detection listens for NACK, Node State=Up/Down, and Node Execution
