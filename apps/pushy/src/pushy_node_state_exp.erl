@@ -8,9 +8,9 @@
 
 %% API
 -export([current_state/1,
-         heartbeat/2,
+         heartbeat/1,
          set_logging/2,
-         start_link/3]).
+         start_link/1]).
 
 %% Observers
 -export([start_watching/1,
@@ -20,9 +20,8 @@
 -export([initializing/2]).
 
 %% Event handlers
--export([crashed/3,
-         restarting/3,
-         up/3]).
+-export([up/3,
+        down/3]).
 
 -define(SAVE_MODE, gen_server). % direct or gen_server
 -define(NO_NODE, {error, no_node}).
@@ -40,41 +39,46 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -type node_name() :: binary().
--type node_state() :: binary().
 -type fsm_states() :: 'up' | 'down'.
 -type logging_level() :: 'verbose' | 'normal'.
 -type status_atom() :: 'up' | 'down'.
--type status_binary() :: binary(). % <<"up">> | <<"down">>
 -type gproc_error() :: ok | {error, no_node}.
 
 -type eavg() :: any().
 
--record(state, {name                  :: binary(),
+-define(DEFAULT_UP_THRESHOLD, 0.8).
+-define(DEFAULT_DOWN_THRESHOLD, 0.2).
+
+-record(state, {name                  :: node_name(), %% TODO: Flesh this out 
                 heartbeat_interval    :: integer(),
+                decay_window          :: integer(),
                 logging = normal      :: logging_level(),
                 current_status = down :: status_atom(),
-                observers = [],
+                heartbeats_rcvd       :: integer(),
+                up_threshold          :: float(),
+                down_threshold        :: float(),
+                observers = []        :: [pid()],
                 tref,
                 heartbeat_rate   :: eavg()
                }).
 
+
 %%%
 %%% External API
 %%%
--spec start_link(node_name(), HeartbeatInterval::integer(), Window::integer(),
-                UThresh::real(), DThresh::real) ->
-                        'ignore' | {'error',_} | {'ok',pid()}.
-start_link(Name, HeartbeatInterval, DeadIntervalCount) ->
-    gen_fsm:start_link(?MODULE, [Name, HeartbeatInterval, DeadIntervalCount], []).
+-spec start_link(node_name) -> 'ignore' | {'error',_} | {'ok',pid()}.
+start_link(Name) ->
+    gen_fsm:start_link(?MODULE, [Name], []).
 
--spec heartbeat(node_name(), node_state()) -> 'ok'.
-heartbeat(NodeName, NodeStatus) ->
-    case catch gproc:send({n,l,NodeName},
-            {heartbeat, NodeName, status_to_atom(NodeStatus)}) of
+-spec heartbeat(node_name()) -> 'ok'.
+heartbeat(NodeName) ->
+    case catch gproc:send({n,l,NodeName}, %% FIXME: why not use sync_send_event?
+            {heartbeat}) of
         {'EXIT', _} ->
-            % TODO this fails to take into account a failed initialize/gproc registration
+            %% TODO this fails to take into account a failed initialize/gproc registration
+            %% FIXME!!!!
             pushy_node_state_sup:new(NodeName),
-            heartbeat(NodeName, NodeStatus);
+            heartbeat(NodeName);
         _ -> ok
     end.
 
@@ -122,14 +126,21 @@ watching(Action, Name) ->
 %
 % This is split into two phases: an 'upper half' to get the minimimal work done required to wire things up
 % and a 'lower half' that takes care of things that can wait
-% 
-init([Name, HeartbeatInterval, DeadIntervalCount]) ->
+%
+init([Name]) ->
+    HeartbeatInterval = 1,
+    DecayWindow = 5,
+    UpThresh   = pushy_util:get_env(push, up_threshold, ?DEFAULT_UP_THRESHOLD, any), %% TODO constrain to float
+    DownThresh = pushy_util:get_env(push, down_threshold, ?DEFAULT_DOWN_THRESHOLD, any), %% TODO constrain to float
 
     State = #state{name = Name,
-                   dead_interval = HeartbeatInterval * DeadIntervalCount,
-                   heartbeats = 0,
+                   decay_window = DecayWindow,
+                   heartbeat_interval = HeartbeatInterval,
                    current_status = down, % Fetch from db later
-                   heartbeat_rate = pushy_ema:init(DeadIntervalCount, HeartbeatInterval)},
+                   heartbeat_rate = pushy_ema:init(HeartbeatInterval, DecayWindow),
+                   up_threshold = UpThresh,
+                   down_threshold = DownThresh
+                  },
     try
         %% The most important thing to have happen is this registration; we need to get this
         %% assigned before anyone else tries to start things up gproc:reg can only return
@@ -156,7 +167,7 @@ initializing(timeout, #state{}=StateData) ->
     StateData2 = StateData#state{
                    current_status = down % TODO Fetch this from the db someday
                    },
-    {next_state, down, reset_timer(create_status_record(?SAVE_MODE, down, StateData2))}.
+    {next_state, down, create_status_record(down, StateData2)}.
 
 %%%
 %%% State machine internals
@@ -164,11 +175,8 @@ initializing(timeout, #state{}=StateData) ->
 up(current_state, _From, #state{heartbeat_rate=HRate}=State) ->
     {reply, {up, push_ema:value(HRate)}, up, State}.
 
-crashed(current_state, _From, #state{heartbeat_rate=HRate}=State) ->
-    {reply, {crashed, push_ema:value(HRate)}, crashed, State}.
-
-restarting(current_state, _From, #state{heartbeat_rate=HRate}=State) ->
-    {reply, {restarting, push_ema:value(HRate)}, restarting, State}.
+down(current_state, _From, #state{heartbeat_rate=HRate}=State) ->
+    {reply, {down, push_ema:value(HRate)}, down, State}.
 
 %%
 %% These events are handled the same for every state
@@ -178,7 +186,7 @@ handle_event({start_watching, Who}, StateName, #state{observers=Observers}=State
     State1 = case lists:member(Who, Observers) of
         false ->
             erlang:monitor(process, Who),
-            State#state{observers=[Who|Observers]};
+            State#state{observers=[Who|Observers]}; %% FIXME: Deduplicate observers!
         true -> State
     end,
     {next_state, StateName, State1};
@@ -203,39 +211,31 @@ handle_info({'DOWN', _MonitorRef, _Type, Object, _Info}, CurState, State) ->
     Observers = State#state.observers,
     State1 = State#state{observers=lists:delete(Object,Observers)},
     {next_state, CurState, State1};
-handle_info({heartbeat, NodeName, NodeStatus},
+handle_info({heartbeat},
             CurState,
-            #state{heartbeats=HeartBeats, logging=Level, current_status=CurStatus, heartbeat_rate=HRate}=State) ->
-    nlog(Level, "Heartbeat recieved from ~p Currently ~p ~p", [NodeName, NodeStatus, HRate]),
+            #state{name=NodeName, heartbeats_rcvd=HeartBeats, logging=Level, current_status=CurStatus, heartbeat_rate=HRate}=State) ->
+    nlog(Level, "Heartbeat received from ~p Currently ~p", [NodeName, CurStatus]),
 
     %% Note that we got a heartbeat
-    State1 = State#state{heartbeat_rate=push_ema:inc(HRate,1), current_status=NodeStatus},
-    %% Reset the timer
-    State2 = reset_timer(State1),
+    State1 = State#state{heartbeat_rate=push_ema:inc(HRate,1), current_status=CurStatus},
 
-    case HeartBeats of
-        ?POC_HB_THRESHOLD - 1 -> % transitioning up
-            update_status(?SAVE_MODE, NodeStatus, State2),
-            {next_state, up, State2#state{heartbeats=HeartBeats + 1}};
-        ?POC_HB_THRESHOLD -> % up, only do something if status changes
-            case NodeStatus of
-                CurStatus -> ok;
-                _Else -> update_status(?SAVE_MODE, NodeStatus, State2)
-            end,
-            {next_state, up, State2};
-        _ -> % we're down, don't save state changes
-            {next_state, CurState, State2#state{heartbeats=HeartBeats +1}}
-    end;
+    {next_state, CurState, State1#state{heartbeats_rcvd=HeartBeats+1}};
 handle_info(down, down, State) ->
     {next_state, down, State};
-handle_info(down, _CurState, State) ->
-    {next_state, down, update_status(?SAVE_MODE, down, State#state{heartbeats=0})};
-handle_info({timeout, _Ref, update_avg}, CurState, #state{heartbeat_rate=HRate}=State) ->
-    {next_state, CurState, State#state{heartbeat_rate=push_ema:tick(HRate)} };
-handle_info(no_heartbeats, _CurState, State) ->
-    State1 = State#state{heartbeats=0, tref=undefined},
-    update_status(?SAVE_MODE, down, State1),
-    {next_state, down, State1};
+handle_info({timeout, _Ref, update_avg}, CurStatus, #state{heartbeat_rate=HRate, up_threshold=UThresh, down_threshold=DThresh}=State) ->
+    NHRate = pushy_ema:tick(HRate),
+    EAvg = pushy_ema:value(NHRate),
+    {NStatus, NState} =
+        case CurStatus of
+            up when EAvg < DThresh ->
+                NS = update_status(down, State),
+                {down, NS};
+            down when EAvg > UThresh ->
+                NS = update_status(up, State),
+                {up, NS};
+            S -> {S, State}
+        end,
+    {next_state, NStatus, NState#state{heartbeat_rate=NHRate} };
 handle_info(Info, CurState, State) ->
     lager:error("Strange message ~p received in state ~p", [Info, CurState]),
     {next_state, CurState, State}.
@@ -249,70 +249,22 @@ code_change(_OldVsn, CurState, State, _Extra) ->
 
 %% Internal functions
 
-create_status_record(direct, Status, State) ->
-    notify_status_change(Status, State),
-    update_status_directly(Status, State);
-create_status_record(gen_server, Status, #state{name=Name}=State) ->
+create_status_record(Status, #state{name=Name}=State) ->
     notify_status_change(Status, State),
     pushy_node_status_updater:create(?POC_ORG_ID, Name, ?POC_ACTOR_ID, Status),
     State.
 
-update_status(direct, Status, State) ->
-    notify_status_change(Status, State),
-    update_status_directly(Status, State);
-update_status(gen_server, Status, #state{name=Name}=State) ->
+update_status(Status, #state{name=Name}=State) ->
     notify_status_change(Status, State),
     pushy_node_status_updater:update(?POC_ORG_ID, Name, ?POC_ACTOR_ID, Status),
     State.
-
-update_status_directly(Status, #state{name=Name}=State) ->
-    NodeStatus = pushy_object:new_record(pushy_node_status,
-                                         ?POC_ORG_ID,
-                                         [{<<"node">>, Name},{<<"type">>, Status}]),
-    %% This probably should be refactored into a 'init_status' and a 'update_status'; once the
-    %% FSM is started we should be able to assume the object exists, and go straight for update..
-    case pushy_object:create_object(create_node_status, NodeStatus, ?POC_ACTOR_ID) of
-        {ok, _} ->
-            State;
-        {conflict, _} ->
-            pushy_object:update_object(update_node_status, NodeStatus, ?POC_ACTOR_ID),
-            State;
-        {error, _Error} ->
-            %% Droping the status on the floor is a bad thing. Probably should mark this as
-            %% needing retry somehow...
-            State
-    end.
 
 notify_status_change(Status, #state{name=Name,observers=Observers}) ->
     lager:info("Status change for ~s : ~s", [Name, Status]),
     [ Observer ! { node_heartbeat_event, Name, Status } || Observer <- Observers ].
 
--spec status_to_atom(status_binary()) -> status_atom().
-status_to_atom(<<"idle">>) ->
-    idle;
-status_to_atom(<<"ready">>) ->
-    ready;
-status_to_atom(<<"running">>) ->
-    running;
-status_to_atom(<<"restarting">>) ->
-    restarting;
-status_to_atom(<<"down">>) ->
-    down.
-
-%
-% Question: Why isn't the gen_fsm:start_timer/cancel_timer used here?
-%
-reset_timer(#state{dead_interval=Interval, tref=undefined}=State) ->
-    TRef = erlang:send_after(Interval, self(), no_heartbeats),
-    State#state{tref=TRef};
-reset_timer(#state{dead_interval=Interval, tref=TRef}=State) ->
-    erlang:cancel_timer(TRef),
-    TRef1 = erlang:send_after(Interval, self(), down),
-    State#state{tref=TRef1}.
-
 nlog(normal, Format, Args) ->
     lager:debug(Format, Args);
 nlog(verbose, Format, Args) ->
     lager:info(Format, Args).
-
 
