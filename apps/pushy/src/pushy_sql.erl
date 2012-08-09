@@ -55,7 +55,7 @@ update_node_status(#pushy_node_status{status = Status,
                                       updated_at = UpdatedAt,
                                       node_name = NodeName,
                                       org_id = OrgId}) ->
-    UpdateFields = [hb_status(Status), LastUpdatedBy, UpdatedAt, OrgId, NodeName],
+    UpdateFields = [hb_status_as_int(Status), LastUpdatedBy, UpdatedAt, OrgId, NodeName],
     do_update(update_node_status_by_orgid_name, UpdateFields).
 
 %% job ops
@@ -94,7 +94,7 @@ update_job_node(#pushy_job_node{job_id = JobId,
                                                            {error, term()}.
 %% @doc create an object given a pushy object record
 create_object(#pushy_node_status{status=Status}=NodeStatus) ->
-    NodeStatus1 = NodeStatus#pushy_node_status{status=hb_status(Status)},
+    NodeStatus1 = NodeStatus#pushy_node_status{status=hb_status_as_atom(Status)},
     create_object(insert_node_status, NodeStatus1);
 %% This does not exactly follow the same pattern as it needs to
 %% insert a list of job_nodes into a separate table.
@@ -188,7 +188,7 @@ trunc_date_time_to_second({{YY,MM,DD},{H,M,S}}) ->
 node_status_row_to_record(Row) ->
     #pushy_node_status{org_id = safe_get(<<"org_id">>, Row),
                        node_name = safe_get(<<"node_name">>, Row),
-                       status = hb_status(safe_get(<<"status">>, Row)),
+                       status = hb_status_as_atom(safe_get(<<"status">>, Row)),
                        last_updated_by = safe_get(<<"last_updated_by">>, Row),
                        created_at = trunc_date_time_to_second(safe_get(<<"created_at">>, Row)),
                        updated_at = trunc_date_time_to_second(safe_get(<<"updated_at">>, Row))}.
@@ -227,16 +227,12 @@ proplist_to_job_node(Proplist) ->
                     }.
 
 %% Heartbeat Status translators
-hb_status(down) -> 0;
-hb_status(idle) -> 1;
-hb_status(ready) -> 2;
-hb_status(running) -> 3;
-hb_status(restarting) -> 4;
-hb_status(0) -> down;
-hb_status(1) -> idle;
-hb_status(2) -> ready;
-hb_status(3) -> running;
-hb_status(4) -> restarting.
+hb_status_as_int(X) when is_integer(X) -> X;
+hb_status_as_int(down) -> 0;
+hb_status_as_int(up) -> 1.
+hb_status_as_atom(X) when is_atom(X) -> X;
+hb_status_as_atom(0) -> down;
+hb_status_as_atom(1) -> up.
 
 %% Job Status translators
 job_status(new) -> 0;
