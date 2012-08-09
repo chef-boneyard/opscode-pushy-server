@@ -46,7 +46,10 @@ $(DEPS):
 	$(REBAR) get-deps
 
 eunit: compile
-	$(REBAR) eunit app=pushy
+	$(REBAR) eunit apps=pushy
+
+eunit_app: compile_app
+	$(REBAR) eunit apps=pushy
 
 test: eunit
 
