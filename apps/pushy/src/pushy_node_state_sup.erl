@@ -32,12 +32,10 @@ start_link() ->
 
 new(Name) ->
     lager:info("Creating Process For ~s", [Name]),
-    HeartbeatInterval = pushy_util:get_env(pushy, heartbeat_interval, fun is_integer/1),
-    DeadIntervalCount = pushy_util:get_env(pushy, dead_interval, fun is_integer/1),
-    new(Name, HeartbeatInterval, DeadIntervalCount).
+    new(internal, Name).
 
-new(Name, HeartbeatInterval, DeadIntervalCount) ->
-    supervisor:start_child(?SERVER, [Name, HeartbeatInterval, DeadIntervalCount]).
+new(internal, Name) ->
+    supervisor:start_child(?SERVER, [Name]).
 
 %% ------------------------------------------------------------------
 %% supervisor Function Definitions
@@ -45,8 +43,8 @@ new(Name, HeartbeatInterval, DeadIntervalCount) ->
 
 init([]) ->
     {ok, {{simple_one_for_one, 0, 1},
-          [{pushy_node_state, {pushy_node_state, start_link, []},
-            transient, brutal_kill, worker, [pushy_node_state]}]}}.
+          [{pushy_node_state_exp, {pushy_node_state_exp, start_link, []},
+            transient, brutal_kill, worker, [pushy_node_state_exp]}]}}.
 
 %% ------------------------------------------------------------------
 %% Internal Function Definitions

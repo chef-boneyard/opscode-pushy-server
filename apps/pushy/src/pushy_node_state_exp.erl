@@ -46,6 +46,7 @@
 
 -type eavg() :: any().
 
+-define(DEFAULT_DECAY_INTERVAL, 5).
 -define(DEFAULT_UP_THRESHOLD, 0.8).
 -define(DEFAULT_DOWN_THRESHOLD, 0.2).
 
@@ -128,15 +129,14 @@ watching(Action, Name) ->
 % and a 'lower half' that takes care of things that can wait
 %
 init([Name]) ->
-    HeartbeatInterval = 1,
-    DecayWindow = 5,
+    HeartbeatInterval = pushy_util:get_env(pushy, heartbeat_interval, fun is_integer/1),
+    DecayWindow = pushy_util:get_env(pushy, decay_interval, ?DEFAULT_DECAY_INTERVAL, fun is_integer/1),
     UpThresh   = pushy_util:get_env(push, up_threshold, ?DEFAULT_UP_THRESHOLD, any), %% TODO constrain to float
     DownThresh = pushy_util:get_env(push, down_threshold, ?DEFAULT_DOWN_THRESHOLD, any), %% TODO constrain to float
 
     State = #state{name = Name,
                    decay_window = DecayWindow,
                    heartbeat_interval = HeartbeatInterval,
-                   current_status = down, % Fetch from db later
                    heartbeat_rate = pushy_ema:init(HeartbeatInterval, DecayWindow),
                    up_threshold = UpThresh,
                    down_threshold = DownThresh
@@ -165,8 +165,8 @@ init([Name]) ->
 %
 initializing(timeout, #state{}=StateData) ->
     StateData2 = StateData#state{
-                   current_status = down % TODO Fetch this from the db someday
-                   },
+                   current_status = up % TODO Fetch this from the db someday FIXME 
+                  },
     {next_state, down, create_status_record(down, StateData2)}.
 
 %%%
