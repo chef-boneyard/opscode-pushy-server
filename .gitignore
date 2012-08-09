@@ -14,3 +14,5 @@ server/apps/pushy/.eunit
 *.beam
 rel/pushy
 deps
+.eunit
+ebin
