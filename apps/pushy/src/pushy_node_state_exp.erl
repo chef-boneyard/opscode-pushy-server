@@ -144,7 +144,7 @@ watching(Action, Name) ->
 %
 init([Name]) ->
     HeartbeatInterval = pushy_util:get_env(pushy, heartbeat_interval, fun is_integer/1),
-    DecayWindow = pushy_util:get_env(pushy, decay_interval, ?DEFAULT_DECAY_INTERVAL, fun is_integer/1),
+    DecayWindow = pushy_util:get_env(pushy, decay_window, ?DEFAULT_DECAY_INTERVAL, fun is_integer/1),
     UpThresh   = pushy_util:get_env(push, up_threshold, ?DEFAULT_UP_THRESHOLD, any), %% TODO constrain to float
     DownThresh = pushy_util:get_env(push, down_threshold, ?DEFAULT_DOWN_THRESHOLD, any), %% TODO constrain to float
 
