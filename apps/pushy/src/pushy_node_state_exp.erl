@@ -76,7 +76,8 @@ heartbeat(NodeName) ->
     heartbeat(NodeName, 1).
 
 -spec heartbeat(node_name(), integer()) -> 'ok'.
-heartbeat(_, 0) -> ok;
+heartbeat(_, 0) -> 
+    ok; %% TODO We should log the fact that we're dropping heartbeats.
 heartbeat(NodeName, Retries) ->
     case catch gproc:send({n,l,NodeName}, %% FIXME: why not use sync_send_event?
             {heartbeat}) of
