@@ -1,7 +1,15 @@
 %% -*- erlang-indent-level: 4;indent-tabs-mode: nil; fill-column: 92 -*-
 %% ex: ts=4 sw=4 et
-%% @copyright 2011-2012 Opscode Inc.
+%%
+%% @author Mark Anderson <mark@opscode.com>
+%% @author John Keiser <john@opscode.com>
+%%
+%% @copyright 2012 Opscode Inc.
+%% @end
 
+%%
+%% @doc simple FSM for tracking node heartbeats and thus up/down status
+%%
 -module(pushy_node_state_exp).
 
 -behaviour(gen_fsm).
@@ -50,7 +58,7 @@
 -define(DEFAULT_UP_THRESHOLD, 0.8).
 -define(DEFAULT_DOWN_THRESHOLD, 0.2).
 
--record(state, {name                  :: node_name(), %% TODO: Flesh this out 
+-record(state, {name                  :: node_name(), %% TODO: Flesh this out
                 heartbeat_interval    :: integer(),
                 decay_window          :: integer(),
                 logging = normal      :: logging_level(),
@@ -76,7 +84,7 @@ heartbeat(NodeName) ->
     heartbeat(NodeName, 1).
 
 -spec heartbeat(node_name(), integer()) -> 'ok'.
-heartbeat(_, 0) -> 
+heartbeat(_, 0) ->
     ok; %% TODO We should log the fact that we're dropping heartbeats.
 heartbeat(NodeName, Retries) ->
     case catch gproc:send({n,l,NodeName}, %% FIXME: why not use sync_send_event?
@@ -171,7 +179,7 @@ init([Name]) ->
 %
 initializing(timeout, #state{}=StateData) ->
     StateData2 = StateData#state{
-                   current_status = up % TODO Fetch this from the db someday FIXME 
+                   current_status = up % TODO Fetch this from the db someday FIXME
                   },
     {next_state, down, create_status_record(down, StateData2)}.
 
@@ -273,4 +281,3 @@ nlog(normal, Format, Args) ->
     lager:debug(Format, Args);
 nlog(verbose, Format, Args) ->
     lager:info(Format, Args).
-
