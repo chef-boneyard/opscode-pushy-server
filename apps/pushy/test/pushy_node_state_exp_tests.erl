@@ -12,6 +12,7 @@
 -module(pushy_node_state_exp_tests).
 
 -define(NODE, "thenode").
+-define(NS, pushy_node_state_exp).
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -27,23 +28,59 @@ init_test_() ->
      end,
      [fun(_) ->
               %% Resource creation
-              {"Start things up",
+              {"Start things up, check that we can find it, shut it down",
                fun() ->
-                       Result = pushy_node_state_exp:start_link(?NODE),
-                       ?debugVal(Result),
+                       Result = ?NS:start_link(?NODE),
                        ?assertMatch({ok, _}, Result),
                        {ok, Pid} = Result,
-                       ?assert(is_pid(Pid))
+                       ?assert(is_pid(Pid)),
+
+                       NPid = gproc:lookup_pid({n,l,?NODE}),
+                       ?assertEqual(NPid, Pid),
+
+                       % cleanup code
+                       erlang:unlink(Pid),
+                       erlang:exit(Pid, kill)
                end}
       end,
       fun(_) ->
-              {"Simple group create by non superuser",
+              {"Start it up, check that we can get state",
                fun() ->
-%                       error(die),
-%                       {ok, Actor} = chef_authz:create_resource(Superuser, actor),
-%                       {ok, Group} = chef_authz:create_resource(Actor, group),
-%                       true = is_authz_id(Group)
-                       ok
+                       {ok, Pid} = ?NS:start_link(?NODE),
+
+                       erlang:unlink(Pid),
+                       erlang:exit(Pid, kill)
+               end}
+      end
+     ]}.
+
+heartbeat_test_() ->
+    {foreach,
+     fun() ->
+             test_util:start_apps(),
+             application:set_env(pushy, heartbeat_interval, 1),
+             {ok, Pid} = ?NS:start_link(?NODE),
+             {Pid}
+     end,
+     fun({Pid}) ->
+             erlang:unlink(Pid),
+             erlang:exit(Pid, kill),
+             ok
+     end,
+     [fun({Pid}) ->
+              %% Resource creation
+              {"Check that we properly register ourselves",
+               fun() ->
+
+                       NPid = gproc:lookup_pid({n,l,?NODE}),
+                       ?assertEqual(NPid, Pid)
+               end}
+      end,
+      fun(_) ->
+              {"Start it up, check that we can get state",
+               fun() ->
+                       V = ?NS:current_state(?NODE),
+                       ?assertEqual({down,0.0}, V)
                end}
       end
      ]}.

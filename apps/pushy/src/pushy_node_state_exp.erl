@@ -187,10 +187,10 @@ initializing(timeout, #state{}=StateData) ->
 %%% State machine internals
 %%%
 up(current_state, _From, #state{heartbeat_rate=HRate}=State) ->
-    {reply, {up, push_ema:value(HRate)}, up, State}.
+    {reply, {up, pushy_ema:value(HRate)}, up, State}.
 
 down(current_state, _From, #state{heartbeat_rate=HRate}=State) ->
-    {reply, {down, push_ema:value(HRate)}, down, State}.
+    {reply, {down, pushy_ema:value(HRate)}, down, State}.
 
 %%
 %% These events are handled the same for every state
@@ -231,7 +231,7 @@ handle_info({heartbeat},
     nlog(Level, "Heartbeat received from ~p Currently ~p", [NodeName, CurStatus]),
 
     %% Note that we got a heartbeat
-    State1 = State#state{heartbeat_rate=push_ema:inc(HRate,1), current_status=CurStatus},
+    State1 = State#state{heartbeat_rate=pushy_ema:inc(HRate,1), current_status=CurStatus},
 
     {next_state, CurState, State1#state{heartbeats_rcvd=HeartBeats+1}};
 handle_info(down, down, State) ->
