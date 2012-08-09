@@ -73,13 +73,18 @@ start_link(Name) ->
 
 -spec heartbeat(node_name()) -> 'ok'.
 heartbeat(NodeName) ->
+    heartbeat(NodeName, 1).
+
+-spec heartbeat(node_name(), integer()) -> 'ok'.
+heartbeat(_, 0) -> ok;
+heartbeat(NodeName, Retries) ->
     case catch gproc:send({n,l,NodeName}, %% FIXME: why not use sync_send_event?
             {heartbeat}) of
         {'EXIT', _} ->
             %% TODO this fails to take into account a failed initialize/gproc registration
             %% FIXME!!!!
             pushy_node_state_sup:new(NodeName),
-            heartbeat(NodeName);
+            heartbeat(NodeName, Retries -1);
         _ -> ok
     end.
 
