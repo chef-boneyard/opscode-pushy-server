@@ -59,10 +59,10 @@
 start_link(PushyState) ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [PushyState], []).
 
-send_command(OrgName, NodeName, Message) ->
-    gen_server:cast(?MODULE, {send, OrgName, NodeName, Message}).
-send_multi_command(OrgName, Nodes, Message) ->
-    gen_server:cast(?MODULE, {send_multi, OrgName, Nodes, Message}).
+send_command(OrgId, NodeName, Message) ->
+    gen_server:cast(?MODULE, {send, OrgId, NodeName, Message}).
+send_multi_command(OrgId, Nodes, Message) ->
+    gen_server:cast(?MODULE, {send_multi, OrgId, Nodes, Message}).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
@@ -86,10 +86,10 @@ init([#pushy_state{ctx=Ctx}]) ->
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
-handle_cast({send, OrgName, NodeName, Message}, #state{}=State) ->
-    {noreply, ?TIME_IT(?MODULE, do_send, (State, OrgName, NodeName, Message))};
-handle_cast({send_multi, OrgName, Nodes, Message}, #state{}=State) ->
-    {noreply, ?TIME_IT(?MODULE, do_send_multi, (State, OrgName, Nodes, Message))};
+handle_cast({send, OrgId, NodeName, Message}, #state{}=State) ->
+    {noreply, ?TIME_IT(?MODULE, do_send, (State, OrgId, NodeName, Message))};
+handle_cast({send_multi, OrgId, Nodes, Message}, #state{}=State) ->
+    {noreply, ?TIME_IT(?MODULE, do_send_multi, (State, OrgId, Nodes, Message))};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -127,8 +127,8 @@ do_receive(CommandSock, Frame, State) ->
 do_send(#state{addr_node_map = AddrNodeMap,
                command_sock = CommandSocket,
                private_key = PrivateKey}=State,
-        Org, Node, Message) ->
-    Address = addr_node_map_lookup_by_node(AddrNodeMap, {Org, Node}),
+        OrgId, Node, Message) ->
+    Address = addr_node_map_lookup_by_node(AddrNodeMap, {OrgId, Node}),
     push_messaging:send_message(CommandSocket, [Address,
         ?TIME_IT(pushy_util, signed_header_from_message, (PrivateKey, Message)),
         Message]),
@@ -137,10 +137,11 @@ do_send(#state{addr_node_map = AddrNodeMap,
 do_send_multi(#state{addr_node_map = AddrNodeMap,
                      command_sock = CommandSocket,
                      private_key = PrivateKey}=State,
-              Org, Nodes, Message) ->
+              OrgId, Nodes, Message) ->
     FrameList = [
         ?TIME_IT(pushy_util, signed_header_from_message, (PrivateKey, Message)), Message],
-    AddressList = [addr_node_map_lookup_by_node(AddrNodeMap, {Org, Node}) || Node <- Nodes],
+    % TODO if you communicate with a node that doesn't exist, don't just fail, dude
+    AddressList = [addr_node_map_lookup_by_node(AddrNodeMap, {OrgId, Node}) || Node <- Nodes],
     pushy_messaging:send_message_multi(CommandSocket, AddressList, FrameList),
     State.
 
@@ -155,8 +156,10 @@ process_message(State, Address, _Header, Body) ->
             _ClientName = ej:get({<<"client">>}, Data ),
             JobId = ej:get({<<"job_id">>}, Data, unknown ),
 
+            OrgId = pushy_object:fetch_org_id(OrgName),
+
             %% Every time we get a message from a node, we update it's Addr->Name mapping entry
-            State2 = addr_node_map_update(State, Address, {OrgName, NodeName}),
+            State2 = addr_node_map_update(State, Address, {OrgId, NodeName}),
             case Type of
                 % ready messages only are used to initialze
                 <<"ready">> ->
