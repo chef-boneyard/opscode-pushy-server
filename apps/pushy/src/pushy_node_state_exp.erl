@@ -54,7 +54,7 @@
 
 -type eavg() :: any().
 
--define(DEFAULT_DECAY_INTERVAL, 5).
+-define(DEFAULT_DECAY_INTERVAL, 4).
 -define(DEFAULT_UP_THRESHOLD, 0.8).
 -define(DEFAULT_DOWN_THRESHOLD, 0.2).
 
