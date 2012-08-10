@@ -58,6 +58,7 @@ init([#pushy_state{ctx=_Ctx} = PushyState]) ->
     ?debugVal(WebMachineConfig),
     {ok, {{one_for_one, 3, 60},
                [?SUP(pushy_node_state_sup, []),
+                ?SUP(pushy_job_state_sup, []),
                 ?SUP(pushy_job_runner_sup, []),
                 ?SUP(folsom_sup, []),
                 ?WORKER(chef_keyring, []),
