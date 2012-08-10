@@ -27,7 +27,6 @@ init(Window, Interval) when Window>0 ->
     EAvg.
 
 reset_timer(#eavg{tick_interval=I}) ->
-    ?debugVal(I),
     erlang:start_timer(I, self(), update_avg).
 
 -spec tick(#eavg{}) -> #eavg{}.

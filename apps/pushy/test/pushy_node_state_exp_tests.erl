@@ -20,7 +20,7 @@ init_test_() ->
     {foreach,
      fun() ->
              test_util:start_apps(),
-             application:set_env(pushy, heartbeat_interval, 1),
+             application:set_env(pushy, heartbeat_interval, 1000),
              ok
      end,
      fun(_) ->
@@ -58,7 +58,7 @@ heartbeat_test_() ->
     {foreach,
      fun() ->
              test_util:start_apps(),
-             application:set_env(pushy, heartbeat_interval, 1),
+             application:set_env(pushy, heartbeat_interval, 1000),
              {ok, Pid} = ?NS:start_link(?NODE),
              {Pid}
      end,
@@ -81,6 +81,25 @@ heartbeat_test_() ->
                fun() ->
                        V = ?NS:current_state(?NODE),
                        ?assertEqual({down,0.0}, V)
+               end}
+      end,
+      fun(_) ->
+              {"Start it up, send hb",
+               fun() ->
+                       ?NS:heartbeat(?NODE),
+                       V = ?NS:current_state(?NODE),
+                       ?assertEqual({down,0.0}, V)
+               end}
+      end,
+      fun(_) ->
+              {"Start it up, send hb, sleep, check state",
+               fun() ->
+                       ?NS:heartbeat(?NODE),
+                       V1= ?NS:current_state(?NODE),
+                       ?assertEqual({down,0.0}, V1),
+                       timer:sleep(1000),
+                       V2 = ?NS:current_state(?NODE),
+                       ?assertEqual({down,0.2}, V2)
                end}
       end
      ]}.

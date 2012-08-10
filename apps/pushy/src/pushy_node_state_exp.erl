@@ -63,7 +63,7 @@
                 decay_window          :: integer(),
                 logging = normal      :: logging_level(),
                 current_status = down :: status_atom(),
-                heartbeats_rcvd       :: integer(),
+                heartbeats_rcvd = 0   :: integer(),
                 up_threshold          :: float(),
                 down_threshold        :: float(),
                 observers = []        :: [pid()],
@@ -151,7 +151,7 @@ init([Name]) ->
     State = #state{name = Name,
                    decay_window = DecayWindow,
                    heartbeat_interval = HeartbeatInterval,
-                   heartbeat_rate = pushy_ema:init(HeartbeatInterval, DecayWindow),
+                   heartbeat_rate = pushy_ema:init(DecayWindow, HeartbeatInterval),
                    up_threshold = UpThresh,
                    down_threshold = DownThresh
                   },
