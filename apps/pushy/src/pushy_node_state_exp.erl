@@ -18,7 +18,8 @@
 -export([current_state/1,
          heartbeat/1,
          set_logging/2,
-         start_link/1]).
+         start_link/1,
+         mk_gproc_name/1]).
 
 %% Observers
 -export([start_watching/1,
@@ -46,7 +47,11 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+%% TODO: move these elsewhere
 -type node_name() :: binary().
+-type org_id() :: binary().
+-type node_ref() :: {org_id(), node_name()}.
+
 -type fsm_states() :: 'up' | 'down'.
 -type logging_level() :: 'verbose' | 'normal'.
 -type status_atom() :: 'up' | 'down'.
@@ -58,7 +63,7 @@
 -define(DEFAULT_UP_THRESHOLD, 0.8).
 -define(DEFAULT_DOWN_THRESHOLD, 0.2).
 
--record(state, {name                  :: node_name(), %% TODO: Flesh this out
+-record(state, {node_ref              :: node_ref(),
                 heartbeat_interval    :: integer(),
                 decay_window          :: integer(),
                 logging = normal      :: logging_level(),
@@ -71,35 +76,38 @@
                 heartbeat_rate   :: eavg()
                }).
 
+-spec mk_gproc_name(node_ref()) -> {'heartbeat', org_id(), node_name()}.
+mk_gproc_name({OrgId, NodeName}) when is_binary(OrgId) andalso is_binary(NodeName) ->
+    {heartbeat, OrgId, NodeName}.
 
 %%%
 %%% External API
 %%%
--spec start_link(node_name) -> 'ignore' | {'error',_} | {'ok',pid()}.
-start_link(Name) ->
-    gen_fsm:start_link(?MODULE, [Name], []).
+-spec start_link(node_ref()) -> 'ignore' | {'error',_} | {'ok',pid()}.
+start_link(NodeRef) ->
+    gen_fsm:start_link(?MODULE, [NodeRef], []).
 
--spec heartbeat(node_name()) -> 'ok'.
-heartbeat(NodeName) ->
-    heartbeat(NodeName, 1).
+-spec heartbeat(node_ref()) -> 'ok'.
+heartbeat(NodeRef) ->
+    heartbeat(NodeRef, 1).
 
--spec heartbeat(node_name(), integer()) -> 'ok'.
+-spec heartbeat(node_ref(), integer()) -> 'ok'.
 heartbeat(_, 0) ->
     ok; %% TODO We should log the fact that we're dropping heartbeats.
-heartbeat(NodeName, Retries) ->
-    case catch gproc:send({n,l,NodeName}, %% FIXME: why not use sync_send_event?
+heartbeat(NodeRef, Retries) ->
+    case catch gproc:send({n,l,mk_gproc_name(NodeRef)}, %% FIXME: why not use sync_send_event?
             {heartbeat}) of
         {'EXIT', _} ->
             %% TODO this fails to take into account a failed initialize/gproc registration
             %% FIXME!!!!
-            pushy_node_state_sup:new(NodeName),
-            heartbeat(NodeName, Retries -1);
+            pushy_node_state_sup:new(NodeRef),
+            heartbeat(NodeRef, Retries -1);
         _ -> ok
     end.
 
--spec current_state(node_name()) -> any().
-current_state(Name) ->
-    case catch gproc:lookup_pid({n,l,Name}) of
+-spec current_state(node_ref()) -> any().
+current_state(NodeRef) ->
+    case catch gproc:lookup_pid({n,l,mk_gproc_name(NodeRef)}) of
         {'EXIT', _} ->
             ?NO_NODE;
         Pid ->
@@ -107,31 +115,31 @@ current_state(Name) ->
     end.
 
 
--spec set_logging(node_name(), logging_level()) ->  gproc_error().
-set_logging(Name, verbose) ->
-    set_logging(Name, verbose, ok);
-set_logging(Name, normal) ->
-    set_logging(Name, normal, ok).
+-spec set_logging(node_ref(), logging_level()) ->  gproc_error().
+set_logging(NodeRef, verbose) ->
+    set_logging(NodeRef, verbose, ok);
+set_logging(NodeRef, normal) ->
+    set_logging(NodeRef, normal, ok).
 
-set_logging(Name, Level, ok) ->
-    case catch gproc:lookup_pid({n,l,Name}) of
+set_logging(NodeRef, Level, ok) ->
+    case catch gproc:lookup_pid({n,l,mk_gproc_name(NodeRef)}) of
         {'EXIT', _} ->
             ?NO_NODE;
         Pid ->
             gen_fsm:send_all_state_event(Pid, {logging, Level})
     end.
 
--spec start_watching(node_name()) -> gproc_error().
-start_watching(Name) ->
-    watching(start_watching, Name).
+-spec start_watching(node_ref()) -> gproc_error().
+start_watching(NodeRef) ->
+    watching(start_watching, NodeRef).
 
--spec stop_watching(node_name()) -> gproc_error().
-stop_watching(Name) ->
-    watching(stop_watching, Name).
+-spec stop_watching(node_ref()) -> gproc_error().
+stop_watching(NodeRef) ->
+    watching(stop_watching, NodeRef).
 
--spec watching('start_watching' | 'stop_watching', node_name()) -> gproc_error().
-watching(Action, Name) ->
-    case catch gproc:lookup_pid({n,l,Name}) of
+-spec watching('start_watching' | 'stop_watching', node_ref()) -> gproc_error().
+watching(Action, NodeRef) ->
+    case catch gproc:lookup_pid({n,l,mk_gproc_name(NodeRef)}) of
         {'EXIT', _} ->
             ?NO_NODE;
         Pid ->
@@ -148,7 +156,7 @@ init([Name]) ->
     UpThresh   = pushy_util:get_env(push, up_threshold, ?DEFAULT_UP_THRESHOLD, any), %% TODO constrain to float
     DownThresh = pushy_util:get_env(push, down_threshold, ?DEFAULT_DOWN_THRESHOLD, any), %% TODO constrain to float
 
-    State = #state{name = Name,
+    State = #state{node_ref = Name,
                    decay_window = DecayWindow,
                    heartbeat_interval = HeartbeatInterval,
                    heartbeat_rate = pushy_ema:init(DecayWindow, HeartbeatInterval),
@@ -159,7 +167,7 @@ init([Name]) ->
         %% The most important thing to have happen is this registration; we need to get this
         %% assigned before anyone else tries to start things up gproc:reg can only return
         %% true or throw
-        true = gproc:reg({n, l, Name}),
+        true = gproc:reg({n, l, mk_gproc_name(Name)}),
         {ok, initializing, State, 0}
     catch
         error:badarg ->
@@ -170,7 +178,7 @@ init([Name]) ->
             %% actively reporting; but rather keep them in a 'limbo' waiting for the first
             %% packet, and if one doesn't arrive within a certain time mark them down.
             lager:error("Failed to register:~p for ~p (already exists as ~p?)",
-                        [Name,self(), gproc:lookup_pid({n,l,Name}) ]),
+                        [Name,self(), gproc:lookup_pid({n,l,mk_gproc_name(Name)}) ]),
             {stop, shutdown, State}
     end.
 
@@ -210,11 +218,11 @@ handle_event({stop_watching, Who}, StateName, #state{observers=Observers}=State)
 handle_event({logging, Level}, StateName, State) ->
     State1 = State#state{logging=Level},
     {next_state, StateName, State1};
-handle_event(Event, StateName, #state{name=Name}=State) ->
+handle_event(Event, StateName, #state{node_ref=Name}=State) ->
     lager:error("FSM for ~p received unexpected event ~p", [Name, Event]),
     {next_state, StateName, State}.
 
-handle_sync_event(Event, _From, StateName, #state{name=Name}=State) ->
+handle_sync_event(Event, _From, StateName, #state{node_ref=Name}=State) ->
     lager:error("FSM for ~p received unexpected sync event ~p", [Name, Event]),
     {reply, ignored, StateName, State}.
 
@@ -227,7 +235,7 @@ handle_info({'DOWN', _MonitorRef, _Type, Object, _Info}, CurState, State) ->
     {next_state, CurState, State1};
 handle_info({heartbeat},
             CurState,
-            #state{name=NodeName, heartbeats_rcvd=HeartBeats, logging=Level, current_status=CurStatus, heartbeat_rate=HRate}=State) ->
+            #state{node_ref=NodeName, heartbeats_rcvd=HeartBeats, logging=Level, current_status=CurStatus, heartbeat_rate=HRate}=State) ->
     nlog(Level, "Heartbeat received from ~p Currently ~p", [NodeName, CurStatus]),
 
     %% Note that we got a heartbeat
@@ -263,17 +271,17 @@ code_change(_OldVsn, CurState, State, _Extra) ->
 
 %% Internal functions
 
-create_status_record(Status, #state{name=Name}=State) ->
+create_status_record(Status, #state{node_ref=Name}=State) ->
     notify_status_change(Status, State),
     pushy_node_status_updater:create(?POC_ORG_ID, Name, ?POC_ACTOR_ID, Status),
     State.
 
-update_status(Status, #state{name=Name}=State) ->
+update_status(Status, #state{node_ref=Name}=State) ->
     notify_status_change(Status, State),
     pushy_node_status_updater:update(?POC_ORG_ID, Name, ?POC_ACTOR_ID, Status),
     State.
 
-notify_status_change(Status, #state{name=Name,observers=Observers}) ->
+notify_status_change(Status, #state{node_ref=Name,observers=Observers}) ->
     lager:info("Status change for ~s : ~s", [Name, Status]),
     [ Observer ! { node_heartbeat_event, Name, Status } || Observer <- Observers ].
 

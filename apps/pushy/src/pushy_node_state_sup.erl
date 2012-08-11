@@ -32,9 +32,6 @@ start_link() ->
 
 new(Name) ->
     lager:info("Creating Process For ~s", [Name]),
-    new(internal, Name).
-
-new(internal, Name) ->
     supervisor:start_child(?SERVER, [Name]).
 
 %% ------------------------------------------------------------------
