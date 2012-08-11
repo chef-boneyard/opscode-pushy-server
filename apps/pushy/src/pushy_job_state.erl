@@ -7,7 +7,9 @@
 -behaviour(gen_fsm).
 
 %% API
--export([start_link/4]).
+-export([start_link/4,
+         node_execution_state_updated/4,
+         node_execution_finished/4]).
 
 %% States
 -export([initializing/2]).
@@ -25,15 +27,22 @@
 -type job_id() :: binary().
 -type node_name() :: binary().
 -type org_id() :: binary().
--type possible_states() :: 'initializing' | 'voting'.
+-type job_state() :: 'initializing' | 'voting'.
+-type node_execution_state() :: 'undefined' | 'ready' | 'running' | 'finished'.
 
-
--record(job_state,
+-record(state,
         {
-            job_id     :: job_id(),
-            org_id     :: org_id(),
-            command    :: binary(),
-            node_names :: [node_name()]
+            job_id      :: job_id(),
+            org_id      :: org_id(),
+            command     :: binary(),
+            node_states :: any() % TODO table type?  node_name -> #node_state{}
+        }).
+
+-record(node_state,
+        {
+            state :: 'up' | 'down' | undefined, % TODO get this elsewhere
+            execution_state :: 'ready' | 'running' | 'finished' | undefined,
+            finished_reason :: binary() | undefined
         }).
 
 %%%
@@ -44,24 +53,30 @@
 start_link(JobId, OrgId, Command, NodeNames) ->
     gen_fsm:start_link(?MODULE, {JobId, OrgId, Command, NodeNames}, []).
 
-%
-% gen_fsm
-%
+node_execution_state_updated(JobId, OrgId, NodeName, NewState) ->
+    Pid = pushy_job_state_sup:get_process(JobId),
+    gen_fsm:send_all_state_event(Pid, {node_execution_state_updated,OrgId,NodeName,NewState}).
+
+node_execution_finished(JobId, OrgId, NodeName, FinishedReason) ->
+    Pid = pushy_job_state_sup:get_process(JobId),
+    gen_fsm:send_all_state_event(Pid, {node_execution_finished,OrgId,NodeName,FinishedReason}).
 
 %
-% This is split into two phases: an 'upper half' to get the minimimal work done required to wire things up
+% Init is split into two phases: an 'upper half' to get the minimimal work done required to wire things up
 % and a 'lower half' that takes care of things that can wait
 %
--spec init({job_id(), [node_name()]}) ->
-    {'ok', 'initializing', #job_state{}, 0} |
-    {'stop', 'shutdown', #job_state{}}.
+-spec init({job_id(), org_id(), binary(), [node_name()]}) ->
+    {'ok', 'initializing', #state{}, 0} |
+    {'stop', 'shutdown', #state{}}.
 init({JobId, OrgId, Command, NodeNames}) ->
     lager:info("pushy_job_state:init(~p, ~p, ~p, ~p)", [JobId, OrgId, Command, NodeNames]),
-    State = #job_state{
+    State = #state{
                 job_id = JobId,
                 org_id = OrgId,
                 command = Command,
-                node_names = NodeNames
+                node_states = dict:from_list([
+                    {NodeName,#node_state{}} || NodeName <- NodeNames
+                ])
             },
     try
         %% The most important thing to have happen is this registration; we need to get this
@@ -82,61 +97,134 @@ init({JobId, OrgId, Command, NodeNames}) ->
             {stop, shutdown, State}
     end.
 
--spec handle_event(any(), possible_states(), #job_state{}) ->
-        {'next_state', possible_states(), #job_state{}}.
+%
+% Events
+%
+
+-spec initializing(any(), #state{}) ->
+                    {'next_state', 'voting', #state{}}.
+% Lower half of initialization; we have more time for complex work here.
+initializing(timeout, State) ->
+    lager:info("pushy_job_state:initializing(timeout, ~p)", [State]),
+    set_state(voting, State);
+initializing(Event, State) ->
+    % Resend so it reaches us after initializing
+    % TODO could cause out of order message processing if messages show up
+    % while we're initializing
+    gen_fsm:send_event(self(), Event),
+    % Stay in current state
+    {next_state, initializing, State}.
+
+-spec handle_event(any(), job_state(), #state{}) ->
+        {'next_state', job_state(), #state{}}.
+handle_event({node_execution_state_updated,OrgId,NodeName,NodeState},
+    StateName, State) ->
+    update_node_execution_state(OrgId,NodeName,NodeState,undefined,StateName,State);
+handle_event({node_execution_finished,OrgId,NodeName,FinishedReason}, StateName, State) ->
+    update_node_execution_state(OrgId,NodeName,finished,FinishedReason,StateName,State);
 handle_event(_Event, StateName, State) ->
     {next_state, StateName, State}.
 
--spec handle_sync_event(any(), any(), possible_states(), #job_state{}) ->
-        {'reply', 'ok', possible_states(), #job_state{}}.
+-spec handle_sync_event(any(), any(), job_state(), #state{}) ->
+        {'reply', 'ok', job_state(), #state{}}.
 handle_sync_event(_Event, _From, StateName, State) ->
     {reply, ok, StateName, State}.
 
--spec handle_info(any(), possible_states(), #job_state{}) ->
-        {'next_state', possible_states(), #job_state{}}.
+-spec handle_info(any(), job_state(), #state{}) ->
+        {'next_state', job_state(), #state{}}.
 handle_info(_Info, StateName, State) ->
     {next_state, StateName, State}.
 
--spec terminate(any(), possible_states(), #job_state{}) -> 'ok'.
+-spec terminate(any(), job_state(), #state{}) -> 'ok'.
 terminate(_Reason, _StateName, _State) ->
     ok.
 
--spec code_change(any(), possible_states(), #job_state{}, any()) ->
-        {'ok', possible_states(), #job_state{}}.
+-spec code_change(any(), job_state(), #state{}, any()) ->
+        {'ok', job_state(), #state{}}.
 code_change(_OldVsn, StateName, State, _Extra) ->
     {ok, StateName, State}.
-
-
-%
-% Lower half of initialization; we have more time for complex work here.
-%
-
--spec initializing('timeout', #job_state{}) ->
-                    {'next_state', 'voting', #job_state{}}.
-initializing(timeout, State) ->
-    lager:info("pushy_job_state:initializing(timeout, ~p)", [State]),
-    % Upon transitioning to voting, send the command message to all nodes.
-    send_command_message_to_all_nodes(State),
-    {next_state, voting, State}.
 
 %
 % PRIVATE
 %
--spec send_command_message_to_all_nodes(#job_state{}) -> 'ok'.
-send_command_message_to_all_nodes(#job_state{job_id = JobId,
-                                             org_id = OrgId,
-                                             command = Command,
-                                             node_names = NodeNames}) ->
-    CommandMessage = jiffy:encode({[
-        {type, <<"job_command">>},
-        {job_id, JobId},
-        {command, Command},
-        {server, get_server_name()}
-    ]}),
-    pushy_command_switch:send_multi_command(OrgId, NodeNames, CommandMessage).
+% This is called to check whether we are ready to proceed to a different state
+% or not.
+-spec detect_aggregate_state_change(job_state(), #state{}) ->
+    {'next_state', job_state(), #state{}}.
+detect_aggregate_state_change(voting, State) ->
+    % We don't yet handle nacks or quorum, so we just check whether any nodes
+    % are not yet associated with the job.
+    case count_nodes_in_state([undefined], State) of
+        0 -> set_state(running, State);
+        _ -> {next_state, voting, State}
+    end;
+detect_aggregate_state_change(running, State) ->
+    % If any node is unfinished, we are unfinished.
+    case count_nodes_in_state([undefined, ready, running], State) of
+        0 -> set_state(finished, State);
+        _ -> {next_state, running, State}
+    end;
+detect_aggregate_state_change(finished, State) ->
+    % Homey don't change state.
+    {next_state, finished, State}.
 
--spec get_server_name() -> binary().
-get_server_name() ->
+-spec count_nodes_in_state([node_execution_state()], #state{}) ->
+    integer().
+count_nodes_in_state(ExpectedStates, #state{node_states = NodeStates}) ->
+    dict:fold(
+        fun(_,#node_state{execution_state = ExecutionState},AccIn) ->
+            AccIn + case lists:member(ExecutionState, ExpectedStates) of
+                true -> 1;
+                _ -> 0
+            end
+        end, 0, NodeStates).
+
+-spec update_node_execution_state(org_id(), node_name(), node_execution_state(), binary(), job_state(), #state{}) ->
+    {'next_state', job_state(), #state{}}.
+update_node_execution_state(_OrgId,NodeName,NodeState,FinishedReason,StateName,
+    #state{node_states=NodeStates}=State) ->
+    % TODO handle incorrect org id on node.
+    % TODO handle missing node.
+    % TODO handle invalid transitions.
+    OldNodeState = dict:fetch(NodeName,NodeStates),
+    NewNodeState = OldNodeState#node_state{
+        execution_state = NodeState,
+        finished_reason = FinishedReason
+    },
+    NodeStates2 = dict:store(NodeName, NewNodeState, NodeStates),
+    State2 = State#state{node_states = NodeStates2},
+    detect_aggregate_state_change(StateName,State2).
+
+% Called on transition to a new state
+-spec set_state(job_state(), #state{}) ->
+    {'next_state', job_state(), #state{}}.
+set_state(initializing, State) ->
+    lager:info("JOB -> initializing"),
+    {next_state, initializing, State};
+set_state(voting, #state{command = Command} = State) ->
+    lager:info("JOB -> voting"),
+    send_message_to_all_nodes(<<"job_command">>, [{command, Command}], State),
+    detect_aggregate_state_change(voting, State);
+set_state(running, State) ->
+    lager:info("JOB -> running"),
+    % There is really no reason not to TRY sending the message to idle, running
+    % or nacked nodes, so we send to everybody.  The worst they could say is no.
+    send_message_to_all_nodes(<<"job_execute">>, [], State),
+    detect_aggregate_state_change(running, State);
+set_state(finished, State) ->
+    lager:info("JOB -> finished"),
+    {next_state, finished, State}.
+
+-spec send_message_to_all_nodes(binary(), list({atom(), any()}), #state{}) -> 'ok'.
+send_message_to_all_nodes(Type,
+                          ExtraData,
+                          #state{job_id = JobId,
+                                 org_id = OrgId,
+                                 node_states = NodeStates}) ->
     Host = pushy_util:get_env(pushy, server_name, fun is_list/1),
-    list_to_binary(Host).
-
+    Message = [
+        {type, Type},
+        {job_id, JobId},
+        {server, list_to_binary(Host)}
+    ] ++ ExtraData,
+    pushy_command_switch:send_multi_command(OrgId, dict:fetch_keys(NodeStates), jiffy:encode({Message})).

@@ -8,7 +8,8 @@
 
 %% API
 -export([start_link/0,
-         start/3]).
+         start/3,
+         get_process/1]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -28,6 +29,18 @@ start(OrgId, Command, NodeNames) ->
     % TODO consider returning "error" when this doesn't work
     {ok, _} = supervisor:start_child(?SERVER, [JobId, OrgId, Command, NodeNames]),
     JobId.
+
+get_process(JobId) ->
+    gproc:lookup_pid({n,l,JobId}).
+    % TODO this is what we'll need to do when jobs can be loaded from the DB.
+    %case catch gproc:lookup_pid({n,l,JobId}) of
+    %    {'EXIT', _} ->
+    %        case supervisor:start_child(?SERVER, [JobId]) of
+    %            {error,{already_started,Pid}} -> Pid;
+    %            {ok,Pid} -> Pid
+    %        end;
+    %    Pid -> Pid
+    %end.
 
 %% ------------------------------------------------------------------
 %% supervisor Function Definitions

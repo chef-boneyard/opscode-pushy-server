@@ -44,8 +44,6 @@
 -type fsm_states() :: 'up' | 'down' | 'crashed' | 'restarting'.
 -type logging_level() :: 'verbose' | 'normal'.
 -type status_atom() :: 'idle' | 'ready' | 'restarting' | 'running' | 'down'.
--type status_binary() :: binary(). % <<"idle">> | <<"ready">> | <<"restarting">> |
-                                   % <<"running">> | <<"down">>
 -type gproc_error() :: ok | {error, no_node}.
 
 -record(eavg, {acc = 0 :: integer(),
@@ -93,7 +91,7 @@ start_link(Name, HeartbeatInterval, DeadIntervalCount) ->
 -spec heartbeat(node_name(), node_state()) -> 'ok'.
 heartbeat(NodeName, NodeStatus) ->
     case catch gproc:send({n,l,NodeName},
-            {heartbeat, NodeName, status_to_atom(NodeStatus)}) of
+            {heartbeat, NodeName, NodeStatus}) of
         {'EXIT', _} ->
             % TODO this fails to take into account a failed initialize/gproc registration
             pushy_node_state_sup:new(NodeName),
@@ -145,7 +143,7 @@ watching(Action, Name) ->
 %
 % This is split into two phases: an 'upper half' to get the minimimal work done required to wire things up
 % and a 'lower half' that takes care of things that can wait
-% 
+%
 init([Name, HeartbeatInterval, DeadIntervalCount]) ->
 
     State = #state{name = Name,
@@ -309,18 +307,6 @@ update_status_directly(Status, #state{name=Name}=State) ->
 notify_status_change(Status, #state{name=Name,observers=Observers}) ->
     lager:info("Status change for ~s : ~s", [Name, Status]),
     [ Observer ! { node_heartbeat_event, Name, Status } || Observer <- Observers ].
-
--spec status_to_atom(status_binary()) -> status_atom().
-status_to_atom(<<"idle">>) ->
-    idle;
-status_to_atom(<<"ready">>) ->
-    ready;
-status_to_atom(<<"running">>) ->
-    running;
-status_to_atom(<<"restarting">>) ->
-    restarting;
-status_to_atom(<<"down">>) ->
-    down.
 
 %
 % Question: Why isn't the gen_fsm:start_timer/cancel_timer used here?

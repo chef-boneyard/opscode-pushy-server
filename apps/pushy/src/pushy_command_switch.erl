@@ -161,28 +161,32 @@ process_message(State, Address, _Header, Body) ->
             %% Every time we get a message from a node, we update it's Addr->Name mapping entry
             State2 = addr_node_map_update(State, Address, {OrgId, NodeName}),
             case Type of
-                % ready messages only are used to initialze
+                % ready messages are not really used.
                 <<"ready">> ->
                     lager:info("Node [~p] ready to RAWK this command party.", [NodeName]),
                     State2;
                 <<"ack">> ->
-                    pushy_job_runner:node_command_event(JobId, NodeName, ack),
+                    pushy_node_execution_state:set_state(OrgId, NodeName, ready, JobId),
                     State2;
                 <<"nack">> ->
-                    pushy_job_runner:node_command_event(JobId, NodeName, nack),
+                    pushy_job_state:node_execution_finished(JobId, OrgId, NodeName, <<"nacked">>),
                     State2;
                 <<"started">> ->
                     lager:info([{job_id, JobId}], "Node [~p] started running Job [~p]", [NodeName, JobId]),
-                    pushy_job_runner:node_command_event(JobId, NodeName, started),
+                    pushy_node_execution_state:set_state(OrgId, NodeName, running, JobId),
                     State2;
                 <<"finished">> ->
                     lager:info([{job_id, JobId}], "Node [~p] finished running Job [~p]", [NodeName, JobId]),
-                    pushy_job_runner:node_command_event(JobId, NodeName, finished),
+                    pushy_node_execution_state:finished(OrgId, NodeName, JobId),
                     State2;
                 <<"heartbeat">> ->
-                    NodeState = ej:get({<<"state">>}, Data),
-                    lager:info("Node [~p] sent a heartbeat in state [~p]", [NodeName, NodeState]),
-                    ok = pushy_node_state:heartbeat(NodeName, NodeState),
+                    case node_state_to_atom(ej:get({<<"state">>}, Data)) of
+                      unknown -> noop;
+                      NodeState ->
+                        lager:info("Node [~p] sent a heartbeat in state [~p]", [NodeName, NodeState]),
+                        pushy_node_execution_state:set_state(OrgId, NodeName, NodeState, JobId),
+                        pushy_node_state:heartbeat(NodeName, NodeState)
+                    end,
                     State2;
                 _Else ->
                     lager:info("I don't know anything about ~p", [Type]),
@@ -192,6 +196,16 @@ process_message(State, Address, _Header, Body) ->
             lager:error("Status message JSON parsing failed: body=~s, error=~s", [Body,Error]),
             State
     end.
+
+node_state_to_atom(<<"idle">>) ->
+    idle;
+node_state_to_atom(<<"ready">>) ->
+    ready;
+node_state_to_atom(<<"running">>) ->
+    running;
+node_state_to_atom(State) ->
+    lager:error("Unexpected node state ~p received in heartbeat", [State]),
+    unknown.
 
 %%
 %% Utility functions; we should generalize these and move elsewhere.
