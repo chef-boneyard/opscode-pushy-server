@@ -8,7 +8,7 @@
 
 %% API
 -export([start_link/0,
-         start/3,
+         start/1,
          get_process/1]).
 
 %% Supervisor callbacks
@@ -25,12 +25,8 @@
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
-start(OrgId, Command, NodeNames) ->
-    JobId = chef_db:make_org_prefix_id(OrgId),
-    lager:info("Creating Process For job ~p (command ~p) in org ~p on nodes ~p", [JobId, Command, OrgId, NodeNames]),
-    % TODO consider returning "error" when this doesn't work
-    {ok, _} = supervisor:start_child(?SERVER, [JobId, OrgId, Command, NodeNames]),
-    JobId.
+start(Job) ->
+    supervisor:start_child(?SERVER, [Job]).
 
 -spec get_process(job_id()) -> pid().
 get_process(JobId) ->

@@ -7,7 +7,7 @@
 -behaviour(gen_fsm).
 
 %% API
--export([start_link/4,
+-export([start_link/1,
          node_execution_state_updated/4,
          node_execution_finished/4,
          get_job_state/1]).
@@ -26,34 +26,18 @@
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("pushy_sql.hrl").
 
--type job_id() :: binary().
--type node_name() :: binary().
--type org_id() :: binary().
--type job_state() :: 'initializing' | 'voting'.
--type node_execution_state() :: 'undefined' | 'ready' | 'running' | 'finished'.
-
 -record(state,
         {
-            job_id      :: job_id(),
-            org_id      :: org_id(),
-            command     :: binary(),
-            node_states :: any() % TODO table type?  node_name -> #node_state{}
-        }).
-
--record(node_state,
-        {
-            state :: 'up' | 'down' | undefined, % TODO get this elsewhere
-            execution_state :: 'ready' | 'running' | 'finished' | undefined,
-            finished_reason :: binary() | undefined
+            job         :: #pushy_job{}
         }).
 
 %%%
 %%% External API
 %%%
--spec start_link(job_id(), org_id(), binary(), [node_name()]) ->
+-spec start_link(#pushy_job{}) ->
                         'ignore' | {'error',_} | {'ok',pid()}.
-start_link(JobId, OrgId, Command, NodeNames) ->
-    gen_fsm:start_link(?MODULE, {JobId, OrgId, Command, NodeNames}, []).
+start_link(Job) ->
+    gen_fsm:start_link(?MODULE, Job, []).
 
 node_execution_state_updated(JobId, OrgId, NodeName, NewState) ->
     lager:info("---------> job:node_execution_state_updated(~p, ~p -> ~p)", [JobId, NodeName, NewState]),
@@ -66,28 +50,20 @@ node_execution_finished(JobId, OrgId, NodeName, FinishedReason) ->
     gen_fsm:send_all_state_event(Pid, {node_execution_finished,OrgId,NodeName,FinishedReason}).
 
 get_job_state(JobId) ->
-    lager:info("---------> job:get_job_state(~p)", [JobId]),
+    lager:info("---------> job:get_job_status(~p)", [JobId]),
     Pid = pushy_job_state_sup:get_process(JobId),
-    gen_fsm:sync_send_all_state_event(Pid, {get_job_state}).
+    gen_fsm:sync_send_all_state_event(Pid, {get_job_status}).
 
 
 %
 % Init is split into two phases: an 'upper half' to get the minimimal work done required to wire things up
 % and a 'lower half' that takes care of things that can wait
 %
--spec init({job_id(), org_id(), binary(), [node_name()]}) ->
+-spec init(#pushy_job{}) ->
     {'ok', 'initializing', #state{}, 0} |
     {'stop', 'shutdown', #state{}}.
-init({JobId, OrgId, Command, NodeNames}) ->
-    lager:info("pushy_job_state:init(~p, ~p, ~p, ~p)", [JobId, OrgId, Command, NodeNames]),
-    State = #state{
-                job_id = JobId,
-                org_id = OrgId,
-                command = Command,
-                node_states = dict:from_list([
-                    {NodeName,#node_state{}} || NodeName <- NodeNames
-                ])
-            },
+init(#pushy_job{id = JobId} = Job) ->
+    State = #state{job = Job},
     try
         %% The most important thing to have happen is this registration; we need to get this
         %% assigned before anyone else tries to start things up gproc:reg can only return
@@ -115,7 +91,6 @@ init({JobId, OrgId, Command, NodeNames}) ->
                     {'next_state', 'voting', #state{}}.
 % Lower half of initialization; we have more time for complex work here.
 initializing(timeout, State) ->
-    lager:info("pushy_job_state:initializing(timeout, ~p)", [State]),
     set_state(voting, State);
 initializing(Event, State) ->
     % Resend so it reaches us after initializing
@@ -125,8 +100,8 @@ initializing(Event, State) ->
     % Stay in current state
     {next_state, initializing, State}.
 
--spec handle_event(any(), job_state(), #state{}) ->
-        {'next_state', job_state(), #state{}}.
+-spec handle_event(any(), job_status(), #state{}) ->
+        {'next_state', job_status(), #state{}}.
 handle_event({node_execution_state_updated,OrgId,NodeName,NodeState},
     StateName, State) ->
     update_node_execution_state(OrgId,NodeName,NodeState,undefined,StateName,State);
@@ -135,24 +110,24 @@ handle_event({node_execution_finished,OrgId,NodeName,FinishedReason}, StateName,
 handle_event(_Event, StateName, State) ->
     {next_state, StateName, State}.
 
--spec handle_sync_event(any(), any(), job_state(), #state{}) ->
-        {'reply', 'ok', job_state(), #state{}}.
-handle_sync_event({get_job_state}, _From, StateName, State) ->
-    {reply, to_sql(StateName, State), StateName, State};
+-spec handle_sync_event(any(), any(), job_status(), #state{}) ->
+        {'reply', 'ok', job_status(), #state{}}.
+handle_sync_event({get_job_status}, _From, StateName, #state{job = Job} = State) ->
+    {reply, Job, StateName, State};
 handle_sync_event(_Event, _From, StateName, State) ->
     {reply, ok, StateName, State}.
 
--spec handle_info(any(), job_state(), #state{}) ->
-        {'next_state', job_state(), #state{}}.
+-spec handle_info(any(), job_status(), #state{}) ->
+        {'next_state', job_status(), #state{}}.
 handle_info(_Info, StateName, State) ->
     {next_state, StateName, State}.
 
--spec terminate(any(), job_state(), #state{}) -> 'ok'.
+-spec terminate(any(), job_status(), #state{}) -> 'ok'.
 terminate(_Reason, _StateName, _State) ->
     ok.
 
--spec code_change(any(), job_state(), #state{}, any()) ->
-        {'ok', job_state(), #state{}}.
+-spec code_change(any(), job_status(), #state{}, any()) ->
+        {'ok', job_status(), #state{}}.
 code_change(_OldVsn, StateName, State, _Extra) ->
     {ok, StateName, State}.
 
@@ -161,18 +136,18 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 %
 % This is called to check whether we are ready to proceed to a different state
 % or not.
--spec detect_aggregate_state_change(job_state(), #state{}) ->
-    {'next_state', job_state(), #state{}}.
+-spec detect_aggregate_state_change(job_status(), #state{}) ->
+    {'next_state', job_status(), #state{}}.
 detect_aggregate_state_change(voting, State) ->
     % We don't yet handle nacks or quorum, so we just check whether any nodes
     % are not yet associated with the job.
-    case count_nodes_in_state([undefined], State) of
+    case count_nodes_in_state([new], State) of
         0 -> set_state(running, State);
         _ -> {next_state, voting, State}
     end;
 detect_aggregate_state_change(running, State) ->
     % If any node is unfinished, we are unfinished.
-    case count_nodes_in_state([undefined, ready, running], State) of
+    case count_nodes_in_state([new, ready, running], State) of
         0 -> set_state(finished, State);
         _ -> {next_state, running, State}
     end;
@@ -180,82 +155,75 @@ detect_aggregate_state_change(finished, State) ->
     % Homey don't change state.
     {next_state, finished, State}.
 
--spec count_nodes_in_state([node_execution_state()], #state{}) ->
+-spec count_nodes_in_state([job_node_status()], #state{}) ->
     integer().
-count_nodes_in_state(ExpectedStates, #state{node_states = NodeStates}) ->
-    dict:fold(
-        fun(_,#node_state{execution_state = ExecutionState},AccIn) ->
-            AccIn + case lists:member(ExecutionState, ExpectedStates) of
+count_nodes_in_state(ExpectedStates, #state{job = Job}) ->
+    lists:foldl(
+        fun(#pushy_job_node{status = NodeState},AccIn) ->
+            AccIn + case lists:member(NodeState, ExpectedStates) of
                 true -> 1;
                 _ -> 0
             end
-        end, 0, NodeStates).
+        end, 0, Job#pushy_job.job_nodes).
 
--spec update_node_execution_state(org_id(), node_name(), node_execution_state(), binary(), job_state(), #state{}) ->
-    {'next_state', job_state(), #state{}}.
+-spec update_node_execution_state(object_id(), binary(), job_node_status(), binary(), job_status(), #state{}) ->
+    {'next_state', job_status(), #state{}}.
 update_node_execution_state(_OrgId,NodeName,NodeState,FinishedReason,StateName,
-    #state{node_states=NodeStates}=State) ->
+    #state{job=Job}=State) ->
     % TODO handle incorrect org id on node.
     % TODO handle missing node.
     % TODO handle invalid transitions.
-    OldNodeState = dict:fetch(NodeName,NodeStates),
-    NewNodeState = OldNodeState#node_state{
-        execution_state = NodeState,
-        finished_reason = FinishedReason
-    },
-    NodeStates2 = dict:store(NodeName, NewNodeState, NodeStates),
-    State2 = State#state{node_states = NodeStates2},
+    JobNodes = Job#pushy_job.job_nodes,
+    JobNodes2 = [
+        case JobNodeName of
+            NodeName -> JobNode#pushy_job_node{
+                status = NodeState,
+                finished_reason = FinishedReason
+            };
+            _ -> JobNode
+        end
+        || #pushy_job_node{node_name = JobNodeName} = JobNode <- JobNodes
+    ],
+    Job2 = Job#pushy_job{job_nodes = JobNodes2},
+    State2 = State#state{job = Job2},
     detect_aggregate_state_change(StateName,State2).
 
 % Called on transition to a new state
--spec set_state(job_state(), #state{}) ->
-    {'next_state', job_state(), #state{}}.
+-spec set_state(job_status(), #state{}) ->
+    {'next_state', job_status(), #state{}}.
 set_state(initializing, State) ->
     lager:info("JOB -> initializing"),
     {next_state, initializing, State};
-set_state(voting, #state{command = Command} = State) ->
+set_state(voting, #state{job = Job} = State) ->
     lager:info("JOB -> voting"),
-    send_message_to_all_nodes(<<"job_command">>, [{command, Command}], State),
-    detect_aggregate_state_change(voting, State);
-set_state(running, State) ->
+    send_message_to_all_nodes(<<"job_command">>, [{command, Job#pushy_job.command}], State),
+    Job2 = Job#pushy_job{status = voting},
+    State2 = State#state{job = Job2},
+    detect_aggregate_state_change(voting, State2);
+set_state(running, #state{job = Job} = State) ->
     lager:info("JOB -> running"),
     % There is really no reason not to TRY sending the message to idle, running
     % or nacked nodes, so we send to everybody.  The worst they could say is no.
     send_message_to_all_nodes(<<"job_execute">>, [], State),
-    detect_aggregate_state_change(running, State);
-set_state(finished, State) ->
+    Job2 = Job#pushy_job{status = running},
+    State2 = State#state{job = Job2},
+    detect_aggregate_state_change(running, State2);
+set_state(finished, #state{job = Job} = State) ->
     lager:info("JOB -> finished"),
-    {next_state, finished, State}.
+    Job2 = Job#pushy_job{status = finished},
+    State2 = State#state{job = Job2},
+    {next_state, finished, State2}.
 
 -spec send_message_to_all_nodes(binary(), list({atom(), any()}), #state{}) -> 'ok'.
 send_message_to_all_nodes(Type,
                           ExtraData,
-                          #state{job_id = JobId,
-                                 org_id = OrgId,
-                                 node_states = NodeStates}) ->
+                          #state{job = Job}) ->
+    #pushy_job{id = JobId, org_id = OrgId, job_nodes = JobNodes} = Job,
+    NodeNames = [ JobNode#pushy_job_node.node_name || JobNode <- JobNodes],
     Host = pushy_util:get_env(pushy, server_name, fun is_list/1),
     Message = [
         {type, Type},
         {job_id, JobId},
         {server, list_to_binary(Host)}
     ] ++ ExtraData,
-    pushy_command_switch:send_multi_command(OrgId, dict:fetch_keys(NodeStates), jiffy:encode({Message})).
-
-to_sql(StateName, State) ->
-    JobNodes = [
-        #pushy_job_node{
-            job_id = State#state.job_id,
-            org_id = State#state.org_id,
-            node_name = NodeName,
-            status = NodeState#node_state.execution_state,
-            finished_reason = NodeState#node_state.finished_reason
-        }
-        || {NodeName, NodeState} <- dict:to_list(State#state.node_states)
-    ],
-    #pushy_job{
-        id = State#state.job_id,
-        org_id = State#state.org_id,
-        command = State#state.command,
-        status = StateName,
-        job_nodes = JobNodes
-    }.
+    pushy_command_switch:send_multi_command(OrgId, NodeNames, jiffy:encode({Message})).

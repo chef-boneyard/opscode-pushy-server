@@ -11,15 +11,14 @@
                             restarting |
                             down.
 
-
 %% job status
 -type job_status() :: voting |
-                      executing |
+                      running |
                       finished.
 
 -type job_node_status() :: undefined |
                            ready |
-                           executing |
+                           running |
                            finished. % DONE
 
 %% random PoC hard-codings

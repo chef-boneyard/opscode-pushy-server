@@ -24,7 +24,7 @@
 
 -record(config_state, {
           organization_guid :: string(),
-          job_id :: binary() | undefined
+          job :: #pushy_job{}
         }).
 
 init(_Config) ->
@@ -58,18 +58,17 @@ content_types_provided(Req, State) ->
 post_is_create(Req, State) ->
     {true, Req, State}.
 
-% This starts the job and returns its path
+% This creates the job record
 create_path(Req, #config_state{organization_guid = OrgId} = State) ->
     [ Command, NodeNames ] = parse_post_body(Req),
-    JobId = pushy_job_state_sup:start(OrgId, Command, NodeNames),
-    State2 = State#config_state{job_id = JobId},
-    lager:info("Job ~p", [JobId]),
-    lager:info("Job list ~p", [binary_to_list(JobId)]),
-    {binary_to_list(JobId), Req, State2}.
+    Job = pushy_object:new_record(pushy_job, OrgId, NodeNames),
+    Job2 = Job#pushy_job{command = Command},
+    State2 = State#config_state{job = Job2},
+    {binary_to_list(Job#pushy_job.id), Req, State2}.
 
-% This processes POST /pushy/jobs (the work was already done in create_path)
+% This processes POST /pushy/jobs
 from_json(Req, State) ->
-    % TODO figure out what return value to expect
+    pushy_job_state_sup:start(State#config_state.job),
     Req2 = ripped_from_chef_rest:set_uri_of_created_resource(Req),
     {true, Req2, State}.
 
