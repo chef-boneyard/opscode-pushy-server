@@ -13,16 +13,14 @@
 
 
 %% job status
--type job_status() :: new |
-                      voting |
+-type job_status() :: voting |
                       executing |
-                      complete | % DONE
-                      error | % DONE
-                      failed | % DONE
-                      expired | % DONE
-                      aborted. % DONE
+                      finished.
 
--define(COMPLETE_STATUS, [complete, error, failed, expired, aborted]).
+-type job_node_status() :: undefined |
+                           ready |
+                           executing |
+                           finished. % DONE
 
 %% random PoC hard-codings
 -define(POC_ORG_ID, <<"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa">>).
@@ -41,7 +39,8 @@
 -record(pushy_job_node, {'job_id'::object_id(),              % guid for object (unique)
                          'org_id'::object_id(),              % organization guid
                          'node_name'::binary(),              % node name
-                         'status'::job_status(),             % node's status in context of job
+                         'status'::job_node_status(),        % node's status in context of job
+                         'finished_reason'::binary(),        % reason node is finished with job (success, nack, etc.)
                          'created_at'::calendar:datetime(),  % time created at
                          'updated_at'::calendar:datetime()   % time updated at
                          }).
@@ -51,10 +50,10 @@
                     'command'::binary(),                % command to execute
                     'status'::job_status(),             % job status
                     'duration'::non_neg_integer(),      % max duration (in minutes) to allow execution
+                    'job_nodes' ::[#pushy_job_node{}],
                     'last_updated_by'::object_id(),     % authz guid of last actor to update
                     'created_at'::calendar:datetime(),  % time created at
-                    'updated_at'::calendar:datetime(),  % time updated at
-                    'job_nodes' ::[#pushy_job_node{}]
+                    'updated_at'::calendar:datetime()  % time updated at
                     }).
 
 -type pushy_object() :: #pushy_node_status{} | #pushy_job{}.

@@ -9,7 +9,8 @@
 %% API
 -export([start_link/4,
          node_execution_state_updated/4,
-         node_execution_finished/4]).
+         node_execution_finished/4,
+         get_job_state/1]).
 
 %% States
 -export([initializing/2]).
@@ -23,6 +24,7 @@
      code_change/4]).
 
 -include_lib("eunit/include/eunit.hrl").
+-include_lib("pushy_sql.hrl").
 
 -type job_id() :: binary().
 -type node_name() :: binary().
@@ -54,12 +56,20 @@ start_link(JobId, OrgId, Command, NodeNames) ->
     gen_fsm:start_link(?MODULE, {JobId, OrgId, Command, NodeNames}, []).
 
 node_execution_state_updated(JobId, OrgId, NodeName, NewState) ->
+    lager:info("---------> job:node_execution_state_updated(~p, ~p -> ~p)", [JobId, NodeName, NewState]),
     Pid = pushy_job_state_sup:get_process(JobId),
     gen_fsm:send_all_state_event(Pid, {node_execution_state_updated,OrgId,NodeName,NewState}).
 
 node_execution_finished(JobId, OrgId, NodeName, FinishedReason) ->
+    lager:info("---------> job:node_execution_finished(~p, ~p (~p))", [JobId, NodeName, FinishedReason]),
     Pid = pushy_job_state_sup:get_process(JobId),
     gen_fsm:send_all_state_event(Pid, {node_execution_finished,OrgId,NodeName,FinishedReason}).
+
+get_job_state(JobId) ->
+    lager:info("---------> job:get_job_state(~p)", [JobId]),
+    Pid = pushy_job_state_sup:get_process(JobId),
+    gen_fsm:sync_send_all_state_event(Pid, {get_job_state}).
+
 
 %
 % Init is split into two phases: an 'upper half' to get the minimimal work done required to wire things up
@@ -127,6 +137,8 @@ handle_event(_Event, StateName, State) ->
 
 -spec handle_sync_event(any(), any(), job_state(), #state{}) ->
         {'reply', 'ok', job_state(), #state{}}.
+handle_sync_event({get_job_state}, _From, StateName, State) ->
+    {reply, to_sql(StateName, State), StateName, State};
 handle_sync_event(_Event, _From, StateName, State) ->
     {reply, ok, StateName, State}.
 
@@ -228,3 +240,22 @@ send_message_to_all_nodes(Type,
         {server, list_to_binary(Host)}
     ] ++ ExtraData,
     pushy_command_switch:send_multi_command(OrgId, dict:fetch_keys(NodeStates), jiffy:encode({Message})).
+
+to_sql(StateName, State) ->
+    JobNodes = [
+        #pushy_job_node{
+            job_id = State#state.job_id,
+            org_id = State#state.org_id,
+            node_name = NodeName,
+            status = NodeState#node_state.execution_state,
+            finished_reason = NodeState#node_state.finished_reason
+        }
+        || {NodeName, NodeState} <- dict:to_list(State#state.node_states)
+    ],
+    #pushy_job{
+        id = State#state.job_id,
+        org_id = State#state.org_id,
+        command = State#state.command,
+        status = StateName,
+        job_nodes = JobNodes
+    }.

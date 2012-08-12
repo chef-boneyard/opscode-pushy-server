@@ -46,10 +46,12 @@ start_link(OrgId, NodeName) ->
     gen_fsm:start_link(?MODULE, {OrgId, NodeName}, []).
 
 set_state(OrgId, NodeName, State, JobId) ->
+    lager:info("---> node:set_state(~p -> ~p (~p))", [NodeName, State, JobId]),
     Pid = pushy_node_execution_state_sup:get_process(OrgId, NodeName),
     gen_fsm:send_all_state_event(Pid, {set_state, State, JobId}).
 
 finished(OrgId, NodeName, JobId) ->
+    lager:info("---> node:finished(~p (~p))", [NodeName, JobId]),
     Pid = pushy_node_execution_state_sup:get_process(OrgId, NodeName),
     gen_fsm:send_all_state_event(Pid, {finished, JobId}).
 

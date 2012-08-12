@@ -11,7 +11,6 @@
          allowed_methods/2,
          content_types_provided/2,
          is_authorized/2,
-         resource_exists/2,
          to_json/2]).
 
 -include("pushy_sql.hrl").
@@ -21,8 +20,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -record(config_state, {
-          organization_guid :: string(),
-          job :: #pushy_job{} | undefined }).
+          organization_guid :: string() }).
 
 init(_Config) ->
     % ?debugVal(_Config),
@@ -44,16 +42,18 @@ allowed_methods(Req, State) ->
 content_types_provided(Req, State) ->
     {[{"application/json", to_json}], Req, State}.
 
-resource_exists(Req, State) ->
-    JobId = wrq:path_info(job_id, Req),
-    case pushy_sql:fetch_job(JobId) of
-        {ok, not_found} -> false;
-        {ok, Job} ->
-            {true, Req, State#config_state{job = Job}};
-        {error, Error} -> error_response(Req, State, 500, Error)
-    end.
+%resource_exists(Req, State) ->
+%    JobId = wrq:path_info(job_id, Req),
+%    case pushy_sql:fetch_job(JobId) of
+%        {ok, not_found} -> false;
+%        {ok, Job} ->
+%            {true, Req, State#config_state{job = Job}};
+%        {error, Error} -> error_response(Req, State, 500, Error)
+%    end.
 
-to_json(Req, #config_state{job = Job} = State) ->
+to_json(Req, State) ->
+    JobId = iolist_to_binary(wrq:path_info(job_id, Req)),
+    Job = pushy_job_state:get_job_state(JobId),
     {ejson:encode(job_to_json(Job)), Req, State}.
 
 %{
@@ -72,21 +72,21 @@ job_to_json(#pushy_job{
     id = Id,
     command = Command,
     status = Status,
-    duration = Duration,
-    created_at = CreatedAt,
-    updated_at = UpdatedAt,
+%    duration = Duration,
+%    created_at = CreatedAt,
+%    updated_at = UpdatedAt,
     job_nodes = Nodes
     }) ->
-    CreatedAtDate =  iolist_to_binary(httpd_util:rfc1123_date(CreatedAt)),
-    UpdatedAtDate =  iolist_to_binary(httpd_util:rfc1123_date(UpdatedAt)),
+%    CreatedAtDate =  iolist_to_binary(httpd_util:rfc1123_date(CreatedAt)),
+%    UpdatedAtDate =  iolist_to_binary(httpd_util:rfc1123_date(UpdatedAt)),
     NodesJson = job_nodes_json_by_status(Nodes),
     {[ {<<"id">>, iolist_to_binary(Id)},
        {<<"command">>, iolist_to_binary(Command)},
        {<<"status">>, atom_to_binary(Status, utf8)},
-       {<<"duration">>, Duration},
-       {<<"nodes">>, NodesJson},
-       {<<"created_at">>, CreatedAtDate},
-       {<<"updated_at">>, UpdatedAtDate}
+       {<<"duration">>, 300},
+       {<<"nodes">>, NodesJson}
+%       {<<"created_at">>, CreatedAtDate},
+%       {<<"updated_at">>, UpdatedAtDate}
     ]}.
 
 job_nodes_json_by_status(Nodes) ->
@@ -101,7 +101,3 @@ job_nodes_by_status([], Dict) ->
 job_nodes_by_status([#pushy_job_node{node_name = Name, status = Status} | Nodes], Dict) ->
     Dict2 = dict:append(Status, Name, Dict),
     job_nodes_by_status(Nodes, Dict2).
-
-error_response(Req, State, ErrorCode, Error) ->
-    Req2 = wrq:set_resp_body(ejson:encode({[{<<"error">>, Error}]}), Req),
-    {{halt, ErrorCode}, Req2, State}.

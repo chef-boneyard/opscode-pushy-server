@@ -16,6 +16,8 @@
 
 -define(SERVER, ?MODULE).
 
+-type job_id() :: binary().
+
 %% ------------------------------------------------------------------
 %% API Function Definitions
 %% ------------------------------------------------------------------
@@ -30,6 +32,7 @@ start(OrgId, Command, NodeNames) ->
     {ok, _} = supervisor:start_child(?SERVER, [JobId, OrgId, Command, NodeNames]),
     JobId.
 
+-spec get_process(job_id()) -> pid().
 get_process(JobId) ->
     gproc:lookup_pid({n,l,JobId}).
     % TODO this is what we'll need to do when jobs can be loaded from the DB.
