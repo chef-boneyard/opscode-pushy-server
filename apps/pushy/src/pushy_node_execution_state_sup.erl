@@ -25,10 +25,13 @@ start_link() ->
 get_process(OrgId, NodeName) ->
     case catch gproc:lookup_pid({n,l,{node_execution_state,OrgId,NodeName}}) of
         {'EXIT', _} ->
-            case supervisor:start_child(?SERVER, [OrgId, NodeName]) of
-                {error,{already_started,Pid}} -> Pid;
-                {ok,Pid} -> Pid
-            end;
+            % If the caller issues a fire-and-forget message, he doesn't need to
+            % wait for the child to completely initialize; messages will be
+            % queued for when the process is ready.  We'll just wait until we
+            % have the process's pid from gproc.
+            spawn(supervisor, start_child, [?SERVER, [OrgId, NodeName]]),
+            {Pid, _Value} = gproc:await({n,l,{node_execution_state,OrgId,NodeName}},1000),
+            Pid;
         Pid -> Pid
     end.
 

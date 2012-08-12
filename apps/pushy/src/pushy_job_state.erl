@@ -12,9 +12,6 @@
          node_execution_finished/4,
          get_job_state/1]).
 
-%% States
--export([initializing/2]).
-
 %% gen_fsm callbacks
 -export([init/1,
      handle_event/3,
@@ -60,7 +57,7 @@ get_job_state(JobId) ->
 % and a 'lower half' that takes care of things that can wait
 %
 -spec init(#pushy_job{}) ->
-    {'ok', 'initializing', #state{}, 0} |
+    {'ok', 'voting', #state{}} |
     {'stop', 'shutdown', #state{}}.
 init(#pushy_job{id = JobId} = Job) ->
     State = #state{job = Job},
@@ -69,7 +66,8 @@ init(#pushy_job{id = JobId} = Job) ->
         %% assigned before anyone else tries to start things up gproc:reg can only return
         %% true or throw
         true = gproc:reg({n, l, JobId}),
-        {ok, initializing, State, 0}
+        {next_state, voting, State2} = set_state(voting, State),
+        {ok, voting, State2}
     catch
         error:badarg ->
             %% When we start up from a previous run, we have two ways that the FSM might be started;
@@ -86,19 +84,6 @@ init(#pushy_job{id = JobId} = Job) ->
 %
 % Events
 %
-
--spec initializing(any(), #state{}) ->
-                    {'next_state', 'voting', #state{}}.
-% Lower half of initialization; we have more time for complex work here.
-initializing(timeout, State) ->
-    set_state(voting, State);
-initializing(Event, State) ->
-    % Resend so it reaches us after initializing
-    % TODO could cause out of order message processing if messages show up
-    % while we're initializing
-    gen_fsm:send_event(self(), Event),
-    % Stay in current state
-    {next_state, initializing, State}.
 
 -spec handle_event(any(), job_status(), #state{}) ->
         {'next_state', job_status(), #state{}}.
@@ -191,9 +176,6 @@ update_node_execution_state(_OrgId,NodeName,NodeState,FinishedReason,StateName,
 % Called on transition to a new state
 -spec set_state(job_status(), #state{}) ->
     {'next_state', job_status(), #state{}}.
-set_state(initializing, State) ->
-    lager:info("JOB -> initializing"),
-    {next_state, initializing, State};
 set_state(voting, #state{job = Job} = State) ->
     lager:info("JOB -> voting"),
     send_message_to_all_nodes(<<"job_command">>, [{command, Job#pushy_job.command}], State),

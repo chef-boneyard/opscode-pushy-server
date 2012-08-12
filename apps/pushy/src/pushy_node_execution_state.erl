@@ -11,9 +11,6 @@
          set_state/4,
          finished/3]).
 
-%% States
--export([initializing/2]).
-
 %% gen_fsm callbacks
 -export([init/1,
      handle_event/3,
@@ -28,7 +25,6 @@
 -type node_name() :: binary().
 -type job_id() :: binary().
 -type possible_states() :: 'idle' | 'ready' | 'running'.
-
 
 -record(state,
         {
@@ -64,7 +60,7 @@ finished(OrgId, NodeName, JobId) ->
 % and a 'lower half' that takes care of things that can wait
 %
 -spec init({org_id(), node_name()}) ->
-    {'ok', 'initializing', #state{}, 0} |
+    {'ok', 'idle', #state{}} |
     {'stop', 'shutdown', #state{}}.
 init({OrgId, NodeName}) ->
     lager:info("pushy_node_execution_state:init(~p, ~p)", [OrgId, NodeName]),
@@ -77,7 +73,8 @@ init({OrgId, NodeName}) ->
         %% assigned before anyone else tries to start things up gproc:reg can only return
         %% true or throw
         true = gproc:reg({n, l, {node_execution_state,OrgId,NodeName}}),
-        {ok, initializing, State, 0}
+        {next_state, idle, State2} = set_state(idle, undefined, State),
+        {ok, idle, State2}
     catch
         error:badarg ->
             %% When we start up from a previous run, we have two ways that the FSM might be started;
@@ -134,17 +131,6 @@ terminate(_Reason, _StateName, _State) ->
         {'ok', possible_states(), #state{}}.
 code_change(_OldVsn, StateName, State, _Extra) ->
     {ok, StateName, State}.
-
-
-%
-% Lower half of initialization; we have more time for complex work here.
-%
-
--spec initializing('timeout', #state{}) ->
-                    {'next_state', 'voting', #state{}}.
-initializing(timeout, State) ->
-    % Upon transitioning to voting, send the command message to all nodes.
-    set_state(idle, undefined, State).
 
 %
 % PRIVATE
