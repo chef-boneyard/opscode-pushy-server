@@ -154,7 +154,7 @@ process_message(State, Address, _Header, Body) ->
             NodeName = ej:get({<<"node">>}, Data ),
             OrgName  = ej:get({<<"org">>}, Data ),
             _ClientName = ej:get({<<"client">>}, Data ),
-            JobId = ej:get({<<"job_id">>}, Data, unknown ),
+            JobId = ej:get({<<"job_id">>}, Data, undefined ),
 
             OrgId = pushy_object:fetch_org_id(OrgName),
 

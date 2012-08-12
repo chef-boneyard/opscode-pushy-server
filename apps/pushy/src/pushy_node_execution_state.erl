@@ -90,13 +90,8 @@ init({OrgId, NodeName}) ->
 
 -spec handle_event(any(), possible_states(), #state{}) ->
         {'next_state', possible_states(), #state{}}.
-handle_event({set_state, NewState, JobId}, _StateName, #state{job_id = CurrentJobId} = State) ->
-    % TODO remove this once clients always send job id.
-    JobId2 = case JobId of
-        unknown -> CurrentJobId;
-        _ -> JobId
-    end,
-    set_state(NewState, JobId2, State);
+handle_event({set_state, NewState, JobId}, _StateName, State) ->
+    set_state(NewState, JobId, State);
 handle_event({finished, JobId}, _StateName, #state{
         job_id = OldJobId,
         org_id = OrgId,
