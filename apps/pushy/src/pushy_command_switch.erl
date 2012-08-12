@@ -166,25 +166,29 @@ process_message(State, Address, _Header, Body) ->
                     lager:info("Node [~p] ready to RAWK this command party.", [NodeName]),
                     State2;
                 <<"ack">> ->
-                    pushy_node_execution_state:set_state(OrgId, NodeName, ready, JobId),
+                    pushy_job_state:node_execution_state_updated(JobId, OrgId, NodeName, ready),
                     State2;
                 <<"nack">> ->
                     pushy_job_state:node_execution_finished(JobId, OrgId, NodeName, <<"nacked">>),
                     State2;
                 <<"started">> ->
                     lager:info([{job_id, JobId}], "Node [~p] started running Job [~p]", [NodeName, JobId]),
-                    pushy_node_execution_state:set_state(OrgId, NodeName, running, JobId),
+                    pushy_job_state:node_execution_state_updated(JobId, OrgId, NodeName, running),
                     State2;
                 <<"finished">> ->
                     lager:info([{job_id, JobId}], "Node [~p] finished running Job [~p]", [NodeName, JobId]),
-                    pushy_node_execution_state:finished(OrgId, NodeName, JobId),
+                    pushy_job_state:node_execution_finished(JobId, OrgId, NodeName, <<"complete">>),
                     State2;
                 <<"heartbeat">> ->
                     case node_state_to_atom(ej:get({<<"state">>}, Data)) of
                       unknown -> noop;
                       NodeState ->
                         lager:info("Node [~p] sent a heartbeat in state [~p]", [NodeName, NodeState]),
-                        pushy_node_execution_state:set_state(OrgId, NodeName, NodeState, JobId),
+                        % idle state has no job id; don't try to send to job "undefined".
+                        case JobId of
+                          undefined -> noop;
+                          _ -> pushy_job_state:node_execution_state_updated(JobId, OrgId, NodeName, NodeState)
+                        end,
                         pushy_node_state:heartbeat(NodeName, NodeState)
                     end,
                     State2;
