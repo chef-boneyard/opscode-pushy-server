@@ -48,7 +48,7 @@
 -type eavg() :: any().
 
 -define(DEFAULT_DECAY_INTERVAL, 4).
--define(DEFAULT_UP_THRESHOLD, 0.8).
+-define(DEFAULT_UP_THRESHOLD, 0.5).
 -define(DEFAULT_DOWN_THRESHOLD, 0.2).
 
 -record(state, {node_ref              :: node_ref(),
@@ -109,8 +109,8 @@ init(NodeRef) ->
         true = gproc:reg({n, l, GprocName}),
         HeartbeatInterval = pushy_util:get_env(pushy, heartbeat_interval, fun is_integer/1),
         DecayWindow = pushy_util:get_env(pushy, decay_window, ?DEFAULT_DECAY_INTERVAL, fun is_integer/1),
-        UpThresh   = pushy_util:get_env(push, up_threshold, ?DEFAULT_UP_THRESHOLD, any), %% TODO constrain to float
-        DownThresh = pushy_util:get_env(push, down_threshold, ?DEFAULT_DOWN_THRESHOLD, any), %% TODO constrain to float
+        UpThresh   = pushy_util:get_env(pushy, up_threshold, ?DEFAULT_UP_THRESHOLD, any), %% TODO constrain to float
+        DownThresh = pushy_util:get_env(pushy, down_threshold, ?DEFAULT_DOWN_THRESHOLD, any), %% TODO constrain to float
 
         State = #state{node_ref = NodeRef,
                        decay_window = DecayWindow,
@@ -155,7 +155,7 @@ handle_event({logging, Level}, StateName, State) ->
 handle_event(heartbeat,
             StateName,
             #state{node_ref=NodeRef, heartbeats_rcvd=HeartBeats, logging=Level, current_status=CurStatus, heartbeat_rate=HRate}=State) ->
-    nlog(Level, "Heartbeat received from ~p. Currently ~p", [NodeRef, CurStatus]),
+    nlog(Level, "Heartbeat received from ~p. Currently ~p / ~p", [NodeRef, CurStatus, HRate]),
     %% Note that we got a heartbeat
     State1 = State#state{
         heartbeat_rate=pushy_ema:inc(HRate,1),

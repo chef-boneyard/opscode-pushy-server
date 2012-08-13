@@ -59,7 +59,7 @@ handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
 handle_cast({create, {OrgId, NodeName}=NodeRef, ActorId, Status}, State) ->
-    lager:info("Creating node ~s to status ~s", [NodeRef, Status]),
+    lager:info("Creating node ~p to status ~p", [NodeRef, Status]),
     NodeStatus = pushy_object:new_record(pushy_node_status, OrgId,
                                          [{<<"node">>, NodeName},{<<"type">>, Status}]),
     NewState = case pushy_object:create_object(create_node_status, NodeStatus, ActorId) of
@@ -69,12 +69,12 @@ handle_cast({create, {OrgId, NodeName}=NodeRef, ActorId, Status}, State) ->
                        State;
                    {error, _Error} ->
                        %% TODO: retry here or something, we can't just drop the status on the floor...
-                       lager:info("Error updating node ~s to status ~s", [NodeName, Status]),
+                       lager:info("Error updating node ~p to status ~p", [NodeRef, Status]),
                        State
                end,
     {noreply, NewState};
 handle_cast({update, {OrgId, NodeName}=NodeRef, ActorId, Status}, State) ->
-    lager:info("Updating node ~s to status ~s", [NodeRef, Status]),
+    lager:info("Updating node ~p to status ~p", [NodeRef, Status]),
     NodeStatus = pushy_object:new_record(pushy_node_status, OrgId,
                                          [{<<"node">>, NodeName},{<<"type">>, Status}]),
     %% need to check that this update 'stuck'
