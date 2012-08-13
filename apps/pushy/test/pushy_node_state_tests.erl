@@ -9,10 +9,10 @@
 %%
 %% @doc simple FSM for tracking node heartbeats and thus up/down status
 %%
--module(pushy_node_state_exp_tests).
+-module(pushy_node_state_tests).
 
 -define(NODE, {<<"org">>, <<"thenode">>}).
--define(NS, pushy_node_state_exp).
+-define(NS, pushy_node_state).
 -define(GPROC_NAME, {heartbeat,<<"org">>,<<"thenode">>}).
 
 -define(HB_INTERVAL, 100).

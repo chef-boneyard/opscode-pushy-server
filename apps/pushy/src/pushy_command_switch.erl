@@ -190,7 +190,7 @@ process_message(State, Address, _Header, Body) ->
                           undefined -> noop;
                           _ -> pushy_job_state:node_execution_state_updated(JobId, NodeRef, NodeState)
                         end,
-                        pushy_node_state_exp:heartbeat(NodeRef)
+                        pushy_node_state:heartbeat(NodeRef)
                     end,
                     State2;
                 _Else ->

@@ -10,7 +10,7 @@
 %%
 %% @doc simple FSM for tracking node heartbeats and thus up/down status
 %%
--module(pushy_node_state_exp).
+-module(pushy_node_state).
 
 -behaviour(gen_fsm).
 
