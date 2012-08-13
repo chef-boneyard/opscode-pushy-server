@@ -221,15 +221,13 @@ code_change(_OldVsn, CurState, State, _Extra) ->
 %% Internal functions
 
 create_status_record(Status, #state{node_ref=NodeRef}=State) ->
-    {OrgId,NodeName} = NodeRef,
     notify_status_change(Status, State),
-    pushy_node_status_updater:create(OrgId, NodeName, ?POC_ACTOR_ID, Status),
+    pushy_node_status_updater:create(NodeRef, ?POC_ACTOR_ID, Status),
     State.
 
 update_status(Status, #state{node_ref=NodeRef}=State) ->
-    {OrgId,NodeName} = NodeRef,
     notify_status_change(Status, State),
-    pushy_node_status_updater:update(OrgId, NodeName, ?POC_ACTOR_ID, Status),
+    pushy_node_status_updater:update(NodeRef, ?POC_ACTOR_ID, Status),
     State.
 
 notify_status_change(Status, #state{node_ref=NodeRef,observers=Observers}) ->

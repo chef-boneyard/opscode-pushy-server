@@ -8,8 +8,8 @@
 
 %% API
 -export([start_link/1,
-         node_execution_state_updated/4,
-         node_execution_finished/4,
+         node_execution_state_updated/3,
+         node_execution_finished/3,
          get_job_state/1]).
 
 %% gen_fsm callbacks
@@ -21,6 +21,7 @@
      code_change/4]).
 
 -include_lib("eunit/include/eunit.hrl").
+-include_lib("pushy.hrl").
 -include_lib("pushy_sql.hrl").
 
 -record(state,
@@ -36,15 +37,15 @@
 start_link(Job) ->
     gen_fsm:start_link(?MODULE, Job, []).
 
-node_execution_state_updated(JobId, OrgId, NodeName, NewState) ->
-    lager:info("---------> job:node_execution_state_updated(~p, ~p -> ~p)", [JobId, NodeName, NewState]),
+node_execution_state_updated(JobId, NodeRef, NewState) ->
+    lager:info("---------> job:node_execution_state_updated(~p, ~p -> ~p)", [JobId, NodeRef, NewState]),
     Pid = pushy_job_state_sup:get_process(JobId),
-    gen_fsm:send_all_state_event(Pid, {node_execution_state_updated,OrgId,NodeName,NewState}).
+    gen_fsm:send_all_state_event(Pid, {node_execution_state_updated,NodeRef,NewState}).
 
-node_execution_finished(JobId, OrgId, NodeName, FinishedReason) ->
-    lager:info("---------> job:node_execution_finished(~p, ~p (~p))", [JobId, NodeName, FinishedReason]),
+node_execution_finished(JobId, NodeRef, FinishedReason) ->
+    lager:info("---------> job:node_execution_finished(~p, ~p (~p))", [JobId, NodeRef, FinishedReason]),
     Pid = pushy_job_state_sup:get_process(JobId),
-    gen_fsm:send_all_state_event(Pid, {node_execution_finished,OrgId,NodeName,FinishedReason}).
+    gen_fsm:send_all_state_event(Pid, {node_execution_finished,NodeRef,FinishedReason}).
 
 get_job_state(JobId) ->
     lager:info("---------> job:get_job_state(~p)", [JobId]),
@@ -87,11 +88,11 @@ init(#pushy_job{id = JobId} = Job) ->
 
 -spec handle_event(any(), job_status(), #state{}) ->
         {'next_state', job_status(), #state{}}.
-handle_event({node_execution_state_updated,OrgId,NodeName,NodeState},
+handle_event({node_execution_state_updated,NodeRef,NodeState},
     StateName, State) ->
-    update_node_execution_state(OrgId,NodeName,NodeState,undefined,StateName,State);
-handle_event({node_execution_finished,OrgId,NodeName,FinishedReason}, StateName, State) ->
-    update_node_execution_state(OrgId,NodeName,finished,FinishedReason,StateName,State);
+    update_node_execution_state(NodeRef,NodeState,undefined,StateName,State);
+handle_event({node_execution_finished,NodeRef,FinishedReason}, StateName, State) ->
+    update_node_execution_state(NodeRef,finished,FinishedReason,StateName,State);
 handle_event(_Event, StateName, State) ->
     {next_state, StateName, State}.
 
@@ -151,9 +152,9 @@ count_nodes_in_state(ExpectedStates, #state{job = Job}) ->
             end
         end, 0, Job#pushy_job.job_nodes).
 
--spec update_node_execution_state(object_id(), binary(), job_node_status(), binary(), job_status(), #state{}) ->
+-spec update_node_execution_state(node_ref(), job_node_status(), binary(), job_status(), #state{}) ->
     {'next_state', job_status(), #state{}}.
-update_node_execution_state(_OrgId,NodeName,NodeState,FinishedReason,StateName,
+update_node_execution_state({_OrgId,NodeName},NodeState,FinishedReason,StateName,
     #state{job=Job}=State) ->
     % TODO handle incorrect org id on node.
     % TODO handle missing node.

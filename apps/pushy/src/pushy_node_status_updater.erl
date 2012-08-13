@@ -12,8 +12,8 @@
 
 -export([start_link/0]).
 
--export([create/4,
-         update/4]).
+-export([create/3,
+         update/3]).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Exports
@@ -40,10 +40,10 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
-create(Org, Name, ActorId, Status) ->
-    gen_server:cast(?MODULE, {create, Org, Name, ActorId, Status}).
-update(Org, Name, ActorId, Status) ->
-    gen_server:cast(?MODULE, {update, Org, Name, ActorId, Status}).
+create(NodeRef, ActorId, Status) ->
+    gen_server:cast(?MODULE, {create, NodeRef, ActorId, Status}).
+update(NodeRef, ActorId, Status) ->
+    gen_server:cast(?MODULE, {update, NodeRef, ActorId, Status}).
 
 
 %% ------------------------------------------------------------------
@@ -58,10 +58,10 @@ init([]) ->
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
-handle_cast({create, Org, Name, ActorId, Status}, State) ->
-    lager:info("Creating node ~s to status ~s", [Name, Status]),
-    NodeStatus = pushy_object:new_record(pushy_node_status, Org,
-                                         [{<<"node">>, Name},{<<"type">>, Status}]),
+handle_cast({create, {OrgId, NodeName}=NodeRef, ActorId, Status}, State) ->
+    lager:info("Creating node ~s to status ~s", [NodeRef, Status]),
+    NodeStatus = pushy_object:new_record(pushy_node_status, OrgId,
+                                         [{<<"node">>, NodeName},{<<"type">>, Status}]),
     NewState = case pushy_object:create_object(create_node_status, NodeStatus, ActorId) of
                    {ok, _} -> State;
                    {conflict, _} ->
@@ -69,14 +69,14 @@ handle_cast({create, Org, Name, ActorId, Status}, State) ->
                        State;
                    {error, _Error} ->
                        %% TODO: retry here or something, we can't just drop the status on the floor...
-                       lager:info("Error updating node ~s to status ~s", [Name, Status]),
+                       lager:info("Error updating node ~s to status ~s", [NodeName, Status]),
                        State
                end,
     {noreply, NewState};
-handle_cast({update, Org, Name, ActorId, Status}, State) ->
-    lager:info("Updating node ~s to status ~s", [Name, Status]),
-    NodeStatus = pushy_object:new_record(pushy_node_status, Org,
-                                         [{<<"node">>, Name},{<<"type">>, Status}]),
+handle_cast({update, {OrgId, NodeName}=NodeRef, ActorId, Status}, State) ->
+    lager:info("Updating node ~s to status ~s", [NodeRef, Status]),
+    NodeStatus = pushy_object:new_record(pushy_node_status, OrgId,
+                                         [{<<"node">>, NodeName},{<<"type">>, Status}]),
     %% need to check that this update 'stuck'
     pushy_object:update_object(update_node_status, NodeStatus, ActorId),
     {noreply, State};

@@ -159,37 +159,38 @@ process_message(State, Address, _Header, Body) ->
             OrgId = pushy_object:fetch_org_id(OrgName),
 
             %% Every time we get a message from a node, we update it's Addr->Name mapping entry
-            State2 = addr_node_map_update(State, Address, {OrgId, NodeName}),
+            NodeRef = {OrgId, NodeName},
+            State2 = addr_node_map_update(State, Address, NodeRef),
             case Type of
                 % ready messages are not really used.
                 <<"ready">> ->
                     lager:info("Node [~p] ready to RAWK this command party.", [NodeName]),
                     State2;
                 <<"ack">> ->
-                    pushy_job_state:node_execution_state_updated(JobId, OrgId, NodeName, ready),
+                    pushy_job_state:node_execution_state_updated(JobId, NodeRef, ready),
                     State2;
                 <<"nack">> ->
-                    pushy_job_state:node_execution_finished(JobId, OrgId, NodeName, <<"nacked">>),
+                    pushy_job_state:node_execution_finished(JobId, NodeRef, <<"nacked">>),
                     State2;
                 <<"started">> ->
                     lager:info([{job_id, JobId}], "Node [~p] started running Job [~p]", [NodeName, JobId]),
-                    pushy_job_state:node_execution_state_updated(JobId, OrgId, NodeName, running),
+                    pushy_job_state:node_execution_state_updated(JobId, NodeRef, running),
                     State2;
                 <<"finished">> ->
                     lager:info([{job_id, JobId}], "Node [~p] finished running Job [~p]", [NodeName, JobId]),
-                    pushy_job_state:node_execution_finished(JobId, OrgId, NodeName, <<"complete">>),
+                    pushy_job_state:node_execution_finished(JobId, NodeRef, <<"complete">>),
                     State2;
                 <<"heartbeat">> ->
                     case node_state_to_atom(ej:get({<<"state">>}, Data)) of
                       unknown -> noop;
                       NodeState ->
-                        lager:info("Node [~p] sent a heartbeat in state [~p]", [NodeName, NodeState]),
+                        lager:info("Node [~p] sent a heartbeat in state [~p]", [NodeRef, NodeState]),
                         % idle state has no job id; don't try to send to job "undefined".
                         case JobId of
                           undefined -> noop;
-                          _ -> pushy_job_state:node_execution_state_updated(JobId, OrgId, NodeName, NodeState)
+                          _ -> pushy_job_state:node_execution_state_updated(JobId, NodeRef, NodeState)
                         end,
-                        pushy_node_state_exp:heartbeat({OrgId, NodeName})
+                        pushy_node_state_exp:heartbeat(NodeRef)
                     end,
                     State2;
                 _Else ->
