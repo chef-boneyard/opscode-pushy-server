@@ -24,10 +24,6 @@
 -export([start_watching/1,
          stop_watching/1]).
 
-%% Event handlers
--export([up/3,
-        down/3]).
-
 -define(SAVE_MODE, gen_server). % direct or gen_server
 -define(NO_NODE, {error, no_node}).
 
@@ -83,7 +79,7 @@ heartbeat(NodeRef) ->
 -spec current_state(node_ref()) -> any().
 current_state(NodeRef) ->
     Pid = pushy_node_state_sup:get_process(NodeRef),
-    gen_fsm:sync_send_event(Pid, current_state, infinity).
+    gen_fsm:sync_send_all_state_event(Pid, current_state, infinity).
 
 -spec set_logging(node_ref(), logging_level()) ->  gproc_error().
 set_logging(NodeRef, Level) when Level =:= verbose orelse Level =:= normal ->
@@ -138,15 +134,6 @@ init(NodeRef) ->
             {stop, shutdown, undefined}
     end.
 
-%%%
-%%% State machine internals
-%%%
-up(current_state, _From, #state{heartbeat_rate=HRate}=State) ->
-    {reply, {up, pushy_ema:value(HRate)}, up, State}.
-
-down(current_state, _From, #state{heartbeat_rate=HRate}=State) ->
-    {reply, {down, pushy_ema:value(HRate)}, down, State}.
-
 %%
 %% These events are handled the same for every state
 %%
@@ -180,6 +167,8 @@ handle_event(Event, StateName, #state{node_ref=NodeRef}=State) ->
     lager:error("FSM for ~p received unexpected event ~p", [NodeRef, Event]),
     {next_state, StateName, State}.
 
+handle_sync_event(current_state, _From, StateName,#state{heartbeat_rate=HRate}=State) ->
+    {reply, {StateName, pushy_ema:value(HRate)}, StateName, State};
 handle_sync_event(Event, _From, StateName, #state{node_ref=NodeRef}=State) ->
     lager:error("FSM for ~p received unexpected sync event ~p", [NodeRef, Event]),
     {reply, ignored, StateName, State}.
