@@ -49,7 +49,7 @@ eunit: compile
 	$(REBAR) eunit apps=pushy
 
 eunit_app: compile_app
-	$(REBAR) eunit apps=pushy
+	$(REBAR) eunit apps=pushy skip_deps=true
 
 test: eunit
 
