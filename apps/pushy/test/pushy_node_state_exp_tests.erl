@@ -13,6 +13,8 @@
 
 -define(NODE, {<<"org">>, <<"thenode">>}).
 -define(NS, pushy_node_state_exp).
+-define(GPROC_NAME, {heartbeat,<<"org">>,<<"thenode">>}).
+
 -define(HB_INTERVAL, 100).
 -define(DECAY_WINDOW, 4). %% 4 is friendly to base 2 float arith
 
@@ -39,7 +41,7 @@ init_test_() ->
                        {ok, Pid} = Result,
                        ?assert(is_pid(Pid)),
 
-                       NPid = gproc:lookup_pid({n,l,?NS:mk_gproc_name(?NODE)}),
+                       NPid = gproc:lookup_pid({n,l,?GPROC_NAME}),
                        ?assertEqual(NPid, Pid),
 
                        % cleanup code
@@ -76,7 +78,7 @@ heartbeat_test_() ->
               {"Check that we properly register ourselves",
                fun() ->
 
-                       NPid = gproc:lookup_pid({n,l,?NS:mk_gproc_name(?NODE)}),
+                       NPid = gproc:lookup_pid({n,l,?GPROC_NAME}),
                        ?assertEqual(NPid, Pid)
                end}
       end,

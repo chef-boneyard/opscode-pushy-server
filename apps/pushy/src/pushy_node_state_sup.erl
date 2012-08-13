@@ -6,11 +6,13 @@
 
 -behaviour(supervisor).
 
+-include_lib("pushy.hrl").
 -include_lib("pushy_sql.hrl").
 
 %% API
 -export([start_link/0,
-         new/1]).
+         get_process/1,
+         mk_gproc_name/1]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -30,9 +32,22 @@ start_link() ->
             Error
     end.
 
-new(Name) ->
-    lager:info("Creating Process For ~s", [Name]),
-    supervisor:start_child(?SERVER, [Name]).
+-spec get_process(node_ref()) -> pid().
+get_process(NodeRef) ->
+    GprocName = mk_gproc_name(NodeRef),
+    case catch gproc:lookup_pid({n,l,GprocName}) of
+        {'EXIT', _} ->
+            % Run start_child asynchronously; we only need to wait until the
+            % process registers itself before we can send it messages.
+            spawn(supervisor, start_child, [?SERVER, [NodeRef]]),
+            {Pid, _Value} = gproc:await({n,l,GprocName},1000),
+            Pid;
+        Pid -> Pid
+    end.
+
+-spec mk_gproc_name(node_ref()) -> {'heartbeat', org_id(), node_name()}.
+mk_gproc_name({OrgId, NodeName}) when is_binary(OrgId) andalso is_binary(NodeName) ->
+    {heartbeat, OrgId, NodeName}.
 
 %% ------------------------------------------------------------------
 %% supervisor Function Definitions
@@ -59,6 +74,6 @@ load_from_db() ->
 
 create_processes([]) ->
     {ok, done};
-create_processes([#pushy_node_status{node_name=NodeName} | Rest]) ->
-    new(NodeName),
+create_processes([#pushy_node_status{org_id=OrgId,node_name=NodeName} | Rest]) ->
+    get_process({OrgId, NodeName}),
     create_processes(Rest).

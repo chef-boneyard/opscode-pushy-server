@@ -8,3 +8,7 @@
           ctx :: any(),
           incarnation_id :: binary()
          }).
+
+-type node_name() :: binary().
+-type org_id() :: binary().
+-type node_ref() :: {org_id(), node_name()}.
