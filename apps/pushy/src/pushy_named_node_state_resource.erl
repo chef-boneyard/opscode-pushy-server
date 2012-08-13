@@ -44,17 +44,11 @@ content_types_provided(Req, State) ->
     {[{"application/json", to_json}], Req, State}.
 
 to_json(Req, #config_state{organization_guid=OrgId}=State) ->
-
-    NodeName = wrq:path_info(node_name, Req),
-    {ok, StatusList} = pushy_sql:fetch_node_status(OrgId, NodeName),
-
-    ConfigurationStruct = [node_to_json_struct(E) || E <- StatusList],
-    ConfigurationJson = ejson:encode(ConfigurationStruct),
-    {ConfigurationJson, Req, State}.
-
-node_to_json_struct(#pushy_node_status{node_name=Name, status=Status, updated_at=UpdatedAt}) ->
-    UpdatedAtDate =  iolist_to_binary(httpd_util:rfc1123_date(UpdatedAt)),
-    {[ {<<"node_name">>, Name},
-       {<<"status">>, Status},
-       {<<"updated_at">>, UpdatedAtDate}
-     ]}.
+    NodeName = list_to_binary(wrq:path_info(node_name, Req)),
+    % TODO handle missing node
+    {NodeState, _} = pushy_node_state:current_state({OrgId, NodeName}),
+    Result = ejson:encode({[
+        {<<"node_name">>, NodeName},
+        {<<"status">>, NodeState}
+    ]}),
+    {Result, Req, State}.
