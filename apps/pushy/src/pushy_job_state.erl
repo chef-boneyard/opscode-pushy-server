@@ -47,7 +47,7 @@ node_execution_finished(JobId, OrgId, NodeName, FinishedReason) ->
     gen_fsm:send_all_state_event(Pid, {node_execution_finished,OrgId,NodeName,FinishedReason}).
 
 get_job_state(JobId) ->
-    lager:info("---------> job:get_job_status(~p)", [JobId]),
+    lager:info("---------> job:get_job_state(~p)", [JobId]),
     Pid = pushy_job_state_sup:get_process(JobId),
     gen_fsm:sync_send_all_state_event(Pid, {get_job_status}).
 
