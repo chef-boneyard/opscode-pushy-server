@@ -67,8 +67,8 @@ init(#pushy_job{id = JobId} = Job) ->
         %% assigned before anyone else tries to start things up gproc:reg can only return
         %% true or throw
         true = gproc:reg({n, l, JobId}),
-        {next_state, voting, State2} = set_state(voting, State),
-        {ok, voting, State2}
+        {next_state, ResultState, State2} = set_state(voting, State),
+        {ok, ResultState, State2}
     catch
         error:badarg ->
             %% When we start up from a previous run, we have two ways that the FSM might be started;
