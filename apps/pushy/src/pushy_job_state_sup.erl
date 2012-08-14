@@ -9,14 +9,15 @@
 %% API
 -export([start_link/0,
          start/1,
-         get_process/1]).
+         get_process/1,
+         register_process/1]).
 
 %% Supervisor callbacks
 -export([init/1]).
 
 -define(SERVER, ?MODULE).
 
--type job_id() :: binary().
+-include_lib("pushy_sql.hrl").
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
@@ -28,18 +29,30 @@ start_link() ->
 start(Job) ->
     supervisor:start_child(?SERVER, [Job]).
 
--spec get_process(job_id()) -> pid().
+-spec get_process(object_id()) -> pid() | not_found.
 get_process(JobId) ->
-    gproc:lookup_pid({n,l,JobId}).
-    % TODO this is what we'll need to do when jobs can be loaded from the DB.
-    %case catch gproc:lookup_pid({n,l,JobId}) of
-    %    {'EXIT', _} ->
-    %        case supervisor:start_child(?SERVER, [JobId]) of
-    %            {error,{already_started,Pid}} -> Pid;
-    %            {ok,Pid} -> Pid
-    %        end;
-    %    Pid -> Pid
-    %end.
+    try
+        gproc:lookup_pid({n,l,JobId})
+    catch
+        error:badarg -> not_found
+    end.
+
+-spec register_process(object_id()) -> pid().
+register_process(JobId) ->
+    try
+        %% The most important thing to have happen is this registration; we need to get this
+        %% assigned before anyone else tries to start things up gproc:reg can only return
+        %% true or throw
+        true = gproc:reg({n, l, JobId}),
+        true
+    catch
+        error:badarg ->
+            % This happens when registration fails.  Shut this puppy down, the
+            % caller will take care of it!
+            lager:error("Failed to register job ~p for PID ~p (already exists as ~p?)",
+                        [JobId,self(), gproc:lookup_pid({n,l,JobId}) ]),
+            false
+    end.
 
 %% ------------------------------------------------------------------
 %% supervisor Function Definitions

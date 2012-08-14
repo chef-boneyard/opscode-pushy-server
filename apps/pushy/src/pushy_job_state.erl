@@ -32,25 +32,29 @@
 %%%
 %%% External API
 %%%
--spec start_link(#pushy_job{}) ->
-                        'ignore' | {'error',_} | {'ok',pid()}.
+-spec start_link(#pushy_job{}) -> 'ignore' | {'error',_} | {'ok',pid()}.
 start_link(Job) ->
     gen_fsm:start_link(?MODULE, Job, []).
 
+-spec node_execution_state_updated(object_id(), node_ref(), job_node_status()) -> ok.
 node_execution_state_updated(JobId, NodeRef, NewState) ->
     lager:info("---------> job:node_execution_state_updated(~p, ~p -> ~p)", [JobId, NodeRef, NewState]),
     Pid = pushy_job_state_sup:get_process(JobId),
     gen_fsm:send_all_state_event(Pid, {node_execution_state_updated,NodeRef,NewState}).
 
+-spec node_execution_finished(object_id(), node_ref(), job_node_finished_reason()) -> ok.
 node_execution_finished(JobId, NodeRef, FinishedReason) ->
     lager:info("---------> job:node_execution_finished(~p, ~p (~p))", [JobId, NodeRef, FinishedReason]),
     Pid = pushy_job_state_sup:get_process(JobId),
     gen_fsm:send_all_state_event(Pid, {node_execution_finished,NodeRef,FinishedReason}).
 
+-spec get_job_state(object_id()) -> #pushy_job{} | not_found.
 get_job_state(JobId) ->
     lager:info("---------> job:get_job_state(~p)", [JobId]),
-    Pid = pushy_job_state_sup:get_process(JobId),
-    gen_fsm:sync_send_all_state_event(Pid, {get_job_status}).
+    case pushy_job_state_sup:get_process(JobId) of
+        not_found -> not_found;
+        Pid -> gen_fsm:sync_send_all_state_event(Pid, get_job_status)
+    end.
 
 
 %
@@ -58,28 +62,16 @@ get_job_state(JobId) ->
 % and a 'lower half' that takes care of things that can wait
 %
 -spec init(#pushy_job{}) ->
-    {'ok', 'voting', #state{}} |
+    {'ok', job_status(), #state{}} |
     {'stop', 'shutdown', #state{}}.
 init(#pushy_job{id = JobId} = Job) ->
-    State = #state{job = Job},
-    try
-        %% The most important thing to have happen is this registration; we need to get this
-        %% assigned before anyone else tries to start things up gproc:reg can only return
-        %% true or throw
-        true = gproc:reg({n, l, JobId}),
-        {next_state, ResultState, State2} = set_state(voting, State),
-        {ok, ResultState, State2}
-    catch
-        error:badarg ->
-            %% When we start up from a previous run, we have two ways that the FSM might be started;
-            %% from an incoming packet, or the database record for a prior run
-            %% There may be some nasty race conditions surrounding this.
-            %% We may also want to *not* automatically reanimate FSMs for nodes that aren't
-            %% actively reporting; but rather keep them in a 'limbo' waiting for the first
-            %% packet, and if one doesn't arrive within a certain time mark them down.
-            lager:error("Failed to register:~p for ~p (already exists as ~p?)",
-                        [JobId,self(), gproc:lookup_pid({n,l,JobId}) ]),
-            {stop, shutdown, State}
+    case pushy_job_state_sup:register_process(JobId) of
+        true ->
+            State = #state{job = Job},
+            {next_state, ResultState, State2} = set_state(voting, State),
+            {ok, ResultState, State2};
+        false ->
+            {stop, shutdown, undefined}
     end.
 
 %
@@ -98,7 +90,7 @@ handle_event(_Event, StateName, State) ->
 
 -spec handle_sync_event(any(), any(), job_status(), #state{}) ->
         {'reply', 'ok', job_status(), #state{}}.
-handle_sync_event({get_job_status}, _From, StateName, #state{job = Job} = State) ->
+handle_sync_event(get_job_status, _From, StateName, #state{job = Job} = State) ->
     {reply, Job, StateName, State};
 handle_sync_event(_Event, _From, StateName, State) ->
     {reply, ok, StateName, State}.
