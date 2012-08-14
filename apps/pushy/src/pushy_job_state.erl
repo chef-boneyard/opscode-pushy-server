@@ -152,10 +152,11 @@ count_nodes_in_state(ExpectedStates, #state{job = Job}) ->
             end
         end, 0, Job#pushy_job.job_nodes).
 
--spec update_node_execution_state(node_ref(), job_node_status(), binary(), job_status(), #state{}) ->
+-spec update_node_execution_state(node_ref(), job_node_status(), finished_reason(), job_status(), #state{}) ->
     {'next_state', job_status(), #state{}}.
 update_node_execution_state({_OrgId,NodeName},NodeState,FinishedReason,StateName,
     #state{job=Job}=State) ->
+    lager:info("JOB NODE ~p -> ~p (~p)", [NodeName, NodeState, FinishedReason]),
     % TODO handle incorrect org id on node.
     % TODO handle missing node.
     % TODO handle invalid transitions.

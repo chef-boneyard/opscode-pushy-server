@@ -21,6 +21,9 @@
                            running |
                            finished. % DONE
 
+-type finished_reason() :: nacked |
+                           complete.
+
 %% random PoC hard-codings
 -define(POC_ORG_ID, <<"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa">>).
 -define(POC_ORG_NAME, <<"pushy">>).
@@ -39,7 +42,7 @@
                          'org_id'::object_id(),              % organization guid
                          'node_name'::binary(),              % node name
                          'status'::job_node_status(),        % node's status in context of job
-                         'finished_reason'::binary(),        % reason node is finished with job (success, nack, etc.)
+                         'finished_reason'::finished_reason(), % reason node is finished with job (success, nack, etc.)
                          'created_at'::calendar:datetime(),  % time created at
                          'updated_at'::calendar:datetime()   % time updated at
                          }).

@@ -170,7 +170,7 @@ process_message(State, Address, _Header, Body) ->
                     pushy_job_state:node_execution_state_updated(JobId, NodeRef, ready),
                     State2;
                 <<"nack">> ->
-                    pushy_job_state:node_execution_finished(JobId, NodeRef, <<"nacked">>),
+                    pushy_job_state:node_execution_finished(JobId, NodeRef, nacked),
                     State2;
                 <<"started">> ->
                     lager:info([{job_id, JobId}], "Node [~p] started running Job [~p]", [NodeName, JobId]),
@@ -178,7 +178,7 @@ process_message(State, Address, _Header, Body) ->
                     State2;
                 <<"finished">> ->
                     lager:info([{job_id, JobId}], "Node [~p] finished running Job [~p]", [NodeName, JobId]),
-                    pushy_job_state:node_execution_finished(JobId, NodeRef, <<"complete">>),
+                    pushy_job_state:node_execution_finished(JobId, NodeRef, complete),
                     State2;
                 <<"heartbeat">> ->
                     case node_state_to_atom(ej:get({<<"state">>}, Data)) of
