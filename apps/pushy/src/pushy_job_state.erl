@@ -180,7 +180,7 @@ update_node_execution_state({_OrgId,NodeName},NodeState,FinishedReason,StateName
     {'next_state', job_status(), #state{}}.
 set_state(voting, #state{job = Job} = State) ->
     lager:info("JOB -> voting"),
-    send_message_to_all_nodes(<<"job_command">>, [{command, Job#pushy_job.command}], State),
+    send_message_to_all_nodes(<<"job_command">>, State),
     Job2 = Job#pushy_job{status = voting},
     State2 = State#state{job = Job2},
     detect_aggregate_state_change(voting, State2);
@@ -188,7 +188,7 @@ set_state(running, #state{job = Job} = State) ->
     lager:info("JOB -> running"),
     % There is really no reason not to TRY sending the message to idle, running
     % or nacked nodes, so we send to everybody.  The worst they could say is no.
-    send_message_to_all_nodes(<<"job_execute">>, [], State),
+    send_message_to_all_nodes(<<"job_execute">>, State),
     Job2 = Job#pushy_job{status = running},
     State2 = State#state{job = Job2},
     detect_aggregate_state_change(running, State2);
@@ -198,9 +198,8 @@ set_state(finished, #state{job = Job} = State) ->
     State2 = State#state{job = Job2},
     {next_state, finished, State2}.
 
--spec send_message_to_all_nodes(binary(), list({atom(), any()}), #state{}) -> 'ok'.
+-spec send_message_to_all_nodes(binary(), #state{}) -> 'ok'.
 send_message_to_all_nodes(Type,
-                          ExtraData,
                           #state{job = Job}) ->
     #pushy_job{id = JobId, org_id = OrgId, job_nodes = JobNodes} = Job,
     NodeNames = [ JobNode#pushy_job_node.node_name || JobNode <- JobNodes],
@@ -208,6 +207,7 @@ send_message_to_all_nodes(Type,
     Message = [
         {type, Type},
         {job_id, JobId},
-        {server, list_to_binary(Host)}
-    ] ++ ExtraData,
+        {server, list_to_binary(Host)},
+        {command, Job#pushy_job.command}
+    ],
     pushy_command_switch:send_multi_command(OrgId, NodeNames, jiffy:encode({Message})).
