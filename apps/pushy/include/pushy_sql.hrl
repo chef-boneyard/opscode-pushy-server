@@ -21,8 +21,11 @@
                            running |
                            finished. % DONE
 
--type finished_reason() :: nacked |
-                           complete.
+-type job_finished_reason() :: quorum_failed |
+                               complete.
+
+-type job_node_finished_reason() :: nacked |
+                                    complete.
 
 %% random PoC hard-codings
 -define(POC_ORG_ID, <<"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa">>).
@@ -42,7 +45,7 @@
                          'org_id'::object_id(),              % organization guid
                          'node_name'::binary(),              % node name
                          'status'::job_node_status(),        % node's status in context of job
-                         'finished_reason'::finished_reason(), % reason node is finished with job (success, nack, etc.)
+                         'finished_reason'::job_node_finished_reason(), % reason node is finished with job (success, nack, etc.)
                          'created_at'::calendar:datetime(),  % time created at
                          'updated_at'::calendar:datetime()   % time updated at
                          }).
@@ -51,6 +54,7 @@
                     'org_id'::object_id(),              % organization guid
                     'command'::binary(),                % command to execute
                     'status'::job_status(),             % job status
+                    'finished_reason'::job_finished_reason(), % reason job is finished (quorum_failed, complete, etc.)
                     'duration'::non_neg_integer(),      % max duration (in minutes) to allow execution
                     'job_nodes' ::[#pushy_job_node{}],
                     'last_updated_by'::object_id(),     % authz guid of last actor to update

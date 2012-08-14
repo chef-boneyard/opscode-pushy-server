@@ -125,34 +125,40 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 -spec detect_aggregate_state_change(job_status(), #state{}) ->
     {'next_state', job_status(), #state{}}.
 detect_aggregate_state_change(voting, State) ->
-    % We don't yet handle nacks or quorum, so we just check whether any nodes
-    % are not yet associated with the job.
-    case count_nodes_in_state([new], State) of
-        0 -> set_state(running, State);
-        _ -> {next_state, voting, State}
+    {New, _Ready, _Running, Finished} = count_nodes(State),
+    if
+        % If any nodes are finished, quorum fails.
+        Finished > 0 -> set_state(finished, quorum_failed, State);
+        % If any nodes are new, we're not yet ready.
+        New > 0 -> {next_state, voting, State};
+        % Otherwise, all remaining nodes are ready/running, and we can proceed.
+        true -> set_state(running, State)
     end;
 detect_aggregate_state_change(running, State) ->
     % If any node is unfinished, we are unfinished.
-    case count_nodes_in_state([new, ready, running], State) of
-        0 -> set_state(finished, State);
-        _ -> {next_state, running, State}
+    {New, Ready, Running, _Finished} = count_nodes(State),
+    if
+        New+Ready+Running > 0 -> {next_state, running, State};
+        true -> set_state(finished, complete, State)
     end;
 detect_aggregate_state_change(finished, State) ->
     % Homey don't change state.
     {next_state, finished, State}.
 
--spec count_nodes_in_state([job_node_status()], #state{}) ->
+-spec count_nodes(#state{}) ->
     integer().
-count_nodes_in_state(ExpectedStates, #state{job = Job}) ->
+count_nodes(#state{job = Job}) ->
     lists:foldl(
-        fun(#pushy_job_node{status = NodeState},AccIn) ->
-            AccIn + case lists:member(NodeState, ExpectedStates) of
-                true -> 1;
-                _ -> 0
+        fun(#pushy_job_node{status = NodeState},{New, Ready, Running, Finished}) ->
+            case NodeState of
+                new -> {New+1, Ready, Running, Finished};
+                ready -> {New, Ready+1, Running, Finished};
+                running -> {New, Ready, Running+1, Finished};
+                finished -> {New, Ready, Running, Finished+1}
             end
-        end, 0, Job#pushy_job.job_nodes).
+        end, {0, 0, 0, 0}, Job#pushy_job.job_nodes).
 
--spec update_node_execution_state(node_ref(), job_node_status(), finished_reason(), job_status(), #state{}) ->
+-spec update_node_execution_state(node_ref(), job_node_status(), job_node_finished_reason(), job_status(), #state{}) ->
     {'next_state', job_status(), #state{}}.
 update_node_execution_state({_OrgId,NodeName},NodeState,FinishedReason,StateName,
     #state{job=Job}=State) ->
@@ -191,18 +197,18 @@ set_state(running, #state{job = Job} = State) ->
     send_message_to_all_nodes(<<"job_execute">>, State),
     Job2 = Job#pushy_job{status = running},
     State2 = State#state{job = Job2},
-    detect_aggregate_state_change(running, State2);
-set_state(finished, #state{job = Job} = State) ->
+    detect_aggregate_state_change(running, State2).
+
+set_state(finished, FinishedReason, #state{job = Job} = State) ->
     lager:info("JOB -> finished"),
-    Job2 = Job#pushy_job{status = finished},
+    Job2 = Job#pushy_job{status = finished, finished_reason = FinishedReason},
     State2 = State#state{job = Job2},
     {next_state, finished, State2}.
 
 -spec send_message_to_all_nodes(binary(), #state{}) -> 'ok'.
-send_message_to_all_nodes(Type,
-                          #state{job = Job}) ->
-    #pushy_job{id = JobId, org_id = OrgId, job_nodes = JobNodes} = Job,
-    NodeNames = [ JobNode#pushy_job_node.node_name || JobNode <- JobNodes],
+send_message_to_all_nodes(Type, #state{job = Job}) ->
+    #pushy_job{id = JobId, org_id = OrgId} = Job,
+    NodeNames = [ JobNode#pushy_job_node.node_name || JobNode <- Job#pushy_job.job_nodes ],
     Host = pushy_util:get_env(pushy, server_name, fun is_list/1),
     Message = [
         {type, Type},

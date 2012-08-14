@@ -72,6 +72,7 @@ job_to_json(#pushy_job{
     id = Id,
     command = Command,
     status = Status,
+    finished_reason = Reason,
 %    duration = Duration,
 %    created_at = CreatedAt,
 %    updated_at = UpdatedAt,
@@ -82,7 +83,7 @@ job_to_json(#pushy_job{
     NodesJson = job_nodes_json_by_status(Nodes),
     {[ {<<"id">>, iolist_to_binary(Id)},
        {<<"command">>, iolist_to_binary(Command)},
-       {<<"status">>, atom_to_binary(Status, utf8)},
+       {<<"status">>, atom_to_binary(case Status of finished -> Reason; _ -> Status end, utf8)},
        {<<"duration">>, 300},
        {<<"nodes">>, NodesJson}
 %       {<<"created_at">>, CreatedAtDate},
