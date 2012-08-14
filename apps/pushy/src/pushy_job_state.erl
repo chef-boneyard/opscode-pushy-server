@@ -68,7 +68,7 @@ init(#pushy_job{id = JobId} = Job) ->
     case pushy_job_state_sup:register_process(JobId) of
         true ->
             State = #state{job = Job},
-            {next_state, ResultState, State2} = set_state(voting, State),
+            {next_state, ResultState, State2} = set_state(voting, undefined, State),
             {ok, ResultState, State2};
         false ->
             {stop, shutdown, undefined}
@@ -124,7 +124,7 @@ detect_aggregate_state_change(voting, State) ->
         % If any nodes are new, we're not yet ready.
         New > 0 -> {next_state, voting, State};
         % Otherwise, all remaining nodes are ready/running, and we can proceed.
-        true -> set_state(running, State)
+        true -> set_state(running, undefined, State)
     end;
 detect_aggregate_state_change(running, State) ->
     % If any node is unfinished, we are unfinished.
@@ -152,9 +152,9 @@ count_nodes(#state{job = Job}) ->
 
 -spec update_node_execution_state(node_ref(), job_node_status(), job_node_finished_reason(), job_status(), #state{}) ->
     {'next_state', job_status(), #state{}}.
-update_node_execution_state({_OrgId,NodeName},NodeState,FinishedReason,StateName,
+update_node_execution_state({_OrgId,NodeName}=NodeRef,NodeState,FinishedReason,StateName,
     #state{job=Job}=State) ->
-    lager:info("JOB NODE ~p -> ~p (~p)", [NodeName, NodeState, FinishedReason]),
+    lager:info("JOB NODE ~p -> ~p (~p)", [NodeRef, NodeState, FinishedReason]),
     % TODO handle incorrect org id on node.
     % TODO handle missing node.
     % TODO handle invalid transitions.
@@ -171,43 +171,45 @@ update_node_execution_state({_OrgId,NodeName},NodeState,FinishedReason,StateName
     ],
     Job2 = Job#pushy_job{job_nodes = JobNodes2},
     State2 = State#state{job = Job2},
-    detect_aggregate_state_change(StateName,State2).
+    kick_node_towards_desired_state(StateName, Job, NodeRef, NodeState),
+    detect_aggregate_state_change(StateName, State2).
 
 % Called on transition to a new state
--spec set_state(job_status(), #state{}) ->
+-spec set_state(job_status(), job_finished_reason(), #state{}) ->
     {'next_state', job_status(), #state{}}.
-set_state(voting, #state{job = Job} = State) ->
-    lager:info("JOB -> voting"),
-    send_message_to_all_nodes(<<"job_command">>, State),
-    Job2 = Job#pushy_job{status = voting},
+set_state(StateName, FinishedReason, #state{job = Job} = State) ->
+    lager:info("JOB -> ~p (~p)", [StateName, FinishedReason]),
+    Job2 = Job#pushy_job{status = StateName, finished_reason = FinishedReason},
     State2 = State#state{job = Job2},
-    detect_aggregate_state_change(voting, State2);
-set_state(running, #state{job = Job} = State) ->
-    lager:info("JOB -> running"),
-    % There is really no reason not to TRY sending the message to idle, running
-    % or nacked nodes, so we send to everybody.  The worst they could say is no.
-    send_message_to_all_nodes(<<"job_execute">>, State),
-    Job2 = Job#pushy_job{status = running},
-    State2 = State#state{job = Job2},
-    detect_aggregate_state_change(running, State2).
+    kick_nodes_towards_desired_state(StateName, Job2, Job2#pushy_job.job_nodes),
+    detect_aggregate_state_change(StateName, State2).
 
-set_state(finished, FinishedReason, #state{job = Job} = State) ->
-    lager:info("JOB -> finished"),
-    % If we finished for any other reason than all tasks completing, we abort all nodes
-    % in the job.  Nodes are required to ignore aborts for jobs they aren't running,
-    % so this can't cause a problem.
-    case FinishedReason of
-        complete -> noop;
-        _ -> send_message_to_all_nodes(<<"job_abort">>, State)
-    end,
-    Job2 = Job#pushy_job{status = finished, finished_reason = FinishedReason},
-    State2 = State#state{job = Job2},
-    {next_state, finished, State2}.
+-spec kick_nodes_towards_desired_state(job_status(), #pushy_job{}, #state{}) -> 'ok'.
+kick_nodes_towards_desired_state(_StateName, _Job, []) ->
+    ok;
+kick_nodes_towards_desired_state(StateName, Job, [
+        #pushy_job_node{org_id = OrgId, node_name = NodeName, status = Status}|JobNodes]) ->
+    kick_node_towards_desired_state(StateName, Job, {OrgId, NodeName}, Status),
+    kick_nodes_towards_desired_state(StateName, Job, JobNodes).
 
--spec send_message_to_all_nodes(binary(), #state{}) -> 'ok'.
-send_message_to_all_nodes(Type, #state{job = Job}) ->
-    #pushy_job{id = JobId, org_id = OrgId} = Job,
-    NodeNames = [ JobNode#pushy_job_node.node_name || JobNode <- Job#pushy_job.job_nodes ],
+-spec kick_node_towards_desired_state(job_status(), #pushy_job{}, node_ref(), job_node_status()) -> 'ok'.
+kick_node_towards_desired_state(voting, Job, NodeRef, new) ->
+    send_message(<<"job_command">>, Job, NodeRef);
+kick_node_towards_desired_state(running, Job, NodeRef, new) ->
+    send_message(<<"job_command">>, Job, NodeRef);
+kick_node_towards_desired_state(running, Job, NodeRef, ready) ->
+    send_message(<<"job_execute">>, Job, NodeRef);
+kick_node_towards_desired_state(finished, Job, NodeRef, ready) ->
+    send_message(<<"job_abort">>, Job, NodeRef);
+kick_node_towards_desired_state(finished, Job, NodeRef, running) ->
+    send_message(<<"job_abort">>, Job, NodeRef);
+kick_node_towards_desired_state(_, _, _, _) ->
+    % Nobody else gets kicked; they are at or beyond where they need to be.
+    ok.
+
+-spec send_message(binary(), #state{}, node_ref()) -> 'ok'.
+send_message(Type, #pushy_job{id = JobId} = Job, {OrgId, NodeName}) ->
+    lager:info("Kicking node ~p with ~p", [NodeName, Type]),
     Host = pushy_util:get_env(pushy, server_name, fun is_list/1),
     Message = [
         {type, Type},
@@ -215,4 +217,4 @@ send_message_to_all_nodes(Type, #state{job = Job}) ->
         {server, list_to_binary(Host)},
         {command, Job#pushy_job.command}
     ],
-    pushy_command_switch:send_multi_command(OrgId, NodeNames, jiffy:encode({Message})).
+    pushy_command_switch:send_command(OrgId, NodeName, jiffy:encode({Message})).

@@ -127,9 +127,9 @@ do_receive(CommandSock, Frame, State) ->
 do_send(#state{addr_node_map = AddrNodeMap,
                command_sock = CommandSocket,
                private_key = PrivateKey}=State,
-        OrgId, Node, Message) ->
-    Address = addr_node_map_lookup_by_node(AddrNodeMap, {OrgId, Node}),
-    push_messaging:send_message(CommandSocket, [Address,
+        OrgId, NodeName, Message) ->
+    Address = addr_node_map_lookup_by_node(AddrNodeMap, {OrgId, NodeName}),
+    pushy_messaging:send_message(CommandSocket, [Address,
         ?TIME_IT(pushy_util, signed_header_from_message, (PrivateKey, Message)),
         Message]),
     State.
@@ -137,11 +137,11 @@ do_send(#state{addr_node_map = AddrNodeMap,
 do_send_multi(#state{addr_node_map = AddrNodeMap,
                      command_sock = CommandSocket,
                      private_key = PrivateKey}=State,
-              OrgId, Nodes, Message) ->
+              OrgId, NodeNames, Message) ->
     FrameList = [
         ?TIME_IT(pushy_util, signed_header_from_message, (PrivateKey, Message)), Message],
     % TODO if you communicate with a node that doesn't exist, don't just fail, dude
-    AddressList = [addr_node_map_lookup_by_node(AddrNodeMap, {OrgId, Node}) || Node <- Nodes],
+    AddressList = [addr_node_map_lookup_by_node(AddrNodeMap, {OrgId, NodeName}) || NodeName <- NodeNames],
     pushy_messaging:send_message_multi(CommandSocket, AddressList, FrameList),
     State.
 
