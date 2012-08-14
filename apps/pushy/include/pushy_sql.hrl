@@ -21,11 +21,13 @@
                            running |
                            finished. % DONE
 
--type job_finished_reason() :: quorum_failed |
-                               complete.
+-type job_finished_reason() :: complete |
+                               quorum_failed.
 
--type job_node_finished_reason() :: nacked |
-                                    complete.
+-type job_node_finished_reason() :: complete |
+                                    nacked |
+                                    aborted_while_ready |
+                                    aborted_while_running.
 
 %% random PoC hard-codings
 -define(POC_ORG_ID, <<"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa">>).

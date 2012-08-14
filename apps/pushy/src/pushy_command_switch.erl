@@ -176,9 +176,17 @@ process_message(State, Address, _Header, Body) ->
                     lager:info([{job_id, JobId}], "Node [~p] started running Job [~p]", [NodeName, JobId]),
                     pushy_job_state:node_execution_state_updated(JobId, NodeRef, running),
                     State2;
-                <<"finished">> ->
-                    lager:info([{job_id, JobId}], "Node [~p] finished running Job [~p]", [NodeName, JobId]),
+                <<"complete">> ->
+                    lager:info([{job_id, JobId}], "Node [~p] completed running Job [~p]", [NodeName, JobId]),
                     pushy_job_state:node_execution_finished(JobId, NodeRef, complete),
+                    State2;
+                <<"aborted_while_ready">> ->
+                    lager:info([{job_id, JobId}], "Node [~p] aborted while in ready state for Job [~p]", [NodeName, JobId]),
+                    pushy_job_state:node_execution_finished(JobId, NodeRef, aborted_while_ready),
+                    State2;
+                <<"aborted_while_running">> ->
+                    lager:info([{job_id, JobId}], "Node [~p] aborted while running Job [~p]", [NodeName, JobId]),
+                    pushy_job_state:node_execution_finished(JobId, NodeRef, aborted_while_running),
                     State2;
                 <<"heartbeat">> ->
                     case node_state_to_atom(ej:get({<<"state">>}, Data)) of

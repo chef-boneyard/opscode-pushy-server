@@ -201,6 +201,13 @@ set_state(running, #state{job = Job} = State) ->
 
 set_state(finished, FinishedReason, #state{job = Job} = State) ->
     lager:info("JOB -> finished"),
+    % If we finished for any other reason than all tasks completing, we abort all nodes
+    % in the job.  Nodes are required to ignore aborts for jobs they aren't running,
+    % so this can't cause a problem.
+    case FinishedReason of
+        complete -> noop;
+        _ -> send_message_to_all_nodes(<<"job_abort">>, State)
+    end,
     Job2 = Job#pushy_job{status = finished, finished_reason = FinishedReason},
     State2 = State#state{job = Job2},
     {next_state, finished, State2}.
