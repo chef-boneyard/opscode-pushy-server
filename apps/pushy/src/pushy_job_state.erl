@@ -26,7 +26,8 @@
 
 -record(state,
         {
-            job         :: #pushy_job{}
+            job            :: #pushy_job{},
+            up_down_status :: dict() % dict(node_name(), node_status())
         }).
 
 %%%
@@ -64,15 +65,30 @@ get_job_state(JobId) ->
 -spec init(#pushy_job{}) ->
     {'ok', job_status(), #state{}} |
     {'stop', 'shutdown', #state{}}.
-init(#pushy_job{id = JobId} = Job) ->
+init(#pushy_job{id = JobId, job_nodes = JobNodes} = Job) ->
     case pushy_job_state_sup:register_process(JobId) of
         true ->
-            State = #state{job = Job},
+            State = #state{
+                job = Job,
+                up_down_status = initialize_up_down(JobNodes)
+            },
             {next_state, ResultState, State2} = set_state(voting, undefined, State),
             {ok, ResultState, State2};
         false ->
             {stop, shutdown, undefined}
     end.
+
+initialize_up_down(JobNodes) ->
+    dict:from_list(
+        [ {NodeName, initialize_node_up_down({OrgId, NodeName})}
+            || #pushy_job_node{org_id = OrgId, node_name = NodeName} <- JobNodes ]
+    ).
+
+% TODO consider not watching nodes in finished state.
+initialize_node_up_down(NodeRef) ->
+    pushy_node_state:start_watching(NodeRef),
+    {NodeUpDown, _} = pushy_node_state:current_state(NodeRef),
+    NodeUpDown.
 
 %
 % Events
@@ -97,6 +113,12 @@ handle_sync_event(_Event, _From, StateName, State) ->
 
 -spec handle_info(any(), job_status(), #state{}) ->
         {'next_state', job_status(), #state{}}.
+handle_info({node_state_change, {_OrgId, NodeName}=NodeRef, {NodeUpDown, _}},
+            StateName, #state{job = Job, up_down_status = UpDown} = State) ->
+    % TODO only do this if it changes, not all the time
+    dict:store(NodeName, NodeUpDown, UpDown),
+    kick_node_towards_desired_state(StateName, Job, NodeRef),
+    detect_aggregate_state_change(StateName, State);
 handle_info(_Info, StateName, State) ->
     {next_state, StateName, State}.
 
@@ -116,39 +138,45 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 % or not.
 -spec detect_aggregate_state_change(job_status(), #state{}) ->
     {'next_state', job_status(), #state{}}.
-detect_aggregate_state_change(voting, State) ->
-    {New, _Ready, _Running, Finished} = count_nodes(State),
+detect_aggregate_state_change(voting, #state{job = Job, up_down_status = UpDown}=State) ->
+    {NewAndUp, WontBeReady} = lists:foldl(
+        fun(#pushy_job_node{node_name = NodeName, status = NodeState},{NewAndUp, WontBeReady}) ->
+            case NodeState of
+                finished -> {NewAndUp, WontBeReady+1};
+                new -> case dict:fetch(NodeName, UpDown) of
+                           up -> {NewAndUp+1, WontBeReady};
+                           down -> {NewAndUp, WontBeReady+1}
+                       end;
+                _ -> {NewAndUp, WontBeReady}
+            end
+        end, {0, 0}, Job#pushy_job.job_nodes),
     if
-        % If any nodes are finished, quorum fails.
-        Finished > 0 -> set_state(finished, quorum_failed, State);
-        % If any nodes are new, we're not yet ready.
-        New > 0 -> {next_state, voting, State};
-        % Otherwise, all remaining nodes are ready/running, and we can proceed.
+        % If any nodes are new and still up, we're not yet ready; stay voting.
+        NewAndUp > 0 -> {next_state, voting, State};
+        % If any nodes are finished or new and down (i.e. won't ever be ready), quorum fails.
+        WontBeReady > 0 -> set_state(finished, quorum_failed, State);
+        % Otherwise, all remaining nodes are new+down, ready, or running, and we can proceed.
         true -> set_state(running, undefined, State)
     end;
-detect_aggregate_state_change(running, State) ->
-    % If any node is unfinished, we are unfinished.
-    {New, Ready, Running, _Finished} = count_nodes(State),
+detect_aggregate_state_change(running, #state{job = Job, up_down_status = UpDown}=State) ->
+    % If any node is unfinished and still up, we are unfinished.
+    UnfinishedAndUp = lists:foldl(
+        fun(#pushy_job_node{node_name = NodeName, status = NodeState},UnfinishedAndUp) ->
+            case NodeState of
+                finished -> UnfinishedAndUp;
+                _ -> case dict:fetch(NodeName, UpDown) of
+                         up -> UnfinishedAndUp+1;
+                         down -> UnfinishedAndUp
+                     end
+            end
+        end, 0, Job#pushy_job.job_nodes),
     if
-        New+Ready+Running > 0 -> {next_state, running, State};
+        UnfinishedAndUp > 0 -> {next_state, running, State};
         true -> set_state(finished, complete, State)
     end;
 detect_aggregate_state_change(finished, State) ->
     % Homey don't change state.
     {next_state, finished, State}.
-
--spec count_nodes(#state{}) ->
-    integer().
-count_nodes(#state{job = Job}) ->
-    lists:foldl(
-        fun(#pushy_job_node{status = NodeState},{New, Ready, Running, Finished}) ->
-            case NodeState of
-                new -> {New+1, Ready, Running, Finished};
-                ready -> {New, Ready+1, Running, Finished};
-                running -> {New, Ready, Running+1, Finished};
-                finished -> {New, Ready, Running, Finished+1}
-            end
-        end, {0, 0, 0, 0}, Job#pushy_job.job_nodes).
 
 -spec update_node_execution_state(node_ref(), job_node_status(), job_node_finished_reason(), job_status(), #state{}) ->
     {'next_state', job_status(), #state{}}.
@@ -171,6 +199,7 @@ update_node_execution_state({_OrgId,NodeName}=NodeRef,NodeState,FinishedReason,S
     ],
     Job2 = Job#pushy_job{job_nodes = JobNodes2},
     State2 = State#state{job = Job2},
+    % TODO save job node.
     kick_node_towards_desired_state(StateName, Job, NodeRef, NodeState),
     detect_aggregate_state_change(StateName, State2).
 
@@ -181,6 +210,7 @@ set_state(StateName, FinishedReason, #state{job = Job} = State) ->
     lager:info("JOB -> ~p (~p)", [StateName, FinishedReason]),
     Job2 = Job#pushy_job{status = StateName, finished_reason = FinishedReason},
     State2 = State#state{job = Job2},
+    % TODO save pushy job, SYNCHRONOUSLY, before continuing.
     kick_nodes_towards_desired_state(StateName, Job2, Job2#pushy_job.job_nodes),
     detect_aggregate_state_change(StateName, State2).
 
@@ -191,6 +221,13 @@ kick_nodes_towards_desired_state(StateName, Job, [
         #pushy_job_node{org_id = OrgId, node_name = NodeName, status = Status}|JobNodes]) ->
     kick_node_towards_desired_state(StateName, Job, {OrgId, NodeName}, Status),
     kick_nodes_towards_desired_state(StateName, Job, JobNodes).
+
+-spec kick_node_towards_desired_state(job_status(), #pushy_job{}, node_ref()) -> 'ok'.
+kick_node_towards_desired_state(StateName, #pushy_job{job_nodes = JobNodes} = Job, {_OrgId,NodeName}=NodeRef) ->
+    NodeState = lists:nth(1, [
+        NodeState || #pushy_job_node{status = NodeState, node_name=JobNodeName} <- JobNodes, JobNodeName == NodeName]
+    ),
+    kick_node_towards_desired_state(StateName, Job, NodeRef, NodeState).
 
 -spec kick_node_towards_desired_state(job_status(), #pushy_job{}, node_ref(), job_node_status()) -> 'ok'.
 kick_node_towards_desired_state(voting, Job, NodeRef, new) ->

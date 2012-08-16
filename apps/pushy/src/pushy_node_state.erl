@@ -40,9 +40,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--type fsm_states() :: 'up' | 'down'.
 -type logging_level() :: 'verbose' | 'normal'.
--type status_atom() :: 'up' | 'down'.
 -type gproc_error() :: ok | {error, no_node}.
 
 -type eavg() :: any().
@@ -55,7 +53,7 @@
                 heartbeat_interval    :: integer(),
                 decay_window          :: integer(),
                 logging = normal      :: logging_level(),
-                current_status = down :: status_atom(),
+                current_status = down :: node_status(),
                 heartbeats_rcvd = 0   :: integer(),
                 up_threshold          :: float(),
                 down_threshold        :: float(),
@@ -87,12 +85,12 @@ set_logging(NodeRef, Level) when Level =:= verbose orelse Level =:= normal ->
     gen_fsm:send_all_state_event(Pid, {logging, Level}).
 
 -spec start_watching(node_ref()) -> gproc_error().
-start_watching(NodeRef) ->
+ start_watching(NodeRef) ->
     Pid = pushy_node_state_sup:get_process(NodeRef),
     gen_fsm:send_all_state_event(Pid, {start_watching, self()}).
 
--spec stop_watching(node_ref()) -> gproc_error().
-stop_watching(NodeRef) ->
+ -spec stop_watching(node_ref()) -> gproc_error().
+ stop_watching(NodeRef) ->
     Pid = pushy_node_state_sup:get_process(NodeRef),
     gen_fsm:send_all_state_event(Pid, {stop_watching, self()}).
 
@@ -137,7 +135,7 @@ init(NodeRef) ->
 %%
 %% These events are handled the same for every state
 %%
--spec handle_event(any(), fsm_states(), #state{}) -> {any(), fsm_states(), #state{}}.
+-spec handle_event(any(), node_status(), #state{}) -> {any(), node_status(), #state{}}.
 handle_event({start_watching, Who}, StateName, #state{observers=Observers}=State) ->
     State1 = case lists:member(Who, Observers) of
         false ->
@@ -221,7 +219,7 @@ update_status(Status, #state{node_ref=NodeRef}=State) ->
 
 notify_status_change(Status, #state{node_ref=NodeRef,observers=Observers}) ->
     lager:info("Status change for ~p : ~p", [NodeRef, Status]),
-    [ Observer ! { node_heartbeat_event, NodeRef, Status } || Observer <- Observers ].
+    [ Observer ! { node_state_change, NodeRef, Status } || Observer <- Observers ].
 
 nlog(normal, Format, Args) ->
     lager:debug(Format, Args);

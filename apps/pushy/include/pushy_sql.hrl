@@ -4,12 +4,9 @@
 %% length, might be able to constrain further for range of elements.
 -type object_id() :: <<_:256>>.
 
-%% node heartbeat status
--type heartbeat_status() :: idle |
-                            ready |
-                            running |
-                            restarting |
-                            down.
+% node status
+-type node_status() :: up |
+                       down.
 
 %% job status
 -type job_status() :: voting |
@@ -37,7 +34,7 @@
 
 -record(pushy_node_status, {'org_id'::object_id(),              % organization guid
                             'node_name'::binary(),              % node name
-                            'status'::heartbeat_status(),       % node status
+                            'status'::node_status(),            % node status
                             'last_updated_by'::object_id(),     % authz guid of last actor to update
                             'created_at'::calendar:datetime(),  % time created at
                             'updated_at'::calendar:datetime()   % time updated at
