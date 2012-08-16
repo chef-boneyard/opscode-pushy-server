@@ -15,16 +15,16 @@
 %% ------------------------------------------------------------------
 
 -export([start_link/1,
-         send_command/3,
-         send_multi_command/3]).
+         send_command/2,
+         send_multi_command/2]).
 
 %% ------------------------------------------------------------------
 %% Private Exports - only exported for instrumentation
 %% ------------------------------------------------------------------
 
 -export([do_receive/3,
-         do_send/4,
-         do_send_multi/4]).
+         do_send/3,
+         do_send_multi/3]).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Exports
@@ -59,10 +59,13 @@
 start_link(PushyState) ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [PushyState], []).
 
-send_command(OrgId, NodeName, Message) ->
-    gen_server:cast(?MODULE, {send, OrgId, NodeName, Message}).
-send_multi_command(OrgId, Nodes, Message) ->
-    gen_server:cast(?MODULE, {send_multi, OrgId, Nodes, Message}).
+-spec send_command(node_ref(), binary()) -> ok.
+send_command(NodeRef, Message) ->
+    gen_server:cast(?MODULE, {send, NodeRef, Message}).
+
+-spec send_multi_command([node_ref()], binary()) -> ok.
+send_multi_command(NodeRefs, Message) ->
+    gen_server:cast(?MODULE, {send_multi, NodeRefs, Message}).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
@@ -86,10 +89,10 @@ init([#pushy_state{ctx=Ctx}]) ->
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
-handle_cast({send, OrgId, NodeName, Message}, #state{}=State) ->
-    {noreply, ?TIME_IT(?MODULE, do_send, (State, OrgId, NodeName, Message))};
-handle_cast({send_multi, OrgId, Nodes, Message}, #state{}=State) ->
-    {noreply, ?TIME_IT(?MODULE, do_send_multi, (State, OrgId, Nodes, Message))};
+handle_cast({send, NodeRef, Message}, #state{}=State) ->
+    {noreply, ?TIME_IT(?MODULE, do_send, (State, NodeRef, Message))};
+handle_cast({send_multi, NodeRefs, Message}, #state{}=State) ->
+    {noreply, ?TIME_IT(?MODULE, do_send_multi, (State, NodeRefs, Message))};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -127,8 +130,8 @@ do_receive(CommandSock, Frame, State) ->
 do_send(#state{addr_node_map = AddrNodeMap,
                command_sock = CommandSocket,
                private_key = PrivateKey}=State,
-        OrgId, NodeName, Message) ->
-    Address = addr_node_map_lookup_by_node(AddrNodeMap, {OrgId, NodeName}),
+        NodeRef, Message) ->
+    Address = addr_node_map_lookup_by_node(AddrNodeMap, NodeRef),
     pushy_messaging:send_message(CommandSocket, [Address,
         ?TIME_IT(pushy_util, signed_header_from_message, (PrivateKey, Message)),
         Message]),
@@ -137,11 +140,11 @@ do_send(#state{addr_node_map = AddrNodeMap,
 do_send_multi(#state{addr_node_map = AddrNodeMap,
                      command_sock = CommandSocket,
                      private_key = PrivateKey}=State,
-              OrgId, NodeNames, Message) ->
+              NodeRefs, Message) ->
     FrameList = [
         ?TIME_IT(pushy_util, signed_header_from_message, (PrivateKey, Message)), Message],
     % TODO if you communicate with a node that doesn't exist, don't just fail, dude
-    AddressList = [addr_node_map_lookup_by_node(AddrNodeMap, {OrgId, NodeName}) || NodeName <- NodeNames],
+    AddressList = [addr_node_map_lookup_by_node(AddrNodeMap, NodeRef) || NodeRef <- NodeRefs],
     pushy_messaging:send_message_multi(CommandSocket, AddressList, FrameList),
     State.
 
