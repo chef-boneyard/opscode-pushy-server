@@ -132,10 +132,12 @@ handle_info({'DOWN', MonitorRef, _, _, _}, StateName,
         } = State) ->
     NodeRef = dict:fetch(MonitorRef, UpDownMonitors),
     lager:error("Heartbeat Monitor for node ~p DOWN", [NodeRef]),
-    UpDownMonitors2 = dict:store(pushy_node_state:start_watching(NodeRef), NodeRef, UpDownMonitors),
-    UpDown2 = dict:store(NodeRef, pushy_node_state:current_state(NodeRef), UpDown),
+    NewMonitorRef = pushy_node_state:start_watching(NodeRef),
+    UpDownMonitors2 = dict:erase(MonitorRef, UpDownMonitors),
+    UpDownMonitors3 = dict:store(NewMonitorRef, NodeRef, UpDownMonitors2),
+    UpDown2 = dict:update(NodeRef, pushy_node_state:current_state(NodeRef), UpDown),
     State2 = State#state{
-        up_down_monitors = UpDownMonitors2,
+        up_down_monitors = UpDownMonitors3,
         up_down_status = UpDown2
     },
     {next_state, StateName, State2};
