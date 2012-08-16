@@ -41,7 +41,6 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -type logging_level() :: 'verbose' | 'normal'.
--type gproc_error() :: ok | {error, no_node}.
 
 -type eavg() :: any().
 
@@ -57,7 +56,6 @@
                 heartbeats_rcvd = 0   :: integer(),
                 up_threshold          :: float(),
                 down_threshold        :: float(),
-                observers = []        :: [pid()],
                 tref,
                 heartbeat_rate   :: eavg()
                }).
@@ -74,27 +72,23 @@ heartbeat(NodeRef) ->
     Pid = pushy_node_state_sup:get_process(NodeRef),
     gen_fsm:send_all_state_event(Pid, heartbeat).
 
--spec current_state(node_ref()) -> any().
+-spec current_state(node_ref()) -> node_status().
 current_state(NodeRef) ->
     Pid = pushy_node_state_sup:get_process(NodeRef),
     gen_fsm:sync_send_all_state_event(Pid, current_state, infinity).
 
--spec set_logging(node_ref(), logging_level()) ->  gproc_error().
+-spec set_logging(node_ref(), logging_level()) -> ok.
 set_logging(NodeRef, Level) when Level =:= verbose orelse Level =:= normal ->
     Pid = pushy_node_state_sup:get_process(NodeRef),
     gen_fsm:send_all_state_event(Pid, {logging, Level}).
 
--spec start_watching(node_ref()) -> gproc_error().
+-spec start_watching(node_ref()) -> true.
  start_watching(NodeRef) ->
-    Pid = pushy_node_state_sup:get_process(NodeRef),
-    MonitorRef = monitor(process, Pid),
-    gen_fsm:send_all_state_event(Pid, {start_watching, self()}),
-    MonitorRef.
+    gproc:reg(subscribers_key(NodeRef)).
 
- -spec stop_watching(node_ref()) -> gproc_error().
+ -spec stop_watching(node_ref()) -> true.
  stop_watching(NodeRef) ->
-    Pid = pushy_node_state_sup:get_process(NodeRef),
-    gen_fsm:send_all_state_event(Pid, {stop_watching, self()}).
+    gproc:unreg(subscribers_key(NodeRef)).
 
 %
 % This is split into two phases: an 'upper half' to get the minimimal work done required to wire things up
@@ -138,17 +132,6 @@ init(NodeRef) ->
 %% These events are handled the same for every state
 %%
 -spec handle_event(any(), node_status(), #state{}) -> {any(), node_status(), #state{}}.
-handle_event({start_watching, Who}, StateName, #state{observers=Observers}=State) ->
-    State1 = case lists:member(Who, Observers) of
-        false ->
-            erlang:monitor(process, Who),
-            State#state{observers=[Who|Observers]}; %% FIXME: Deduplicate observers!
-        true -> State
-    end,
-    {next_state, StateName, State1};
-handle_event({stop_watching, Who}, StateName, #state{observers=Observers}=State) ->
-    State1 = State#state{observers=lists:delete(Who, Observers)},
-    {next_state, StateName, State1};
 handle_event({logging, Level}, StateName, State) ->
     State1 = State#state{logging=Level},
     {next_state, StateName, State1};
@@ -164,22 +147,18 @@ handle_event(heartbeat,
     },
     {next_state, StateName, State1};
 handle_event(Event, StateName, #state{node_ref=NodeRef}=State) ->
-    lager:error("FSM for ~p received unexpected event ~p", [NodeRef, Event]),
+    lager:error("FSM for ~p received unexpected handle_event(~p)", [NodeRef, Event]),
     {next_state, StateName, State}.
 
 handle_sync_event(current_state, _From, StateName, State) ->
     {reply, StateName, StateName, State};
 handle_sync_event(Event, _From, StateName, #state{node_ref=NodeRef}=State) ->
-    lager:error("FSM for ~p received unexpected sync event ~p", [NodeRef, Event]),
+    lager:error("FSM for ~p received unexpected handle_sync_event(~p)", [NodeRef, Event]),
     {reply, ignored, StateName, State}.
 
 %%
 %% Handle info
 %%
-handle_info({'DOWN', _MonitorRef, _Type, Object, _Info}, CurState, State) ->
-    Observers = State#state.observers,
-    State1 = State#state{observers=lists:delete(Object,Observers)},
-    {next_state, CurState, State1};
 handle_info(down, down, State) ->
     {next_state, down, State};
 handle_info({timeout, _Ref, update_avg}, CurStatus, #state{heartbeat_rate=HRate, up_threshold=UThresh, down_threshold=DThresh}=State) ->
@@ -196,8 +175,8 @@ handle_info({timeout, _Ref, update_avg}, CurStatus, #state{heartbeat_rate=HRate,
             S -> {S, State}
         end,
     {next_state, NStatus, NState#state{heartbeat_rate=NHRate} };
-handle_info(Info, CurState, State) ->
-    lager:error("Strange message ~p received in state ~p", [Info, CurState]),
+handle_info(Info, CurState, #state{node_ref=NodeRef}=State) ->
+    lager:error("FSM for ~p received unexpected handle_info(~p)", [NodeRef, Info]),
     {next_state, CurState, State}.
 
 
@@ -219,11 +198,15 @@ update_status(Status, #state{node_ref=NodeRef}=State) ->
     pushy_node_status_updater:update(NodeRef, ?POC_ACTOR_ID, Status),
     State.
 
-notify_status_change(Status, #state{node_ref=NodeRef,observers=Observers}) ->
+notify_status_change(Status, #state{node_ref=NodeRef}) ->
     lager:info("Status change for ~p : ~p", [NodeRef, Status]),
-    [ Observer ! { node_state_change, NodeRef, Status } || Observer <- Observers ].
+    gproc:send(subscribers_key(NodeRef), {node_state_change, NodeRef, Status}).
 
 nlog(normal, Format, Args) ->
     lager:debug(Format, Args);
 nlog(verbose, Format, Args) ->
     lager:info(Format, Args).
+
+-spec subscribers_key(node_ref()) -> {p,l,{node_state_monitor,node_ref()}}.
+subscribers_key(NodeRef) ->
+    {p,l,{node_state_monitor,NodeRef}}.
