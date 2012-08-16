@@ -87,7 +87,9 @@ set_logging(NodeRef, Level) when Level =:= verbose orelse Level =:= normal ->
 -spec start_watching(node_ref()) -> gproc_error().
  start_watching(NodeRef) ->
     Pid = pushy_node_state_sup:get_process(NodeRef),
-    gen_fsm:send_all_state_event(Pid, {start_watching, self()}).
+    MonitorRef = monitor(process, Pid),
+    gen_fsm:send_all_state_event(Pid, {start_watching, self()}),
+    MonitorRef.
 
  -spec stop_watching(node_ref()) -> gproc_error().
  stop_watching(NodeRef) ->

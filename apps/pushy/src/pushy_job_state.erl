@@ -27,7 +27,8 @@
 -record(state,
         {
             job            :: #pushy_job{},
-            up_down_status :: dict() % dict(node_name(), node_status())
+            up_down_status :: dict(), % dict(node_name(), node_status())
+            up_down_monitors :: dict() % dict(reference(), node_ref())
         }).
 
 %%%
@@ -67,9 +68,12 @@ get_job_state(JobId) ->
 init(#pushy_job{id = JobId, job_nodes = JobNodes} = Job) ->
     case pushy_job_state_sup:register_process(JobId) of
         true ->
+            UpDownMonitors = watch_up_down(JobNodes),
+            UpDown = initialize_up_down(JobNodes),
             State = #state{
                 job = Job,
-                up_down_status = initialize_up_down(JobNodes)
+                up_down_monitors = UpDownMonitors,
+                up_down_status = UpDown
             },
             {next_state, ResultState, State2} = set_state(voting, undefined, State),
             {ok, ResultState, State2};
@@ -77,16 +81,17 @@ init(#pushy_job{id = JobId, job_nodes = JobNodes} = Job) ->
             {stop, shutdown, undefined}
     end.
 
-initialize_up_down(JobNodes) ->
+watch_up_down(JobNodes) ->
     dict:from_list(
-        [ {NodeName, initialize_node_up_down({OrgId, NodeName})}
+        [ { pushy_node_state:start_watching({OrgId, NodeName}), {OrgId, NodeName} }
             || #pushy_job_node{org_id = OrgId, node_name = NodeName} <- JobNodes ]
     ).
 
-% TODO consider not watching nodes in finished state.
-initialize_node_up_down(NodeRef) ->
-    pushy_node_state:start_watching(NodeRef),
-    pushy_node_state:current_state(NodeRef).
+initialize_up_down(JobNodes) ->
+    dict:from_list(
+        [ {NodeName, pushy_node_state:current_state({OrgId, NodeName})}
+            || #pushy_job_node{org_id = OrgId, node_name = NodeName} <- JobNodes ]
+    ).
 
 %
 % Events
@@ -120,6 +125,20 @@ handle_info({node_state_change, {_OrgId, NodeName}=NodeRef, NodeUpDown},
     State2 = State#state{up_down_status = dict:store(NodeName, NodeUpDown, UpDown)},
     kick_node_towards_desired_state(StateName, Job, NodeRef),
     detect_aggregate_state_change(StateName, State2);
+handle_info({'DOWN', MonitorRef, _, _, _}, StateName,
+        #state{
+            up_down_status = UpDown,
+            up_down_monitors = UpDownMonitors
+        } = State) ->
+    NodeRef = dict:fetch(MonitorRef, UpDownMonitors),
+    lager:error("Heartbeat Monitor for node ~p DOWN", [NodeRef]),
+    UpDownMonitors2 = dict:store(pushy_node_state:start_watching(NodeRef), NodeRef, UpDownMonitors),
+    UpDown2 = dict:store(NodeRef, pushy_node_state:current_state(NodeRef), UpDown),
+    State2 = State#state{
+        up_down_monitors = UpDownMonitors2,
+        up_down_status = UpDown2
+    },
+    {next_state, StateName, State2};
 handle_info(Info, StateName, State) ->
     lager:error("Unknown message handle_info(~p)", [Info]),
     {next_state, StateName, State}.
