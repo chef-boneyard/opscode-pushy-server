@@ -51,7 +51,6 @@ node_execution_finished(JobId, NodeRef, FinishedReason) ->
 
 -spec get_job_state(object_id()) -> #pushy_job{} | not_found.
 get_job_state(JobId) ->
-    lager:info("---------> job:get_job_state(~p)", [JobId]),
     case pushy_job_state_sup:get_process(JobId) of
         not_found -> not_found;
         Pid -> gen_fsm:sync_send_all_state_event(Pid, get_job_status)
@@ -87,8 +86,7 @@ initialize_up_down(JobNodes) ->
 % TODO consider not watching nodes in finished state.
 initialize_node_up_down(NodeRef) ->
     pushy_node_state:start_watching(NodeRef),
-    {NodeUpDown, _} = pushy_node_state:current_state(NodeRef),
-    NodeUpDown.
+    pushy_node_state:current_state(NodeRef).
 
 %
 % Events
@@ -101,25 +99,29 @@ handle_event({node_execution_state_updated,NodeRef,NodeState},
     update_node_execution_state(NodeRef,NodeState,undefined,StateName,State);
 handle_event({node_execution_finished,NodeRef,FinishedReason}, StateName, State) ->
     update_node_execution_state(NodeRef,finished,FinishedReason,StateName,State);
-handle_event(_Event, StateName, State) ->
+handle_event(Event, StateName, State) ->
+    lager:error("Unknown message handle_event(~p)", [Event]),
     {next_state, StateName, State}.
 
 -spec handle_sync_event(any(), any(), job_status(), #state{}) ->
         {'reply', 'ok', job_status(), #state{}}.
 handle_sync_event(get_job_status, _From, StateName, #state{job = Job} = State) ->
     {reply, Job, StateName, State};
-handle_sync_event(_Event, _From, StateName, State) ->
+handle_sync_event(Event, From, StateName, State) ->
+    lager:error("Unknown message handle_sync_event(~p) from ~p", [Event, From]),
     {reply, ok, StateName, State}.
 
 -spec handle_info(any(), job_status(), #state{}) ->
         {'next_state', job_status(), #state{}}.
-handle_info({node_state_change, {_OrgId, NodeName}=NodeRef, {NodeUpDown, _}},
+handle_info({node_state_change, {_OrgId, NodeName}=NodeRef, NodeUpDown},
             StateName, #state{job = Job, up_down_status = UpDown} = State) ->
     % TODO only do this if it changes, not all the time
-    dict:store(NodeName, NodeUpDown, UpDown),
+    lager:info("--------> node_state_change ~p -> ~p", [NodeRef, NodeUpDown]),
+    State2 = State#state{up_down_status = dict:store(NodeName, NodeUpDown, UpDown)},
     kick_node_towards_desired_state(StateName, Job, NodeRef),
-    detect_aggregate_state_change(StateName, State);
-handle_info(_Info, StateName, State) ->
+    detect_aggregate_state_change(StateName, State2);
+handle_info(Info, StateName, State) ->
+    lager:error("Unknown message handle_info(~p)", [Info]),
     {next_state, StateName, State}.
 
 -spec terminate(any(), job_status(), #state{}) -> 'ok'.

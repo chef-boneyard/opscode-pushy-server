@@ -165,8 +165,8 @@ handle_event(Event, StateName, #state{node_ref=NodeRef}=State) ->
     lager:error("FSM for ~p received unexpected event ~p", [NodeRef, Event]),
     {next_state, StateName, State}.
 
-handle_sync_event(current_state, _From, StateName,#state{heartbeat_rate=HRate}=State) ->
-    {reply, {StateName, pushy_ema:value(HRate)}, StateName, State};
+handle_sync_event(current_state, _From, StateName, State) ->
+    {reply, StateName, StateName, State};
 handle_sync_event(Event, _From, StateName, #state{node_ref=NodeRef}=State) ->
     lager:error("FSM for ~p received unexpected sync event ~p", [NodeRef, Event]),
     {reply, ignored, StateName, State}.
