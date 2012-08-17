@@ -114,8 +114,8 @@ handle_info({node_state_change, NodeRef, NodeUpDown},
     % TODO only do this if it changes, not all the time
     lager:info("--------> node_state_change ~p -> ~p", [NodeRef, NodeUpDown]),
     State2 = State#state{up_down_status = dict:store(NodeRef, NodeUpDown, UpDown)},
-    kick_node_towards_desired_state(StateName, State2, NodeRef),
-    detect_aggregate_state_change(StateName, State2);
+    State3 = kick_node_towards_desired_state(StateName, State2, NodeRef),
+    detect_aggregate_state_change(StateName, State3);
 handle_info(Info, StateName, State) ->
     lager:error("Unknown message handle_info(~p)", [Info]),
     {next_state, StateName, State}.
@@ -191,8 +191,8 @@ update_node_execution_state(NodeRef,NodeState,StateName,
         JobNodes),
     State2 = State#state{job_nodes = JobNodes2},
     % TODO save job node.
-    kick_node_towards_desired_state(StateName, State2, NodeRef),
-    detect_aggregate_state_change(StateName, State2).
+    State3 = kick_node_towards_desired_state(StateName, State2, NodeRef),
+    detect_aggregate_state_change(StateName, State3).
 
 % Called on transition to a new state
 -spec set_state(job_status(), job_finished_reason(), #state{}) ->
@@ -201,15 +201,15 @@ set_state(StateName, FinishedReason, #state{job = Job} = State) ->
     lager:info("JOB -> ~p (~p)", [StateName, FinishedReason]),
     Job2 = Job#pushy_job{status = StateName, finished_reason = FinishedReason},
     State2 = State#state{job = Job2},
-    kick_nodes_towards_desired_state(StateName, State2),
-    detect_aggregate_state_change(StateName, State2).
+    State3 = kick_nodes_towards_desired_state(StateName, State2),
+    detect_aggregate_state_change(StateName, State3).
 
 -spec kick_nodes_towards_desired_state(job_status(), #state{}) -> ok.
 kick_nodes_towards_desired_state(StateName, #state{job_nodes = JobNodes}=State) ->
     dict:fold(
-        fun(NodeRef, #pushy_job_node{status = NodeState}, _) ->
-            kick_node_towards_desired_state(StateName, State, NodeRef, NodeState)
-        end, nop, JobNodes).
+        fun(NodeRef, #pushy_job_node{status = NodeState}, AccState) ->
+            kick_node_towards_desired_state(StateName, AccState, NodeRef, NodeState)
+        end, State, JobNodes).
 
 -spec kick_node_towards_desired_state(job_status(), #state{}, node_ref()) -> ok.
 kick_node_towards_desired_state(StateName, #state{job_nodes = JobNodes} = State, NodeRef) ->
@@ -218,19 +218,24 @@ kick_node_towards_desired_state(StateName, #state{job_nodes = JobNodes} = State,
 
 -spec kick_node_towards_desired_state(job_status(), #state{}, node_ref(), job_node_status()) -> ok.
 kick_node_towards_desired_state(voting, State, NodeRef, new) ->
-    send_message(<<"job_command">>, State, NodeRef);
+    send_message(<<"job_command">>, State, NodeRef), State;
 kick_node_towards_desired_state(running, State, NodeRef, new) ->
-    send_message(<<"job_command">>, State, NodeRef);
+    send_message(<<"job_command">>, State, NodeRef), State;
 kick_node_towards_desired_state(running, State, NodeRef, ready) ->
-    send_message(<<"job_execute">>, State, NodeRef);
-% TODO If job is finished, immediately move new to never_ran
+    send_message(<<"job_execute">>, State, NodeRef), State;
+kick_node_towards_desired_state(finished, State, NodeRef, new) ->
+    % If we're in finished state, a "new" node doesn't care about us and we don't
+    % care about it.  Don't bother sending it another message, just mark it
+    % "never_ran", and leave it alone.
+    {next_state,finished,State2} = update_node_execution_state(NodeRef,never_ran,finished,State),
+    State2;
 kick_node_towards_desired_state(finished, State, NodeRef, ready) ->
-    send_message(<<"job_release">>, State, NodeRef);
+    send_message(<<"job_release">>, State, NodeRef), State;
 kick_node_towards_desired_state(finished, State, NodeRef, running) ->
-    send_message(<<"job_abort">>, State, NodeRef);
-kick_node_towards_desired_state(_, _, _, _) ->
+    send_message(<<"job_abort">>, State, NodeRef), State;
+kick_node_towards_desired_state(_, State, _, _) ->
     % Nobody else gets kicked; they are at or beyond where they need to be.
-    ok.
+    State.
 
 -spec send_message(binary(), #state{}, node_ref()) -> 'ok'.
 send_message(Type, #state{job = Job}, NodeRef) ->
