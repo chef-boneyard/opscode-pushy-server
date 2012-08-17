@@ -98,6 +98,6 @@ job_nodes_json_by_status(Nodes) ->
 
 job_nodes_by_status([], Dict) ->
     Dict;
-job_nodes_by_status([#pushy_job_node{node_name = Name, status = Status, finished_reason = Reason} | Nodes], Dict) ->
-    Dict2 = dict:append(case Status of finished -> Reason; _ -> Status end, Name, Dict),
+job_nodes_by_status([#pushy_job_node{node_name = Name, status = Status} | Nodes], Dict) ->
+    Dict2 = dict:append(Status, Name, Dict),
     job_nodes_by_status(Nodes, Dict2).

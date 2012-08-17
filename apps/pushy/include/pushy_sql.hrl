@@ -13,18 +13,12 @@
                       running |
                       finished.
 
--type job_node_status() :: undefined |
-                           ready |
+-type job_node_status() :: new | ready | never_ran |
                            running |
-                           finished. % DONE
+                           complete | aborted.
 
 -type job_finished_reason() :: complete |
                                quorum_failed.
-
--type job_node_finished_reason() :: complete |
-                                    nacked |
-                                    aborted_while_ready |
-                                    aborted_while_running.
 
 %% random PoC hard-codings
 -define(POC_ORG_ID, <<"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa">>).
@@ -44,7 +38,6 @@
                          'org_id'::object_id(),              % organization guid
                          'node_name'::binary(),              % node name
                          'status'::job_node_status(),        % node's status in context of job
-                         'finished_reason'::job_node_finished_reason(), % reason node is finished with job (success, nack, etc.)
                          'created_at'::calendar:datetime(),  % time created at
                          'updated_at'::calendar:datetime()   % time updated at
                          }).

@@ -9,7 +9,6 @@
 %% API
 -export([start_link/1,
          node_execution_state_updated/3,
-         node_execution_finished/3,
          get_job_state/1]).
 
 %% gen_fsm callbacks
@@ -43,12 +42,6 @@ node_execution_state_updated(JobId, NodeRef, NewState) ->
     lager:info("---------> job:node_execution_state_updated(~p, ~p -> ~p)", [JobId, NodeRef, NewState]),
     Pid = pushy_job_state_sup:get_process(JobId),
     gen_fsm:send_all_state_event(Pid, {node_execution_state_updated,NodeRef,NewState}).
-
--spec node_execution_finished(object_id(), node_ref(), job_node_finished_reason()) -> ok.
-node_execution_finished(JobId, NodeRef, FinishedReason) ->
-    lager:info("---------> job:node_execution_finished(~p, ~p (~p))", [JobId, NodeRef, FinishedReason]),
-    Pid = pushy_job_state_sup:get_process(JobId),
-    gen_fsm:send_all_state_event(Pid, {node_execution_finished,NodeRef,FinishedReason}).
 
 -spec get_job_state(object_id()) -> #pushy_job{} | not_found.
 get_job_state(JobId) ->
@@ -97,18 +90,16 @@ initialize_node_up_down(NodeRef) ->
 
 -spec handle_event(any(), job_status(), #state{}) ->
         {'next_state', job_status(), #state{}}.
-handle_event({node_execution_state_updated,NodeRef,NodeState},
-    StateName, State) ->
-    update_node_execution_state(NodeRef,NodeState,undefined,StateName,State);
-handle_event({node_execution_finished,NodeRef,FinishedReason}, StateName, State) ->
-    update_node_execution_state(NodeRef,finished,FinishedReason,StateName,State);
+handle_event({node_execution_state_updated,NodeRef,NodeState}, StateName, State) ->
+    update_node_execution_state(NodeRef,NodeState,StateName,State);
 handle_event(Event, StateName, State) ->
     lager:error("Unknown message handle_event(~p)", [Event]),
     {next_state, StateName, State}.
 
 -spec handle_sync_event(any(), any(), job_status(), #state{}) ->
         {'reply', 'ok', job_status(), #state{}}.
-handle_sync_event(get_job_status, _From, StateName, #state{job = Job, job_nodes = JobNodes} = State) ->
+handle_sync_event(get_job_status, _From, StateName,
+        #state{job = Job, job_nodes = JobNodes} = State) ->
     JobNodesList = [ JobNode || {_,JobNode} <- dict:to_list(JobNodes) ],
     Job2 = Job#pushy_job{job_nodes = JobNodesList},
     {reply, Job2, StateName, State};
@@ -146,22 +137,22 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 -spec detect_aggregate_state_change(job_status(), #state{}) ->
     {'next_state', job_status(), #state{}}.
 detect_aggregate_state_change(voting, #state{job_nodes = JobNodes, up_down_status = UpDown}=State) ->
-    {NewAndUp, WontBeReady} = dict:fold(
-        fun(NodeRef, #pushy_job_node{status = NodeState}, {NewAndUp, WontBeReady}) ->
+    {NewAndUp, WontRun} = dict:fold(
+        fun(NodeRef, #pushy_job_node{status = NodeState}, {NewAndUp, WontRun}) ->
             case NodeState of
-                finished -> {NewAndUp, WontBeReady+1};
+                never_ran -> {NewAndUp, WontRun+1};
                 new -> case dict:fetch(NodeRef, UpDown) of
-                           up -> {NewAndUp+1, WontBeReady};
-                           down -> {NewAndUp, WontBeReady+1}
+                           up -> {NewAndUp+1, WontRun};
+                           down -> {NewAndUp, WontRun+1}
                        end;
-                _ -> {NewAndUp, WontBeReady}
+                _ -> {NewAndUp, WontRun}
             end
         end, {0, 0}, JobNodes),
     if
         % If any nodes are new and still up, we're not yet ready; stay voting.
         NewAndUp > 0 -> {next_state, voting, State};
         % If any nodes are finished or new and down (i.e. won't ever be ready), quorum fails.
-        WontBeReady > 0 -> set_state(finished, quorum_failed, State);
+        WontRun > 0 -> set_state(finished, quorum_failed, State);
         % Otherwise, all remaining nodes are new+down, ready, or running, and we can proceed.
         true -> set_state(running, undefined, State)
     end;
@@ -170,7 +161,9 @@ detect_aggregate_state_change(running, #state{job_nodes = JobNodes, up_down_stat
     UnfinishedAndUp = dict:fold(
         fun(NodeRef, #pushy_job_node{status = NodeState}, UnfinishedAndUp) ->
             case NodeState of
-                finished -> UnfinishedAndUp;
+                never_ran -> UnfinishedAndUp;
+                complete -> UnfinishedAndUp;
+                aborted -> UnfinishedAndUp;
                 _ -> case dict:fetch(NodeRef, UpDown) of
                          up -> UnfinishedAndUp+1;
                          down -> UnfinishedAndUp
@@ -185,20 +178,17 @@ detect_aggregate_state_change(finished, State) ->
     % Homey don't change state.
     {next_state, finished, State}.
 
--spec update_node_execution_state(node_ref(), job_node_status(), job_node_finished_reason(), job_status(), #state{}) ->
+-spec update_node_execution_state(node_ref(), job_node_status(), job_status(), #state{}) ->
     {'next_state', job_status(), #state{}}.
-update_node_execution_state(NodeRef,NodeState,FinishedReason,StateName,
+update_node_execution_state(NodeRef,NodeState,StateName,
     #state{job_nodes = JobNodes} = State) ->
-    lager:info("JOB NODE ~p -> ~p (~p)", [NodeRef, NodeState, FinishedReason]),
+    lager:info("JOB NODE ~p -> ~p", [NodeRef, NodeState]),
     % TODO handle incorrect org id on node.
     % TODO handle missing node.
     % TODO handle invalid transitions.
     JobNodes2 = dict:update(NodeRef,
-        fun(JobNode) -> JobNode#pushy_job_node{
-                status = NodeState,
-                finished_reason = FinishedReason
-            }
-        end, JobNodes),
+        fun(JobNode) -> JobNode#pushy_job_node{status = NodeState} end,
+        JobNodes),
     State2 = State#state{job_nodes = JobNodes2},
     % TODO save job node.
     kick_node_towards_desired_state(StateName, State2, NodeRef),
@@ -233,8 +223,9 @@ kick_node_towards_desired_state(running, State, NodeRef, new) ->
     send_message(<<"job_command">>, State, NodeRef);
 kick_node_towards_desired_state(running, State, NodeRef, ready) ->
     send_message(<<"job_execute">>, State, NodeRef);
+% TODO If job is finished, immediately move new to never_ran
 kick_node_towards_desired_state(finished, State, NodeRef, ready) ->
-    send_message(<<"job_abort">>, State, NodeRef);
+    send_message(<<"job_release">>, State, NodeRef);
 kick_node_towards_desired_state(finished, State, NodeRef, running) ->
     send_message(<<"job_abort">>, State, NodeRef);
 kick_node_towards_desired_state(_, _, _, _) ->

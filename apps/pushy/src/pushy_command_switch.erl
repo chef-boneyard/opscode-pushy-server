@@ -173,7 +173,7 @@ process_message(State, Address, _Header, Body) ->
                     pushy_job_state:node_execution_state_updated(JobId, NodeRef, ready),
                     State2;
                 <<"nack">> ->
-                    pushy_job_state:node_execution_finished(JobId, NodeRef, nacked),
+                    pushy_job_state:node_execution_state_updated(JobId, NodeRef, never_ran),
                     State2;
                 <<"started">> ->
                     lager:info([{job_id, JobId}], "Node [~p] started running Job [~p]", [NodeName, JobId]),
@@ -181,15 +181,15 @@ process_message(State, Address, _Header, Body) ->
                     State2;
                 <<"complete">> ->
                     lager:info([{job_id, JobId}], "Node [~p] completed running Job [~p]", [NodeName, JobId]),
-                    pushy_job_state:node_execution_finished(JobId, NodeRef, complete),
+                    pushy_job_state:node_execution_state_updated(JobId, NodeRef, complete),
                     State2;
-                <<"aborted_while_ready">> ->
-                    lager:info([{job_id, JobId}], "Node [~p] aborted while in ready state for Job [~p]", [NodeName, JobId]),
-                    pushy_job_state:node_execution_finished(JobId, NodeRef, aborted_while_ready),
+                <<"released">> ->
+                    lager:info([{job_id, JobId}], "Node [~p] released Job [~p]", [NodeName, JobId]),
+                    pushy_job_state:node_execution_state_updated(JobId, NodeRef, new),
                     State2;
-                <<"aborted_while_running">> ->
-                    lager:info([{job_id, JobId}], "Node [~p] aborted while running Job [~p]", [NodeName, JobId]),
-                    pushy_job_state:node_execution_finished(JobId, NodeRef, aborted_while_running),
+                <<"aborted">> ->
+                    lager:info([{job_id, JobId}], "Node [~p] aborted Job [~p]", [NodeName, JobId]),
+                    pushy_job_state:node_execution_state_updated(JobId, NodeRef, aborted),
                     State2;
                 <<"heartbeat">> ->
                     case node_state_to_atom(ej:get({<<"state">>}, Data)) of
