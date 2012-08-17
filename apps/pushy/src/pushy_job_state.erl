@@ -50,11 +50,9 @@ get_job_state(JobId) ->
         Pid -> gen_fsm:sync_send_all_state_event(Pid, get_job_status)
     end.
 
-
-%
-% Init is split into two phases: an 'upper half' to get the minimimal work done required to wire things up
-% and a 'lower half' that takes care of things that can wait
-%
+%%%
+%%% Initialization
+%%%
 -spec init(#pushy_job{}) ->
     {'ok', job_status(), #state{}} |
     {'stop', 'shutdown', #state{}}.
@@ -84,9 +82,9 @@ initialize_node_up_down(NodeRef) ->
     pushy_node_state:start_watching(NodeRef),
     pushy_node_state:current_state(NodeRef).
 
-%
-% Events
-%
+%%%
+%%% Incoming events
+%%%
 
 -spec handle_event(any(), job_status(), #state{}) ->
         {'next_state', job_status(), #state{}}.
@@ -129,11 +127,43 @@ terminate(_Reason, _StateName, _State) ->
 code_change(_OldVsn, StateName, State, _Extra) ->
     {ok, StateName, State}.
 
-%
-% PRIVATE
-%
-% This is called to check whether we are ready to proceed to a different state
-% or not.
+%%%
+%%% Update state
+%%%
+%%% All changes to job and job node states go through these two methods, which will
+%%% handle any accounting necessary after the state change.
+%%%
+-spec update_node_execution_state(node_ref(), job_node_status(), job_status(), #state{}) ->
+    {'next_state', job_status(), #state{}}.
+update_node_execution_state(NodeRef,NodeState,StateName,
+    #state{job_nodes = JobNodes} = State) ->
+    lager:info("JOB NODE ~p -> ~p", [NodeRef, NodeState]),
+    % TODO handle incorrect org id on node.
+    % TODO handle missing node.
+    % TODO handle invalid transitions.
+    JobNodes2 = dict:update(NodeRef,
+        fun(JobNode) -> JobNode#pushy_job_node{status = NodeState} end,
+        JobNodes),
+    State2 = State#state{job_nodes = JobNodes2},
+    % TODO save job node.
+    State3 = kick_node_towards_desired_state(StateName, State2, NodeRef),
+    detect_aggregate_state_change(StateName, State3).
+
+% Called on transition to a new state
+-spec set_state(job_status(), job_finished_reason(), #state{}) ->
+    {'next_state', job_status(), #state{}}.
+set_state(StateName, FinishedReason, #state{job = Job} = State) ->
+    lager:info("JOB -> ~p (~p)", [StateName, FinishedReason]),
+    Job2 = Job#pushy_job{status = StateName, finished_reason = FinishedReason},
+    State2 = State#state{job = Job2},
+    State3 = kick_nodes_towards_desired_state(StateName, State2),
+    detect_aggregate_state_change(StateName, State3).
+
+
+%%%
+%%% Helpers
+%%%
+% This is called to check whether the job can proceed to the next state.
 -spec detect_aggregate_state_change(job_status(), #state{}) ->
     {'next_state', job_status(), #state{}}.
 detect_aggregate_state_change(voting, #state{job_nodes = JobNodes, up_down_status = UpDown}=State) ->
@@ -177,32 +207,6 @@ detect_aggregate_state_change(running, #state{job_nodes = JobNodes, up_down_stat
 detect_aggregate_state_change(finished, State) ->
     % Homey don't change state.
     {next_state, finished, State}.
-
--spec update_node_execution_state(node_ref(), job_node_status(), job_status(), #state{}) ->
-    {'next_state', job_status(), #state{}}.
-update_node_execution_state(NodeRef,NodeState,StateName,
-    #state{job_nodes = JobNodes} = State) ->
-    lager:info("JOB NODE ~p -> ~p", [NodeRef, NodeState]),
-    % TODO handle incorrect org id on node.
-    % TODO handle missing node.
-    % TODO handle invalid transitions.
-    JobNodes2 = dict:update(NodeRef,
-        fun(JobNode) -> JobNode#pushy_job_node{status = NodeState} end,
-        JobNodes),
-    State2 = State#state{job_nodes = JobNodes2},
-    % TODO save job node.
-    State3 = kick_node_towards_desired_state(StateName, State2, NodeRef),
-    detect_aggregate_state_change(StateName, State3).
-
-% Called on transition to a new state
--spec set_state(job_status(), job_finished_reason(), #state{}) ->
-    {'next_state', job_status(), #state{}}.
-set_state(StateName, FinishedReason, #state{job = Job} = State) ->
-    lager:info("JOB -> ~p (~p)", [StateName, FinishedReason]),
-    Job2 = Job#pushy_job{status = StateName, finished_reason = FinishedReason},
-    State2 = State#state{job = Job2},
-    State3 = kick_nodes_towards_desired_state(StateName, State2),
-    detect_aggregate_state_change(StateName, State3).
 
 -spec kick_nodes_towards_desired_state(job_status(), #state{}) -> ok.
 kick_nodes_towards_desired_state(StateName, #state{job_nodes = JobNodes}=State) ->
