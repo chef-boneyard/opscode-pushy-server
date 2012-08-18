@@ -26,7 +26,7 @@
 -record(state,
         {
             job            :: #pushy_job{},
-            job_nodes      :: dict(), % dict(node_ref())
+            job_nodes      :: dict(), % dict(node_ref(), #pushy_job_node{})
             up_down_status :: dict() % dict(node_ref(), node_status())
         }).
 
@@ -170,7 +170,7 @@ detect_aggregate_state_change(voting, #state{job_nodes = JobNodes, up_down_statu
     {NewAndUp, WontRun} = dict:fold(
         fun(NodeRef, #pushy_job_node{status = NodeState}, {NewAndUp, WontRun}) ->
             case NodeState of
-                never_ran -> {NewAndUp, WontRun+1};
+                never_run -> {NewAndUp, WontRun+1};
                 new -> case dict:fetch(NodeRef, UpDown) of
                            up -> {NewAndUp+1, WontRun};
                            down -> {NewAndUp, WontRun+1}
@@ -191,7 +191,7 @@ detect_aggregate_state_change(running, #state{job_nodes = JobNodes, up_down_stat
     UnfinishedAndUp = dict:fold(
         fun(NodeRef, #pushy_job_node{status = NodeState}, UnfinishedAndUp) ->
             case NodeState of
-                never_ran -> UnfinishedAndUp;
+                never_run -> UnfinishedAndUp;
                 complete -> UnfinishedAndUp;
                 aborted -> UnfinishedAndUp;
                 _ -> case dict:fetch(NodeRef, UpDown) of
@@ -230,8 +230,8 @@ kick_node_towards_desired_state(running, State, NodeRef, ready) ->
 kick_node_towards_desired_state(finished, State, NodeRef, new) ->
     % If we're in finished state, a "new" node doesn't care about us and we don't
     % care about it.  Don't bother sending it another message, just mark it
-    % "never_ran", and leave it alone.
-    {next_state,finished,State2} = update_node_execution_state(NodeRef,never_ran,finished,State),
+    % "never_run", and leave it alone.
+    {next_state,finished,State2} = update_node_execution_state(NodeRef,never_run,finished,State),
     State2;
 kick_node_towards_desired_state(finished, State, NodeRef, ready) ->
     send_message(<<"job_release">>, State, NodeRef), State;

@@ -151,76 +151,67 @@ do_send_multi(#state{addr_node_map = AddrNodeMap,
 process_message(State, Address, _Header, Body) ->
     case catch jiffy:decode(Body) of
         {Data} ->
-            Type = ej:get({<<"type">>}, Data ),
-
-            % This essentially debug code.
-            NodeName = ej:get({<<"node">>}, Data ),
-            OrgName  = ej:get({<<"org">>}, Data ),
-            _ClientName = ej:get({<<"client">>}, Data ),
-            JobId = ej:get({<<"job_id">>}, Data, undefined ),
-
-            OrgId = pushy_object:fetch_org_id(OrgName),
-
-            %% Every time we get a message from a node, we update it's Addr->Name mapping entry
-            NodeRef = {OrgId, NodeName},
-            State2 = addr_node_map_update(State, Address, NodeRef),
-            case Type of
-                % ready messages are not really used.
-                <<"ready">> ->
-                    lager:info("Node [~p] ready to RAWK this command party.", [NodeName]),
-                    State2;
-                <<"ack">> ->
-                    pushy_job_state:node_execution_state_updated(JobId, NodeRef, ready),
-                    State2;
-                <<"nack">> ->
-                    pushy_job_state:node_execution_state_updated(JobId, NodeRef, never_ran),
-                    State2;
-                <<"started">> ->
-                    lager:info([{job_id, JobId}], "Node [~p] started running Job [~p]", [NodeName, JobId]),
-                    pushy_job_state:node_execution_state_updated(JobId, NodeRef, running),
-                    State2;
-                <<"complete">> ->
-                    lager:info([{job_id, JobId}], "Node [~p] completed running Job [~p]", [NodeName, JobId]),
-                    pushy_job_state:node_execution_state_updated(JobId, NodeRef, complete),
-                    State2;
-                <<"released">> ->
-                    lager:info([{job_id, JobId}], "Node [~p] released Job [~p]", [NodeName, JobId]),
-                    pushy_job_state:node_execution_state_updated(JobId, NodeRef, new),
-                    State2;
-                <<"aborted">> ->
-                    lager:info([{job_id, JobId}], "Node [~p] aborted Job [~p]", [NodeName, JobId]),
-                    pushy_job_state:node_execution_state_updated(JobId, NodeRef, aborted),
-                    State2;
+            case ej:get({<<"type">>}, Data, undefined) of
                 <<"heartbeat">> ->
-                    case node_state_to_atom(ej:get({<<"state">>}, Data)) of
-                      unknown -> noop;
-                      NodeState ->
-                        lager:info("Node [~p] sent a heartbeat in state [~p]", [NodeRef, NodeState]),
-                        % idle state has no job id; don't try to send to job "undefined".
-                        case JobId of
-                          undefined -> noop;
-                          _ -> pushy_job_state:node_execution_state_updated(JobId, NodeRef, NodeState)
-                        end,
-                        pushy_node_state:heartbeat(NodeRef)
-                    end,
-                    State2;
-                _Else ->
-                    lager:info("I don't know anything about ~p", [Type]),
-                    State2
+                    process_state_message(State, Address, heartbeat, Data);
+                <<"state_change">> ->
+                    process_state_message(State, Address, state_change, Data);
+                undefined ->
+                    lager:error("Status message did not have type: body=~s", [Body]);
+                Type ->
+                    lager:error("Status message had unknown type ~p: body=~s", [Type, Body])
             end;
         {'EXIT', Error} ->
             lager:error("Status message JSON parsing failed: body=~s, error=~s", [Body,Error]),
             State
     end.
 
-node_state_to_atom(<<"idle">>) ->
-    idle;
+process_state_message(State, Address, Type, Data) ->
+    % This essentially debug code.
+    _ClientName = ej:get({<<"client">>}, Data),
+    OrgName  = ej:get({<<"org">>}, Data),
+    NodeName = ej:get({<<"node">>}, Data),
+    OrgId = pushy_object:fetch_org_id(OrgName),
+    NodeRef = {OrgId, NodeName},
+    %% Every time we get a message from a node, we update it's Addr->Name mapping entry
+    State2 = addr_node_map_update(State, Address, NodeRef),
+
+    % Record the heartbeat if it is a heartbeat
+    case Type of
+        heartbeat -> pushy_node_state:heartbeat(NodeRef);
+        _         -> nop
+    end,
+
+    % Notify the job (if any) of new state
+    NodeState = node_state_to_atom(ej:get({<<"job_state">>}, Data)),
+    case NodeState of
+        unknown ->
+            lager:error("Unexpected node state ~p received in heartbeat", [ej:get({<<"state">>}, Data)]);
+        no_job ->
+            lager:info("Node ~p reported a ~p in state ~p", [NodeRef, Type, NodeState]);
+        _ ->
+            case ej:get({<<"job_id">>}, Data) of
+                undefined -> lager:error("Node ~p set to state ~p with no job id: body=~p", [NodeRef, NodeState, Data]);
+                JobId ->     pushy_job_state:node_execution_state_updated(JobId, NodeRef, NodeState)
+            end
+    end,
+    State2.
+
+node_state_to_atom(<<"no_job">>) ->
+    no_job;
+node_state_to_atom(<<"new">>) ->
+    new;
+node_state_to_atom(<<"never_run">>) ->
+    never_run;
 node_state_to_atom(<<"ready">>) ->
     ready;
 node_state_to_atom(<<"running">>) ->
     running;
-node_state_to_atom(State) ->
-    lager:error("Unexpected node state ~p received in heartbeat", [State]),
+node_state_to_atom(<<"aborted">>) ->
+    aborted;
+node_state_to_atom(<<"complete">>) ->
+    complete;
+node_state_to_atom(_) ->
     unknown.
 
 %%
