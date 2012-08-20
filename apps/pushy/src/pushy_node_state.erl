@@ -18,7 +18,8 @@
 -export([current_state/1,
          heartbeat/1,
          set_logging/2,
-         start_link/1]).
+         start_link/1,
+         start_link/2]).
 
 %% Observers
 -export([start_watching/1,
@@ -33,6 +34,7 @@
          handle_info/3,
          handle_sync_event/4,
          init/1,
+         init/2,
          terminate/3]).
 
 -include("pushy.hrl").
@@ -63,9 +65,13 @@
 %%%
 %%% External API
 %%%
--spec start_link(node_ref()) -> 'ignore' | {'error',_} | {'ok',pid()}.
+-spec start_link(node_ref() ) -> 'ignore' | {'error',_} | {'ok',pid()}.
 start_link(NodeRef) ->
-    gen_fsm:start_link(?MODULE, NodeRef, []).
+    start_link(NodeRef, down).
+
+-spec start_link(node_ref(), 'up' | 'down' ) -> 'ignore' | {'error',_} | {'ok',pid()}.
+start_link(NodeRef, StartState) ->
+    gen_fsm:start_link(?MODULE, {NodeRef, StartState}, []).
 
 -spec heartbeat(node_ref()) -> 'ok'.
 heartbeat(NodeRef) ->
@@ -86,15 +92,23 @@ set_logging(NodeRef, Level) when Level =:= verbose orelse Level =:= normal ->
  start_watching(NodeRef) ->
     gproc:reg(subscribers_key(NodeRef)).
 
- -spec stop_watching(node_ref()) -> true.
- stop_watching(NodeRef) ->
-    gproc:unreg(subscribers_key(NodeRef)).
+-spec stop_watching(node_ref()) -> true.
+stop_watching(NodeRef) ->
+    try
+        gproc:unreg(subscribers_key(NodeRef))
+    catch error:badarg ->
+            ok
+    end.
 
+init({NodeRef,StartState}) ->
+    init(NodeRef,StartState);
+init(NodeRef) ->
+    init(NodeRef, down).
 %
 % This is split into two phases: an 'upper half' to get the minimimal work done required to wire things up
 % and a 'lower half' that takes care of things that can wait
 %
-init(NodeRef) ->
+init(NodeRef, StartState) ->
     GprocName = pushy_node_state_sup:mk_gproc_name(NodeRef),
     try
         %% The most important thing to have happen is this registration; we need to get this
@@ -106,15 +120,20 @@ init(NodeRef) ->
         UpThresh   = pushy_util:get_env(pushy, up_threshold, ?DEFAULT_UP_THRESHOLD, any), %% TODO constrain to float
         DownThresh = pushy_util:get_env(pushy, down_threshold, ?DEFAULT_DOWN_THRESHOLD, any), %% TODO constrain to float
 
+        InitAvg = case StartState of
+                      up -> 1.0;
+                      down -> 0.0
+                  end,
+
         State = #state{node_ref = NodeRef,
                        decay_window = DecayWindow,
                        heartbeat_interval = HeartbeatInterval,
-                       heartbeat_rate = pushy_ema:init(DecayWindow, HeartbeatInterval),
+                       heartbeat_rate = pushy_ema:init(DecayWindow, HeartbeatInterval, InitAvg),
                        up_threshold = UpThresh,
                        down_threshold = DownThresh,
-                       current_status = down
+                       current_status = StartState
                       },
-        {ok, down, create_status_record(down, State)}
+        {ok, StartState, create_status_record(StartState, State)}
     catch
         error:badarg ->
             %% When we start up from a previous run, we have two ways that the FSM might be started;

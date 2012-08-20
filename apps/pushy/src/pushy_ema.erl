@@ -8,6 +8,7 @@
 
 %% API
 -export([init/2,
+         init/3,
          reset_timer/1,
          tick/1,
          inc/2,
@@ -22,7 +23,11 @@
               }).
 -spec init(integer(), integer()) -> #eavg{}.
 init(Window, Interval) when Window>0 ->
-    EAvg = #eavg{acc=0, avg=0.0, window=Window, tick_interval=Interval},
+    init(Window, Interval, 0.0).
+
+-spec init(integer(), integer(), float()) -> #eavg{}.
+init(Window, Interval, Avg) when Window>0 ->
+    EAvg = #eavg{acc=0, avg=Avg, window=Window, tick_interval=Interval},
     reset_timer(EAvg),
     EAvg.
 

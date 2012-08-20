@@ -36,7 +36,6 @@ init_test_() ->
               {"Start things up, check that we can find it, shut it down",
                fun() ->
                        Result = (catch ?NS:start_link(?NODE)),
-                       ?debugVal(Result),
                        ?assertMatch({ok, _}, Result),
                        {ok, Pid} = Result,
                        ?assert(is_pid(Pid)),
@@ -86,7 +85,7 @@ heartbeat_test_() ->
               {"Start it up, check that we can get state",
                fun() ->
                        V = ?NS:current_state(?NODE),
-                       ?assertEqual({down,0.0}, V)
+                       ?assertEqual(down, V)
                end}
       end,
       fun(_) ->
@@ -94,7 +93,7 @@ heartbeat_test_() ->
                fun() ->
                        ?NS:heartbeat(?NODE),
                        V = ?NS:current_state(?NODE),
-                       ?assertEqual({down,0.0}, V)
+                       ?assertEqual(down, V)
                end}
       end,
       fun(_) ->
@@ -102,10 +101,10 @@ heartbeat_test_() ->
                fun() ->
                        ?NS:heartbeat(?NODE),
                        V1= ?NS:current_state(?NODE),
-                       ?assertEqual({down,0.0}, V1),
+                       ?assertEqual(down, V1),
                        timer:sleep(?HB_INTERVAL),
                        V2 = ?NS:current_state(?NODE),
-                       ?assertMatch({down,_}, V2)
+                       ?assertMatch(down, V2)
                end}
       end,
       fun(_) ->
@@ -113,12 +112,12 @@ heartbeat_test_() ->
                fun() ->
                        ?NS:heartbeat(?NODE),
                        V1 = ?NS:current_state(?NODE),
-                       ?assertEqual({down,0.0}, V1),
+                       ?assertEqual(down, V1),
                        timer:sleep(?HB_INTERVAL),
 
                        heartbeat_step(?NODE, ?HB_INTERVAL,6),
                        V2 = ?NS:current_state(?NODE),
-                       ?assertMatch({up, _}, V2)
+                       ?assertMatch(up, V2)
                end}
       end,
       fun(_) ->
@@ -126,16 +125,16 @@ heartbeat_test_() ->
                fun() ->
                        ?NS:heartbeat(?NODE),
                        V1 = ?NS:current_state(?NODE),
-                       ?assertEqual({down,0.0}, V1),
+                       ?assertEqual(down, V1),
                        timer:sleep(?HB_INTERVAL),
 
                        heartbeat_step(?NODE, ?HB_INTERVAL, 6),
                        V2 = ?NS:current_state(?NODE),
-                       ?assertMatch({up, _}, V2),
+                       ?assertMatch(up, V2),
 
                        timer:sleep(?HB_INTERVAL*7),
                        V3 = ?NS:current_state(?NODE),
-                       ?assertMatch({down, _}, V3)
+                       ?assertMatch(down, V3)
                end}
       end
      ]}.
@@ -170,10 +169,10 @@ watcher_test_() ->
                fun() ->
                        ?NS:heartbeat(?NODE),
                        V1= ?NS:current_state(?NODE),
-                       ?assertEqual({down,0.0}, V1),
+                       ?assertEqual(down, V1),
                        timer:sleep(?HB_INTERVAL),
                        V2 = ?NS:current_state(?NODE),
-                       ?assertMatch({down,_}, V2),
+                       ?assertMatch(down, V2),
                        Msg = receive
                                  X -> X
                              after
@@ -188,18 +187,18 @@ watcher_test_() ->
                        ?NS:start_watching(?NODE),
                        ?NS:heartbeat(?NODE),
                        V1 = ?NS:current_state(?NODE),
-                       ?assertEqual({down,0.0}, V1),
+                       ?assertEqual(down, V1),
                        timer:sleep(?HB_INTERVAL),
 
                        heartbeat_step(?NODE, ?HB_INTERVAL, 6),
                        V2 = ?NS:current_state(?NODE),
-                       ?assertMatch({up, _}, V2),
+                       ?assertMatch(up, V2),
                        Msg = receive
                                  X -> X
                              after
                                  100 -> none
                              end,
-                       ?assertEqual({node_heartbeat_event, ?NODE, up}, Msg)
+                       ?assertEqual({node_state_change, ?NODE, up}, Msg)
 
                end}
       end,
@@ -209,30 +208,30 @@ watcher_test_() ->
                        ?NS:start_watching(?NODE),
                        ?NS:heartbeat(?NODE),
                        V1 = ?NS:current_state(?NODE),
-                       ?assertEqual({down,0.0}, V1),
+                       ?assertEqual(down, V1),
                        timer:sleep(?HB_INTERVAL),
 
                        heartbeat_step(?NODE, ?HB_INTERVAL, 6),
                        V2 = ?NS:current_state(?NODE),
-                       ?assertMatch({up, _}, V2),
+                       ?assertMatch(up, V2),
 
                        timer:sleep(?HB_INTERVAL*7),
                        V3 = ?NS:current_state(?NODE),
-                       ?assertMatch({down, _}, V3),
+                       ?assertMatch(down, V3),
 
                        Msg1 = receive
                                  X1 -> X1
                              after
                                  100 -> none
                              end,
-                       ?assertEqual({node_heartbeat_event, ?NODE, up}, Msg1),
+                       ?assertEqual({node_state_change, ?NODE, up}, Msg1),
 
                        Msg2 = receive
                                  X2 -> X2
                              after
                                  100 -> none
                              end,
-                       ?assertEqual({node_heartbeat_event, ?NODE, down}, Msg2)
+                       ?assertEqual({node_state_change, ?NODE, down}, Msg2)
 
                end}
       end
