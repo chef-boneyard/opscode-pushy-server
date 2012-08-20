@@ -34,12 +34,13 @@ start_link() ->
 
 -spec get_process(node_ref()) -> pid().
 get_process(NodeRef) ->
+    StartState = up,
     GprocName = mk_gproc_name(NodeRef),
     case catch gproc:lookup_pid({n,l,GprocName}) of
         {'EXIT', _} ->
             % Run start_child asynchronously; we only need to wait until the
             % process registers itself before we can send it messages.
-            spawn(supervisor, start_child, [?SERVER, [NodeRef]]),
+            spawn(supervisor, start_child, [?SERVER, [NodeRef, StartState]]),
             {Pid, _Value} = gproc:await({n,l,GprocName},1000),
             Pid;
         Pid -> Pid
