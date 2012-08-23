@@ -29,13 +29,13 @@ compile_app:
 	$(REBAR) skip_deps=true compile
 
 plt_clean:
-	@dialyzer --build_plt --apps erts kernel stdlib crypto public_key ssl eunit xmerl inets mnesia snmp debugger syntax_tools
+	dialyzer --output_plt dialyzer_plt --build_plt --apps erts kernel stdlib crypto public_key ssl eunit xmerl inets mnesia snmp debugger syntax_tools
 
 plt:
-	@dialyzer --add_to_plt deps/*/ebin
+	dialyzer --output_plt dialyzer_plt --plt dialyzer_plt --add_to_plt deps/*/ebin
 
 dialyze:
-	dialyzer --src -Wunmatched_returns -Werror_handling -Wrace_conditions -r apps/pushy/src -I deps
+	dialyzer --plt dialyzer_plt --src -Wunmatched_returns -Werror_handling -Wrace_conditions -r apps/pushy/src -I deps
 
 #dialyzer:
 #	@rm -rf apps/pushy/.eunit
