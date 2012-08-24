@@ -76,7 +76,7 @@ from_json(Req, State) ->
 
 parse_post_body(Req) ->
     Body = wrq:req_body(Req),
-    JobJson = ejson:decode(Body),
+    JobJson = jiffy:decode(Body),
     Command = ej:get({<<"command">>}, JobJson),
     NodeNames = ej:get({<<"nodes">>}, JobJson),
     [ Command, NodeNames ].

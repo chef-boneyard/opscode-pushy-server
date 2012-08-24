@@ -48,7 +48,7 @@ to_json(Req, #config_state{organization_guid=OrgId}=State) ->
 
     ConfigurationStruct = [node_to_json_struct(E) || E <- StatusList],
     %% ?debugVal(ConfigurationStruct),
-    ConfigurationJson = ejson:encode(ConfigurationStruct),
+    ConfigurationJson = jiffy:encode(ConfigurationStruct),
     {ConfigurationJson, Req, State}.
 
 node_to_json_struct(#pushy_node_status{node_name=Name, status=Status, updated_at=UpdatedAt}) ->
