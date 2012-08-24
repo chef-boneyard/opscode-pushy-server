@@ -69,7 +69,7 @@ to_json(Req, State) ->
           {<<"lifetime">> ,3600}
          ]},
 
-    ConfigurationJson = ejson:encode(ConfigurationStruct),
+    ConfigurationJson = jiffy:encode(ConfigurationStruct),
 
     % ?debugVal(ConfigurationJson),
 
