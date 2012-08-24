@@ -317,5 +317,10 @@ safe_get(Key, Proplist) ->
 statements(DbType) ->
     File = atom_to_list(DbType) ++ "_statements.config",
     Path = filename:join([filename:dirname(code:which(?MODULE)), "..", "priv", File]),
-    {ok, Statements} = file:consult(Path),
-    Statements.
+    Rv = case file:consult(Path) of
+             {ok, Statements} -> Statements;
+             {error, Error} ->
+                 lager:error("Cannot load statements from ~s, ~s", [File, Error]),
+                 exit(no_statement_file)
+         end,
+    Rv.
