@@ -1,10 +1,10 @@
 DEPS = deps/erlzmq deps/jiffy deps/gproc deps/ej \
-	     deps/chef_common deps/sqerl deps/mixer deps\lager \
-	     deps/folsom
+       deps/chef_authn deps/sqerl deps/mixer deps\lager \
+       deps/folsom
 
 all: compile all_tests
 
-all_tests: dialyzer eunit
+all_tests: dialyze eunit
 
 use_locked_config = $(wildcard USE_REBAR_LOCKED)
 ifeq ($(use_locked_config),USE_REBAR_LOCKED)
