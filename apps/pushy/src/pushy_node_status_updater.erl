@@ -59,7 +59,7 @@ handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
 handle_cast({create, {OrgId, NodeName}=NodeRef, ActorId, Status}, State) ->
-    lager:info("Creating node ~p to status ~p", [NodeRef, Status]),
+    lager:info("Creating node ~p with status ~p", [NodeRef, Status]),
     NodeStatus = pushy_object:new_record(pushy_node_status, OrgId,
                                          [{<<"node">>, NodeName},{<<"type">>, Status}]),
     NewState = case pushy_object:create_object(create_node_status, NodeStatus, ActorId) of
