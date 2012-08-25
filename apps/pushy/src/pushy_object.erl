@@ -31,7 +31,7 @@ new_record(pushy_node_status, OrgId, NodeStatusData) ->
                       status = Status
                       };
 new_record(pushy_job, OrgId, NodeNames) ->
-    Id = chef_db:make_org_prefix_id(OrgId),
+    Id = make_org_prefix_id(OrgId),
     #pushy_job{id = Id,
                 org_id = OrgId,
                 status = new,
