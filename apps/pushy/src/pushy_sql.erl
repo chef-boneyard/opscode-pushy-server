@@ -2,6 +2,8 @@
 
 -include_lib("pushy_sql.hrl").
 
+-include_lib("eunit/include/eunit.hrl").
+
 -export([
          %% node status ops
          fetch_node_statuses/1,
@@ -144,7 +146,7 @@ create_object(QueryName, Args) when is_atom(QueryName), is_list(Args) ->
         %% crashing would be better if we get an unexpected error.
         %% Error -> Error
     end;
-create_object(QueryName, Record) when is_atom(QueryName) ->
+create_object(QueryName, Record) when is_atom(QueryName), is_tuple(Record) ->
     List = flatten_record(Record),
     create_object(QueryName, List).
 

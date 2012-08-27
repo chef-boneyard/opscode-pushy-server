@@ -27,8 +27,8 @@ new_record(pushy_node_status, OrgId, NodeStatusData) ->
     Name = proplists:get_value(<<"node">>, NodeStatusData),
     Status = proplists:get_value(<<"type">>, NodeStatusData),
     #pushy_node_status{org_id = OrgId,
-                      node_name = Name,
-                      status = Status
+                       node_name = Name,
+                       status = Status
                       };
 new_record(pushy_job, OrgId, NodeNames) ->
     Id = make_org_prefix_id(OrgId),
