@@ -27,11 +27,11 @@ new_record(pushy_node_status, OrgId, NodeStatusData) ->
     Name = proplists:get_value(<<"node">>, NodeStatusData),
     Status = proplists:get_value(<<"type">>, NodeStatusData),
     #pushy_node_status{org_id = OrgId,
-                      node_name = Name,
-                      status = Status
+                       node_name = Name,
+                       status = Status
                       };
 new_record(pushy_job, OrgId, NodeNames) ->
-    Id = chef_db:make_org_prefix_id(OrgId),
+    Id = make_org_prefix_id(OrgId),
     #pushy_job{id = Id,
                 org_id = OrgId,
                 status = new,

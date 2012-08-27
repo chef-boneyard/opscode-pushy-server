@@ -47,7 +47,7 @@ to_json(Req, #config_state{organization_guid=OrgId}=State) ->
     NodeName = list_to_binary(wrq:path_info(node_name, Req)),
     % TODO handle missing node
     NodeState = pushy_node_state:current_state({OrgId, NodeName}),
-    Result = ejson:encode({[
+    Result = jiffy:encode({[
         {<<"node_name">>, NodeName},
         {<<"status">>, NodeState}
     ]}),

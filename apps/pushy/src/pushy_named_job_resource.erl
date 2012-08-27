@@ -53,7 +53,7 @@ resource_exists(Req, State) ->
     end.
 
 to_json(Req, #state{job = Job} = State) ->
-    {ejson:encode(job_to_json(Job)), Req, State}.
+    {jiffy:encode(job_to_json(Job)), Req, State}.
 
 %{
 %  id: 2001,

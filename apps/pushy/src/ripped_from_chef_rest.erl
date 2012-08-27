@@ -28,11 +28,11 @@ set_uri_of_created_resource(Uri, Req0) when is_binary(Uri) ->
     Req = set_json_body(Req0, {[{<<"uri">>, Uri}]}),
     wrq:set_resp_header("Location", binary_to_list(Uri), Req).
 
-%% @doc Converts the given Ejson-encoded data to a JSON string and
+%% @doc Converts the given json-encoded data to a JSON string and
 %% sets it as the request body, returning the updated request.
 %% @end
 set_json_body(Req, EjsonData) ->
-    Json = ejson:encode(EjsonData),
+    Json = jiffy:encode(EjsonData),
     wrq:set_resp_body(Json, Req).
 
 -spec base_uri(#wm_reqdata{}) -> string().

@@ -2,6 +2,8 @@
 
 -include_lib("pushy_sql.hrl").
 
+-include_lib("eunit/include/eunit.hrl").
+
 -export([
          %% node status ops
          fetch_node_statuses/1,
@@ -94,7 +96,7 @@ update_job_node(#pushy_job_node{job_id = JobId,
                                                            {error, term()}.
 %% @doc create an object given a pushy object record
 create_object(#pushy_node_status{status=Status}=NodeStatus) ->
-    NodeStatus1 = NodeStatus#pushy_node_status{status=hb_status_as_atom(Status)},
+    NodeStatus1 = NodeStatus#pushy_node_status{status=hb_status_as_int(Status)},
     create_object(insert_node_status, NodeStatus1);
 %% This does not exactly follow the same pattern as it needs to
 %% insert a list of job_nodes into a separate table.
@@ -144,7 +146,7 @@ create_object(QueryName, Args) when is_atom(QueryName), is_list(Args) ->
         %% crashing would be better if we get an unexpected error.
         %% Error -> Error
     end;
-create_object(QueryName, Record) when is_atom(QueryName) ->
+create_object(QueryName, Record) when is_atom(QueryName), is_tuple(Record) ->
     List = flatten_record(Record),
     create_object(QueryName, List).
 
@@ -317,5 +319,10 @@ safe_get(Key, Proplist) ->
 statements(DbType) ->
     File = atom_to_list(DbType) ++ "_statements.config",
     Path = filename:join([filename:dirname(code:which(?MODULE)), "..", "priv", File]),
-    {ok, Statements} = file:consult(Path),
-    Statements.
+    Rv = case file:consult(Path) of
+             {ok, Statements} -> Statements;
+             {error, Error} ->
+                 lager:error("Cannot load statements from ~s, ~s", [File, Error]),
+                 exit(no_statement_file)
+         end,
+    Rv.

@@ -34,5 +34,5 @@ to_json(Req, State) ->
 %% private functions
 
 check_health(_Req, _State) ->
-    {pong, ejson:encode({[{<<"status">>, <<"it's alive">> }]})}. 
+    {pong, jiffy:encode({[{<<"status">>, <<"it's alive">> }]})}. 
 
