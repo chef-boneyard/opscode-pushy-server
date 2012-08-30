@@ -10,14 +10,14 @@ task :default => :db
 namespace :db do
   desc "Effectively drop the db and then migrate it to current"
   task :remigrate do
-    sh("sequel -m db/migrate mysql2://root@127.0.0.1/opscode_pushy  -M 0")
-    sh("sequel -m db/migrate mysql2://root@127.0.0.1/opscode_pushy")
+    sh("sequel -m migrate mysql2://root@127.0.0.1/opscode_pushy  -M 0")
+    sh("sequel -m migrate mysql2://root@127.0.0.1/opscode_pushy")
   end
 
   desc "Effectively drop the db and then migrate it to current"
   task :remigrate_test do
-    sh("sequel -m db/migrate mysql2://root@127.0.0.1/opscode_pushy_test -M 0")
-    sh("sequel -m db/migrate mysql2://root@127.0.0.1/opscode_pushy_test")
+    sh("sequel -m migrate mysql2://root@127.0.0.1/opscode_pushy_test -M 0")
+    sh("sequel -m migrate mysql2://root@127.0.0.1/opscode_pushy_test")
   end
 
   namespace :production do
@@ -34,7 +34,7 @@ namespace :db do
       require 'highline'
       require 'logger'
       logger = Logger.new(STDOUT)
-      migrate_dir = File.expand_path("../db/migrate", __FILE__)
+      migrate_dir = File.expand_path("../migrate", __FILE__)
 
       connection_string = "mysql2://root:%s@127.0.0.1/opscode_pushy"
       puts "** MIGRATING PRODUCTION **"
@@ -54,14 +54,14 @@ end
 namespace :pg do
   desc "(PG) Effectively drop the db and then migrate it to current"
   task :remigrate do
-    sh("sequel -m db/migrate postgres://127.0.0.1/opscode_pushy  -M 0")
-    sh("sequel -m db/migrate postgres://127.0.0.1/opscode_pushy")
+    sh("sequel -m migrate postgres://127.0.0.1/opscode_pushy  -M 0")
+    sh("sequel -m migrate postgres://127.0.0.1/opscode_pushy")
   end
 
   desc "(PG) Effectively drop the *test* db and then migrate it to current"
   task :remigrate_test do
-    sh("sequel -m db/migrate postgres://127.0.0.1/opscode_pushy_test -M 0")
-    sh("sequel -m db/migrate postgres://127.0.0.1/opscode_pushy_test")
+    sh("sequel -m migrate postgres://127.0.0.1/opscode_pushy_test -M 0")
+    sh("sequel -m migrate postgres://127.0.0.1/opscode_pushy_test")
   end
 end
 
