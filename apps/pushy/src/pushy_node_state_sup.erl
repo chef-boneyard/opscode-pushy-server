@@ -55,7 +55,7 @@ mk_gproc_name({OrgId, NodeName}) when is_binary(OrgId) andalso is_binary(NodeNam
 %% ------------------------------------------------------------------
 
 init([]) ->
-    {ok, {{simple_one_for_one, 1, 1},
+    {ok, {{simple_one_for_one, 0, 1},
           [{pushy_node_state, {pushy_node_state, start_link, []},
             transient, brutal_kill, worker, [pushy_node_state]}]}}.
 

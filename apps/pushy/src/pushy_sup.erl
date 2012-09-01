@@ -56,7 +56,7 @@ init([#pushy_state{ctx=_Ctx} = PushyState]) ->
                         {dispatch, Dispatch},
                         {enable_perf_logger, true}],
     ?debugVal(WebMachineConfig),
-    {ok, {{one_for_one, 3, 60},
+    {ok, {{one_for_one, 0, 1},
                [?SUP(pushy_node_state_sup, []),
                 ?SUP(pushy_job_state_sup, []),
                 ?SUP(folsom_sup, []),
