@@ -179,20 +179,18 @@ process_state_message(State, Address, Type, Data) ->
     % Record the heartbeat if it is a heartbeat
     case Type of
         heartbeat -> pushy_node_state:heartbeat(NodeRef);
-        _         -> nop
-    end,
-
-    % Notify the job (if any) of new state
-    NodeState = node_state_to_atom(ej:get({<<"job_state">>}, Data)),
-    case NodeState of
-        unknown ->
-            lager:error("Unexpected node state ~p received in heartbeat", [ej:get({<<"state">>}, Data)]);
-        no_job ->
-            lager:info("Node ~p reported a ~p in state ~p", [NodeRef, Type, NodeState]);
-        _ ->
+        _         ->
             case ej:get({<<"job_id">>}, Data) of
-                undefined -> lager:error("Node ~p set to state ~p with no job id: body=~p", [NodeRef, NodeState, Data]);
-                JobId ->     pushy_job_state:node_execution_state_updated(JobId, NodeRef, NodeState)
+                undefined -> lager:error("Node ~p sent heartbeat with no job id: body=~p", [NodeRef, Data]);
+                JobId ->
+                    Event = case node_state_to_atom(ej:get({<<"job_state">>}, Data)) of
+                        ready     -> ack_commit;
+                        never_run -> nack_commit;
+                        running   -> ack_run;
+                        complete  -> complete;
+                        aborted   -> aborted
+                    end,
+                    pushy_job_state:node_event(JobId, NodeRef, Event)
             end
     end,
     State2.

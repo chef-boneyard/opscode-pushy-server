@@ -11,14 +11,11 @@
 %% job status
 -type job_status() :: voting |
                       running |
-                      finished.
+                      complete |
+                      quorum_failed |
+                      aborted.
 
--type job_node_status() :: new | ready | never_ran |
-                           running |
-                           complete | aborted.
-
--type job_finished_reason() :: complete |
-                               quorum_failed.
+-type job_node_status() :: new | ready | running | complete | aborted | nacked | faulty.
 
 %% random PoC hard-codings
 -define(POC_ORG_ID, <<"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa">>).
@@ -46,7 +43,6 @@
                     'org_id'::object_id(),              % organization guid
                     'command'::binary(),                % command to execute
                     'status'::job_status(),             % job status
-                    'finished_reason'::job_finished_reason(), % reason job is finished (quorum_failed, complete, etc.)
                     'duration'::non_neg_integer(),      % max duration (in minutes) to allow execution
                     'job_nodes' ::[#pushy_job_node{}],
                     'last_updated_by'::object_id(),     % authz guid of last actor to update
