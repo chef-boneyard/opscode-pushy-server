@@ -71,7 +71,9 @@ init(#pushy_job{id = JobId, job_nodes = JobNodeList} = Job) ->
             },
             % If there are no nodes, the job finishes immediately.
             case dict:size(JobNodes) of
-                0 -> finish_job(complete, State);
+                0 ->
+                    {next_state, complete, State2} = finish_job(complete, State),
+                    {ok, complete, State2};
                 _ ->
                     listen_for_down_nodes(dict:fetch_keys(JobNodes)),
                     start_voting(State)
