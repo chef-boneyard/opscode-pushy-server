@@ -107,6 +107,13 @@ voting({nack_commit, NodeRef}, State) ->
     end,
     % Whether it's faulty or not, the job is done (quorum failed).
     finish_job(quorum_failed, State2);
+voting({down, NodeRef}, State) ->
+    % Node from new -> unavailable.
+    State2 = case get_node_state(NodeRef, State) of
+        new -> set_node_state(NodeRef, unavailable, State);
+        _   -> eject_node(NodeRef, State)
+    end,
+    finish_job(quorum_failed, State2);
 voting({_, NodeRef}, State) ->
     State2 = eject_node(NodeRef, State),
     finish_job(quorum_failed, State2).

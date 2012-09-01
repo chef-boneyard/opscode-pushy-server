@@ -15,7 +15,7 @@
                       quorum_failed |
                       aborted.
 
--type job_node_status() :: new | ready | running | complete | aborted | nacked | faulty.
+-type job_node_status() :: new | ready | running | complete | aborted | unavailable | nacked | faulty.
 
 %% random PoC hard-codings
 -define(POC_ORG_ID, <<"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa">>).
