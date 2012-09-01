@@ -255,7 +255,7 @@ finish_job(Reason, #state{job = Job} = State) ->
 count_nodes_in_state(NodeStates, #state{job_nodes = JobNodes}) ->
     dict:fold(
         fun(_, NodeState, Count) ->
-            case lists:member(NodeState, NodeStates) of
+            case lists:member(NodeState#pushy_job_node.status, NodeStates) of
                 true -> Count + 1;
                 _ -> Count
             end
