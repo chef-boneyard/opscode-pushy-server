@@ -88,37 +88,41 @@ init(#pushy_job{id = JobId, job_nodes = JobNodeList} = Job) ->
 
 voting({ack_commit, NodeRef}, State) ->
     % Node from new -> ready
-    case get_node_state(NodeRef, State) of
-        new ->
-            State2 = set_node_state(NodeRef, ready, State),
-            case count_nodes_in_state([new], State2) of
-                0        -> start_running(State2);
-                _        -> {next_state, voting, State2}
-            end;
-        ready ->
-            {next_state, voting, State};
-        _ ->
-            State2 = eject_node(NodeRef, State),
-            finish_job(quorum_failed, State2)
-    end;
+    State2 = case get_node_state(NodeRef, State) of
+        new   -> set_node_state(NodeRef, ready, State);
+        ready -> State;
+        _     -> mark_node_faulty(NodeRef, State)
+    end,
+    maybe_finished_voting(State2);
 voting({nack_commit, NodeRef}, State) ->
     % Node from new -> nacked.
     State2 = case get_node_state(NodeRef, State) of
         new -> set_node_state(NodeRef, nacked, State);
-        _   -> eject_node(NodeRef, State)
+        _   -> mark_node_faulty(NodeRef, State)
     end,
-    % Whether it's faulty or not, the job is done (quorum failed).
-    finish_job(quorum_failed, State2);
+    maybe_finished_voting(State2);
 voting({down, NodeRef}, State) ->
-    % Node from new -> unavailable.
+    % Node from new/ready -> unavailable.
     State2 = case get_node_state(NodeRef, State) of
-        new -> set_node_state(NodeRef, unavailable, State);
-        _   -> eject_node(NodeRef, State)
+        new   -> set_node_state(NodeRef, unavailable, State);
+        ready -> set_node_state(NodeRef, unavailable, State);
+        _     -> mark_node_faulty(NodeRef, State)
     end,
-    finish_job(quorum_failed, State2);
+    maybe_finished_voting(State2);
 voting({_, NodeRef}, State) ->
-    State2 = eject_node(NodeRef, State),
-    finish_job(quorum_failed, State2).
+    State2 = mark_node_faulty(NodeRef, State),
+    maybe_finished_voting(State2).
+
+maybe_finished_voting(#state{job_nodes = JobNodes} = State) ->
+    case count_nodes_in_state([new], State) of
+        0 ->
+            NumNodes = dict:size(JobNodes),
+            case count_nodes_in_state([ready], State) of
+                NumNodes -> start_running(State);
+                _ -> finish_job(quorum_failed, State)
+            end;
+        _ -> {next_state, voting, State}
+    end.
 
 running({ack_run, NodeRef}, State) ->
     % Node from ready -> running
@@ -128,23 +132,23 @@ running({ack_run, NodeRef}, State) ->
             {next_state, running, State2};
         running -> {next_state, running, State};
         _ ->
-            State2 = eject_node(NodeRef, State),
+            State2 = mark_node_faulty(NodeRef, State),
             maybe_finished_running(State2)
     end;
 running({complete, NodeRef}, State) ->
     State2 = case get_node_state(NodeRef, State) of
         running -> set_node_state(NodeRef, complete, State);
-        _       -> eject_node(NodeRef, State)
+        _       -> mark_node_faulty(NodeRef, State)
     end,
     maybe_finished_running(State2);
 running({aborted, NodeRef}, State) ->
     State2 = case get_node_state(NodeRef, State) of
         running -> set_node_state(NodeRef, aborted, State);
-        _       -> eject_node(NodeRef, State)
+        _       -> mark_node_faulty(NodeRef, State)
     end,
     maybe_finished_running(State2);
 running({_,NodeRef}, State) ->
-    State2 = eject_node(NodeRef, State),
+    State2 = mark_node_faulty(NodeRef, State),
     maybe_finished_running(State2).
 
 complete({Event,NodeRef}, State) ->
@@ -203,23 +207,23 @@ set_node_state(NodeRef, NewNodeState, #state{job_nodes = JobNodes} = State) ->
     end, JobNodes),
     State#state{job_nodes = JobNodes2}.
 
-eject_node(NodeRef, #state{job_nodes = JobNodes} = State) ->
+mark_node_faulty(NodeRef, #state{job_nodes = JobNodes} = State) ->
     JobNodes2 = dict:update(NodeRef, fun(OldNodeState) ->
         case OldNodeState#pushy_job_node.status of
             new -> OldNodeState#pushy_job_node{status = faulty};
             ready -> OldNodeState#pushy_job_node{status = faulty};
-            running -> OldNodeState#pushy_job_node{status = faulty};
+            running -> OldNodeState#pushy_job_node{status = aborted}; % TODO better status?
             _ -> OldNodeState
         end
     end, JobNodes),
     State#state{job_nodes = JobNodes2}.
 
-eject_all_nodes(#state{job_nodes = JobNodes} = State) ->
+finish_all_nodes(#state{job_nodes = JobNodes} = State) ->
     JobNodes2 = dict:map(fun(_, OldNodeState) ->
         case OldNodeState#pushy_job_node.status of
             new -> OldNodeState#pushy_job_node{status = faulty};
-            ready -> OldNodeState#pushy_job_node{status = faulty};
-            running -> OldNodeState#pushy_job_node{status = faulty};
+            ready -> OldNodeState#pushy_job_node{status = was_ready};
+            running -> OldNodeState#pushy_job_node{status = aborted}; % TODO better status?
             _ -> OldNodeState
         end
     end, JobNodes),
@@ -249,7 +253,7 @@ finish_job(Reason, #state{job = Job} = State) ->
     lager:info("Job ~p -> ~p", [Job#pushy_job.id, Reason]),
     Job2 = Job#pushy_job{status = Reason},
     State2 = State#state{job = Job2},
-    State3 = eject_all_nodes(State2),
+    State3 = finish_all_nodes(State2),
     {next_state, Reason, State3}.
 
 count_nodes_in_state(NodeStates, #state{job_nodes = JobNodes}) ->
