@@ -69,15 +69,10 @@ init(#pushy_job{id = JobId, job_nodes = JobNodeList} = Job) ->
                 job = Job#pushy_job{job_nodes = undefined},
                 job_nodes = JobNodes
             },
-            % If there are no nodes, the job finishes immediately.
-            case dict:size(JobNodes) of
-                0 ->
-                    {next_state, complete, State2} = finish_job(complete, State),
-                    {ok, complete, State2};
-                _ ->
-                    listen_for_down_nodes(dict:fetch_keys(JobNodes)),
-                    start_voting(State)
-            end;
+            listen_for_down_nodes(dict:fetch_keys(JobNodes)),
+
+            % Start voting--if there are no nodes, the job finishes immediately.
+            start_voting(State);
         false ->
             {stop, shutdown, undefined}
     end.
@@ -113,28 +108,14 @@ voting({_, NodeRef}, State) ->
     State2 = mark_node_faulty(NodeRef, State),
     maybe_finished_voting(State2).
 
-maybe_finished_voting(#state{job_nodes = JobNodes} = State) ->
-    case count_nodes_in_state([new], State) of
-        0 ->
-            NumNodes = dict:size(JobNodes),
-            case count_nodes_in_state([ready], State) of
-                NumNodes -> start_running(State);
-                _ -> finish_job(quorum_failed, State)
-            end;
-        _ -> {next_state, voting, State}
-    end.
-
 running({ack_run, NodeRef}, State) ->
     % Node from ready -> running
-    case get_node_state(NodeRef, State) of
-        ready ->
-            State2 = set_node_state(NodeRef, running, State),
-            {next_state, running, State2};
-        running -> {next_state, running, State};
-        _ ->
-            State2 = mark_node_faulty(NodeRef, State),
-            maybe_finished_running(State2)
-    end;
+    State2 = case get_node_state(NodeRef, State) of
+        ready   -> set_node_state(NodeRef, running, State);
+        running -> State;
+        _ -> mark_node_faulty(NodeRef, State)
+    end,
+    maybe_finished_running(State2);
 running({complete, NodeRef}, State) ->
     State2 = case get_node_state(NodeRef, State) of
         running -> set_node_state(NodeRef, complete, State);
@@ -213,6 +194,7 @@ mark_node_faulty(NodeRef, #state{job_nodes = JobNodes} = State) ->
             new -> OldNodeState#pushy_job_node{status = faulty};
             ready -> OldNodeState#pushy_job_node{status = faulty};
             running -> OldNodeState#pushy_job_node{status = aborted}; % TODO better status?
+            % Once a node has reached a terminal state, we don't change its status
             _ -> OldNodeState
         end
     end, JobNodes),
@@ -229,6 +211,17 @@ finish_all_nodes(#state{job_nodes = JobNodes} = State) ->
     end, JobNodes),
     State#state{job_nodes = JobNodes2}.
 
+maybe_finished_voting(#state{job_nodes = JobNodes} = State) ->
+    case count_nodes_in_state([new], State) of
+        0 ->
+            NumNodes = dict:size(JobNodes),
+            case count_nodes_in_state([ready], State) of
+                NumNodes -> start_running(State);
+                _ -> finish_job(quorum_failed, State)
+            end;
+        _ -> {next_state, voting, State}
+    end.
+
 maybe_finished_running(State) ->
     case count_nodes_in_state([ready, running], State) of
         0 -> finish_job(complete, State);
@@ -240,14 +233,15 @@ start_voting(#state{job = Job} = State) ->
     Job2 = Job#pushy_job{status = voting},
     State2 = State#state{job = Job2},
     send_command_to_all(<<"job_command">>, State2),
-    {ok, voting, State2}.
+    {next_state, StateName, State3} = maybe_finished_voting(State2),
+    {ok, StateName, State3}.
 
 start_running(#state{job = Job} = State) ->
     lager:info("Job ~p -> running", [Job#pushy_job.id]),
     Job2 = Job#pushy_job{status = running},
     State2 = State#state{job = Job2},
     send_command_to_all(<<"job_execute">>, State2),
-    {next_state, running, State2}.
+    maybe_finished_running(State2).
 
 finish_job(Reason, #state{job = Job} = State) ->
     lager:info("Job ~p -> ~p", [Job#pushy_job.id, Reason]),
