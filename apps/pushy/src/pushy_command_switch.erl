@@ -151,22 +151,29 @@ do_send_multi(#state{addr_node_map = AddrNodeMap,
 process_message(State, Address, _Header, Body) ->
     case catch jiffy:decode(Body) of
         {Data} ->
-            case ej:get({<<"type">>}, Data, undefined) of
-                <<"heartbeat">> ->
-                    process_state_message(State, Address, heartbeat, Data);
-                <<"state_change">> ->
-                    process_state_message(State, Address, state_change, Data);
+            {State2, NodeRef} = get_node_ref(State, Address, Data),
+            JobId = ej:get({<<"job_id">>}, Data),
+            Type = ej:get({<<"type">>}, Data),
+            case Type of
+                <<"heartbeat">>   -> pushy_node_state:heartbeat(NodeRef);
+                <<"ack_commit">>  -> pushy_job_state:node_event(JobId, NodeRef, ack_commit);
+                <<"nack_commit">> -> pushy_job_state:node_event(JobId, NodeRef, nack_commit);
+                <<"ack_run">>     -> pushy_job_state:node_event(JobId, NodeRef, ack_run);
+                <<"nack_run">>    -> pushy_job_state:node_event(JobId, NodeRef, nack_run);
+                <<"complete">>    -> pushy_job_state:node_event(JobId, NodeRef, complete);
+                <<"aborted">>     -> pushy_job_state:node_event(JobId, NodeRef, aborted);
                 undefined ->
                     lager:error("Status message did not have type: body=~s", [Body]);
-                Type ->
+                _ ->
                     lager:error("Status message had unknown type ~p: body=~s", [Type, Body])
-            end;
+            end,
+            State2;
         {'EXIT', Error} ->
             lager:error("Status message JSON parsing failed: body=~s, error=~s", [Body,Error]),
             State
     end.
 
-process_state_message(State, Address, Type, Data) ->
+get_node_ref(State, Address, Data) ->
     % This essentially debug code.
     _ClientName = ej:get({<<"client">>}, Data),
     OrgName  = ej:get({<<"org">>}, Data),
@@ -175,47 +182,11 @@ process_state_message(State, Address, Type, Data) ->
     NodeRef = {OrgId, NodeName},
     %% Every time we get a message from a node, we update it's Addr->Name mapping entry
     State2 = addr_node_map_update(State, Address, NodeRef),
-
-    % Record the heartbeat if it is a heartbeat
-    case Type of
-        heartbeat -> pushy_node_state:heartbeat(NodeRef);
-        _         ->
-            case ej:get({<<"job_id">>}, Data) of
-                undefined -> lager:error("Node ~p sent heartbeat with no job id: body=~p", [NodeRef, Data]);
-                JobId ->
-                    Event = case node_state_to_atom(ej:get({<<"job_state">>}, Data)) of
-                        ready     -> ack_commit;
-                        never_run -> nack_commit;
-                        running   -> ack_run;
-                        complete  -> complete;
-                        aborted   -> aborted
-                    end,
-                    pushy_job_state:node_event(JobId, NodeRef, Event)
-            end
-    end,
-    State2.
-
-node_state_to_atom(<<"no_job">>) ->
-    no_job;
-node_state_to_atom(<<"new">>) ->
-    new;
-node_state_to_atom(<<"never_run">>) ->
-    never_run;
-node_state_to_atom(<<"ready">>) ->
-    ready;
-node_state_to_atom(<<"running">>) ->
-    running;
-node_state_to_atom(<<"aborted">>) ->
-    aborted;
-node_state_to_atom(<<"complete">>) ->
-    complete;
-node_state_to_atom(_) ->
-    unknown.
+    {State2, NodeRef}.
 
 %%
 %% Utility functions; we should generalize these and move elsewhere.
 %%
-
 
 addr_node_map_new() ->
     { dict:new(), dict:new() }.

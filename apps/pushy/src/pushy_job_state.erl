@@ -232,7 +232,7 @@ start_voting(#state{job = Job} = State) ->
     lager:info("Job ~p -> voting", [Job#pushy_job.id]),
     Job2 = Job#pushy_job{status = voting},
     State2 = State#state{job = Job2},
-    send_command_to_all(<<"job_command">>, State2),
+    send_command_to_all(<<"commit">>, State2),
     {next_state, StateName, State3} = maybe_finished_voting(State2),
     {ok, StateName, State3}.
 
@@ -240,7 +240,7 @@ start_running(#state{job = Job} = State) ->
     lager:info("Job ~p -> running", [Job#pushy_job.id]),
     Job2 = Job#pushy_job{status = running},
     State2 = State#state{job = Job2},
-    send_command_to_all(<<"job_execute">>, State2),
+    send_command_to_all(<<"run">>, State2),
     maybe_finished_running(State2).
 
 finish_job(Reason, #state{job = Job} = State) ->
