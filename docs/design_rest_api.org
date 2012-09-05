@@ -1,0 +1,126 @@
+* REST Endpoints
+
+The Pushy REST API allows you to create jobs and retrieve status.
+
+** /organizations/ORGNAME/pushy/jobs
+
+*** POST
+
+Starts a new job.
+
+POST body:
+
+#+begin_example
+{
+  "command": "chef-client",
+  "run_timeout": 300,
+  "nodes": ["NODE1", "NODE2", "NODE3", "NODE4", "NODE5", "NODE6"]
+}
+#+end_example
+
+Response:
+
+#+begin_example
+{
+  "id": "aaaaaaaaaaaa25fd67fa8715fd547d3d"
+}
+#+end_example
+
+Error Codes:
+
+201 - Job created.
+400 - Bad signature headers or bad JSON body
+401 - Unknown or inauthentic user
+403 - User not authorized to create jobs
+404 - Organization does not exist
+
+*** GET
+
+Gets a list of all jobs ever run in the system.  TODO perhaps this is not such a
+good idea, eh.  This needs more design, both input and output.
+
+#+begin_example
+[
+  "aaaaaaaaaaaa25fd67fa8715fd547d3d",
+  "aaaaaaaaaaaa6af7b14dd8a025777cf0"
+]
+#+end_example
+
+Error Codes:
+
+400 - Bad signature headers or bad JSON body
+401 - Unknown or inauthentic user
+403 - User not authorized to read jobs
+404 - Organization does not exist
+
+** /organizations/ORGNAME/pushy/jobs/<id>
+
+*** GET
+
+Gets the status of an individual job.  TODO restrict command.
+
+Response:
+
+The response includes the current status of the job, as well as every node in
+the job, organized by its status.
+
+#+begin_example
+{
+  "id": "aaaaaaaaaaaa25fd67fa8715fd547d3d",
+  "command": "chef-client",
+  "run_timeout": 300,
+  "status": "running",
+  "created_at": "...",
+  "updated_at": "...",
+  "nodes": {
+    "running": ["NODE1", "NODE5"],
+    "complete": ["NODE2", "NODE3", "NODE4"],
+    "faulty": ["NODE6"]
+  }
+}
+#+end_example
+
+Job Statuses:
+
+The job status represents the progress of the overall job.  complete,
+quorum_failed, timed_out and aborted are terminal states: job and node states
+will not change after that.
+
+voting        - Waiting for nodes to commit or refuse to run the command.
+running       - Running the command on the nodes.
+complete      - Ran the command.  Check individual node statuses to see if they
+                completed or had issues.
+quorum_failed - Did not run the command on any nodes.
+timed_out     - Timed out while running the job.
+aborted       - Job aborted by user.
+
+Node Statuses:
+
+These statuses represent the progress of a node running a job.  All states
+except new, ready and running are *terminal states*--the node's state will not
+change after that.
+
+new         - Node has neither committed nor refused to run the command.
+ready       - Node has committed to run the command but has not yet run it.
+running     - Node is presently running the command.
+complete    - Node ran the command to completion.
+aborted     - Node ran the command but stopped before completion.
+crashed     - Node went down or sideways after it started running
+nacked      - Node was busy when asked to be part of the job.
+unavailable - Node went down or sideways before it started running
+
+Error Codes:
+
+200 - OK
+400 - Bad signature headers
+401 - Unknown or inauthentic user
+403 - User not authorized to read jobs
+404 - Organization or job does not exist
+
+** /organizations/ORGNAME/pushy/node_states
+
+*** GET
+
+** /organizations/ORGNAME/pushy/node_states/<node_name>
+
+*** GET
