@@ -501,6 +501,8 @@ TODO This state machine needs rework in a serious way.
     + What happens to commands sent to permanently dead nodes; does it case a leak sitting in
       the buffering. Is dropping and restarting ZMQ a solution?
 
+#+INCLUDE: "design_client_tracking.org" :minlevel 2
+
 ** Job lifecycle
 
     A job is started by passing a job description, a set of nodes (jobset), and an initiating
@@ -1007,6 +1009,7 @@ TODO: describe new algorithm.
 **** ORGNAME/pushy/jobs/GUID/node/NODE
      Detailed information about a nodes status in the job. (Do we really need this level of detail?)
 
+#+INCLUDE: "design_rest_api.org" :minlevel 1
 
 * Knife command syntax
 
