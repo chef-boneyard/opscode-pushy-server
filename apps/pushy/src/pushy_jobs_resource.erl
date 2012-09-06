@@ -75,43 +75,9 @@ from_json(Req, State) ->
 
 %% GET /pushy/jobs
 to_json(Req, State) ->
-    Jobs = jobs_to_json(get_jobs(pushy_job_state_sup:get_processes())),
-
-    {jiffy:encode(Jobs), Req, State}.
-
-get_jobs(JobTuples) ->
-    [pushy_job_state:get_job_state(JobId) || {JobId, _} <- JobTuples].
-
-
-jobs_to_json(Jobs) ->
-    [job_to_json(Job) || Job <- Jobs].
-
-job_to_json(#pushy_job{
-        id = Id,
-        command = Command,
-        status = Status,
-        finished_reason = Reason,
-        job_nodes = Nodes}) ->
-    NodesJson = job_nodes_json_by_status(Nodes),
-    {[ {<<"id">>, iolist_to_binary(Id)},
-       {<<"command">>, iolist_to_binary(Command)},
-       {<<"status">>, atom_to_binary(case Status of finished -> Reason; _ -> Status end, utf8)},
-       {<<"duration">>, 300},
-       {<<"nodes">>, NodesJson}
-    ]}.
-
-job_nodes_json_by_status(Nodes) ->
-    NodesByStatus = job_nodes_by_status(Nodes, dict:new()),
-    {[
-        { erlang:atom_to_binary(Status, utf8), dict:fetch(Status, NodesByStatus) }
-        || Status <- dict:fetch_keys(NodesByStatus)
-    ]}.
-
-job_nodes_by_status([], Dict) ->
-    Dict;
-job_nodes_by_status([#pushy_job_node{node_name = Name, status = Status} | Nodes], Dict) ->
-    Dict2 = dict:append(Status, Name, Dict),
-    job_nodes_by_status(Nodes, Dict2).
+    Jobs = [pushy_job_state:get_job_state(JobId) || {JobId, _}
+        <- pushy_job_state_sup:get_job_processes()],
+    {jiffy:encode(pushy_job_util:jobs_to_json(Jobs)), Req, State}.
 
 
 % Private stuff
