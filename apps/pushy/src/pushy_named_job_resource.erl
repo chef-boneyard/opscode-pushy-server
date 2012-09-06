@@ -53,5 +53,51 @@ resource_exists(Req, State) ->
     end.
 
 to_json(Req, #state{job = Job} = State) ->
-    {jiffy:encode(pushy_job_util:job_to_json(Job)), Req, State}.
+    {jiffy:encode(job_to_json(Job)), Req, State}.
 
+%{
+%  id: 2001,
+%  command: "chef-client",
+%  status: "complete",
+%  duration: 1304914, # Seconds.  Could be null
+%  nodes: {
+%    "complete": [ "DERPY", "RAINBOWDASH" ]
+%  }
+%  created_at = "<some date format>",
+%  updated_at = "<some date format>"
+%}
+
+job_to_json(#pushy_job{
+    id = Id,
+    command = Command,
+    status = Status,
+    finished_reason = Reason,
+%    duration = Duration,
+%    created_at = CreatedAt,
+%    updated_at = UpdatedAt,
+    job_nodes = Nodes
+    }) ->
+%    CreatedAtDate =  iolist_to_binary(httpd_util:rfc1123_date(CreatedAt)),
+%    UpdatedAtDate =  iolist_to_binary(httpd_util:rfc1123_date(UpdatedAt)),
+    NodesJson = job_nodes_json_by_status(Nodes),
+    {[ {<<"id">>, iolist_to_binary(Id)},
+       {<<"command">>, iolist_to_binary(Command)},
+       {<<"status">>, atom_to_binary(case Status of finished -> Reason; _ -> Status end, utf8)},
+       {<<"duration">>, 300},
+       {<<"nodes">>, NodesJson}
+%       {<<"created_at">>, CreatedAtDate},
+%       {<<"updated_at">>, UpdatedAtDate}
+    ]}.
+
+job_nodes_json_by_status(Nodes) ->
+    NodesByStatus = job_nodes_by_status(Nodes, dict:new()),
+    {[
+        { erlang:atom_to_binary(Status, utf8), dict:fetch(Status, NodesByStatus) }
+        || Status <- dict:fetch_keys(NodesByStatus)
+    ]}.
+
+job_nodes_by_status([], Dict) ->
+    Dict;
+job_nodes_by_status([#pushy_job_node{node_name = Name, status = Status} | Nodes], Dict) ->
+    Dict2 = dict:append(Status, Name, Dict),
+    job_nodes_by_status(Nodes, Dict2).
