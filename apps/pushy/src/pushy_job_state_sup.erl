@@ -38,8 +38,9 @@ get_process(JobId) ->
         error:badarg -> not_found
     end.
 
+-spec get_job_processes() -> {binary(), pid()}.
 get_job_processes() ->
-    MatchHead = {{n, l, {pushy_job, '_'}}, '_', '_'},
+    MatchHead = pushy_util:gproc_match_head(n, l, {pushy_job, '_'}),
     Guard = [],
     Result = ['$$'],
     [{JobId, Pid} || [{_,_,{_,JobId}},Pid,_] <- gproc:select([{MatchHead, Guard, Result}])].

@@ -17,7 +17,8 @@
          signed_header_from_message/2,
          rand_bytes/1,
          guid_v4/0,
-         gen_req_id_using_rand/2
+         gen_req_id_using_rand/2,
+         gproc_match_head/3
         ]).
 
 -include_lib("eunit/include/eunit.hrl").
@@ -157,3 +158,10 @@ gen_req_id_using_rand(Prefix, NBytes) ->
     NBits = NBytes*8,
     <<RandValue:NBits, _/binary>> = RandBytes,
     iolist_to_binary([Prefix, integer_to_list(RandValue, 16)]).
+
+%% MatchHead for gproc
+-spec gproc_match_head(atom(), atom(), any()) -> {{atom(), atom(), any()}, '_', '_'}.
+gproc_match_head(Type, Scope, Key) ->
+    {{Type, Scope, Key}, '_', '_'}.
+
+
