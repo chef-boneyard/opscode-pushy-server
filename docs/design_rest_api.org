@@ -70,17 +70,22 @@ the job, organized by its status.
   "command": "chef-client",
   "run_timeout": 300,
   "status": "running",
-  "created_at": "...",
-  "updated_at": "...",
+  "created_at": "Tue, 04 Sep 2012 23:01:02 GMT",
+  "updated_at": "Tue, 04 Sep 2012 23:17:56 GMT",
   "nodes": {
     "running": ["NODE1", "NODE5"],
     "complete": ["NODE2", "NODE3", "NODE4"],
-    "faulty": ["NODE6"]
+    "crashed": ["NODE6"]
   }
 }
 #+end_example
 
-Job Statuses:
+"updated_at":
+
+updated_at represents when the job entered its present state (voting, running,
+complete, etc.).  updated_at is *not* updated when node statuses update.
+
+Job Statuses ("status"):
 
 The job status represents the progress of the overall job.  complete,
 quorum_failed, timed_out and aborted are terminal states: job and node states
@@ -94,7 +99,7 @@ quorum_failed - Did not run the command on any nodes.
 timed_out     - Timed out while running the job.
 aborted       - Job aborted by user.
 
-Node Statuses:
+Node Statuses ("nodes"):
 
 These statuses represent the progress of a node running a job.  All states
 except new, ready and running are *terminal states*--the node's state will not
@@ -105,9 +110,9 @@ ready       - Node has committed to run the command but has not yet run it.
 running     - Node is presently running the command.
 complete    - Node ran the command to completion.
 aborted     - Node ran the command but stopped before completion.
-crashed     - Node went down or sideways after it started running
+crashed     - Node went down after it started running
 nacked      - Node was busy when asked to be part of the job.
-unavailable - Node went down or sideways before it started running
+unavailable - Node went down before it started running
 
 Error Codes:
 
@@ -121,6 +126,58 @@ Error Codes:
 
 *** GET
 
+Gets a list of all nodes and their up/down status.  TODO make this compacter?
+Add job node is committed to?  If we add that, we need to ensure that updated_at
+reflects it, or make it clear in the docs that updated_at only reflects status.
+
+#+begin_example
+[
+  {
+    "node_name": "FARQUAD",
+    "status": "down",
+    "updated_at": "Tue, 04 Sep 2012 23:17:56 GMT"
+  },
+  {
+    "node_name": "DONKEY",
+    "status": "down",
+    "updated_at": "Tue, 04 Sep 2012 23:17:56 GMT"
+  },
+  {
+    "node_name": "FIONA",
+    "status": "down",
+    "updated_at": "Tue, 04 Sep 2012 23:17:56 GMT"
+  }
+]
+
+#+end_example
+
+Error Codes:
+
+200 - OK
+400 - Bad signature headers or bad JSON body
+401 - Unknown or inauthentic user
+403 - User not authorized to read jobs
+404 - Organization does not exist
+
 ** /organizations/ORGNAME/pushy/node_states/<node_name>
 
 *** GET
+
+Gets an individual node's up/down status.  updated_at indicates
+when the node's status changed.
+
+#+begin_example
+  {
+    "node_name": "FIONA",
+    "status": "down",
+    "updated_at": "Tue, 04 Sep 2012 23:17:56 GMT"
+  }
+#+end_example
+
+Error Codes:
+
+200 - OK
+400 - Bad signature headers or bad JSON body
+401 - Unknown or inauthentic user
+403 - User not authorized to read jobs
+404 - Organization or node does not exist
