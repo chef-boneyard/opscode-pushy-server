@@ -10,6 +10,7 @@
 -export([start_link/0,
          start/1,
          get_process/1,
+         get_processes/0,
          register_process/1]).
 
 %% Supervisor callbacks
@@ -36,6 +37,12 @@ get_process(JobId) ->
     catch
         error:badarg -> not_found
     end.
+
+get_processes() ->
+    MatchHead = {{n, l, {pushy_job, '_'}}, '_', '_'},
+    Guard = [],
+    Result = ['$$'],
+    [{JobId, Pid} || [{_,_,{_,JobId}},Pid,_] <- gproc:select([{MatchHead, Guard, Result}])].
 
 -spec register_process(object_id()) -> pid().
 register_process(JobId) ->
