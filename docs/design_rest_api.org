@@ -2,6 +2,24 @@
 
 The Pushy REST API allows you to create jobs and retrieve status.
 
+** /_status
+
+*** GET
+
+Gets current server status.
+
+Response:
+
+#+begin_example
+{
+  "status": "it's alive"
+}
+#+end_example
+
+Error Codes:
+
+200 - OK
+
 ** /organizations/ORGNAME/pushy/jobs
 
 *** POST
@@ -180,4 +198,35 @@ Error Codes:
 400 - Bad signature headers or bad JSON body
 401 - Unknown or inauthentic user
 403 - User not authorized to read jobs
+404 - Organization or node does not exist
+
+** /organizations/ORGNAME/pushy/connect/NODENAME
+
+*** GET
+
+Nodes use this to get the information necessary to connect to the server.
+
+#+begin_example
+{
+  "host": "private-chef.opscode.piab",
+  "push_jobs": {
+    "heartbeat": {
+      "out_addr": "tcp://private-chef.opscode.piab:10000",
+      "command_addr": "tcp://private-chef.opscode.piab:10002",
+      "interval": 1.0,
+      "offline_threshold": 3,
+      "online_threshold": 2
+    }
+  },
+  "public_key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvnf8osLhltEPZzgrdZjk\n2xdGKDRaF/DxRE/Tdj2T2q0+MwXeK1XHeZJZkuvWHQ7Lpf4KdlYdMjk6mjF5KGmJ\ngmEzmM8emyu7yfGs4tvn+5BKhaHPHCRA0vskE9/uIt9J/RgZIE0A3dBtf+9chY7J\nqJujIE9f3uJCknBf5jDeI3krYXzKL6mI9q2RO0xq10Omk/zpYIM4a20AMYxSmryM\nR3ivdiviW2hDZMdEHx0Au3+e4wkh1uiXC2ayh/hwObnFqPz5uwNAkzB8Z9qKl0G6\nJu7lEl3oJFqu0XtNuYgYmU8c/W9F3aNMnsQiTKEaUNmasfO/dIHSJmJpGccZFjwp\nvQIDAQAB\n-----END PUBLIC KEY-----\n\n",
+  "lifetime": 3600
+}
+#+end_example
+
+Error Codes:
+
+200 - OK
+400 - Bad signature headers or bad JSON body
+401 - Unknown or inauthentic user
+403 - User not authorized to create connections to this client (only the actual client can do this)
 404 - Organization or node does not exist
