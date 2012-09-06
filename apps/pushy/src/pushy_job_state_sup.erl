@@ -10,7 +10,7 @@
 -export([start_link/0,
          start/1,
          get_process/1,
-         get_processes/0,
+         get_job_processes/0,
          register_process/1]).
 
 %% Supervisor callbacks
@@ -38,7 +38,7 @@ get_process(JobId) ->
         error:badarg -> not_found
     end.
 
-get_processes() ->
+get_job_processes() ->
     MatchHead = {{n, l, {pushy_job, '_'}}, '_', '_'},
     Guard = [],
     Result = ['$$'],
