@@ -24,7 +24,7 @@
          terminate/3,
          code_change/4]).
 
-%% gen_fsm states
+%% fsm states
 -export([voting/2,
          running/2,
          complete/2,
