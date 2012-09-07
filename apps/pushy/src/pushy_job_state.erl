@@ -285,7 +285,7 @@ finish_job(Reason, #state{job = Job} = State) ->
     Job2 = Job#pushy_job{status = Reason},
     State3 = State2#state{job = Job2},
     pushy_object:update_object(update_job, Job2, Job2#pushy_job.id),
-    {next_state, Reason, State3}.
+    {stop, {shutdown, Reason}, State3}.
 
 count_nodes_in_state(NodeStates, #state{job_nodes = JobNodes}) ->
     dict:fold(
