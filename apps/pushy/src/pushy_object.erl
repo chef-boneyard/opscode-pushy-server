@@ -80,7 +80,7 @@ update_object(Fun, Object) ->
 
 -define(MAKE_SET_UPDATED(Rec),
         set_updated(#Rec{}=Object) ->
-            Object#pushy_job_node{updated_at = sql_date(now)}).
+            Object#Rec{updated_at = sql_date(now)}).
 
 ?MAKE_SET_UPDATED_WITH_ACTOR(pushy_node_status);
 ?MAKE_SET_UPDATED_WITH_ACTOR(pushy_job).
