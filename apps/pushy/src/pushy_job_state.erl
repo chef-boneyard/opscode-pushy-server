@@ -14,6 +14,7 @@
          node_nack_run/2,
          node_complete/2,
          node_aborted/2,
+         stop_job/1,
          get_job_state/1]).
 
 %% gen_fsm callbacks
@@ -71,6 +72,12 @@ get_job_state(JobId) ->
     case pushy_job_state_sup:get_process(JobId) of
         not_found -> not_found;
         Pid -> gen_fsm:sync_send_all_state_event(Pid, get_job_status)
+    end.
+
+stop_job(JobId) ->
+    case pushy_job_state_sup:get_process(JobId) of
+        not_found -> not_found;
+        Pid -> gen_fsm:sync_send_all_state_event(Pid, stop_job)
     end.
 
 %%%
@@ -172,6 +179,8 @@ handle_sync_event(get_job_status, _From, StateName,
     JobNodesList = [ JobNode || {_,JobNode} <- dict:to_list(JobNodes) ],
     Job2 = Job#pushy_job{job_nodes = JobNodesList},
     {reply, Job2, StateName, State};
+handle_sync_event(stop_job, _From, _StateName, State) ->
+    {stop, shutdown, ok, State};
 handle_sync_event(Event, From, StateName, State) ->
     lager:error("Unknown message handle_sync_event(~p) from ~p", [Event, From]),
     {next_state, StateName, State}.
