@@ -238,7 +238,7 @@ hb_status_as_atom(1) -> up.
 %% Job Status translators
 job_status(new) -> 0;
 job_status(voting) -> 1;
-job_status(executing) -> 2;
+job_status(running) -> 2;
 job_status(complete) -> 3;
 job_status(error) -> 4;
 job_status(failed) -> 5;
@@ -246,7 +246,7 @@ job_status(expired) -> 6;
 job_status(aborted) -> 7;
 job_status(0) -> new;
 job_status(1) -> voting;
-job_status(2) -> executing;
+job_status(2) -> running;
 job_status(3) -> complete;
 job_status(4) -> error;
 job_status(5) -> failed;
