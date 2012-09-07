@@ -63,7 +63,9 @@ post_is_create(Req, State) ->
 create_path(Req, #config_state{organization_guid = OrgId} = State) ->
     [ Command, NodeNames ] = parse_post_body(Req),
     Job = pushy_object:new_record(pushy_job, OrgId, NodeNames),
-    Job2 = Job#pushy_job{command = Command},
+    Job2 = Job#pushy_job{command = Command,
+                         created_at = calendar:now_to_datetime(erlang:now()),
+                         updated_at = calendar:now_to_datetime(erlang:now())},
     State2 = State#config_state{job = Job2},
     {binary_to_list(Job#pushy_job.id), Req, State2}.
 
