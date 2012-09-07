@@ -149,7 +149,10 @@ create_object(QueryName, Record) when is_atom(QueryName), is_tuple(Record) ->
 -spec job_fields_for_insert(CbFields:: list()) -> list().
 job_fields_for_insert(CbFields) ->
    %% We drop the last record field - job_nodes
-   lists:reverse(tl(lists:reverse(CbFields))).
+   Pred = fun(Elem) ->
+           not(is_list(Elem))
+          end,
+   lists:filter(Pred,CbFields).
 
 %% @doc Inserts job_nodes records into the database. All records are timestamped
 %% with the same stamp, namely `CreatedAt`, which is a binary string in SQL date time
