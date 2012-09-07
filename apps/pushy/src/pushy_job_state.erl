@@ -88,6 +88,7 @@ stop_job(JobId) ->
     {'stop', 'shutdown', #state{}}.
 init(#pushy_job{id = JobId, job_nodes = JobNodeList} = Job) ->
     Host = pushy_util:get_env(pushy, server_name, fun is_list/1),
+    pushy_object:create_object(create_job, Job, JobId),
     case pushy_job_state_sup:register_process(JobId) of
         true ->
             JobNodes = dict:from_list([{{OrgId, NodeName}, JobNode} ||
@@ -265,6 +266,7 @@ start_voting(#state{job = Job} = State) ->
     lager:info("Job ~p -> voting", [Job#pushy_job.id]),
     Job2 = Job#pushy_job{status = voting},
     State2 = State#state{job = Job2},
+    pushy_object:update_object(update_job, Job2, Job2#pushy_job.id),
     send_command_to_all(<<"commit">>, State2),
     {next_state, StateName, State3} = maybe_finished_voting(State2),
     {ok, StateName, State3}.
@@ -273,6 +275,7 @@ start_running(#state{job = Job} = State) ->
     lager:info("Job ~p -> running", [Job#pushy_job.id]),
     Job2 = Job#pushy_job{status = running},
     State2 = State#state{job = Job2},
+    pushy_object:update_object(update_job, Job2, Job2#pushy_job.id),
     send_command_to_all(<<"run">>, State2),
     maybe_finished_running(State2).
 
@@ -281,6 +284,7 @@ finish_job(Reason, #state{job = Job} = State) ->
     State2 = finish_all_nodes(State),
     Job2 = Job#pushy_job{status = Reason},
     State3 = State2#state{job = Job2},
+    pushy_object:update_object(update_job, Job2, Job2#pushy_job.id),
     {next_state, Reason, State3}.
 
 count_nodes_in_state(NodeStates, #state{job_nodes = JobNodes}) ->
