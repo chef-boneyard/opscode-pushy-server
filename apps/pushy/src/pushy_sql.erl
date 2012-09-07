@@ -72,8 +72,37 @@ fetch_job(JobId) ->
             {error, Error}
     end.
 
-create_job(#pushy_job{} = Job) ->
-    create_object(Job).
+create_job(#pushy_job{status = Status, job_nodes = JobNodes}=Job) ->
+    %% convert status into an integer
+    Job1 = Job#pushy_job{status=job_status(Status)},
+    Fields0 = flatten_record(Job1),
+    Fields = job_fields_for_insert(Fields0),
+    %% We're not dispatching to the general create_object/2 because creating a job
+    %% involves adding multiple rows to multiple tables. Also, we currently embed a list of
+    %% job nodes in the job record; this won't play nicely with the general
+    %% 'create_object' logic, which passes all record fields (in order) as parameters for a
+    %% prepared statement
+    case create_object(insert_job, Fields) of
+        {ok, 1} ->
+            case insert_job_nodes(JobNodes) of
+                ok ->
+                    %% (Remember, create_object/1 should return {ok, Number})
+                    {ok, 1};
+                {error, Reason} ->
+                    %% We could have potentially inserted some job node rows before the
+                    %% error was thrown. If we had transactions, we could just bail out here, but
+                    %% instead we need to do a little cleanup. Fortunately, this just means
+                    %% deleting all rows with the given job id.
+
+                    % delete_job_nodes(JobId),
+
+                    %% Finally, we'll pass the root cause of
+                    %% the failure back up
+                    parse_error(Reason)
+            end;
+        {error, Reason} ->
+            parse_error(Reason)
+    end.
 
 -spec update_job(#pushy_job{}) -> {ok, 1 | not_found} | {error, term()}.
 update_job(#pushy_job{id = JobId,
@@ -97,40 +126,7 @@ update_job_node(#pushy_job_node{job_id = JobId,
 %% @doc create an object given a pushy object record
 create_object(#pushy_node_status{status=Status}=NodeStatus) ->
     NodeStatus1 = NodeStatus#pushy_node_status{status=hb_status_as_int(Status)},
-    create_object(insert_node_status, NodeStatus1);
-%% This does not exactly follow the same pattern as it needs to
-%% insert a list of job_nodes into a separate table.
-create_object(#pushy_job{status = Status, job_nodes = JobNodes}=Job) ->
-    %% convert status into an integer
-    Job1 = Job#pushy_job{status=job_status(Status)},
-    Fields0 = flatten_record(Job1),
-    Fields = job_fields_for_insert(Fields0),
-    %% We're not dispatching to the general create_object/2 because creating a job
-    %% involves adding multiple rows to multiple tables. Also, we currently embed a list of
-    %% job nodes in the job record; this won't play nicely with the general
-    %% 'create_object' logic, which passes all record fields (in order) as parameters for a
-    %% prepared statement
-    case create_object(insert_job, Fields) of
-      {ok, 1} ->
-        case insert_job_nodes(JobNodes) of
-          ok ->
-              %% (Remember, create_object/1 should return {ok, Number})
-              {ok, 1};
-          {error, Reason} ->
-              %% We could have potentially inserted some job node rows before the
-              %% error was thrown. If we had transactions, we could just bail out here, but
-              %% instead we need to do a little cleanup. Fortunately, this just means
-              %% deleting all rows with the given job id.
-
-              % delete_job_nodes(JobId),
-
-              %% Finally, we'll pass the root cause of
-              %% the failure back up
-              parse_error(Reason)
-          end;
-      {error, Reason} ->
-        parse_error(Reason)
-    end.
+    create_object(insert_node_status, NodeStatus1).
 
 -spec create_object(atom(), tuple() | list()) -> {ok, non_neg_integer()} | {error, term()}.
 create_object(QueryName, Args) when is_atom(QueryName), is_list(Args) ->
