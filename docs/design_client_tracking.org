@@ -51,6 +51,12 @@
    away the gproc entry to the new owner. (gproc provides an atomic
    mechanism for this).
 
+   NOTE/TODO: if we get a message for a node we no longer own, we
+   should probably forward it to the new owner. This makes
+   out-of-order delivery a possible issue though. Perhaps this should
+   be limited to 'down' messages from the heartbeat FSM; perhaps other
+   messages can be dropped.
+
 * Detailed state descriptions
 
 ** Idle
