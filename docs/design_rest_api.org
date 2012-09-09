@@ -1,8 +1,11 @@
 * REST Endpoints
 
-The Pushy REST API allows you to create jobs and retrieve status.
+The Pushy REST API allows you to create jobs and retrieve status. 
 
-** /_status
+All requests will be signed using the Chef API signing protocol and a
+Chef client key.
+
+** /\_status
 
 *** GET
 
@@ -18,7 +21,7 @@ Response:
 
 Error Codes:
 
-200 - OK
++ 200 :: OK
 
 ** /organizations/ORGNAME/pushy/jobs
 
@@ -46,15 +49,15 @@ Response:
 
 Error Codes:
 
-201 - Job created.
-400 - Bad signature headers or bad JSON body
-401 - Unknown or inauthentic user
-403 - User not authorized to create jobs
-404 - Organization does not exist
++ 201 :: Job created.
++ 400 :: Bad signature headers or bad JSON body
++ 401 :: Unknown or non-authenticated user
++ 403 :: User not authorized to create jobs
++ 404 :: Organization does not exist
 
 *** GET
 
-Gets a list of all jobs ever run in the system.  TODO perhaps this is not such a
+Gets a list of all jobs ever run in the system. TODO perhaps this is not such a
 good idea, eh.  This needs more design, both input and output.
 
 #+begin_example
@@ -66,21 +69,23 @@ good idea, eh.  This needs more design, both input and output.
 
 Error Codes:
 
-400 - Bad signature headers or bad JSON body
-401 - Unknown or inauthentic user
-403 - User not authorized to read jobs
-404 - Organization does not exist
++ 400 :: Bad signature headers or bad JSON body
++ 401 :: Unknown or non-authenticated user
++ 403 :: User not authorized to read jobs
++ 404 :: Organization does not exist
 
 ** /organizations/ORGNAME/pushy/jobs/<id>
 
 *** GET
 
-Gets the status of an individual job.  TODO restrict command.
+    Gets the status of an individual job. This may include aggregated
+    breakdown of node state, (n nodes completed, m nodes failed, etc)
+    TODO: restrict command.
 
 Response:
 
-The response includes the current status of the job, as well as every node in
-the job, organized by its status.
+The response includes the current status of the job, as well as every
+node in the job, organized by its status.
 
 #+begin_example
 {
@@ -101,7 +106,7 @@ the job, organized by its status.
 "updated_at":
 
 updated_at represents when the job entered its present state (voting, running,
-complete, etc.).  updated_at is *not* updated when node statuses update.
+complete, etc.). updated_at is *not* updated when node statuses update.
 
 Job Statuses ("status"):
 
@@ -109,13 +114,13 @@ The job status represents the progress of the overall job.  complete,
 quorum_failed, timed_out and aborted are terminal states: job and node states
 will not change after that.
 
-voting        - Waiting for nodes to commit or refuse to run the command.
-running       - Running the command on the nodes.
-complete      - Ran the command.  Check individual node statuses to see if they
-                completed or had issues.
-quorum_failed - Did not run the command on any nodes.
-timed_out     - Timed out while running the job.
-aborted       - Job aborted by user.
+- voting   :: Waiting for nodes to commit or refuse to run the command.
+- running  :: Running the command on the nodes.
+- complete :: Ran the command.  Check individual node statuses to see
+              if they completed or had issues.
+- quorum_failed :: Did not run the command on any nodes.
+- timed_out     :: Timed out while running the job.
+- aborted       :: Job aborted by user.
 
 Node Statuses ("nodes"):
 
@@ -123,22 +128,30 @@ These statuses represent the progress of a node running a job.  All states
 except new, ready and running are *terminal states*--the node's state will not
 change after that.
 
-new         - Node has neither committed nor refused to run the command.
-ready       - Node has committed to run the command but has not yet run it.
-running     - Node is presently running the command.
-complete    - Node ran the command to completion.
-aborted     - Node ran the command but stopped before completion.
-crashed     - Node went down after it started running
-nacked      - Node was busy when asked to be part of the job.
-unavailable - Node went down before it started running
++ new         :: Node has neither committed nor refused to run the command.
++ ready       :: Node has committed to run the command but has not yet run it.
++ running     :: Node is presently running the command.
++ complete    :: Node ran the command to completion.
++ aborted     :: Node ran the command but stopped before completion.
++ crashed     :: Node went down after it started running
++ nacked      :: Node was busy when asked to be part of the job.
++ unavailable :: Node went down before it started running
 
 Error Codes:
 
-200 - OK
-400 - Bad signature headers
-401 - Unknown or inauthentic user
-403 - User not authorized to read jobs
-404 - Organization or job does not exist
++ 200 :: OK
++ 400 :: Bad signature headers
++ 401 :: Unknown or non-authenticated user
++ 403 :: User not authorized to read jobs
++ 404 :: Organization or job does not exist
+
+** /organizations/ORGNAME/pushy/jobs/<id>/abort
+
+*** PUT
+    Aborts the job. PUT is chosen for idempotency.
+
+    TODO: response code spec.
+
 
 ** /organizations/ORGNAME/pushy/node_states
 
@@ -171,11 +184,11 @@ reflects it, or make it clear in the docs that updated_at only reflects status.
 
 Error Codes:
 
-200 - OK
-400 - Bad signature headers or bad JSON body
-401 - Unknown or inauthentic user
-403 - User not authorized to read jobs
-404 - Organization does not exist
++ 200 :: OK
++ 400 :: Bad signature headers or bad JSON body
++ 401 :: Unknown or non-authenticated user
++ 403 :: User not authorized to read jobs
++ 404 :: Organization does not exist
 
 ** /organizations/ORGNAME/pushy/node_states/<node_name>
 
@@ -194,17 +207,19 @@ when the node's status changed.
 
 Error Codes:
 
-200 - OK
-400 - Bad signature headers or bad JSON body
-401 - Unknown or inauthentic user
-403 - User not authorized to read jobs
-404 - Organization or node does not exist
++ 200 :: OK
++ 400 :: Bad signature headers or bad JSON body
++ 401 :: Unknown or non-authenticated user
++ 403 :: User not authorized to read jobs
++ 404 :: Organization or node does not exist
 
 ** /organizations/ORGNAME/pushy/connect/NODENAME
 
 *** GET
 
 Nodes use this to get the information necessary to connect to the server.
+
+MAA: Why not config instead of connect; it's more than simply information required to connect.
 
 #+begin_example
 {
@@ -218,15 +233,15 @@ Nodes use this to get the information necessary to connect to the server.
       "online_threshold": 2
     }
   },
-  "public_key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvnf8osLhltEPZzgrdZjk\n2xdGKDRaF/DxRE/Tdj2T2q0+MwXeK1XHeZJZkuvWHQ7Lpf4KdlYdMjk6mjF5KGmJ\ngmEzmM8emyu7yfGs4tvn+5BKhaHPHCRA0vskE9/uIt9J/RgZIE0A3dBtf+9chY7J\nqJujIE9f3uJCknBf5jDeI3krYXzKL6mI9q2RO0xq10Omk/zpYIM4a20AMYxSmryM\nR3ivdiviW2hDZMdEHx0Au3+e4wkh1uiXC2ayh/hwObnFqPz5uwNAkzB8Z9qKl0G6\nJu7lEl3oJFqu0XtNuYgYmU8c/W9F3aNMnsQiTKEaUNmasfO/dIHSJmJpGccZFjwp\nvQIDAQAB\n-----END PUBLIC KEY-----\n\n",
+  "public_key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvnf8osLhltEPZzgrdZjk\n2xdGKDRaF/DxRE/Tdj2T2q0+MwXeK1XHeZJZkuvWHQ7Lpf4KdlYdMjk6mjF5KGmJ\gnomes8emyu7yfGs4tvn+5BKhaHPHCRA0vskE9/uIt9J/RgZIE0A3dBtf+9chY7J\nqJujIE9f3uJCknBf5jDeI3krYXzKL6mI9q2RO0xq10Omk/zpYIM4a20AMYxSmryM\nR3ivdiviW2hDZMdEHx0Au3+e4wkh1uiXC2ayh/hwObnFqPz5uwNAkzB8Z9qKl0G6\nJu7lEl3oJFqu0XtNuYgYmU8c/W9F3aNMnsQiTKEaUNmasfO/dIHSJmJpGccZFjwp\nvQIDAQAB\n-----END PUBLIC KEY-----\n\n",
   "lifetime": 3600
 }
 #+end_example
 
 Error Codes:
 
-200 - OK
-400 - Bad signature headers or bad JSON body
-401 - Unknown or inauthentic user
-403 - User not authorized to create connections to this client (only the actual client can do this)
-404 - Organization or node does not exist
++ 200 :: OK
++ 400 :: Bad signature headers or bad JSON body
++ 401 :: Unknown or non-authenticated user
++ 403 :: User not authorized to create connections to this client (only the actual client can do this)
++ 404 :: Organization or node does not exist
