@@ -24,7 +24,7 @@
 
 # Workflow for emitting PDF
 # Export as latex (c-c c-e l)
-# Generate PDF (/usr/local/texlive/2011/bin/x86_64-darwin/pdflatex design_product.tex on my system)
+# Generate PDF (/usr/local/texlive/2011/bin/x86_64-darwin/pdflatex design.tex on my system)
 
 * Overview
 Opscode Chef is currently missing a key feature that comes up in discussion with nearly
@@ -294,7 +294,7 @@ Version:1.0;Checksum:fyq6ukIwYcUJ9JI90Ets8Q==
    + Checksum :: Base64 encoded SHA1 checksum of the second frame, encrypted using the
                  sender's private key. The standard erlang library implements Base64 as
                  specified in RFC4648. This derived from signing protocol that Chef uses for
-		 REST requests, except that instead of signing significant headers and the
+                 REST requests, except that instead of signing significant headers and the
                  HTTP body, we sign a JSON blob.
 *** JSON
     The second frame is a JSON text, as defined by RFC 4627. The exact format varies depending on
@@ -966,48 +966,26 @@ TODO what if the client missed the command or start message because it restarted
 
 **** Aggregate Detection
 
-The Job state machine keeps a tally of which nodes acknowledged the job and
-which nodes are down, so that it can calculate some tallies and take care
-of quorum conditions:
+     The Job state machine keeps a tally of which nodes acknowledged the job and
+     which nodes are down, so that it can calculate some tallies and take care
+     of quorum conditions:
+     
+     - Quorum Success:: if we are voting, and "ready" nodes > X%.
+     - Quorum Failure:: if we are voting, and nacked/down nodes > Y% or there are no nodes.
+     - All Nodes Exited:: if all nodes that started the job are finished or down.
 
-- Quorum Success:: if we are voting, and "ready" nodes > X%.
-- Quorum Failure:: if we are voting, and nacked/down nodes > Y% or there are no nodes.
-- All Nodes Exited:: if all nodes that started the job are finished or down.
-
-On initialization, Aggregate Detection subscribes to node status for all nodes in the
-job, and Aggregate Detection listens for NACK, Node State=Up/Down, and Node Execution
-State = READY/FINISHED, and updates the list of nodes accordingly.
+     On initialization, Aggregate Detection subscribes to node status for all nodes in the
+     job, and Aggregate Detection listens for NACK, Node State=Up/Down, and Node Execution
+     State = READY/FINISHED, and updates the list of nodes accordingly.
 
 *** Node State
 
-A node can be in up or down state.  This machine listens for heartbeats and
-uses timers and statistics to decide whether a machine is presently UP or DOWN.
+    A node can be in up or down state.  This machine listens for heartbeats and
+    uses timers and statistics to decide whether a machine is presently UP or DOWN.
 
-Node status is always sent to the Node Execution State, and jobs can subscribe
-to node status.
-
-TODO: describe new algorithm.
-
-** REST API for job control
-    Job control will be done via a rest api in the pushy server. API requests are signed like any
-    other chef command.
-**** ORGNAME/pushy/jobs GET
-     List all jobs
-**** ORGNAME/pushy/jobs PUT
-     Start a job. The body will be a json blob specifying the list of nodes and the command to run, along with any other
-     parameters (throttling, lifetime, etc). The return value is the guid of the job.
-**** ORGNAME/pushy/jobs POST
-     Amend a job; this may include aborts, or alterations of timeouts.
-**** ORGNAME/pushy/jobs/GUID GET
-     Get the current state of a job. This may include aggregated breakdown of node state, (n nodes
-     completed, m nodes failed, etc)
-**** ORGNAME/pushy/jobs/GUID DELETE
-     Delete a job, and the associated data
-**** ORGNAME/pushy/jobs/GUID/nodes
-     List all nodes in the job.
-***** TODO: does this also list the state, at least in short form? Probably should
-**** ORGNAME/pushy/jobs/GUID/node/NODE
-     Detailed information about a nodes status in the job. (Do we really need this level of detail?)
+    Node status is always sent to the Node Execution State, and jobs can subscribe
+    to node status.
+    TODO: describe new algorithm.
 
 #+INCLUDE: "design_rest_api.org" :minlevel 1
 
@@ -1015,8 +993,6 @@ TODO: describe new algorithm.
 
 We will need syntax to allow users to create, alter and delete jobs, find out the state of jobs in flight in both
 summary and detailed fashion, and find out the jobs associated with a node.
-
-
 
 
 ***** Modifying Job Initiation
