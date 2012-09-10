@@ -8,13 +8,12 @@
 
 %% API
 -export([start_link/1,
-         ack_commit/2,
-         nack_commit/2,
-         ack_run/2,
-         nack_run/2,
-         completed/2,
-         aborted/2,
-         down/2,
+         node_ack_commit/2,
+         node_nack_commit/2,
+         node_ack_run/2,
+         node_nack_run/2,
+         node_complete/2,
+         node_aborted/2,
          get_job_state/1]).
 
 %% gen_fsm callbacks
@@ -55,26 +54,23 @@ start_link(Job) ->
 
 % FIX: Consolidated FSM events into a single dialyzer type
 % FIX: Use macro to generate functional API
--spec ack_commit(object_id(), node_ref()) -> ok | not_found.
-ack_commit(JobId, NodeRef) -> send_node_event(JobId, NodeRef, ack_commit).
+-spec node_ack_commit(object_id(), node_ref()) -> ok | not_found.
+node_ack_commit(JobId, NodeRef) -> send_node_event(JobId, NodeRef, ack_commit).
 
--spec nack_commit(object_id(), node_ref()) -> ok | not_found.
-nack_commit(JobId, NodeRef) -> send_node_event(JobId, NodeRef, nack_commit).
+-spec node_nack_commit(object_id(), node_ref()) -> ok | not_found.
+node_nack_commit(JobId, NodeRef) -> send_node_event(JobId, NodeRef, nack_commit).
 
--spec ack_run(object_id(), node_ref()) -> ok | not_found.
-ack_run(JobId, NodeRef) -> send_node_event(JobId, NodeRef, ack_run).
+-spec node_ack_run(object_id(), node_ref()) -> ok | not_found.
+node_ack_run(JobId, NodeRef) -> send_node_event(JobId, NodeRef, ack_run).
 
--spec nack_run(object_id(), node_ref()) -> ok | not_found.
-nack_run(JobId, NodeRef) -> send_node_event(JobId, NodeRef, nack_run).
+-spec node_nack_run(object_id(), node_ref()) -> ok | not_found.
+node_nack_run(JobId, NodeRef) -> send_node_event(JobId, NodeRef, nack_run).
 
--spec completed(object_id(), node_ref()) -> ok | not_found.
-completed(JobId, NodeRef) -> send_node_event(JobId, NodeRef, completed).
+-spec node_complete(object_id(), node_ref()) -> ok | not_found.
+node_complete(JobId, NodeRef) -> send_node_event(JobId, NodeRef, complete).
 
--spec aborted(object_id(), node_ref()) -> ok | not_found.
-aborted(JobId, NodeRef) -> send_node_event(JobId, NodeRef, aborted).
-
--spec down(object_id(), node_ref()) -> ok | not_found.
-down(JobId, NodeRef) -> send_node_event(JobId, NodeRef, down).
+-spec node_aborted(object_id(), node_ref()) -> ok | not_found.
+node_aborted(JobId, NodeRef) -> send_node_event(JobId, NodeRef, aborted).
 
 get_job_state(JobId) ->
     case pushy_job_state_sup:get_process(JobId) of
@@ -148,7 +144,7 @@ running({ack_run, NodeRef}, State) ->
         _ -> mark_node_faulty(NodeRef, State)
     end,
     maybe_finished_running(State2);
-running({completed, NodeRef}, State) ->
+running({complete, NodeRef}, State) ->
     State2 = case get_node_state(NodeRef, State) of
         running -> set_node_state(NodeRef, complete, State);
         _       -> mark_node_faulty(NodeRef, State)
