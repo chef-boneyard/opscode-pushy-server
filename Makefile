@@ -2,9 +2,7 @@ DEPS = deps/erlzmq deps/jiffy deps/gproc deps/ej \
        deps/chef_authn deps/sqerl deps/mixer deps\lager \
        deps/folsom
 
-all: compile all_tests
-
-all_tests: dialyze eunit
+all: dialyze eunit
 
 use_locked_config = $(wildcard USE_REBAR_LOCKED)
 ifeq ($(use_locked_config),USE_REBAR_LOCKED)
@@ -31,8 +29,8 @@ compile_app:
 .pushy.plt:
 	dialyzer -nn --output_plt .pushy.plt --build_plt --apps erts kernel stdlib crypto public_key
 
-dialyze: .pushy.plt
-	dialyzer -nn --plt .pushy.plt --src -Wunmatched_returns -Werror_handling -Wrace_conditions -r apps/pushy/src -I deps
+dialyze: .pushy.plt compile
+	dialyzer -nn --plt .pushy.plt -Wunmatched_returns -Werror_handling -Wrace_conditions -r apps/pushy/ebin -I deps
 
 #dialyzer:
 #	@rm -rf apps/pushy/.eunit
