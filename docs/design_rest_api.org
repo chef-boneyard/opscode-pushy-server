@@ -69,6 +69,7 @@ good idea, eh.  This needs more design, both input and output.
 
 Error Codes:
 
++ 200 :: Success
 + 400 :: Bad signature headers or bad JSON body
 + 401 :: Unknown or non-authenticated user
 + 403 :: User not authorized to read jobs
