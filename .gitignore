@@ -15,4 +15,4 @@ server/apps/pushy/.eunit
 rel/pushy
 deps
 .eunit
-ebin
+.pushy.plt
