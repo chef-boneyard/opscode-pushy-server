@@ -1,0 +1,157 @@
+* ZeroMQ Messaging
+
+** General ZeroMQ Messaging
+   The basic system message consists of two ZeroMQ frames. The first frame contains a version id and
+   the signed checksum of the second frame. (NOTE: it may be worthwhile to place the checksum into a
+   separate frame for ease of parsing.) The last frame is a JSON blob. This is used throughout the
+   system for server and client heartbeats, status messages, commands and responses.
+
+   Push jobs use JSON because ZeroMQ sends and receives messages as complete frames, without
+   fragmentation. JSON also facilitates easier debugging and maintenance of the system since
+   all messages are textual and human-readable. A binary protocol, such as /Protocol Buffers/
+   or /msgpack/, would be more efficient but would also substantially increase the effort
+   required to debug and support the system.  We can discuss those as potential
+   optimizations once the initial system is in place.
+
+   An simple early optimization would be to send gzip (or lz4, depending on our cpu/size trade
+   space) compressed json instead of the ACSII text.
+
+*** Header Frame
+    The header frame is a series of semicolon separated clauses. Each clause is a key-value
+    pair separated by a colon.
+    #+begin_example
+Version:1.0;Checksum:fyq6ukIwYcUJ9JI90Ets8Q==
+    #+end_example
+   + Version :: a major minor or major minor patch tuple separated expressed as integers
+                separted by '.' characters for the protocol version (1.0 for now) (Should this
+                simply be reduced to an integer?)
+   + Checksum :: Base64 encoded SHA1 checksum of the second frame, encrypted using the
+                 sender's private key. The standard erlang library implements Base64 as
+                 specified in RFC4648. This derived from signing protocol that Chef uses for
+                 REST requests, except that instead of signing significant headers and the
+                 HTTP body, we sign a JSON blob.
+*** JSON
+    The second frame is a JSON text, as defined by RFC 4627. The exact format varies depending on
+    the particular message being sent. The JSON text itself is not encrypted.
+
+    All JSON messages will contain a timestamp field in ISO8601 format. Messages older than a
+    TBD value will be rejected to reduce the window for replay attacks.
+
+    NOTE: This provides weaker security than our REST API, where we have the option to use SSL
+    for the exchange. This may be acceptable in a OPC environment where the network is
+    trusted, but that may not be the case for some multitenant users such as resellers. This
+    should receive review before we release V1.
+
+    The command strings are of especial concern. If the system uses a limited command
+    vocabulary little interesting information will leak, but if arbitrary commands are allowed there
+    may be sensitive information embedded in the command line.
+
+    Erlang message sending sample code
+   #+begin_src erlang
+   Sock = connect_to_server("tcp://some_server:8765"),
+   Sig = sign_message(JSON),
+   erlzmq:send(Sock, Sig, [sndmore]),
+   erlzmq:send(Sock, JSON)
+   #+end_src
+
+
+
+** Server Heartbeat Message
+    Server heartbeats are composed of two ZeroMQ frames. The first frame contains the header
+    described above, and the second frame contains the the JSON-formmatted heartbeat payloadL
+    #+begin_example
+{
+    "server":"SERVER",                 # The hostname of the server
+    "timestamp":"TIMESTAMP",           # RFC 1123 timestamp
+    "type":"MSGTYPE"                   # 'heartbeat' for now
+    "sequence":SEQUENCE_NUMBER",       # integer sequence number
+}
+    #+end_example
+
+
+** Node Heartbeat Message
+   Node heartbeats are comprised of two ZeroMQ frames. The first frame contains
+   the header described above, and the second frame contains the JSON-formatted heartbeat payload:
+
+#+begin_example
+    {"node": "node123.foo.com",                    # node's host name
+     "client": "clientname",                       # the client signing the request
+     "org": "foo.com",                             # orgname of the node
+     "timestamp": "Sat, 12 May 2012 20:33:15 GMT", # RFC 1123 timestamp
+     "state": "idle"                               # The state of a node
+    }
+#+end_example
+
+
+
+** Client and server messages
+*** Basic message format
+    The job command message is extremely similar to the heartbeat message. It
+    consists of two ZeroMQ frames. The first frame contains the signature version and
+    signature of the message.
+
+    The second frame contains the command payload for the job formatted as a JSON hash. All
+    messages contain the following fields:
+    + A timestamp (used for signature verification)
+    + a message type field
+
+**** Client messages
+     All client messages add fields for:
+     + the node name of the sender
+     + the client name of the sender
+     + The organization name for the client.
+
+#+begin_example
+{
+  "timestamp": timestamp
+  "type": "ready",                         # message type
+  "node": "node_name",
+  "client": "client_name",                # OPC host name
+  "org": "organization",
+}
+#+end_example
+
+**** Server messages
+     All server messages add fields for:
+     + The FQDN of the server
+     + A job_id, if relevant.
+
+**** Message formats
+
+***** Ready
+      Whenever a client starts up, and whenever it regains server heartbeat when idle, it
+      sends a ready message. The message type is 'ready', and no other information is needed.
+
+***** Prepare
+      When a server starts a job it sends a message of type 'prepare', along with a command.
+
+      On receipt of this message client will reply with an ACK message and will be marked as
+      ready for execution. If the client is currently executing a job, it will reply with a
+      NACK message and the server will mark that node as ineligible to start the command.
+
+#+NAME: command message
+#+BEGIN_SRC js
+{
+    "server": "opc1.foo.com",               # OPC host name
+    "job_id": "1234",                       # job id
+    "type": "prepare",                      # message type
+    "command": "chef-client"                # command to execute
+}
+#+END_SRC
+
+***** ACK/NACK messages
+      When a client recieves a prepare message from the server, it replies with an *ACK* or *NACK*
+      message type indicating whether it is ready for a job. The job_id field is set to the
+      job_id of the command recieved. If the response is a *NACK* it also returns the reason,
+      such as reason 'running' with 'currently_executing' set to the job id.
+
+***** START message
+      The start message begins execution on a node. It consists soley of the job id to start.
+
+***** FINISHED message
+      When a node stops or completes execution of a commmand, it returns the state (OK,
+      FAILED, ABORTED) (TODO refine)
+
+***** ABORT message
+      At any point in the execution cycle the server can send an ABORT message. This causes
+      immediate termination of any command execution.
