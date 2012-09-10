@@ -30,13 +30,10 @@
          complete/2,
          quorum_failed/2]).
 
-% FIX: Conditionally include eunit for testing only
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
-% FIX: Use include since we're not referencing
-%      another app's include files
 -include("pushy.hrl").
 -include("pushy_sql.hrl").
 
@@ -52,8 +49,6 @@
 start_link(Job) ->
     gen_fsm:start_link(?MODULE, Job, []).
 
-% FIX: Consolidated FSM events into a single dialyzer type
-% FIX: Use macro to generate functional API
 -spec node_ack_commit(object_id(), node_ref()) -> ok | not_found.
 node_ack_commit(JobId, NodeRef) -> send_node_event(JobId, NodeRef, ack_commit).
 
@@ -84,11 +79,7 @@ get_job_state(JobId) ->
 -spec init(#pushy_job{}) ->
     {'ok', job_status(), #state{}} |
     {'stop', 'shutdown', #state{}}.
-% FIX: This is Erlang not C/C++
 init(#pushy_job{id = JobId, job_nodes = JobNodeList} = Job) ->
-    % FIX: Get host name at the beginning so we don't start a job
-    % and have it crash later and lose all the accumulated state
-    % because we were missing a configuration entry.
     Host = pushy_util:get_env(pushy, server_name, fun is_list/1),
     case pushy_job_state_sup:register_process(JobId) of
         true ->
@@ -160,12 +151,10 @@ running({_,NodeRef}, State) ->
     State2 = mark_node_faulty(NodeRef, State),
     maybe_finished_running(State2).
 
-% FIXME: Why aren't these nodes marked faulty?
 complete({Event,NodeRef}, State) ->
     lager:error("Unexpectedly received node_event message in finished state (~p, ~p)", [Event,NodeRef]),
     {next_state, complete, State}.
 
-% FIXME: Why aren't these nodes marked faulty?
 quorum_failed({Event,NodeRef}, State) ->
     lager:error("Unexpectedly received node_event message in finished state (~p, ~p)", [Event,NodeRef]),
     {next_state, quorum_failed, State}.
@@ -300,7 +289,6 @@ listen_for_down_nodes([NodeRef|JobNodes]) ->
     listen_for_down_nodes(JobNodes).
 
 -spec send_command_to_all(binary(), #state{}) -> 'ok'.
-% FIX: This is Erlang not C/C++
 send_command_to_all(Type, #state{job_host=Host, job = Job, job_nodes = JobNodes}) ->
     lager:info("Sending ~p to all nodes", [Type]),
     Message = [{type, Type},
