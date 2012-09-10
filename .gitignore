@@ -4,8 +4,8 @@ docs/*.log
 docs/*.out
 docs/*.toc
 docs/*.aux
-prototype/ebin
-prototype/deps
+prototype_old/ebin
+prototype_old/deps
 apps/pushy/ebin
 apps/pushy/.eunit
 .DS_STORE
