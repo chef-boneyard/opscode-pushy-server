@@ -162,7 +162,8 @@ process_message(State, Address, _Header, Body) ->
             State
     end.
 
-send_node_event(undefined, NodeRef, <<"heartbeat">>) ->
+send_node_event(JobId, NodeRef, <<"heartbeat">>) ->
+    lager:debug("Received heartbeat for node ~p with job id ~p", [JobId, NodeRef]),
     pushy_node_state:heartbeat(NodeRef);
 send_node_event(JobId, NodeRef, <<"ack_commit">>) ->
     pushy_job_state:ack_commit(JobId, NodeRef);
