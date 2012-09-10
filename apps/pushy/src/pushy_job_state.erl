@@ -8,30 +8,43 @@
 
 %% API
 -export([start_link/1,
-         node_event/3,
+         ack_commit/2,
+         nack_commit/2,
+         ack_run/2,
+         nack_run/2,
+         completed/2,
+         aborted/2,
+         down/2,
          get_job_state/1]).
 
 %% gen_fsm callbacks
 -export([init/1,
-     handle_event/3,
-     handle_sync_event/4,
-     handle_info/3,
-     terminate/3,
-     code_change/4,
-     voting/2,
-     running/2,
-     complete/2,
-     quorum_failed/2]).
+         handle_event/3,
+         handle_sync_event/4,
+         handle_info/3,
+         terminate/3,
+         code_change/4]).
 
+%% gen_fsm states
+-export([voting/2,
+         running/2,
+         complete/2,
+         quorum_failed/2]).
+
+% FIX: Conditionally include eunit for testing only
+-ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
--include_lib("pushy.hrl").
--include_lib("pushy_sql.hrl").
+-endif.
 
--record(state,
-        {
-            job            :: #pushy_job{},
-            job_nodes      :: dict() % dict(node_ref(), job_node_status())
-        }).
+% FIX: Use include since we're not referencing
+%      another app's include files
+-include("pushy.hrl").
+-include("pushy_sql.hrl").
+
+%% This is Erlang not C/C++
+-record(state, {job_host  :: string(),
+                job       :: #pushy_job{},
+                job_nodes :: dict()}).
 
 %%%
 %%% External API
@@ -40,11 +53,28 @@
 start_link(Job) ->
     gen_fsm:start_link(?MODULE, Job, []).
 
--spec node_event(object_id(), node_ref(), ack_commit | nack_commit | ack_run | nack_run | complete | aborted | down) -> ok.
-node_event(JobId, NodeRef, Event) ->
-    lager:info("---------> job:node_event(~p, ~p, ~p)", [JobId, NodeRef, Event]),
-    Pid = pushy_job_state_sup:get_process(JobId),
-    gen_fsm:send_event(Pid, {Event, NodeRef}).
+% FIX: Consolidated FSM events into a single dialyzer type
+% FIX: Use macro to generate functional API
+-spec ack_commit(object_id(), node_ref()) -> ok | not_found.
+?DEF_JOB_NODE_EVENT(ack_commit).
+
+-spec nack_commit(object_id(), node_ref()) -> ok | not_found.
+?DEF_JOB_NODE_EVENT(nack_commit).
+
+-spec ack_run(object_id(), node_ref()) -> ok | not_found.
+?DEF_JOB_NODE_EVENT(ack_run).
+
+-spec nack_run(object_id(), node_ref()) -> ok | not_found.
+?DEF_JOB_NODE_EVENT(nack_run).
+
+-spec completed(object_id(), node_ref()) -> ok | not_found.
+?DEF_JOB_NODE_EVENT(completed).
+
+-spec aborted(object_id(), node_ref()) -> ok | not_found.
+?DEF_JOB_NODE_EVENT(aborted).
+
+-spec down(object_id(), node_ref()) -> ok | not_found.
+?DEF_JOB_NODE_EVENT(down).
 
 get_job_state(JobId) ->
     case pushy_job_state_sup:get_process(JobId) of
@@ -58,17 +88,19 @@ get_job_state(JobId) ->
 -spec init(#pushy_job{}) ->
     {'ok', job_status(), #state{}} |
     {'stop', 'shutdown', #state{}}.
+% FIX: This is Erlang not C/C++
 init(#pushy_job{id = JobId, job_nodes = JobNodeList} = Job) ->
+    % FIX: Get host name at the beginning so we don't start a job
+    % and have it crash later and lose all the accumulated state
+    % because we were missing a configuration entry.
+    Host = pushy_util:get_env(pushy, server_name, fun is_list/1),
     case pushy_job_state_sup:register_process(JobId) of
         true ->
-            JobNodes = dict:from_list([
-                {{OrgId, NodeName}, JobNode} ||
-                #pushy_job_node{org_id = OrgId, node_name = NodeName} = JobNode <- JobNodeList
-            ]),
-            State = #state{
-                job = Job#pushy_job{job_nodes = undefined},
-                job_nodes = JobNodes
-            },
+            JobNodes = dict:from_list([{{OrgId, NodeName}, JobNode} ||
+                                          #pushy_job_node{org_id = OrgId, node_name = NodeName} =
+                                              JobNode <- JobNodeList]),
+            State = #state{job = Job#pushy_job{job_nodes = undefined},
+                           job_nodes = JobNodes, job_host=Host},
             listen_for_down_nodes(dict:fetch_keys(JobNodes)),
 
             % Start voting--if there are no nodes, the job finishes immediately.
@@ -116,7 +148,7 @@ running({ack_run, NodeRef}, State) ->
         _ -> mark_node_faulty(NodeRef, State)
     end,
     maybe_finished_running(State2);
-running({complete, NodeRef}, State) ->
+running({completed, NodeRef}, State) ->
     State2 = case get_node_state(NodeRef, State) of
         running -> set_node_state(NodeRef, complete, State);
         _       -> mark_node_faulty(NodeRef, State)
@@ -132,10 +164,12 @@ running({_,NodeRef}, State) ->
     State2 = mark_node_faulty(NodeRef, State),
     maybe_finished_running(State2).
 
+% FIXME: Why aren't these nodes marked faulty?
 complete({Event,NodeRef}, State) ->
     lager:error("Unexpectedly received node_event message in finished state (~p, ~p)", [Event,NodeRef]),
     {next_state, complete, State}.
 
+% FIXME: Why aren't these nodes marked faulty?
 quorum_failed({Event,NodeRef}, State) ->
     lager:error("Unexpectedly received node_event message in finished state (~p, ~p)", [Event,NodeRef]),
     {next_state, quorum_failed, State}.
@@ -159,8 +193,9 @@ handle_sync_event(Event, From, _StateName, State) ->
 
 -spec handle_info(any(), job_status(), #state{}) ->
         {'next_state', job_status(), #state{}}.
-handle_info({down,NodeRef}, StateName, State) ->
+handle_info({down, NodeRef}, StateName, State) ->
     pushy_job_state:StateName({down,NodeRef}, State);
+% FIXME: Are we sure we want to crash the job if we get a wayward handle_info message?
 handle_info(Info, _StateName, State) ->
     lager:error("Unknown message handle_info(~p)", [Info]),
     finish_job(faulty, State).
@@ -269,14 +304,22 @@ listen_for_down_nodes([NodeRef|JobNodes]) ->
     listen_for_down_nodes(JobNodes).
 
 -spec send_command_to_all(binary(), #state{}) -> 'ok'.
-send_command_to_all(Type, #state{job = Job, job_nodes = JobNodes}) ->
+% FIX: This is Erlang not C/C++
+send_command_to_all(Type, #state{job_host=Host, job = Job, job_nodes = JobNodes}) ->
     lager:info("Sending ~p to all nodes", [Type]),
-    Host = pushy_util:get_env(pushy, server_name, fun is_list/1),
-    Message = [
-        {type, Type},
-        {job_id, Job#pushy_job.id},
-        {server, list_to_binary(Host)},
-        {command, Job#pushy_job.command}
-    ],
+    Message = [{type, Type},
+               {job_id, Job#pushy_job.id},
+               {server, list_to_binary(Host)},
+               {command, Job#pushy_job.command}],
     NodeRefs = dict:fetch_keys(JobNodes),
     pushy_command_switch:send_multi_command(NodeRefs, jiffy:encode({Message})).
+
+-spec send_node_event(object_id(), node_ref(), job_event()) -> ok | not_found.
+send_node_event(JobId, NodeRef, Event) ->
+    lager:info("---------> job:node_event(~p, ~p, ~p)", [JobId, NodeRef, Event]),
+    case pushy_job_state_sup:get_process(JobId) of
+        Pid when is_pid(Pid) ->
+            gen_fsm:send_event(Pid, {Event, NodeRef});
+        not_found ->
+            not_found
+    end.

@@ -148,30 +148,40 @@ do_send_multi(#state{addr_node_map = AddrNodeMap,
     pushy_messaging:send_message_multi(CommandSocket, AddressList, FrameList),
     State.
 
+%% FIX: Take advantage of multiple function heads to make code easier to read
 process_message(State, Address, _Header, Body) ->
     case catch jiffy:decode(Body) of
         {Data} ->
             {State2, NodeRef} = get_node_ref(State, Address, Data),
             JobId = ej:get({<<"job_id">>}, Data),
             Type = ej:get({<<"type">>}, Data),
-            case Type of
-                <<"heartbeat">>   -> pushy_node_state:heartbeat(NodeRef);
-                <<"ack_commit">>  -> pushy_job_state:node_event(JobId, NodeRef, ack_commit);
-                <<"nack_commit">> -> pushy_job_state:node_event(JobId, NodeRef, nack_commit);
-                <<"ack_run">>     -> pushy_job_state:node_event(JobId, NodeRef, ack_run);
-                <<"nack_run">>    -> pushy_job_state:node_event(JobId, NodeRef, nack_run);
-                <<"complete">>    -> pushy_job_state:node_event(JobId, NodeRef, complete);
-                <<"aborted">>     -> pushy_job_state:node_event(JobId, NodeRef, aborted);
-                undefined ->
-                    lager:error("Status message did not have type: body=~s", [Body]);
-                _ ->
-                    lager:error("Status message had unknown type ~p: body=~s", [Type, Body])
-            end,
+            send_node_event(JobId, NodeRef, Type),
             State2;
         {'EXIT', Error} ->
             lager:error("Status message JSON parsing failed: body=~s, error=~s", [Body,Error]),
             State
     end.
+
+send_node_event(undefined, NodeRef, <<"heartbeat">>) ->
+    pushy_node_state:heartbeat(NodeRef);
+send_node_event(JobId, NodeRef, <<"ack_commit">>) ->
+    pushy_job_state:ack_commit(JobId, NodeRef);
+send_node_event(JobId, NodeRef, <<"nack_commit">>) ->
+    pushy_job_state:nack_commit(JobId, NodeRef);
+send_node_event(JobId, NodeRef, <<"ack_run">>) ->
+    pushy_job_state:ack_run(JobId, NodeRef);
+send_node_event(JobId, NodeRef, <<"nack_run">>) ->
+    pushy_job_state:nack_run(JobId, NodeRef);
+send_node_event(JobId, NodeRef, <<"complete">>)->
+    pushy_job_state:completed(JobId, NodeRef);
+send_node_event(JobId, NodeRef, <<"aborted">>) ->
+    pushy_job_state:aborted(JobId, NodeRef);
+send_node_event(JobId, NodeRef, undefined) ->
+    lager:error("Status message for job ~p and node ~p was missing type field!~n", [JobId, NodeRef]);
+send_node_event(JobId, NodeRef, UnknownType) ->
+    lager:error("Status message for job ~p and node ~p had unknown type ~p!~n", [JobId, NodeRef, UnknownType]).
+
+
 
 get_node_ref(State, Address, Data) ->
     % This essentially debug code.
