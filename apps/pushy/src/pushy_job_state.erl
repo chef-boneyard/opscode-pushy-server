@@ -56,25 +56,25 @@ start_link(Job) ->
 % FIX: Consolidated FSM events into a single dialyzer type
 % FIX: Use macro to generate functional API
 -spec ack_commit(object_id(), node_ref()) -> ok | not_found.
-?DEF_JOB_NODE_EVENT(ack_commit).
+ack_commit(JobId, NodeRef) -> send_node_event(JobId, NodeRef, ack_commit).
 
 -spec nack_commit(object_id(), node_ref()) -> ok | not_found.
-?DEF_JOB_NODE_EVENT(nack_commit).
+nack_commit(JobId, NodeRef) -> send_node_event(JobId, NodeRef, nack_commit).
 
 -spec ack_run(object_id(), node_ref()) -> ok | not_found.
-?DEF_JOB_NODE_EVENT(ack_run).
+ack_run(JobId, NodeRef) -> send_node_event(JobId, NodeRef, ack_run).
 
 -spec nack_run(object_id(), node_ref()) -> ok | not_found.
-?DEF_JOB_NODE_EVENT(nack_run).
+nack_run(JobId, NodeRef) -> send_node_event(JobId, NodeRef, nack_run).
 
 -spec completed(object_id(), node_ref()) -> ok | not_found.
-?DEF_JOB_NODE_EVENT(completed).
+completed(JobId, NodeRef) -> send_node_event(JobId, NodeRef, completed).
 
 -spec aborted(object_id(), node_ref()) -> ok | not_found.
-?DEF_JOB_NODE_EVENT(aborted).
+aborted(JobId, NodeRef) -> send_node_event(JobId, NodeRef, aborted).
 
 -spec down(object_id(), node_ref()) -> ok | not_found.
-?DEF_JOB_NODE_EVENT(down).
+down(JobId, NodeRef) -> send_node_event(JobId, NodeRef, down).
 
 get_job_state(JobId) ->
     case pushy_job_state_sup:get_process(JobId) of

@@ -13,9 +13,4 @@
 -type node_name() :: binary().
 -type org_id() :: binary().
 -type node_ref() :: {org_id(), node_name()}.
--type job_event() :: ack_commit | nack_commit | ack_run | nack_run | completed | aborted | down.
-
-% FIX: Added some compile-time trickery to make generating
-%      node job events easier
--define(DEF_JOB_NODE_EVENT(EventName), EventName(JobId, NodeRef) ->
-                                            send_node_event(JobId, NodeRef, EventName)).
+-type job_event() :: ack_commit | nack_commit | ack_run | nack_run | complete | aborted | down.
