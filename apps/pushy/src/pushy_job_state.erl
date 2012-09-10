@@ -207,25 +207,30 @@ set_node_state(NodeRef, NewNodeState, #state{job_nodes = JobNodes} = State) ->
     end, JobNodes),
     State#state{job_nodes = JobNodes2}.
 
-mark_node_faulty(NodeRef, #state{job_nodes = JobNodes} = State) ->
+mark_node_faulty(NodeRef, #state{job = Job, job_nodes = JobNodes} = State) ->
     JobNodes2 = dict:update(NodeRef, fun(OldNodeState) ->
-        case OldNodeState#pushy_job_node.status of
-            new -> OldNodeState#pushy_job_node{status = faulty};
-            ready -> OldNodeState#pushy_job_node{status = faulty};
-            running -> OldNodeState#pushy_job_node{status = aborted}; % TODO better status?
-            % Once a node has reached a terminal state, we don't change its status
-            _ -> OldNodeState
+        JobStatus = Job#pushy_job.status,
+        OldNodeStatus = OldNodeState#pushy_job_node.status,
+        case {JobStatus, OldNodeStatus} of
+            {_, new}         -> OldNodeState#pushy_job_node{status = unavailable};
+            {voting, ready}  -> OldNodeState#pushy_job_node{status = unavailable};
+            {running, ready} -> OldNodeState#pushy_job_node{status = crashed};
+            {_, running}     -> OldNodeState#pushy_job_node{status = crashed};
+            _                -> OldNodeState
         end
     end, JobNodes),
     State#state{job_nodes = JobNodes2}.
 
-finish_all_nodes(#state{job_nodes = JobNodes} = State) ->
+finish_all_nodes(#state{job = Job, job_nodes = JobNodes} = State) ->
     JobNodes2 = dict:map(fun(_, OldNodeState) ->
-        case OldNodeState#pushy_job_node.status of
-            new -> OldNodeState#pushy_job_node{status = faulty};
-            ready -> OldNodeState#pushy_job_node{status = was_ready};
-            running -> OldNodeState#pushy_job_node{status = aborted}; % TODO better status?
-            _ -> OldNodeState
+        JobStatus = Job#pushy_job.status,
+        OldNodeStatus = OldNodeState#pushy_job_node.status,
+        case {JobStatus, OldNodeStatus} of
+            {_, new}         -> OldNodeState#pushy_job_node{status = unavailable};
+            {voting, ready}  -> OldNodeState#pushy_job_node{status = unavailable};
+            {running, ready} -> OldNodeState#pushy_job_node{status = aborted};
+            {_, running}     -> OldNodeState#pushy_job_node{status = aborted};
+            _                -> OldNodeState
         end
     end, JobNodes),
     State#state{job_nodes = JobNodes2}.
@@ -264,9 +269,9 @@ start_running(#state{job = Job} = State) ->
 
 finish_job(Reason, #state{job = Job} = State) ->
     lager:info("Job ~p -> ~p", [Job#pushy_job.id, Reason]),
+    State2 = finish_all_nodes(State),
     Job2 = Job#pushy_job{status = Reason},
-    State2 = State#state{job = Job2},
-    State3 = finish_all_nodes(State2),
+    State3 = State2#state{job = Job2},
     {next_state, Reason, State3}.
 
 count_nodes_in_state(NodeStates, #state{job_nodes = JobNodes}) ->
