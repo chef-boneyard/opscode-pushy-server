@@ -166,17 +166,17 @@ send_node_event(JobId, NodeRef, <<"heartbeat">>) ->
     lager:debug("Received heartbeat for node ~p with job id ~p", [JobId, NodeRef]),
     pushy_node_state:heartbeat(NodeRef);
 send_node_event(JobId, NodeRef, <<"ack_commit">>) ->
-    pushy_job_state:ack_commit(JobId, NodeRef);
+    pushy_job_state:node_ack_commit(JobId, NodeRef);
 send_node_event(JobId, NodeRef, <<"nack_commit">>) ->
-    pushy_job_state:nack_commit(JobId, NodeRef);
+    pushy_job_state:node_nack_commit(JobId, NodeRef);
 send_node_event(JobId, NodeRef, <<"ack_run">>) ->
-    pushy_job_state:ack_run(JobId, NodeRef);
+    pushy_job_state:node_ack_run(JobId, NodeRef);
 send_node_event(JobId, NodeRef, <<"nack_run">>) ->
-    pushy_job_state:nack_run(JobId, NodeRef);
+    pushy_job_state:node_nack_run(JobId, NodeRef);
 send_node_event(JobId, NodeRef, <<"complete">>)->
-    pushy_job_state:completed(JobId, NodeRef);
+    pushy_job_state:node_complete(JobId, NodeRef);
 send_node_event(JobId, NodeRef, <<"aborted">>) ->
-    pushy_job_state:aborted(JobId, NodeRef);
+    pushy_job_state:node_aborted(JobId, NodeRef);
 send_node_event(JobId, NodeRef, undefined) ->
     lager:error("Status message for job ~p and node ~p was missing type field!~n", [JobId, NodeRef]);
 send_node_event(JobId, NodeRef, UnknownType) ->
