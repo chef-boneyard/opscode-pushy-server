@@ -10,6 +10,7 @@
 -export([start_link/0,
          start/1,
          get_process/1,
+         get_job_processes/0,
          register_process/1]).
 
 %% Supervisor callbacks
@@ -32,10 +33,17 @@ start(Job) ->
 -spec get_process(object_id()) -> pid() | not_found.
 get_process(JobId) ->
     try
-        gproc:lookup_pid({n,l,JobId})
+        gproc:lookup_pid({n,l,{pushy_job, JobId}})
     catch
         error:badarg -> not_found
     end.
+
+-spec get_job_processes() -> {binary(), pid()}.
+get_job_processes() ->
+    MatchHead = pushy_util:gproc_match_head(n, l, {pushy_job, '_'}),
+    Guard = [],
+    Result = ['$$'],
+    [{JobId, Pid} || [{_,_,{_,JobId}},Pid,_] <- gproc:select([{MatchHead, Guard, Result}])].
 
 -spec register_process(object_id()) -> pid().
 register_process(JobId) ->
@@ -43,7 +51,7 @@ register_process(JobId) ->
         %% The most important thing to have happen is this registration; we need to get this
         %% assigned before anyone else tries to start things up gproc:reg can only return
         %% true or throw
-        true = gproc:reg({n, l, JobId}),
+        true = gproc:reg({n, l, {pushy_job, JobId}}),
         true
     catch
         error:badarg ->

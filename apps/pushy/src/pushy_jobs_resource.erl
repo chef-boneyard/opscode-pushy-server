@@ -13,6 +13,7 @@
          content_types_provided/2,
          is_authorized/2,
          from_json/2,
+         to_json/2,
          post_is_create/2,
          create_path/2]).
 
@@ -42,13 +43,13 @@ is_authorized(Req, State) ->
     {true, Req, State2}.
 
 allowed_methods(Req, State) ->
-    {['POST'], Req, State}.
+    {['POST', 'GET'], Req, State}.
 
 content_types_accepted(Req, State) ->
     {[{"application/json", from_json}], Req, State}.
 
 content_types_provided(Req, State) ->
-    {[{"application/json", undef}], Req, State}.
+    {[{"application/json", to_json}], Req, State}.
 
 % {
 %   'command' = 'chef-client',
@@ -72,7 +73,30 @@ from_json(Req, State) ->
     Req2 = ripped_from_chef_rest:set_uri_of_created_resource(Req),
     {true, Req2, State}.
 
+%% GET /pushy/jobs
+to_json(Req, State) ->
+    Jobs = jobs_to_json(get_jobs(pushy_job_state_sup:get_job_processes())),
+
+    {jiffy:encode(Jobs), Req, State}.
+
 % Private stuff
+
+get_jobs(JobTuples) ->
+    [pushy_job_state:get_job_state(JobId) || {JobId, _} <- JobTuples].
+
+jobs_to_json(Jobs) ->
+    [job_to_json(Job) || Job <- Jobs].
+
+job_to_json(#pushy_job{
+        id = Id,
+        status = Status
+        %created_at = CreatedAt
+    }) ->
+    %CreatedAtDate =  iolist_to_binary(httpd_util:rfc1123_date(CreatedAt)),
+    {[ {<<"id">>, iolist_to_binary(Id)},
+       {<<"status">>, Status}
+       %{<<"created_at">>, CreatedAtDate}
+    ]}.
 
 parse_post_body(Req) ->
     Body = wrq:req_body(Req),
