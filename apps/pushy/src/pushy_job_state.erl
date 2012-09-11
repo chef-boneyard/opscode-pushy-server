@@ -227,7 +227,7 @@ finish_all_nodes(#state{job = Job, job_nodes = JobNodes} = State) ->
         OldNodeStatus = OldNodeState#pushy_job_node.status,
         case {JobStatus, OldNodeStatus} of
             {_, new}         -> OldNodeState#pushy_job_node{status = unavailable};
-            {voting, ready}  -> OldNodeState#pushy_job_node{status = unavailable};
+            {voting, ready}  -> OldNodeState#pushy_job_node{status = was_ready};
             {running, ready} -> OldNodeState#pushy_job_node{status = aborted};
             {_, running}     -> OldNodeState#pushy_job_node{status = aborted};
             _                -> OldNodeState
