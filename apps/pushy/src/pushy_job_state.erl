@@ -216,7 +216,7 @@ mark_node_faulty(NodeRef, #state{job = Job, job_nodes = JobNodes} = State) ->
             {voting, ready}  -> OldNodeState#pushy_job_node{status = unavailable};
             {running, ready} -> OldNodeState#pushy_job_node{status = crashed};
             {_, running}     -> OldNodeState#pushy_job_node{status = crashed};
-            _                -> OldNodeState
+            _                -> case is_terminal(OldNodeStatus) of true -> OldNodeState end
         end
     end, JobNodes),
     State#state{job_nodes = JobNodes2}.
@@ -230,7 +230,7 @@ finish_all_nodes(#state{job = Job, job_nodes = JobNodes} = State) ->
             {voting, ready}  -> OldNodeState#pushy_job_node{status = was_ready};
             {running, ready} -> OldNodeState#pushy_job_node{status = aborted};
             {_, running}     -> OldNodeState#pushy_job_node{status = aborted};
-            _                -> OldNodeState
+            _                -> case is_terminal(OldNodeStatus) of true -> OldNodeState end
         end
     end, JobNodes),
     State#state{job_nodes = JobNodes2}.
@@ -311,3 +311,8 @@ send_node_event(JobId, NodeRef, Event) ->
         not_found ->
             not_found
     end.
+
+is_terminal(new) -> false;
+is_terminal(ready) -> false;
+is_terminal(running) -> false;
+is_terminal(_) -> true.
