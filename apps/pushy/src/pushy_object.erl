@@ -35,6 +35,8 @@ new_record(pushy_job, OrgId, NodeNames) ->
     #pushy_job{id = Id,
                 org_id = OrgId,
                 status = new,
+                created_at = sql_date(now),
+                updated_at = sql_date(now),
                 job_nodes = [
                   #pushy_job_node{job_id = Id,
                                   org_id = OrgId,
