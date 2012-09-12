@@ -1,3 +1,4 @@
+# -*- fill-column: 100 -*-
 #+TITLE: Push Job Specification for V1 Product
 #+AUTHOR: Mark Anderson <mark@opscode.com>\\Christopher Brown <cb@opscode.com>\\Kevin Smith <kevin@opscode.com>
 #+OPTIONS: toc:2
@@ -108,15 +109,13 @@ enough detail to allow a reasonable and scalable implementation.
       Chef REST API
    3. Managed nodes *MUST* be able to connect to the heartbeat and job coordination
       components inside Chef server.
-   4. Managed nodes *MAY* be able to *accept* incoming TCP
-      connections. (Deprecate this? The initial protocol doesn't require it.)
 ** Data format & Storage
    1. All messages will be formatted as legal JSON.
    2. The database is the canonical store of all application data.
 ** Scalability & Security
    1. Push jobs will be deployed in Private Chef only.
    2. Push jobs will not be deployed in Hosted Chef.
-   3. The design must scale up to 8,000 managed nodes per OPC server.
+   3. The design must scale up to 10,000 managed nodes per OPC server.
    4. Push jobs will honor the same security guarantees made by the Chef REST API.
 
 * Architecture
@@ -141,16 +140,19 @@ enough detail to allow a reasonable and scalable implementation.
    as acknowledging jobs, sending progress updates, and reporting final results.
 
 *** Heartbeat Channel
+    NOTE: Rewrite this to account for merged command/client heartbeat channel
+
     ZeroMQ PUB/SUB (publish and subscribe) sockets are used for the server heartbeat because
     they automatically and scalably manage the fan-out the server needs to broadcast its
     heartbeat to all the nodes. The nodes connect to the server heartbeat socket and
     subscribe. The nodes do not ACK the server heartbeats, and the server should not expect
     any.
 
+    <OBSOLETE>
     ZeroMQ PUSH/PULL sockets are used for the client heartbeats to the server because that better
     suits a model where the clients connect to the server heartbeat input. (TODO: find a better
     name for that).
-
+    
     Earlier versions of this spec had PUB/SUB being used for this process. It would be simpler
     if the node was able to connect to the server to send heartbeats, rather than requiring
     the server to bind to the node. The latter would require some sort of handshake on startup
@@ -163,7 +165,7 @@ enough detail to allow a reasonable and scalable implementation.
     server continually broadcasts heartbeat messages to all nodes that are listening. Nodes
     indicate their availability by sending heartbeat messages to the server. There is no process
     beyond the ZeroMQ connection to start or stop a connection from the node.
-
+    </OBSOLETE>
 
 **** Future extensions
      This might be worth modifying in the future. For example we might want to lower the signature
@@ -216,109 +218,11 @@ enough detail to allow a reasonable and scalable implementation.
    + The public key of the server
    + The lifetime of this configuration information
 
-   #+begin_src javascript
-    {
-      "type": "config",
-      "host": "opc1.opscode.com",
-      "push_jobs": {
-                     "heartbeat": {
-                                    "out_addr": "tcp://10.10.1.5:10000",
-                                    "in_addr": "tcp://10.10.1.5:10001",
-                                    "interval": 15,
-                                    "offline_threshold": 3,
-                                    "online_threshold": 2
-                                  },
-                     "command" : {
-                                    "command_addr": "tcp://10.10.1.5:10001",
-                                 }
-                   },
-      "public_key": "AAAAB3NzaC1kc3MAAACBAIZbwlySffbB
-                    5msSUH8JzLLXo/v03JBCWr13fVTjWYpc
-                    cdbi/xL3IK/Jw8Rm3bGhnpwCAqBtsLvZ
-                    OcqXrc2XuKBYjiKWzigBMC7wC9dUDGwDl
-                    2aZ89B0jn2QPRWZuCAkxm6sKpefu++VPR
-                    RZF+iyZqFwS0wVKtl97T0gwWlzAJYpAAA
-                    AFQDIipDNo83e8RRp7Fits0DSy0DCpwAA
-                    AIB01BwXg9WSfU0mwzz/0+5Gb/TMAxfkD
-                    yucbcpJNncpRtr9Jb+9GjeZIbqkBQAqwg
-                    dbEjviRbUAuSawNSCdtnMgWD2NXkBKEde",
-       "lifetime":3600
-
-    }
-    #+end_src
-
-    + type :: message type
-    + host :: sender's host name (Private Chef server)
-    + push\_jobs/heartbeat/out_addr :: URL pointing to the server's heartbeat broadcast service
-    + push\_jobs/heartbeat/in_addr :: URL pointing to the server's node state tracking service
-    + push\_jobs/heartbeat/interval :: Interval, in seconds, between heartbeat messages
-    + push\_jobs/heartbeat/offline_threshold :: How many intervals must be missed before the other end is considered offline
-    + push\_jobs/heartbeat/online_threshold :: How many intervals must be missed before the other end is considered online
-    + push\_jobs/command/command_addr :: URL for command channel (TODO: Presently this is in
-         the heartbeat clause, and should be changed.)
-    + public\_key :: The signing key that the push server will use.
-    + lifetime :: how long in seconds this configuration is good for. The node should reload the
-                  configuration information after this has expired.
-
    We may wish to use the discovery process to handle fail-over to a new server and distribution of
    nodes among multiple servers. The discovery system would allocate the nodes to various active servers
    and if a node lost the server heartbeat for a certain length of time (or got a reconfigure
    command via the command channel) it would reload the configuration and start a connection to the
    appropriate server. We would also reconfigure after the lifetime of the configuration expires.
-
-** General ZeroMQ Messaging
-   The basic system message consists of two ZeroMQ frames. The first frame contains a version
-   id and the signed checksum of the second frame. The second frame is a JSON blob. This is
-   used throughout the system for server and client heartbeats, status messages, commands and
-   responses.
-
-   Push jobs use JSON because ZeroMQ sends and receives messages as complete frames, without
-   fragmentation. JSON also facilitates easier debugging and maintenance of the system since
-   all messages are textual and human-readable. A binary protocol, such as /Protocol Buffers/
-   or /msgpack/, would be more efficient but would also substantially increase the effort
-   required to debug and support the system.  We can discuss those as potential
-   optimizations once the initial system is in place.
-
-   An simple early optimization would be to send gzip (or lz4, depending on our cpu/size trade
-   space) compressed json instead of the ACSII text.
-
-*** Header Frame
-    The header frame is a series of semicolon separated clauses. Each clause is a key-value
-    pair separated by a colon.
-    #+begin_example
-Version:1.0;Checksum:fyq6ukIwYcUJ9JI90Ets8Q==
-    #+end_example
-   + Version :: a major minor or major minor patch tuple separated expressed as integers
-                separted by '.' characters for the protocol version (1.0 for now) (Should this
-                simply be reduced to an integer?)
-   + Checksum :: Base64 encoded SHA1 checksum of the second frame, encrypted using the
-                 sender's private key. The standard erlang library implements Base64 as
-                 specified in RFC4648. This derived from signing protocol that Chef uses for
-                 REST requests, except that instead of signing significant headers and the
-                 HTTP body, we sign a JSON blob.
-*** JSON
-    The second frame is a JSON text, as defined by RFC 4627. The exact format varies depending on
-    the particular message being sent. The JSON text itself is not encrypted.
-
-    All JSON messages will contain a timestamp field in ISO8601 format. Messages older than a
-    TBD value will be rejected to reduce the window for replay attacks.
-
-    NOTE: This provides weaker security than our REST API, where we have the option to use SSL
-    for the exchange. This may be acceptable in a OPC environment where the network is
-    trusted, but that may not be the case for some multitenant users such as resellers. This
-    should receive review before we release V1.
-
-    The command strings are of especial concern. If the system uses a limited command
-    vocabulary little interesting information will leak, but if arbitrary commands are allowed there
-    may be sensitive information embedded in the command line.
-
-    Erlang message sending sample code
-   #+begin_src erlang
-   Sock = connect_to_server("tcp://some_server:8765"),
-   Sig = sign_message(JSON),
-   erlzmq:send(Sock, Sig, [sndmore]),
-   erlzmq:send(Sock, JSON)
-   #+end_src
 
 
 *** Socket configuration
@@ -341,9 +245,6 @@ Version:1.0;Checksum:fyq6ukIwYcUJ9JI90Ets8Q==
   intervals then A will consider B 'offline' and not route any traffic to B. A will update B's
   status to 'online' once A starts receiving heartbeats from B again.
 
-  The protocol described here is loosely based on the Paranoid Pirate Protocol, but with some
-  embellishments introduced for signing.
-
   The heartbeat server sends out regular heartbeats to managed nodes via ZeroMQ
   PUB/SUB. Managed nodes send their heartbeats over a separate channel. See the [[Heartbeat
   Channel]] section for a visual representation of the message flows and ZeroMQ sockets.
@@ -355,18 +256,6 @@ Version:1.0;Checksum:fyq6ukIwYcUJ9JI90Ets8Q==
 
     Future versions of the protocol may use this channel to advertise server failovers,
     trigger global reconfiguration of clients and other low rate broadcast information.
-
-** Server Heartbeat Message
-    Server heartbeats are composed of two ZeroMQ frames. The first frame contains the header
-    described above, and the second frame contains the the JSON-formmatted heartbeat payloadL
-    #+begin_example
-{
-    "server":"SERVER",                 # The hostname of the server
-    "timestamp":"TIMESTAMP",           # RFC 1123 timestamp
-    "type":"MSGTYPE"                   # 'heartbeat' for now
-    "sequence":SEQUENCE_NUMBER",       # integer sequence number
-}
-    #+end_example
 
 ** Node Heartbeat
     PUSH/PULL sockets are used for the node heartbeat. The node PUSHes heartbeats to the
@@ -382,19 +271,6 @@ Version:1.0;Checksum:fyq6ukIwYcUJ9JI90Ets8Q==
    * The port the command processor is listening on.
    * ID and status of the most recently received command.
    * Information allowing the detection of crashed nodes
-** Node Heartbeat Message
-   Node heartbeats are comprised of two ZeroMQ frames. The first frame contains
-   the header described above, and the second frame contains the JSON-formatted heartbeat payload:
-
-#+begin_example
-    {"node": "node123.foo.com",                    # node's host name
-     "client": "clientname",                       # the client signing the request
-     "org": "foo.com",                             # orgname of the node
-     "timestamp": "Sat, 12 May 2012 20:33:15 GMT", # RFC 1123 timestamp
-     "state": "idle"                               # The state of a node
-    }
-#+end_example
-
 
 ** Node monitoring of server heartbeat
 
@@ -423,44 +299,18 @@ Version:1.0;Checksum:fyq6ukIwYcUJ9JI90Ets8Q==
 
 ** Server monitoring of client heartbeat
 
-    The server monitors each client heartbeat and records the state in the database. It uses
-    the same state machine as the client. A node is treated as unavailable for jobs if it's
-    heartbeat status is 'down'.
-
-** Basic heartbeat state machine
-
-TODO: Flesh this out and simplify.
-
-|------------+-----------------------------------------+--------------------------------+-----------|
-| State      | Event                                   | Action                         | New State |
-|------------+-----------------------------------------+--------------------------------+-----------|
-| Startup    |                                         |                                | Down      |
-|------------+-----------------------------------------+--------------------------------+-----------|
-| Down       | Receive Heartbeat                       | Set counter to zero            | Going up  |
-|------------+-----------------------------------------+--------------------------------+-----------|
-| Going Up   | Counter Greater than upward threshold   |                                | Up        |
-| Going Up   | Receive Heartbeat before threshold time | Increment counter              | Going up  |
-| Going Up   | Receive Heartbeat after threshold time  | Decrement counter (floor zero) | Going up  |
-|------------+-----------------------------------------+--------------------------------+-----------|
-| Up         | Receive Heartbeat before threshold time |                                | Up        |
-| Up         | Receive Heartbeat after threshold time  |                                |           |
-|------------+-----------------------------------------+--------------------------------+-----------|
-| Going Down | Receive                                 |                                |           |
-|------------+-----------------------------------------+--------------------------------+-----------|
-| Down       | Recieve Heartbeat                       |                                |           |
-|------------+-----------------------------------------+--------------------------------+-----------|
-
-TODO This state machine needs rework in a serious way.
+    The server monitors each client heartbeat and records the state in the database. A node is
+    treated as unavailable for jobs if it's heartbeat status is 'down'.
 
 ** Simple protocol for detection of crashed node
     It can be helpful to know whether a node has crashed and returned (possibly on different
-    hardware) vs undergone a planned restart. This can be done with a guid (the incarnation id) and simple state file
-    (e.g. /var/pushy/incarnation). On startup, the client will look for the incarnation file, load the
-    incarnation GUID from it, and delete the file. If no file is found, the client will generate a
-    new incarnation GUID. On a clean shutdown the current incarnation GUID is written to the
-    file. The client reports this incarnation GUID in its heartbeat, and if the incarnation id
-    changes the push job server can recognize this and act accordingly. If a command was in flight
-    the server should record that it ended in a indeterminate state.
+    hardware) vs undergone a planned restart. This can be done with a guid (the incarnation id) and
+    simple state file (e.g. /var/pushy/incarnation). On startup, the client will look for the
+    incarnation file, load the incarnation GUID from it, and delete the file. If no file is found,
+    the client will generate a new incarnation GUID. On a clean shutdown the current incarnation
+    GUID is written to the file. The client reports this incarnation GUID in its heartbeat, and if
+    the incarnation id changes the push job server can recognize this and act accordingly. If a
+    command was in flight the server should record that it ended in a indeterminate state.
 
     The server should also maintain an incarnation id to allow the clients to discover a
     reboot that doesn't trigger the heartbeat mechanisim.
@@ -502,6 +352,8 @@ TODO This state machine needs rework in a serious way.
       the buffering. Is dropping and restarting ZMQ a solution?
 
 #+INCLUDE: "design_client_tracking.org" :minlevel 2
+
+
 
 ** Job lifecycle
 
@@ -725,78 +577,6 @@ TODO This state machine needs rework in a serious way.
       must be accomplished after the restart.
 
 
-** Client and server messages
-*** Basic message format
-    The job command message is extremely similar to the heartbeat message. It
-    consists of two ZeroMQ frames. The first frame contains the signature version and
-    signature of the message.
-
-    The second frame contains the command payload for the job formatted as a JSON hash. All
-    messages contain the following fields:
-    + A timestamp (used for signature verification)
-    + a message type field
-
-**** Client messages
-     All client messages add fields for:
-     + the node name of the sender
-     + the client name of the sender
-     + The organization name for the client.
-
-#+begin_example
-{
-  "timestamp": timestamp
-  "type": "ready",                         # message type
-  "node": "node_name",
-  "client": "client_name",                # OPC host name
-  "org": "organization",
-}
-#+end_example
-
-**** Server messages
-     All server messages add fields for:
-     + The FQDN of the server
-     + A job_id, if relevant.
-
-**** Message formats
-
-***** Ready
-      Whenever a client starts up, and whenever it regains server heartbeat when idle, it
-      sends a ready message. The message type is 'ready', and no other information is needed.
-
-***** Prepare
-      When a server starts a job it sends a message of type 'prepare', along with a command.
-
-      On receipt of this message client will reply with an ACK message and will be marked as
-      ready for execution. If the client is currently executing a job, it will reply with a
-      NACK message and the server will mark that node as ineligible to start the command.
-
-#+NAME: command message
-#+BEGIN_SRC js
-{
-    "server": "opc1.foo.com",               # OPC host name
-    "job_id": "1234",                       # job id
-    "type": "prepare",                      # message type
-    "command": "chef-client"                # command to execute
-}
-#+END_SRC
-
-***** ACK/NACK messages
-      When a client recieves a prepare message from the server, it replies with an *ACK* or *NACK*
-      message type indicating whether it is ready for a job. The job_id field is set to the
-      job_id of the command recieved. If the response is a *NACK* it also returns the reason,
-      such as reason 'running' with 'currently_executing' set to the job id.
-
-***** START message
-      The start message begins execution on a node. It consists soley of the job id to start.
-
-***** FINISHED message
-      When a node stops or completes execution of a commmand, it returns the state (OK,
-      FAILED, ABORTED) (TODO refine)
-
-***** ABORT message
-      At any point in the execution cycle the server can send an ABORT message. This causes
-      immediate termination of any command execution.
-
 ** Client command state machine
 |-------------+------------------------------------+--------------------------------+------------------|
 | State       | Event                              | Action                         | Next State       |
@@ -988,6 +768,8 @@ TODO what if the client missed the command or start message because it restarted
     TODO: describe new algorithm.
 
 #+INCLUDE: "design_rest_api.org" :minlevel 1
+
+#+INCLUDE: "design_zeromq_messages.org" :minlevel 1
 
 * Knife command syntax
 
