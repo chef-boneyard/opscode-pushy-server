@@ -172,18 +172,17 @@ handle_sync_event(get_job_status, _From, StateName,
     JobNodesList = [ JobNode || {_,JobNode} <- dict:to_list(JobNodes) ],
     Job2 = Job#pushy_job{job_nodes = JobNodesList},
     {reply, Job2, StateName, State};
-handle_sync_event(Event, From, _StateName, State) ->
+handle_sync_event(Event, From, StateName, State) ->
     lager:error("Unknown message handle_sync_event(~p) from ~p", [Event, From]),
-    finish_job(faulty, State).
+    {next_state, StateName, State}.
 
 -spec handle_info(any(), job_status(), #state{}) ->
         {'next_state', job_status(), #state{}}.
 handle_info({down, NodeRef}, StateName, State) ->
     pushy_job_state:StateName({down,NodeRef}, State);
-% FIXME: Are we sure we want to crash the job if we get a wayward handle_info message?
-handle_info(Info, _StateName, State) ->
+handle_info(Info, StateName, State) ->
     lager:error("Unknown message handle_info(~p)", [Info]),
-    finish_job(faulty, State).
+    {next_state, StateName, State}.
 
 -spec terminate(any(), job_status(), #state{}) -> 'ok'.
 terminate(_Reason, _StateName, _State) ->
