@@ -47,9 +47,9 @@ content_types_provided(Req, State) ->
 
 resource_exists(Req, State) ->
     JobId = iolist_to_binary(wrq:path_info(job_id, Req)),
-    case pushy_job_state:get_job_state(JobId) of
-        not_found -> {false, Req, State};
-        Job -> {true, Req, State#state{job = Job}}
+    case pushy_sql:fetch_job(JobId) of
+        {ok, not_found} -> {false, Req, State};
+        {ok, Job} -> {true, Req, State#state{job = Job}}
     end.
 
 to_json(Req, #state{job = Job} = State) ->
