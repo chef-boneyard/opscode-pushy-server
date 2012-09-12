@@ -69,4 +69,4 @@ register_process(JobId) ->
 init([]) ->
     {ok, {{simple_one_for_one, 0, 1},
           [{pushy_job_state, {pushy_job_state, start_link, []},
-            transient, brutal_kill, worker, [pushy_job_state]}]}}.
+            temporary, brutal_kill, worker, [pushy_job_state]}]}}.
