@@ -211,12 +211,12 @@ mark_node_faulty(NodeRef, #state{job = Job, job_nodes = JobNodes} = State) ->
     JobNodes2 = dict:update(NodeRef, fun(OldNodeState) ->
         JobStatus = Job#pushy_job.status,
         OldNodeStatus = OldNodeState#pushy_job_node.status,
-        case {JobStatus, OldNodeStatus} of
+        case {JobStatus, terminalize(OldNodeStatus)} of
             {_, new}         -> OldNodeState#pushy_job_node{status = unavailable};
             {voting, ready}  -> OldNodeState#pushy_job_node{status = unavailable};
             {running, ready} -> OldNodeState#pushy_job_node{status = crashed};
             {_, running}     -> OldNodeState#pushy_job_node{status = crashed};
-            _                -> case is_terminal(OldNodeStatus) of true -> OldNodeState end
+            {_, terminal}    -> OldNodeState
         end
     end, JobNodes),
     State#state{job_nodes = JobNodes2}.
@@ -225,12 +225,12 @@ finish_all_nodes(#state{job = Job, job_nodes = JobNodes} = State) ->
     JobNodes2 = dict:map(fun(_, OldNodeState) ->
         JobStatus = Job#pushy_job.status,
         OldNodeStatus = OldNodeState#pushy_job_node.status,
-        case {JobStatus, OldNodeStatus} of
+        case {JobStatus, terminalize(OldNodeStatus)} of
             {_, new}         -> OldNodeState#pushy_job_node{status = unavailable};
             {voting, ready}  -> OldNodeState#pushy_job_node{status = was_ready};
             {running, ready} -> OldNodeState#pushy_job_node{status = aborted};
             {_, running}     -> OldNodeState#pushy_job_node{status = aborted};
-            _                -> case is_terminal(OldNodeStatus) of true -> OldNodeState end
+            {_, terminal}    -> OldNodeState
         end
     end, JobNodes),
     State#state{job_nodes = JobNodes2}.
@@ -312,7 +312,12 @@ send_node_event(JobId, NodeRef, Event) ->
             not_found
     end.
 
-is_terminal(new) -> false;
-is_terminal(ready) -> false;
-is_terminal(running) -> false;
-is_terminal(_) -> true.
+% Used to collapse terminal states (which we always treat the same way) to a
+% more matchable form.
+terminalize(complete) -> terminal;
+terminalize(aborted) -> terminal;
+terminalize(unavailable) -> terminal;
+terminalize(nacked) -> terminal;
+terminalize(crashed) -> terminal;
+terminalize(was_ready) -> terminal;
+terminalize(NodeState) -> NodeState.
