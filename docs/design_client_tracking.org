@@ -1,79 +1,83 @@
+# -*- fill-column: 100 -*-
 
 *  Server tracking of client states
 
    The server lumps clients into a few basic execution states
-+ Idle :: the client is up and ready to accept jobs.
-+ Part of a job.
-+ Down:: the client has stopped heartbeating.
-+ In rehab :: the client has misbehaved.
-  
-  When a job is started, it takes clients from idle to part of the
-  job. Only idle clients are available for a job. As clients complete
-  the execution of the job, they are returned to the idle state.
-  
-  If a client stops heartbeating, it is moved to the down state. If this
-  happens during the execution of a job, it is marked as failed, and
-  ejected permanently from the job. Once a client starts heartbeating
-  again, it is moved to rehab. 
-  
-  If a client sends a non-heartbeat message that is 'wrong' for the
-  server's idea of its state, or is otherwise viewed as broken, but in
-  communication, it is sent to 'rehab'. Rehab sends abort messages until
-  the client acknowledges it. Once the client acknowledges the abort, it
-  is moved to idle. In essence, rehab is a hammer to force
-  misbehaving clients into a known good state, or at least keep them out
-  of circulation until they are. 
 
+   + Idle :: the client is up and ready to accept jobs.
+   + Part :: of a job.
+   + Down :: the client has stopped heartbeating.
+   + In rehab :: the client has misbehaved.
+  
+   On server startup, all nodes are sent to rehab to ensure that they
+   are in a consistient state. 
+
+   When a job is started, it takes clients from idle to part of the
+   job. Only idle clients are available for a job. As clients complete
+   the execution of the job, they are returned to the idle state.
+  
+   If a client stops heartbeating, it is moved to the down state. If
+   this happens during the execution of a job, it is marked as failed,
+   and ejected permanently from the job. Once a client starts
+   heartbeating again, it is moved to rehab.
+  
+   If a client sends a non-heartbeat message that is 'wrong' for the
+   server's idea of its state, or is otherwise viewed as broken, but
+   in communication, it is sent to 'rehab'. Rehab sends abort messages
+   until the client acknowledges it. Once the client acknowledges the
+   abort, it is moved to idle. In essence, rehab is a hammer to force
+   misbehaving clients into a known good state, or at least keep them
+   out of circulation until they are.
 
 * Message handling
 
+  (TODO Mod to describe central registry)
   The server's state determines what happens when non-heartbeat messages
   are received from the client, specifically what process handles those
   messages. There is an owning process corresponding to each state
   except 'down', and messages are routed to the owner.
 
-  If the client is currently part of a job the owner is the specific job
-  FSM for that node. There is a server for idle and rehab clients as
-  well. Messages from 'down' clients are logged and dropped. There is
-  not a dedicated server process for down clients.
+  If the client is currently part of a job, the owner is the specific
+  job FSM for that node. There is a server for idle and rehab clients
+  as well. Messages from 'down' clients are logged and dropped. There
+  is not a dedicated server process for down clients.
 
 ** Implementation Note
-   The current plan for implementation is that every active client
-   will be registered in gproc. Specifically, the owning process will
-   register itself for that client. Non-heartbeat messages will be
-   forwarded using this address.
+   The current plan for implementation is that every active client will be registered in
+   gproc. Specifically, the owning process will register itself for that client. Non-heartbeat
+   messages will be forwarded using this address.
 
-   Down clients will not have an entry in gproc; this is an optimization
-   to avoid tracking inactive clients. The absence of an entry should
-   mean the client is down, but we should probably check that.
+   Down clients will not have an entry in gproc; this is an optimization to avoid tracking inactive
+   clients. The absence of an entry means the client is down. The node FSM will enforce this,
+   unregistering 'down' clients, and checking that up clients are registered. If it finds an
+   unregistered client that is up, it will log that, and send it to the rehab server.
 
-   When a client transitions state, the current owning process gives
-   away the gproc entry to the new owner. (gproc provides an atomic
-   mechanism for this).
+   When a client transitions state, the current owning process gives away the gproc entry to the new
+   owner. (gproc provides an atomic mechanism for this).
 
-   NOTE/TODO: if we get a message for a node we no longer own, we
-   should probably forward it to the new owner. This makes
-   out-of-order delivery a possible issue though. Perhaps this should
-   be limited to 'down' messages from the heartbeat FSM; perhaps other
-   messages can be dropped.
+   We do not attempt to forward messages that we recieve after the owner has been handed off. In
+   general process the message as usual, except that any future transfers to a different state will
+   fail.
 
 * Detailed state descriptions
 
 ** Idle
-   Idle is means that a client is available to join a job. We don't
-   normally expect any messages except perhaps abort acknowlegements
-   left over from rehab. Any other message sends the client into
-   rehab.
+   Idle is means that a client is available to join a job. Any message sends the client into
+   rehab. One potential issue is left over abort acknowledgements from rehab may bounce us back and
+   forth into rehab a few times.
+
+   When a job starts, it sends a list of the nodes to be included in the job to the idle state
+   manager, which replies with the list of nodes that were transfered from idle to that job. This is
+   synchronous, in the job does not proceed until it gets the list.
 
 ** Rehab
-   Rehab exists to drive a client from an unknown state to idle as
-   quickly as possible.
+   Rehab exists to drive a client from an unknown state to idle as quickly as possible.
 
-   The server itself is conceptually simple: it periodically sends
-   every client in rehab an abort message until it acknowledges it. It
-   logs and drops any other messages it gets from clients. Once the
-   abort is acknowledged, it moves into idle.
+   The server itself is conceptually simple: it periodically sends every client in rehab an abort
+   message until it acknowledges it. It logs and drops any other messages it gets from clients. Once
+   the abort is acknowledged, it moves into idle.
 
+   Rehab uses gproc to discover which nodes are in rehab.
    
 ** Down
    Clients arrive in the down state when they stop heartbeating, no
@@ -90,13 +94,13 @@
    'fix' misbehaving clients, and we don't (yet) track what happens
    after they are marked as failing.
 
-   When a job is terminated, it marks all incomplete clients failed,
-   and hands them off to rehab. A job should insure that all of its
-   clients are owned by someone before termination.
+   When a job is terminated, it marks all incomplete clients failed, and hands them off to
+   rehab. Any complete clients should have already been transferred to idle or rehab. A job should
+   verify the invariant that all of its clients are owned by someone before termination.
 
-   We should add a check (perhaps as part of the node fsm that checks
-   the invariant that a client is always owned by some state when it
-   is up. Any node that is up and not owned should be be sent to rehab.
+   We should add a check (perhaps as part of the node fsm) that checks the invariant that a client
+   is always owned by some state when it is up. Any node that is up and not owned should be be sent
+   to rehab.
 
 * Recovery after a server crash
   + Clients that are down are marked down
@@ -108,15 +112,9 @@
 
 * Implications for voting
 
-If we have a global idle state that we know pushy clients are in, job
-initiation becomes a matter of taking the clients that are in idle.
+It might seem that we no longer need the NACK voting in the job, since we 'know' the node is idle as
+part of job creation. However the node may be doing a chef client run or otherwise be unavailable
+for job execution for a reason outside of pushy's knowledge. 
 
-We will never have something running a job that we don't know about.
-
-Does NACK stay important? Theoretically, we know if a client is in a
-job, so we should know if it's going to nack
-
-Nack becomes only a matter of if there is an chef-client run demonized
-or not. Any other nack would be an error.
 
 

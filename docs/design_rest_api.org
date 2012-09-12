@@ -222,22 +222,34 @@ Nodes use this to get the information necessary to connect to the server.
 
 MAA: Why not config instead of connect; it's more than simply information required to connect.
 
-#+begin_example
-{
-  "host": "private-chef.opscode.piab",
-  "push_jobs": {
-    "heartbeat": {
-      "out_addr": "tcp://private-chef.opscode.piab:10000",
-      "command_addr": "tcp://private-chef.opscode.piab:10002",
-      "interval": 1.0,
-      "offline_threshold": 3,
-      "online_threshold": 2
+#+begin_src javascript
+    {
+      "host": "opc1.opscode.com",
+      "push_jobs": {
+         "heartbeat": {
+            "out_addr": "tcp://10.10.1.5:10000",
+            "interval": 15,
+            "offline_threshold": 3,
+            "online_threshold": 2
+         },
+         "command_addr": "tcp://10.10.1.5:10001", 
+       },
+       "public_key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvnf8osLhltEPZzgrdZjk\n2xdGKDRaF/DxRE/Tdj2T2q0+MwXeK1XHeZJZkuvWHQ7Lpf4KdlYdMjk6mjF5KGmJ\gnomes8emyu7yfGs4tvn+5BKhaHPHCRA0vskE9/uIt9J/RgZIE0A3dBtf+9chY7J\nqJujIE9f3uJCknBf5jDeI3krYXzKL6mI9q2RO0xq10Omk/zpYIM4a20AMYxSmryM\nR3ivdiviW2hDZMdEHx0Au3+e4wkh1uiXC2ayh/hwObnFqPz5uwNAkzB8Z9qKl0G6\nJu7lEl3oJFqu0XtNuYgYmU8c/W9F3aNMnsQiTKEaUNmasfO/dIHSJmJpGccZFjwp\nvQIDAQAB\n-----END PUBLIC KEY-----\n",
+       "lifetime":3600
     }
-  },
-  "public_key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvnf8osLhltEPZzgrdZjk\n2xdGKDRaF/DxRE/Tdj2T2q0+MwXeK1XHeZJZkuvWHQ7Lpf4KdlYdMjk6mjF5KGmJ\gnomes8emyu7yfGs4tvn+5BKhaHPHCRA0vskE9/uIt9J/RgZIE0A3dBtf+9chY7J\nqJujIE9f3uJCknBf5jDeI3krYXzKL6mI9q2RO0xq10Omk/zpYIM4a20AMYxSmryM\nR3ivdiviW2hDZMdEHx0Au3+e4wkh1uiXC2ayh/hwObnFqPz5uwNAkzB8Z9qKl0G6\nJu7lEl3oJFqu0XtNuYgYmU8c/W9F3aNMnsQiTKEaUNmasfO/dIHSJmJpGccZFjwp\nvQIDAQAB\n-----END PUBLIC KEY-----\n\n",
-  "lifetime": 3600
-}
-#+end_example
+#+end_src
+
+    + type :: message type
+    + host :: sender's host name (Private Chef server)
+    + push\_jobs/heartbeat/out_addr :: URL pointing to the server's heartbeat broadcast service
+    + push\_jobs/heartbeat/interval :: Interval, in seconds, between heartbeat messages
+    + push\_jobs/heartbeat/offline_threshold :: How many intervals must be missed before the other end is considered offline
+    + push\_jobs/heartbeat/online_threshold :: How many intervals must be missed before the other end is considered online
+    + push\_jobs/command/command_addr :: URL for command channel (TODO: Presently this is in
+         the heartbeat clause, and should be changed.)
+    + public\_key :: The signing key that the push server will use.
+    + lifetime :: how long in seconds this configuration is good for. The node should reload the
+                  configuration information after this has expired.
 
 Error Codes:
 
