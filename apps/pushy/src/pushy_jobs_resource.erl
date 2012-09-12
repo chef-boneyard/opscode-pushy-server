@@ -63,9 +63,7 @@ post_is_create(Req, State) ->
 create_path(Req, #config_state{organization_guid = OrgId} = State) ->
     [ Command, NodeNames ] = parse_post_body(Req),
     Job = pushy_object:new_record(pushy_job, OrgId, NodeNames),
-    Job2 = Job#pushy_job{command = Command,
-                         created_at = calendar:now_to_datetime(erlang:now()),
-                         updated_at = calendar:now_to_datetime(erlang:now())},
+    Job2 = Job#pushy_job{command = Command},
     State2 = State#config_state{job = Job2},
     {binary_to_list(Job#pushy_job.id), Req, State2}.
 
@@ -76,10 +74,10 @@ from_json(Req, State) ->
     {true, Req2, State}.
 
 %% GET /pushy/jobs
-to_json(Req, State) ->
-    Jobs = jobs_to_json(get_jobs(pushy_job_state_sup:get_job_processes())),
+to_json(Req, #config_state{organization_guid = OrgId} = State) ->
+    {ok, Jobs} = pushy_sql:fetch_jobs(OrgId),
 
-    {jiffy:encode(Jobs), Req, State}.
+    {jiffy:encode([{Jobs}]), Req, State}.
 
 % Private stuff
 
