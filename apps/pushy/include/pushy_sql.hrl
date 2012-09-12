@@ -1,4 +1,3 @@
-
 -type id() :: binary().
 %% object ids are always 32 characters hex. This spec matches the
 %% length, might be able to constrain further for range of elements.
