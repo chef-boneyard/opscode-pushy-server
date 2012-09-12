@@ -3,14 +3,9 @@
 %% @author Mark Anderson <mark@opscode.com>
 %% @copyright 2011-2012 Opscode Inc.
 
+-include("pushy_types.hrl").
 
 -record(pushy_state, {
           ctx :: any(),
           incarnation_id :: binary()
          }).
-
-%% TODO: Put these types in "opscode-pushy-server/include/pushy_types.hrl"
--type node_name() :: binary().
--type org_id() :: binary().
--type node_ref() :: {org_id(), node_name()}.
--type job_event() :: ack_commit | nack_commit | ack_run | nack_run | complete | aborted | down.
