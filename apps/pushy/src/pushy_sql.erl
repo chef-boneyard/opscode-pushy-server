@@ -12,6 +12,7 @@
          update_node_status/1,
          %% job ops
          fetch_job/1,
+         fetch_jobs/1,
          create_job/1,
          update_job/1,
          update_job_node/1,
@@ -66,6 +67,16 @@ fetch_job(JobId) ->
     case sqerl:select(find_job_by_id, [JobId]) of
         {ok, Rows} when is_list(Rows) ->
             {ok, job_join_rows_to_record(Rows)};
+        {ok, none} ->
+            {ok, not_found};
+        {error, Error} ->
+            {error, Error}
+    end.
+
+fetch_jobs(OrgId) ->
+    case sqerl:select(find_jobs_by_org, [OrgId]) of
+        {ok, Rows} when is_list(Rows) ->
+            {ok, prepare_jobs(Rows)};
         {ok, none} ->
             {ok, not_found};
         {error, Error} ->
@@ -148,7 +159,6 @@ create_object(QueryName, Record) when is_atom(QueryName), is_tuple(Record) ->
 
 -spec job_fields_for_insert(CbFields:: list()) -> list().
 job_fields_for_insert(CbFields) ->
-   %% We drop the last record field - job_nodes
    Pred = fun(Elem) ->
            not(is_list(Elem))
           end,
@@ -216,6 +226,19 @@ job_join_rows_to_record([LastRow|[]], JobNodes) ->
 job_join_rows_to_record([Row|Rest], JobNodes ) ->
     C = proplist_to_job_node(Row),
     job_join_rows_to_record(Rest, [C|JobNodes]).
+
+prepare_jobs(Jobs) ->
+    prepare_jobs(Jobs, []).
+
+prepare_jobs([], Acc) ->
+    Acc;
+prepare_jobs([Head | Tail], Acc) ->
+    CreatedAt = trunc_date_time_to_second(safe_get(<<"created_at">>, Head)),
+    CreatedAtFormatted = iolist_to_binary(httpd_util:rfc1123_date(CreatedAt)),
+
+    NewRow = [{<<"id">>, safe_get(<<"id">>, Head)},
+              {<<"created_at">>, CreatedAtFormatted}],
+    prepare_jobs(Tail, lists:append(Acc, NewRow)).
 
 %% @doc Convenience function for assembling a job_node tuple from a proplist
 proplist_to_job_node(Proplist) ->
