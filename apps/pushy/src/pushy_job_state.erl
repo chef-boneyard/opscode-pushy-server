@@ -212,8 +212,10 @@ get_node_state(NodeRef, #state{job_nodes = JobNodes}) ->
     Node#pushy_job_node.status.
 
 set_node_state(NodeRef, NewNodeState, #state{job_nodes = JobNodes} = State) ->
-    JobNodes2 = dict:update(NodeRef, fun(OldNodeState) ->
-        OldNodeState#pushy_job_node{status = NewNodeState}
+    JobNodes2 = dict:update(NodeRef, fun(OldPushyJobNode) ->
+        NewPushyJobNode = OldPushyJobNode#pushy_job_node{status = NewNodeState},
+        pushy_sql:update_job_node(NewPushyJobNode),
+        NewPushyJobNode
     end, JobNodes),
     State#state{job_nodes = JobNodes2}.
 
