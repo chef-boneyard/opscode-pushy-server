@@ -223,13 +223,14 @@ mark_node_faulty(NodeRef, #state{job = Job, job_nodes = JobNodes} = State) ->
     JobNodes2 = dict:update(NodeRef, fun(OldNodeState) ->
         JobStatus = Job#pushy_job.status,
         OldNodeStatus = OldNodeState#pushy_job_node.status,
-        case {JobStatus, terminalize(OldNodeStatus)} of
+        NewPushyJobNode = case {JobStatus, terminalize(OldNodeStatus)} of
             {_, new}         -> OldNodeState#pushy_job_node{status = unavailable};
             {voting, ready}  -> OldNodeState#pushy_job_node{status = unavailable};
             {running, ready} -> OldNodeState#pushy_job_node{status = crashed};
             {_, running}     -> OldNodeState#pushy_job_node{status = crashed};
             {_, terminal}    -> OldNodeState
-        end
+        end,
+        pushy_sql:update_job_node(NewPushyJobNode)
     end, JobNodes),
     State#state{job_nodes = JobNodes2}.
 
@@ -237,13 +238,14 @@ finish_all_nodes(#state{job = Job, job_nodes = JobNodes} = State) ->
     JobNodes2 = dict:map(fun(_, OldNodeState) ->
         JobStatus = Job#pushy_job.status,
         OldNodeStatus = OldNodeState#pushy_job_node.status,
-        case {JobStatus, terminalize(OldNodeStatus)} of
+        NewPushyJobNode = case {JobStatus, terminalize(OldNodeStatus)} of
             {_, new}         -> OldNodeState#pushy_job_node{status = unavailable};
             {voting, ready}  -> OldNodeState#pushy_job_node{status = was_ready};
             {running, ready} -> OldNodeState#pushy_job_node{status = aborted};
             {_, running}     -> OldNodeState#pushy_job_node{status = aborted};
             {_, terminal}    -> OldNodeState
-        end
+        end,
+        pushy_sql:update_job_node(NewPushyJobNode)
     end, JobNodes),
     State#state{job_nodes = JobNodes2}.
 
