@@ -113,10 +113,12 @@ enough detail to allow a reasonable and scalable implementation.
    1. All messages will be formatted as legal JSON.
    2. The database is the canonical store of all application data.
 ** Scalability & Security
-   1. Push jobs will be deployed in Private Chef only.
+   1. Push jobs will be deployed in Private Chef only; no Hosted Chef
    2. Push jobs will not be deployed in Hosted Chef.
-   3. The design must scale up to 10,000 managed nodes per OPC server.
-   4. Push jobs will honor the same security guarantees made by the Chef REST API.
+   3. The design must scale up to 8,000 managed nodes per OPC server.
+   4. Push jobs will honor the same security guarantees and
+      limitations made by the Chef REST API.
+      
 
 * Architecture
 ** Communications
@@ -203,18 +205,18 @@ enough detail to allow a reasonable and scalable implementation.
 
 ** Configuration/Discovery Process
 
-   There a substantial amount of data specific to pushy that needs to be distributed to the
-   push job clients. We don't want to have to configure this on every node. Furthermore, much
-   of this data is specific to the chef infrastructure, not the users infrastructre, and may
-   change. We will use a special REST endpoint bootstrap the node up from the minimal static
-   configuration to a usable state. A signed /GET/ to this endpoint will retrieve the
-   appropriate configuration information in JSON format.
+   There a substantial amount of data specific to pushy that needs to be distributed to the push job
+   clients. We don't want to have to configure this on every node. Furthermore, much of this data is
+   specific to the chef infrastructure, not the users infrastructre, and may change. 
+   
+   We assume every pushy client will start with a valid chef client key and the address of the chef
+   REST service. The chef server will provide a REST endpoint to provide the configuration
+   information needed to bootstrap the node to a usable state. A signed /GET/ to this endpoint will
+   retrieve the appropriate configuration information in JSON format.
 
    The configuration and service discovery process will provide the following pieces of data:
-   + The push job server hostname or address
    + The port to subscribe to for server heartbeat
-   + The port to push node heartbeats to
-   + The command port to connect to
+   + The port to push node heartbeats to and use for commands
    + The public key of the server
    + The lifetime of this configuration information
 
@@ -352,8 +354,6 @@ enough detail to allow a reasonable and scalable implementation.
       the buffering. Is dropping and restarting ZMQ a solution?
 
 #+INCLUDE: "design_client_tracking.org" :minlevel 2
-
-
 
 ** Job lifecycle
 
