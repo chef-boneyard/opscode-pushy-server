@@ -129,7 +129,7 @@ update_job_node(#pushy_job_node{job_id = JobId,
                                 org_id = OrgId,
                                 status = Status,
                                 updated_at = UpdatedAt}) ->
-    UpdateFields = [job_status(Status), UpdatedAt, OrgId, NodeName, JobId],
+    UpdateFields = [job_node_status(Status), UpdatedAt, OrgId, NodeName, JobId],
     do_update(update_job_node_by_orgid_nodename_jobid, UpdateFields).
 
 -spec create_object(Object :: pushy_object()) -> {ok, non_neg_integer()} |
@@ -245,7 +245,7 @@ proplist_to_job_node(Proplist) ->
     #pushy_job_node{job_id = safe_get(<<"id">>, Proplist),
                     org_id = safe_get(<<"org_id">>, Proplist),
                     node_name = safe_get(<<"node_name">>, Proplist),
-                    status = job_status(safe_get(<<"status">>, Proplist)),
+                    status = job_node_status(safe_get(<<"job_node_status">>, Proplist)),
                     created_at = trunc_date_time_to_second(safe_get(<<"created_at">>, Proplist)),
                     updated_at = trunc_date_time_to_second(safe_get(<<"updated_at">>, Proplist))
                     }.
@@ -259,22 +259,38 @@ hb_status_as_atom(0) -> down;
 hb_status_as_atom(1) -> up.
 
 %% Job Status translators
-job_status(new) -> 0;
-job_status(voting) -> 1;
-job_status(running) -> 2;
-job_status(complete) -> 3;
-job_status(error) -> 4;
-job_status(failed) -> 5;
-job_status(expired) -> 6;
-job_status(aborted) -> 7;
-job_status(0) -> new;
-job_status(1) -> voting;
-job_status(2) -> running;
-job_status(3) -> complete;
-job_status(4) -> error;
-job_status(5) -> failed;
-job_status(6) -> expired;
-job_status(7) -> aborted.
+job_status(voting) -> 0;
+job_status(running) -> 1;
+job_status(complete) -> 2;
+job_status(quorum_failed) -> 3;
+job_status(aborted) -> 4;
+job_status(new) -> 5;
+job_status(0) -> voting;
+job_status(1) -> running;
+job_status(2) -> complete;
+job_status(3) -> quorum_failed;
+job_status(4) -> aborted;
+job_status(5) -> new.
+
+%% Job Node Status translators
+job_node_status(new) -> 0;
+job_node_status(ready) -> 1;
+job_node_status(running) -> 2;
+job_node_status(complete) -> 3;
+job_node_status(aborted) -> 4;
+job_node_status(unavailable) -> 5;
+job_node_status(nacked) -> 6;
+job_node_status(faulty) -> 7;
+job_node_status(was_ready) -> 8;
+job_node_status(0) -> new;
+job_node_status(1) -> ready;
+job_node_status(2) -> running;
+job_node_status(3) -> complete;
+job_node_status(4) -> aborted;
+job_node_status(5) -> unavailable;
+job_node_status(6) -> nacked;
+job_node_status(7) -> faulty;
+job_node_status(8) -> was_ready.
 
 %% CHEF_COMMON CARGO_CULT
 %% chef_sql:flatten_record/1

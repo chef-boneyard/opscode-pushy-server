@@ -62,9 +62,8 @@ post_is_create(Req, State) ->
 % This creates the job record
 create_path(Req, #config_state{organization_guid = OrgId} = State) ->
     [ Command, NodeNames ] = parse_post_body(Req),
-    Job = pushy_object:new_record(pushy_job, OrgId, NodeNames),
-    Job2 = Job#pushy_job{command = Command},
-    State2 = State#config_state{job = Job2},
+    Job = pushy_object:new_record(pushy_job, OrgId, NodeNames, Command),
+    State2 = State#config_state{job = Job},
     {binary_to_list(Job#pushy_job.id), Req, State2}.
 
 % This processes POST /pushy/jobs
