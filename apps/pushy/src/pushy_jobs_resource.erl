@@ -80,23 +80,6 @@ to_json(Req, #config_state{organization_guid = OrgId} = State) ->
 
 % Private stuff
 
-get_jobs(JobTuples) ->
-    [pushy_job_state:get_job_state(JobId) || {JobId, _} <- JobTuples].
-
-jobs_to_json(Jobs) ->
-    [job_to_json(Job) || Job <- Jobs].
-
-job_to_json(#pushy_job{
-        id = Id,
-        status = Status
-        %created_at = CreatedAt
-    }) ->
-    %CreatedAtDate =  iolist_to_binary(httpd_util:rfc1123_date(CreatedAt)),
-    {[ {<<"id">>, iolist_to_binary(Id)},
-       {<<"status">>, Status}
-       %{<<"created_at">>, CreatedAtDate}
-    ]}.
-
 parse_post_body(Req) ->
     Body = wrq:req_body(Req),
     JobJson = jiffy:decode(Body),
