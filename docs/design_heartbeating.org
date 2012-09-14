@@ -1,0 +1,79 @@
+* Heartbeat
+  Liveness detection in a distributed system is a notoriously difficult problem. The most common
+  approach is to arrange for two parties to exchange heartbeat messages on a regular interval. Let's
+  call these two parties 'A' and 'B'. Both A and B are considered 'online' while they are able to
+  exchange heartbeat messages. If A fails to receive heartbeats from B for some number of consecutive
+  intervals then A will consider B 'offline' and not route any traffic to B. A will update B's
+  status to 'online' once A starts receiving heartbeats from B again.
+
+  The heartbeat server sends out regular heartbeats to managed nodes via ZeroMQ
+  PUB/SUB. Managed nodes send their heartbeats over a separate channel. See the [[Heartbeat
+  Channel]] section for a visual representation of the message flows and ZeroMQ sockets.
+
+  All heartbeats include an 'incarnation id', a GUID created on startup and not stored. If the
+  client or server restarts the incarnation id changes. This can be used to detect restarts that
+  happen fast enough to not substantially interupt heartbeats.
+
+** Server Heartbeat
+    The server sends out heartbeat messages at a configurable interval. This simple signed
+    message indicates to the clients that the server is up. The channel is one-way; there are no
+    acknowledgements to server heartbeats.
+
+** Node Heartbeat
+    PUSH/PULL sockets are used for the node heartbeat. The node PUSHes heartbeats to the
+    server at the host/port specified in the config data received during [[Server and Client Discovery][discovery]]. The
+    server will not ACK heartbeats.
+
+    There isn't any reason we couldn't use the heartbeat to convey extra information. The
+    public key signature-based authentication process for heartbeats already requires a
+    moderate sized payload, so a little extra information seems pretty harmless. This is in
+    contrast to the 1-2 byte sized payload in the paranoid pirate protocol. Possible items to
+    include are:
+
+   * The port the command processor is listening on.
+   * ID and status of the most recently received command.
+   * Information allowing the detection of crashed nodes
+
+** Node monitoring of server heartbeat
+
+   The node will discontinue the heartbeat and note the server as down if the server heartbeat
+   state moves to down, and resume it when the server heartbeat resumes.
+
+   A managed node must mark the OPC server as offline when it fails to receive server heartbeats for
+   a consecutive number of intervals equal to push\_jobs/heartbeat/offline\_threshold. A managed
+   node must not attempt to send any data when the server is offline. Any job requests received by
+   the managed node from the offline server which haven't begun execution must be discarded.
+
+   After a managed node has marked the server as offline it must receive server heartbeats for a consecutive
+   number of intervals equal to push\_jobs/heartbeat/online\_threshold before marking the server online.
+   The managed node may resume sending data and accepting job requests from the OPC server at this point.
+
+   If the node fails to receive a heartbeat for too long, it will query the configuration
+   interface to receive a possible configuration update. This would allow the system to recover from
+   a failed server.
+
+   The node may wish to detect if the HWM is reached on the PUSH socket, since it will block when the
+   HWM is reached. One strategy would be to set the HWM low and have some sort of alarm detect if we
+   are blocked for any length of time. If the HWM is reached, we should declare the server down as
+   if it stopped sending heartbeats.
+
+   The node can report a variety of states; see the node state table
+
+** Server monitoring of client heartbeat
+
+    The server monitors each client heartbeat and records the state in the database. A node is
+    treated as unavailable for jobs if it's heartbeat status is 'down'.
+
+** Simple protocol for detection of crashed node
+    It can be helpful to know whether a node has crashed and returned (possibly on different
+    hardware) vs undergone a planned restart. This can be done with a guid (the incarnation id) and
+    simple state file (e.g. /var/pushy/incarnation). On startup, the client will look for the
+    incarnation file, load the incarnation GUID from it, and delete the file. If no file is found,
+    the client will generate a new incarnation GUID. On a clean shutdown the current incarnation
+    GUID is written to the file. The client reports this incarnation GUID in its heartbeat, and if
+    the incarnation id changes the push job server can recognize this and act accordingly. If a
+    command was in flight the server should record that it ended in a indeterminate state.
+
+    The server should also maintain an incarnation id to allow the clients to discover a
+    reboot that doesn't trigger the heartbeat mechanisim.
+

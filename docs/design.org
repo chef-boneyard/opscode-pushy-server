@@ -122,86 +122,59 @@ enough detail to allow a reasonable and scalable implementation.
 
 * Architecture
 ** Communications
-   Managed nodes and server components will communicate using [[http://www.zeromq.org][ZeroMQ]] messaging. The server will
-   bind its endpoints to well known ports, whose addresses will be part of the client
-   configuration process. The clients will connect to those ports, initiating all
-   communications. The sole exception will be initial configuration, which uses the Chef REST
-   API to discover the addresses and ports for the push job server.
+   Managed nodes and server components will communicate using [[http://www.zeromq.org][ZeroMQ]] messaging. The server will bind
+   its endpoints to well known ports, whose addresses will be part of the client configuration
+   process. The clients will connect to those ports, initiating all communications. The sole
+   exception will be initial configuration, which uses the Chef REST API to discover the addresses
+   and ports for the push job server.
 
-   This structure simplifies running clients behind NAT routers. It also eases scalability
+   This structure simplifies running clients behind NAT routers. It eases scalability
    testing; we will want to be able to run many hundreds of nodes on the same machine rather than
-   stand up thousands of individual nodes.
+   stand up thousands of individual nodes. 
 
-   Communication can be separated into two categories: heartbeat and job execution. The heartbeat
-   channel is used by the Chef server to detect when managed nodes are offline and, therefore,
-   unavailable for job execution. Managed nodes also use the heartbeat channel to detect when the
-   server is unavailable.
+   All messages are signed with the sender's private key using a protocol similar to the Chef REST
+   API protocol. (This might be worth modifying in the future. For example we might lower the
+   signature validation load on the server by having a per-session symmetric key for the node
+   heartbeat established at startup, and use a symmetric signing protocal such as HMAC.)
 
-   The job execution channel is used by the Chef server to send job execution requests to
-   managed nodes. Managed nodes use the execution channel to send job-related messages such
-   as acknowledging jobs, sending progress updates, and reporting final results.
+   There are two basic kinds of messages in the system: heartbeat and command. 
 
-*** Heartbeat Channel
-    NOTE: Rewrite this to account for merged command/client heartbeat channel
+   Communication can be separated into two categories: heartbeat and job execution. Heartbeat
+   messages are used by the Chef server to detect when managed nodes are offline and, therefore,
+   unavailable for job execution. Managed nodes use the server heartbeat messages to detect when the
+   server is unavailable, and discontinue their heartbeats until the server returns.
 
-    ZeroMQ PUB/SUB (publish and subscribe) sockets are used for the server heartbeat because
-    they automatically and scalably manage the fan-out the server needs to broadcast its
-    heartbeat to all the nodes. The nodes connect to the server heartbeat socket and
-    subscribe. The nodes do not ACK the server heartbeats, and the server should not expect
-    any.
+   Command messages are used by the Chef server to send job execution requests to managed
+   nodes. Managed nodes use command messages to send job-related messages such as acknowledging
+   jobs, sending progress updates, and reporting final results.
 
-    <OBSOLETE>
-    ZeroMQ PUSH/PULL sockets are used for the client heartbeats to the server because that better
-    suits a model where the clients connect to the server heartbeat input. (TODO: find a better
-    name for that).
-    
-    Earlier versions of this spec had PUB/SUB being used for this process. It would be simpler
-    if the node was able to connect to the server to send heartbeats, rather than requiring
-    the server to bind to the node. The latter would require some sort of handshake on startup
-    to inform the server where to connect. While it is possible to bind the SUB to an address
-    and connect the PUB, this seems to be not recommended (see ZeroMQ guide, 'Getting the
-    Message Out'). However, it seems that multiple PUSH to one PULL is supported, and we can
-    bind the PULL socket to an address without trouble.
+*** Heartbeating
+    The ZeroMQ PUB/SUB (publish and subscribe) pattern is used for the server heartbeat because it
+    automatically and scalably manage the fan-out the server needs to broadcast its heartbeat to all
+    the nodes. The server will bind a PUB socket to a port and advertise this via the configuration
+    API.
 
-    In the interest of simplicity, the heartbeat protocol should be as stateless as possible. The
-    server continually broadcasts heartbeat messages to all nodes that are listening. Nodes
-    indicate their availability by sending heartbeat messages to the server. There is no process
-    beyond the ZeroMQ connection to start or stop a connection from the node.
-    </OBSOLETE>
-
-**** Future extensions
-     This might be worth modifying in the future. For example we might want to lower the signature
-     validation load on the server by having a per-session symmetric key for the node heartbeat
-     established at startup. Instead of the somewhat expensive public key signature check we could
-     simply decrypt the packet with the session key and check for sanity. (TODO: think about whether
-     this protocol is actually sane and secure)
-
-     The heartbeat protocol can be used to help signal state transitions on both the client
-     and server. Probably the most important of those is detection of restarts and
-     crashes. (TODO: Describe simple protocol for identifying those)
+    Clients heartbeat to the server using a DEALER/ROUTER pattern. The server will bind a ROUTER
+    socket to a port and advertise this via the configuration API. Current client heartbeats use the
+    same socket as the command channel; this not only saves a connection (a worthwhile goal when we
+    have the possibilty of 10,000 clients), but it serves to 'pilot' the connection. Since the
+    client connects to the server, without the heartbeat the client would have to periodically send
+    a message through on the command channel to set up the connection.
 
 #+CAPTION: ZeroMQ sockets
-#+LABEL: img:heartbeat.jpg
-[[./heartbeat.jpg]]
+#+LABEL: img:heartbeat
+[[[[./heartbeat.jpg]]]]
 
 *** Command Channel
 
     The ZeroMQ ROUTER/DEALER pattern will be used for the command channel. The server will bind a
-    ROUTER socket to a known port, and the clients will connect to this via DEALER
-    sockets. Clients will send signed messages to the server announcing their availability for
-    commands, and signed commands will be routed back to each client.
+    ROUTER socket to a port, and advertise this via the configuration API. The clients will connect
+    to this via DEALER sockets. 
 
-    This pattern requires the client to connect and send a message before any commands can be
-    routed to it, because the routing name used to address a node is taken from the first
-    message recieved.
-
-*** Future work
-     The client heartbeat channel and the command channel could be combined, simplifying the
-     pattern. Alternately we may wish to have a separate command channel for each job. This
-     would allow the possibly more chatty command traffic to be moved elsewhere for ease of
-     distribution and workload partitioning.
-
-     TODO: ADD PICTURE HERE
+    As discussed above, we could use a separate channel for client heartbeat messages and command
+    messages. This would require clients will send signed messages to the server announcing their
+    availability for commands. This is necessary for the server to create a binding between the
+    zeromq routing address and a particular pushy client. 
 
 ** Configuration/Discovery Process
 
@@ -239,83 +212,7 @@ enough detail to allow a reasonable and scalable implementation.
     we want to drop any messages destined for that node. This is in keeping with the fail-fast
     philosophy.
 
-* Heartbeat
-  Liveness detection in a distributed system is a notoriously difficult problem. The most common
-  approach is to arrange for two parties to exchange heartbeat messages on a regular interval. Let's
-  call these two parties 'A' and 'B'. Both A and B are considered 'online' while they are able to
-  exchange heartbeat messages. If A fails to receive heartbeats from B for some number of consecutive
-  intervals then A will consider B 'offline' and not route any traffic to B. A will update B's
-  status to 'online' once A starts receiving heartbeats from B again.
-
-  The heartbeat server sends out regular heartbeats to managed nodes via ZeroMQ
-  PUB/SUB. Managed nodes send their heartbeats over a separate channel. See the [[Heartbeat
-  Channel]] section for a visual representation of the message flows and ZeroMQ sockets.
-
-** Server Heartbeat
-    The server sends out heartbeat messages at a configurable interval. This simple signed
-    message indicates to the clients that the server is up. The channel is one-way, and no
-    ackno
-
-    Future versions of the protocol may use this channel to advertise server failovers,
-    trigger global reconfiguration of clients and other low rate broadcast information.
-
-** Node Heartbeat
-    PUSH/PULL sockets are used for the node heartbeat. The node PUSHes heartbeats to the
-    server at the host/port specified in the config data received during [[Server and Client Discovery][discovery]]. The
-    server will not ACK heartbeats.
-
-    There isn't any reason we couldn't use the heartbeat to convey extra information. The
-    public key signature-based authentication process for heartbeats already requires a
-    moderate sized payload, so a little extra information seems pretty harmless. This is in
-    contrast to the 1-2 byte sized payload in the paranoid pirate protocol. Possible items to
-    include are:
-
-   * The port the command processor is listening on.
-   * ID and status of the most recently received command.
-   * Information allowing the detection of crashed nodes
-
-** Node monitoring of server heartbeat
-
-   The node will discontinue the heartbeat and note the server as down if the server heartbeat
-   state moves to down, and resume it when the server heartbeat resumes.
-
-   A managed node must mark the OPC server as offline when it fails to receive server heartbeats for
-   a consecutive number of intervals equal to push\_jobs/heartbeat/offline\_threshold. A managed
-   node must not attempt to send any data when the server is offline. Any job requests received by
-   the managed node from the offline server which haven't begun execution must be discarded.
-
-   After a managed node has marked the server as offline it must receive server heartbeats for a consecutive
-   number of intervals equal to push\_jobs/heartbeat/online\_threshold before marking the server online.
-   The managed node may resume sending data and accepting job requests from the OPC server at this point.
-
-   If the node fails to receive a heartbeat for too long, it will query the configuration
-   interface to receive a possible configuration update. This would allow the system to recover from
-   a failed server.
-
-   The node may wish to detect if the HWM is reached on the PUSH socket, since it will block when the
-   HWM is reached. One strategy would be to set the HWM low and have some sort of alarm detect if we
-   are blocked for any length of time. If the HWM is reached, we should declare the server down as
-   if it stopped sending heartbeats.
-
-   The node can report a variety of states; see the node state table
-
-** Server monitoring of client heartbeat
-
-    The server monitors each client heartbeat and records the state in the database. A node is
-    treated as unavailable for jobs if it's heartbeat status is 'down'.
-
-** Simple protocol for detection of crashed node
-    It can be helpful to know whether a node has crashed and returned (possibly on different
-    hardware) vs undergone a planned restart. This can be done with a guid (the incarnation id) and
-    simple state file (e.g. /var/pushy/incarnation). On startup, the client will look for the
-    incarnation file, load the incarnation GUID from it, and delete the file. If no file is found,
-    the client will generate a new incarnation GUID. On a clean shutdown the current incarnation
-    GUID is written to the file. The client reports this incarnation GUID in its heartbeat, and if
-    the incarnation id changes the push job server can recognize this and act accordingly. If a
-    command was in flight the server should record that it ended in a indeterminate state.
-
-    The server should also maintain an incarnation id to allow the clients to discover a
-    reboot that doesn't trigger the heartbeat mechanisim.
+#+INCLUDE: "design_heartbeat.org" :minlevel 1
 
 * Command Execution
    A OPC server sends requests to execute actions to managed nodes. These requests are called
