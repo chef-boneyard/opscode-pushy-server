@@ -314,56 +314,7 @@ enough detail to allow a reasonable and scalable implementation.
 
 
 ** Client command state machine
-|-------------+------------------------------------+--------------------------------+------------------|
-| State       | Event                              | Action                         | Next State       |
-|-------------+------------------------------------+--------------------------------+------------------|
-| Startup     | Detect clean shutdown              |                                | Pending          |
-|             | Previously running message         | Send job failed msg            | Pending          |
-|             | Hard shutdown detected             | Send crash msg                 | Pending          |
-|             | Defer message processing until     |                                |                  |
-|-------------+------------------------------------+--------------------------------+------------------|
-| Pending     | Server heartbeat found             |                                | Ready            |
-|-------------+------------------------------------+--------------------------------+------------------|
-| Ready       | entry to state                     | On entry send ready message    |                  |
-|             | Prepare message                    | Send ACK                       | Waiting (Job Id) |
-|             | Status message                     | Send Status                    | Ready            |
-|             | Abort message                      | Ignore                         | Ready            |
-|             | Start message                      | Send Start failed              | Ready            |
-|             | Server heartbeat loss              |                                | Pending          |
-|-------------+------------------------------------+--------------------------------+------------------|
-| Waiting     | Prepare message (job id matches)   | Send ACK                       | Waiting          |
-|             | Prepare message (job id doesn't)   | Send NACK                      | Waiting          |
-|             | Status message                     | Send Waiting info              | Waiting          |
-|             | Abort message                      | Send aborted (from waiting)    | Ready            |
-|             | Start message (job id matches)     | Send Started, exec message     | Running          |
-|             | Start message (job id doesn't)     | Send Error                     | Waiting          |
-|             | Timeout on ready period            | Send Error                     | Ready            |
-|             | Server restart detected            | Send Error                     | Ready            |
-|-------------+------------------------------------+--------------------------------+------------------|
-| Running     | Prepare message                    | Send NACK                      | Running          |
-|             | Status message                     | Send Running info              | Running          |
-|             | Abort message                      | Send aborted                   | Terminating      |
-|             | Start message (job id matches)     | Ignore                         | Running          |
-|             | Start message (job id doesn't)     | Send error (can't start)       | Running          |
-|             | Current exec'd command succeeds    | Send completed, success        | Ready            |
-|             | Current exec'd command fails       | Send completed, message failed | Ready            |
-|             | Current command exceeds time bound | Send completed, timed out      | Terminating      |
-|             | Server restart detected            | Send Running info              | Running          |
-|-------------+------------------------------------+--------------------------------+------------------|
-| Terminating | Prepare message                    | Send NACK                      | Terminating      |
-|             | Status message                     | Send Terminating info          | Terminating      |
-|             | Abort message                      | Send error (can't abort)       | Terminating      |
-|             | Start message                      | Send error (can't start)       | Terminating      |
-|             | Current exec'd command succeeds    | Send completed, success        | Ready            |
-|             | Current exec'd command fails       | Send completed, failed         | Ready            |
-|-------------+------------------------------------+--------------------------------+------------------|
-
-   TODO:
-   + Server heartbeat loss
-   + Server heartbeat return
-   + Server restart detected
-   + Stuck process detected (more complicated on windows)
-   + Add timeout for waiting state.
+#+INCLUDE: "design_client_fsm.org" :minlevel 0
 
 ** Server Job Control Logic
 

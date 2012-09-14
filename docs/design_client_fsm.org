@@ -1,0 +1,47 @@
+General principles:
++ Dumb client, smart server
++ We keep on running the job even if the server goes away; the server
+  will command the client to do the proper thing
+  
+|-------------+----------------------------------+-------------------------------------------------+------------------|
+| State       | Event                            | Action                                          | Next State       |
+|-------------+----------------------------------+-------------------------------------------------+------------------|
+| Startup     | Detect clean shutdown            |                                                 | Pending          |
+|             | Previously running message       | Send job failed msg                             | Pending          |
+|             | Hard shutdown detected           | Send crash msg                                  | Pending          |
+|             | Defer message processing until   |                                                 |                  |
+|-------------+----------------------------------+-------------------------------------------------+------------------|
+| Pending     | Server heartbeat found           |                                                 | Ready            |
+|-------------+----------------------------------+-------------------------------------------------+------------------|
+| Ready       | PREPARE message                  | Send ACK                                        | Waiting (Job Id) |
+|             | ABORT message                    | Send ABORTED (from ready)                       | Ready            |
+|             | START message                    | Send ERROR Start failed                         | Ready            |
+|-------------+----------------------------------+-------------------------------------------------+------------------|
+| Waiting     | PREPARE message (job id matches) | Send ACK (or ignore)                            | Waiting          |
+|             | PREPARE message (job id doesn't) | Send NACK                                       | Waiting          |
+|             | ABORT message                    | Send ABORTED (from waiting)                     | Ready            |
+|             | START message (job id matches)   | Send STARTED, exec message                      | Running          |
+|             | START message (job id doesn't)   | Send ERROR Start failed                         | Waiting          |
+|             | Timeout on ready period          | Send ERROR timeout                              | Ready            |
+|-------------+----------------------------------+-------------------------------------------------+------------------|
+| Running     | PREPARE message                  | Send NACK                                       | Running          |
+|             | ABORT message                    | Send ABORTED                                    | Terminating      |
+|             | START message (job id matches)   | Send STARTED (or ignore)                        | Running          |
+|             | START message (job id doesn't)   | Send ERROR (can't start)                        | Running          |
+|             | Current exec'd command succeeds  | Send COMPLETED, success                         | Ready            |
+|             | Current exec'd command fails     | Send COMPLETED, failed                          | Ready            |
+|             | Execution time limit exceeded    | Send COMPLETED, timed out and terminate command | Terminating      |
+|-------------+----------------------------------+-------------------------------------------------+------------------|
+| Terminating | PREPARE message                  | Send NACK                                       | Terminating      |
+|             | ABORT message                    | Send ABORTED (terminating)                      | Terminating      |
+|             | START message                    | Send ERROR (can't start)                        | Terminating      |
+|             | Current exec'd command exits     |                                                 | Ready            |
+|-------------+----------------------------------+-------------------------------------------------+------------------|
+
+Things remaining to consider:
+   + Server restart detected
+   + Stuck process detected (more complicated on windows)
+
+
+
+
