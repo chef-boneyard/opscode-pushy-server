@@ -212,7 +212,7 @@ enough detail to allow a reasonable and scalable implementation.
     we want to drop any messages destined for that node. This is in keeping with the fail-fast
     philosophy.
 
-#+INCLUDE: "design_heartbeat.org" :minlevel 1
+#+INCLUDE: "design_heartbeat.org" :minlevel 0
 
 * Command Execution
    A OPC server sends requests to execute actions to managed nodes. These requests are called
