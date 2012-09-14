@@ -68,8 +68,10 @@ fetch_job(JobId) ->
         {ok, Rows} when is_list(Rows) ->
             {ok, job_join_rows_to_record(Rows)};
         {ok, none} ->
+            lager:info("NOT FOUND"),
             {ok, not_found};
         {error, Error} ->
+            lager:info("ERROR"),
             {error, Error}
     end.
 
@@ -222,7 +224,7 @@ job_join_rows_to_record([LastRow|[]], JobNodes) ->
                   last_updated_by = safe_get(<<"last_updated_by">>, LastRow),
                   created_at = trunc_date_time_to_second(safe_get(<<"created_at">>, LastRow)),
                   updated_at = trunc_date_time_to_second(safe_get(<<"updated_at">>, LastRow)),
-                  job_nodes = lists:reverse([C|JobNodes])};
+                  job_nodes = lists:flatten(lists:reverse([C|JobNodes]))};
 job_join_rows_to_record([Row|Rest], JobNodes ) ->
     C = proplist_to_job_node(Row),
     job_join_rows_to_record(Rest, [C|JobNodes]).
@@ -242,13 +244,16 @@ prepare_jobs([Head | Tail], Acc) ->
 
 %% @doc Convenience function for assembling a job_node tuple from a proplist
 proplist_to_job_node(Proplist) ->
-    #pushy_job_node{job_id = safe_get(<<"id">>, Proplist),
-                    org_id = safe_get(<<"org_id">>, Proplist),
-                    node_name = safe_get(<<"node_name">>, Proplist),
-                    status = job_node_status(safe_get(<<"job_node_status">>, Proplist)),
-                    created_at = trunc_date_time_to_second(safe_get(<<"created_at">>, Proplist)),
-                    updated_at = trunc_date_time_to_second(safe_get(<<"updated_at">>, Proplist))
-                    }.
+    case safe_get(<<"node_name">>, Proplist) of
+        null -> [];
+        _ ->
+            #pushy_job_node{job_id = safe_get(<<"id">>, Proplist),
+                org_id = safe_get(<<"org_id">>, Proplist),
+                node_name = safe_get(<<"node_name">>, Proplist),
+                status = job_node_status(safe_get(<<"job_node_status">>, Proplist)),
+                created_at = trunc_date_time_to_second(safe_get(<<"created_at">>, Proplist)),
+                updated_at = trunc_date_time_to_second(safe_get(<<"updated_at">>, Proplist))}
+    end.
 
 %% Heartbeat Status translators
 hb_status_as_int(X) when is_integer(X) -> X;
