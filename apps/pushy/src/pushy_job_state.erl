@@ -99,7 +99,10 @@ init(#pushy_job{id = JobId, job_nodes = JobNodeList} = Job) ->
             listen_for_down_nodes(dict:fetch_keys(JobNodes)),
 
             % Start voting--if there are no nodes, the job finishes immediately.
-            start_voting(State);
+            case start_voting(State) of
+                {next_state, StateName, State2} -> {ok, StateName, State2};
+                {stop, Reason, _State} -> {stop, Reason}
+            end;
         false ->
             {stop, shutdown, undefined}
     end.
@@ -272,8 +275,7 @@ start_voting(#state{job = Job} = State) ->
     State2 = State#state{job = Job2},
     pushy_object:update_object(update_job, Job2, Job2#pushy_job.id),
     send_command_to_all(<<"commit">>, State2),
-    {next_state, StateName, State3} = maybe_finished_voting(State2),
-    {ok, StateName, State3}.
+    maybe_finished_voting(State2).
 
 start_running(#state{job = Job} = State) ->
     lager:info("Job ~p -> running", [Job#pushy_job.id]),
