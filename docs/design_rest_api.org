@@ -234,7 +234,15 @@ MAA: Why not config instead of connect; it's more than simply information requir
          },
          "command_addr": "tcp://10.10.1.5:10001", 
        },
-       "public_key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvnf8osLhltEPZzgrdZjk\n2xdGKDRaF/DxRE/Tdj2T2q0+MwXeK1XHeZJZkuvWHQ7Lpf4KdlYdMjk6mjF5KGmJ\gnomes8emyu7yfGs4tvn+5BKhaHPHCRA0vskE9/uIt9J/RgZIE0A3dBtf+9chY7J\nqJujIE9f3uJCknBf5jDeI3krYXzKL6mI9q2RO0xq10Omk/zpYIM4a20AMYxSmryM\nR3ivdiviW2hDZMdEHx0Au3+e4wkh1uiXC2ayh/hwObnFqPz5uwNAkzB8Z9qKl0G6\nJu7lEl3oJFqu0XtNuYgYmU8c/W9F3aNMnsQiTKEaUNmasfO/dIHSJmJpGccZFjwp\nvQIDAQAB\n-----END PUBLIC KEY-----\n",
+       "public_key": "-----BEGIN PUBLIC KEY-----
+            MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvnf8osLhltEPZzgrdZjk
+            2xdGKDRaF/DxRE/Tdj2T2q0+MwXeK1XHeZJZkuvWHQ7Lpf4KdlYdMjk6mjF5KGmJ
+            a3omes8emyu7yfGs4tvn+5BKhaHPHCRA0vskE9/uIt9J/RgZIE0A3dBtf+9chY7J
+            qJujIE9f3uJCknBf5jDeI3krYXzKL6mI9q2RO0xq10Omk/zpYIM4a20AMYxSmryM
+            R3ivdiviW2hDZMdEHx0Au3+e4wkh1uiXC2ayh/hwObnFqPz5uwNAkzB8Z9qKl0G6
+            Ju7lEl3oJFqu0XtNuYgYmU8c/W9F3aNMnsQiTKEaUNmasfO/dIHSJmJpGccZFjwp
+            vQIDAQAB
+            -----END PUBLIC KEY-----",
        "lifetime":3600
     }
 #+end_src
