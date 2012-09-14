@@ -1,0 +1,163 @@
+
+    A job is started by passing a job description, a set of nodes (jobset), and an initiating
+    user id to the pushy server. Each node will flow through a series of states as it executes
+    the job ending in either *OK*, or *FAILED*. These states are final; once a node enters it
+    stays there.
+
+    The job description includes a command, and optional values including:
+    + The quorum required to start the job.
+    + A timeout for the overall job execution.
+
+    Possible extensions include:
+    + A timeout for execution on a single node.
+    + A limit on how many nodes can be executing simultaneously. We may want to update a
+      bunch of nodes, but limit how many of them are out of service simultaneously
+    + A limit on the rate at which nodes may be started. This is to limit load on the
+      server. Some of this can be handled by API throttling, but this allows more fine grained
+      control and can be used to run a job 'in the background'.
+    + A timeout for how long we wait to achieve quorum
+    + A timeout for how long to wait for an ACK before marking a node dead (or perhaps for any
+      message from the server)
+
+    Throughout the process nodes may drop heartbeat, be marked down and return. The final node
+    state depends on where it was in the execution process.
+
+* Specification of the nodeset
+    Initially the set will be specified explicitly as a list of nodes to the server.
+
+    Search, both against the chef index and against state from previous jobs will be
+    implemented via the knife command. The collection of nodes is defined by a standard Chef
+    search criteria. The search is executed against the node index and returns a list of
+    managed nodes satisfying the search criteria. The search criteria should eventually allow
+    up/down state and job execution state as factors. For example it would be quite valuable
+    to run a job against all nodes that match a search and 'succeeded' on job id XXXX.
+
+    As an optimization we will eventually want to avoid the round trip transmission of large
+    node lists to the knife command and back to the server by having the server accept search
+    terms directly but that is left for a future version.
+
+    Entity groups (named groups of nodes) will greatly ease the specification of node lists,
+    and we may want to implement them as part of the first pushy implementation.
+
+* Permission checking
+    We will check that the user id has permissions to execute a job, and whether they have job
+    execution permissions on each node in the set. The simplest model is to add a group 'push
+    job initiators' to the system, and require the user to be in that group.
+
+    In addition we will probably want fine grained administrative control, either at the
+    environment level or per node level. We probably should add an new permission *EXECUTE* to
+    the current CRUDG set to allow fine grained control.
+
+    Any node for which permisions are denied with be marked as *FAILED* with 'permission
+    denied' as the reason.
+
+* Availability checking
+    If a node is down at the start of the job, it will be marked as *FAILED* with 'down' as
+    the reason.
+
+    The server will send the remaining nodes a *PREPARE* message. Nodes that are available for
+    execution will respond with *ACK* and be marked as *READY*, while those unavailable for
+    execution respond with *NACK*. Nodes that *NACK* will be marked as *FAILED* with 'busy'
+    and the job id in the state.  Even though nodes may finish with their current work and
+    become available while the job is still in progress, we are treating *NACK* as a permanent
+    condition for simplicity's sake
+
+    If a node drops heartbeat or otherwise goes down prior to starting it is marked as
+    *FAILED* with reason 'down'.
+
+    There are two ways to handle quorum and command execution.
+
+    The simplest is to wait a predetermined time for the nodes to *ACK/NACK*. If a quorum is
+    achieved we start, otherwise we fail. If a node fails to *ACK* in time, we mark it timed
+    out, and issue a cancel command to the node.
+
+    A more sophisticated version is to track nodes transitioning to *READY*, and when the
+    quorum is reached we start execution. If the quorum is not reached, we never start the
+    job. We still need some sort of timeout for ACK/NACK, as some nodes may not transition to
+    ready, holding the job open until it times out or is aborted.
+
+    If two users are running jobs against the same set of nodes, some nodes may be affiliated
+    with one job, and some with another. This may cause us to not reach quorum, or run a
+    particular command on one subset and a different command on the rest. The assumption is
+    that it is preferrable to make some forward progress rather than inflict a global lock on
+    jobs. If this is an issue it should be avoided by setting high quorum requirements.
+
+* Execution
+    Once quorum is achieved we start sending *START* messages. The naive implementation would
+    just issue messages as quickly as possible to those nodes that have *ACK*ed at the start
+    of execution.
+
+    A more refined version would be throttled by various limits on simultaneous execution and
+    peak initation, so we may not start all of the nodes at once. There will also be late
+    arriving nodes who *ACK* after execution begins. This implies that the execution tracker
+    will need to be able to handle streaming nodes through the running state. This would also
+    be helpful for pipelined job execution.
+
+    Nodes reply to the *START* message with a *STARTED* acknowledgement
+
+
+* Completion
+    As nodes complete, we mark them as completed and *OK* state, or *FAILED* with an error
+    state derived from the command.
+
+    The job is marked as complete when all nodes report in as *OK* or *FAILED*, or the overall
+    job times out.
+
+* Cleanup and error handling.
+
+    Throughout the execution of the job, nodes may fail in various ways. The server will mark
+    them *FAILED*. Nodes cannot be relied on to be updated as failed, or know that their role
+    in the job is over, so a process is needed to insure tha node cleanup happens
+    properly. For example if a node *NACK*s because it thinks it is still running a job that
+    is over, we should be able to reset it and make it available for new work.
+
+    The the pushy client does not retain job state over reboots. The client reports its
+    current state via heartbeat messages, including the current job ID and state. The server
+    should check the heartbeat message, and send an abort command if the node is running a
+    dead job.
+
+    The overall philosophy for error handling should be fail fast, and don't try to do exotic
+    recovery code. Instead of handling every possible case and trying to recover the workflow
+    should support easily issuing jobs based on the failure status, If the commands are
+    idempotent, they can be rerun harmlessly.
+
+    If a node crashes or restarts, that terminates execution of the job. We do not attempt to
+    resume jobs afterwards. We should distinguish controlled restarts from outright crashes,
+    and signal the server when we detect a shutdown in progress.
+
+    If a node disappears (loses heartbeat), it should be marked *FAILED*. If the node returns,
+    the server should send an explicit *ABORT* message. If it has not started the reason
+    should be 'down'. If it has started the reason will 'crashed while executing'. While
+    sometimes nodes might reconnect, and even have successful completed status it is simpler
+    to treat them as failed.
+
+* Modifing running jobs
+    There are reasons to allow the currently running job to be altered in flight.
+
+** Aborting
+     Jobs must be able to be aborted after they've started. This is accomplished by sending an
+     abort message to each node in the job that has not already completed. If a node already
+     started, it is marked 'aborted'. No guarantees can be made about the progress or state of
+     nodes which have already started. If the node hasn't already started, it is marked 'not
+     started'. In future versions we may want to have a distinction between hard and soft
+     aborts, where a soft abort allows commands that have started to run to completion. It may
+     also be worth allowing aborts to apply to a subset of the nodes in the job.
+
+** Adding nodes to a running job
+     In future versions we may want to add nodes to a running job. If searches are made more
+     dynamic, or entity groups are dynamic sets, we will want to update the job with new
+     nodes, and have them go through the same life cycle. This would require the streaming
+     mode of command execution.
+
+** Changing parameters
+     In future versions we will want to allow modification the timeouts and quora requirements
+     of a started job. For example, we may have a job running slower than expected; it's
+     making forward progress but is at risk of timing out. The user very likely would like to
+     alter the job time out to prevent the job from ending in a failed with timeout state.
+
+* Persistence and lifetime
+
+    Jobs need to be persistent on the server side; we should not 'forget' a job in progress even if
+    the server restarts. However, clients may lose state at any time, and we must be prepared to
+    handle it. Jobs (and the collection of node statuses in the job) persist until explicitly
+    deleted.
