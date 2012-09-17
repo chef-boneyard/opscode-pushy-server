@@ -269,12 +269,11 @@ enough detail to allow a reasonable and scalable implementation.
    Restricting the command vocabulary to idempotent actions greatly simplifies the reasoning about
    jobs.
 
-   + chef-client
-    This command causes a managed node to initiate a chef-client run. When the one shot
-    runlist feature is added to chef-client we will want to allow that as an option
-   + ohai
-    This command tells a managed node to run ohai and update its node data.
-   + arbitrary command?
+   + chef-client :: This command causes a managed node to initiate a chef-client run.
+   + chef-client with one-shot runlists :: This was previously known as partial runlists.
+   + ohai :: This command tells a managed node to run ohai and update its node data. This is equivalent to
+	     an empty one-shot runlist.
+   + arbitrary command :: 
     This is the most general possible solution, and something we should consider for the long
     term; apparently (according to Lamont) just about every company has some provision for this in
     their infrastructure. Many interesting security issues appear, including what UID to run under
@@ -290,14 +289,8 @@ enough detail to allow a reasonable and scalable implementation.
     This would be a more sophisticated version of the sleep command. This command tells a
     managed node to wait DURATION seconds and either fail with a probability of PFAIL or
     succeed. This would ease testing of the system failure cases.
-   + abort JOBID
-    (TODO Does this belong here? Is this really a command?)
-    The final product will need some mechanism to cancel/abort a job in progess. The job id may
-    not be necessary since there will only be one job running per client. (However it might be
-    nice if the client and server get out of sync, and the client thinks its running a different
-    job than the server does)
 
-*** special command types
+*** Special command types
     There are a few types of commands that have interesting properties, and should be
     considered in future versions.
 
