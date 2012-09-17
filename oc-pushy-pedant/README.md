@@ -12,28 +12,24 @@ This repository currently requires a .deb build from the pushy branch of opscode
 
 2. Grab the v2 POSIX tarball from:
 
-	http://www.zeromq.org/intro:get-the-software
+        http://www.zeromq.org/intro:get-the-software
 
 3. Build zeromq.  Building it easy (after scp'ing it to the /tmp dir or wherever is convenient on the dev-vm):
 
-	tar xvzf zeromq-<whatever-the-current-version-is>.tar.gz
-
-	cd <unpacked dir>
-
-	./configure
-
-	make
-
-	make install
+        $ tar xvzf zeromq-<whatever-the-current-version-is>.tar.gz
+        $ cd <unpacked dir>
+        $ ./configure
+        $ make
+        $ make install
 
 4. Load pushy server
 
-	rake project:load[pushy]
+        rake project:load[pushy]
 
 5. Load pushy pedant
 
-	rake project:load[oc-pushy-pedant]
+        rake project:load[oc-pushy-pedant]
 
 6. Run tests (in /srv/piab/mounts/oc-pushy-pedant):
 
-	./oc-pushy-pedant -c mulitenant_config.rb
+        ./oc-pushy-pedant -c mulitenant_config.rb
