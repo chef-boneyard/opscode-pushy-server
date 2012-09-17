@@ -287,6 +287,7 @@ job_node_status(unavailable) -> 5;
 job_node_status(nacked) -> 6;
 job_node_status(faulty) -> 7;
 job_node_status(was_ready) -> 8;
+job_node_status(crashed) -> 9;
 job_node_status(0) -> new;
 job_node_status(1) -> ready;
 job_node_status(2) -> running;
@@ -295,7 +296,8 @@ job_node_status(4) -> aborted;
 job_node_status(5) -> unavailable;
 job_node_status(6) -> nacked;
 job_node_status(7) -> faulty;
-job_node_status(8) -> was_ready.
+job_node_status(8) -> was_ready;
+job_node_status(9) -> crashed.
 
 %% CHEF_COMMON CARGO_CULT
 %% chef_sql:flatten_record/1
