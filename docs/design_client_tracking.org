@@ -31,7 +31,6 @@
 
 * Message handling
 
-  (TODO Mod to describe central registry)
   The server's state determines what happens when non-heartbeat messages
   are received from the client, specifically what process handles those
   messages. There is an owning process corresponding to each state

@@ -113,24 +113,27 @@ enough detail to allow a reasonable and scalable implementation.
    1. All messages will be formatted as legal JSON.
    2. The database is the canonical store of all application data.
 ** Scalability & Security
-   1. Push jobs will be deployed in Private Chef only; no Hosted Chef
-   2. Push jobs will not be deployed in Hosted Chef.
-   3. The design must scale up to 8,000 managed nodes per OPC server.
-   4. Push jobs will honor the same security guarantees and
-      limitations made by the Chef REST API.
-      
+   1. Push jobs will be deployed in Private Chef only; no support for Hosted Chef
+   2. The design must scale up to 10,000 managed nodes per OPC server.
+   4. Push jobs will honor the same security guarantees and limitations provided by the Chef REST API.
+
+* Design philosophy
+  There are a few key design principles that have emerged:
+  
+  1. Fail Fast: We extend Erlang's fail-fast approach throughout this system. Fail fast instead of
+     attempting complex recovery logic.
+  2. When things go wrong, restore to a standard state. When a node misbehaves, we abort execution
+     on it rather than attempting to continue.
 
 * Architecture
 ** Communications
-   Managed nodes and server components will communicate using [[http://www.zeromq.org][ZeroMQ]] messaging. The server will bind
-   its endpoints to well known ports, whose addresses will be part of the client configuration
-   process. The clients will connect to those ports, initiating all communications. The sole
-   exception will be initial configuration, which uses the Chef REST API to discover the addresses
-   and ports for the push job server.
+   Managed nodes and server components will communicate using [[http://www.zeromq.org][ZeroMQ]] messaging. Initial
+   configuration will be done via the Chef REST API. The REST endpoint will provide the addresses
+   and ports that the client will connect to via ZeroMQ.
 
    This structure simplifies running clients behind NAT routers. It eases scalability
    testing; we will want to be able to run many hundreds of nodes on the same machine rather than
-   stand up thousands of individual nodes. 
+   stand up thousands of individual machines. 
 
    All messages are signed with the sender's private key using a protocol similar to the Chef REST
    API protocol. (This might be worth modifying in the future. For example we might lower the
@@ -139,16 +142,16 @@ enough detail to allow a reasonable and scalable implementation.
 
    There are two basic kinds of messages in the system: heartbeat and command. 
 
-   Communication can be separated into two categories: heartbeat and job execution. Heartbeat
-   messages are used by the Chef server to detect when managed nodes are offline and, therefore,
-   unavailable for job execution. Managed nodes use the server heartbeat messages to detect when the
-   server is unavailable, and discontinue their heartbeats until the server returns.
+   Communication can be separated into two categories: heartbeat and job execution. 
 
-   Command messages are used by the Chef server to send job execution requests to managed
-   nodes. Managed nodes use command messages to send job-related messages such as acknowledging
-   jobs, sending progress updates, and reporting final results.
 
 *** Heartbeating
+
+    Heartbeat messages are used by the Chef server to detect when managed nodes are offline and,
+    therefore, unavailable for job execution. Managed nodes use the server heartbeat messages to
+    detect when the server is unavailable, and discontinue their heartbeats until the server
+    returns.
+
     The ZeroMQ PUB/SUB (publish and subscribe) pattern is used for the server heartbeat because it
     automatically and scalably manage the fan-out the server needs to broadcast its heartbeat to all
     the nodes. The server will bind a PUB socket to a port and advertise this via the configuration
@@ -163,13 +166,20 @@ enough detail to allow a reasonable and scalable implementation.
 
 #+CAPTION: ZeroMQ sockets
 #+LABEL: img:heartbeat
-[[[[./heartbeat.jpg]]]]
+[[./heartbeat.png]]
 
-*** Command Channel
+*** Commands
+    While real time node monitoring is a useful thing, Pushy exists to execute commands on nodes. 
+
+    Command messages are used by the Chef server to send job execution requests to managed
+    nodes. Managed nodes use command messages to send job-related messages such as acknowledging
+    jobs, sending progress updates, and reporting final results.
 
     The ZeroMQ ROUTER/DEALER pattern will be used for the command channel. The server will bind a
     ROUTER socket to a port, and advertise this via the configuration API. The clients will connect
     to this via DEALER sockets. 
+   
+    
 
     As discussed above, we could use a separate channel for client heartbeat messages and command
     messages. This would require clients will send signed messages to the server announcing their
@@ -188,10 +198,12 @@ enough detail to allow a reasonable and scalable implementation.
    retrieve the appropriate configuration information in JSON format.
 
    The configuration and service discovery process will provide the following pieces of data:
-   + The port to subscribe to for server heartbeat
-   + The port to push node heartbeats to and use for commands
-   + The public key of the server
-   + The lifetime of this configuration information
+   + The port to subscribe to for server heartbeat.
+   + The port to push node heartbeats to and use for commands.
+   + The public key of the server.
+   + The lifetime of this configuration information.
+
+     TODO: Allow the protocol/address/port to all be configured on client.(E.g. we should allow PROTO://SERVER:PORT)
 
    We may wish to use the discovery process to handle fail-over to a new server and distribution of
    nodes among multiple servers. The discovery system would allocate the nodes to various active servers
@@ -209,49 +221,41 @@ enough detail to allow a reasonable and scalable implementation.
     The HWM should be kept small (1 would be a good value); there is no point in storing
     messages for dead nodes any longer than necessary. ZMQ_SWAP should always be zero. Node
     failure must be accepted and tolerated. If a node has been marked as down (not reachable),
-    we want to drop any messages destined for that node. This is in keeping with the fail-fast
-    philosophy.
+    we want to drop any messages destined for that node. 
 
 #+INCLUDE: "design_heartbeat.org" :minlevel 0
 
 * Command Execution
-   A OPC server sends requests to execute actions to managed nodes. These requests are called
-   commands. The command server listens on an address specified in the configuration process, and
-   clients connect to that address to receive commands.
+  The Pushy server exists to  requests to execute actions to managed nodes. These requests are called
+  commands. The command server listens on an address specified in the configuration process, and
+  clients connect to that address to receive commands.
 
-   TODO: Discuss idempotence of commands; desireable, but not required.
-
-   Only one command at a time can be executing on a node. In other words, nodes execute
-   commands serially. This makes it easier to reason about the current state of any node and
-   also avoids any undesired runtime interactions between commands.
+  Only one command at a time can be executing on a node. In other words, nodes execute
+  commands serially. This makes it easier to reason about the current state of any node and
+  also avoids any undesired runtime interactions between commands.
 
 ** Vocabulary
     * Job - A collection of nodes executing the same command. Jobs have persistent state.
       This state can be queried by users via the knife 'job' command.
-    * Command - A request to a managed node to perform an action immediately.
-    * Jobset - the set of nodes in the job (Is there a better name this thing)
-
+    * Command - The action to be performed on the pushy client.
+    * Jobset - the set of nodes in the job (Is there a better name for this thing? See entity groups.)
+      
 ** Overall communications structure
    The command server will create a ROUTER socket bound to a port, and each client will
-   connect via a DEALER socket. On connection to the ROUTER socket, the client will send a
-   signed message indicating that it is available for commands. The message  letting us capture the
-   transient socket name. This will provide a way to map the unique name of the connection to
-   the client in question. Commands will be addressed via that unique name. The client will
-   learn the the address of the ROUTER socket via the discovery system.
+   connect via a DEALER socket. 
 
-   The server will need to send a separate message to each client. However the message body
-   (aside from the address packet) will remain the same, and we can reuse the ZeroMQ buffers created
-   and save on the signing cost.
+   On connection to the ROUTER socket, the client will send a signed message indicating that it is
+   available for commands. If the heartbeat and command channels are merged, this can be a heartbeat
+   messsage. Otherwise, a dedicated message will be required. This message lets us capture the
+   transient socket name. This will provide a way to map the unique name of the connection to the
+   client in question. Commands will be addressed via that unique name. 
 
-   When a command is completed on the node, it sends the command results back to the server using
-   the ROUTER/DEALER connection above.
+   When sending commands, the server will need to send a separate message to each client. However
+   the message body (aside from the address packet) will remain the same, and we can reuse the
+   ZeroMQ buffers created and save on the signing cost.
 
-*** Open Questions
-    + What happens to commands sent to permanently dead nodes; does it case a leak sitting in
-      the buffering. Is dropping and restarting ZMQ a solution?
-
-** Client tracking
-#+INCLUDE: "design_client_tracking.org" :minlevel 2
+   The server expects an acknowledgement for each message sent to a client. The the client sends
+   these acknowledgements over the same ROUTER/DEALER connection it recieved the commands from.
 
 ** Job lifecycle
 #+INCLUDE: "design_job_lifecycle.org" :minlevel 2
@@ -261,6 +265,9 @@ enough detail to allow a reasonable and scalable implementation.
    The first version of the protocol will use a restricted command vocabulary with the option
    of arbitrary commands. Which commands to allow is a policy decision, and probably should be
    configurable on a per organization basis.
+
+   Restricting the command vocabulary to idempotent actions greatly simplifies the reasoning about
+   jobs.
 
    + chef-client
     This command causes a managed node to initiate a chef-client run. When the one shot
@@ -312,9 +319,8 @@ enough detail to allow a reasonable and scalable implementation.
       allow chaining of jobs where there is work to do prior to the restart, a restart, and work that
       must be accomplished after the restart.
 
-
-** Client command state machine
-#+INCLUDE: "design_client_fsm.org" :minlevel 0
+** Client tracking
+#+INCLUDE: "design_client_tracking.org" :minlevel 2
 
 ** Server Job Control Logic
 
@@ -358,46 +364,6 @@ triggered by changes in other machines' state.
     must be at least as big as the stampede skew and the "node down detection"
     time.  TODO: do we need this timeout?  Can we rely entirely on node down
     detection to do the job for us?
-
-*** Node Execution State
-
-This represents the server's knowledge of the node's current progress with
-respect to its current job.  A node can only have one job associated with it,
-and this state machine tracks that.
-
-The primary states are IDLE -> READY -> EXECUTING and movement into these
-states is *always* driven by reports from the node (they are always reflective
-of things the node told us).
-
-The ABORTING state is an aspirational state where we're trying to get the node
-to abort.
-
-|-----------+------------------------------------+--------------------------|
-| State     | Event                              | Action                   |
-|-----------+------------------------------------+--------------------------|
-| IDLE      | Node Report -> ready               | READY                    |
-| IDLE      | Node Report -> other               | ->ABORTING               |
-|-----------+------------------------------------+--------------------------|
-| READY     | Node Report -> executing+this job  | ->EXECUTING              |
-| READY     | Node Report -> other+non-ready     | ->ABORTING               |
-| READY     | Job State -> ABORTING/FINISHED     | ->ABORTING               |
-|-----------+------------------------------------+--------------------------|
-| EXECUTING | Node Report -> idle+executed this  | finish->IDLE             |
-| EXECUTING | Node Report -> ready+other job     | finish->READY            |
-| EXECUTING | Node Report -> executing this      | <nothing>                |
-| EXECUTING | Node Report -> other+non-executing | ->ABORTING               |
-| EXECUTING | Job State -> ABORTING/FINISHED     | ->ABORTING               |
-|-----------+------------------------------------+--------------------------|
-| ABORTING  | Enter/Load State                   | Send abort message       |
-| ABORTING  | Node Report -> idle+last job=this  | finish->IDLE             |
-| ABORTING  | Node Report -> ready               | finish->READY            |
-| ABORTING  | Node Report -> anything else       | resend                   |
-| ABORTING  | Node State -> up                   | resend                   |
-|-----------+------------------------------------+--------------------------|
-
-"Enter Job" in any other state than VOTING will cause the Node Execution state machine to
-
-When the Node State moves to up, VOTING, TRIGGERED and ABORTING states will resend their message.
 
 *** Job State
 
@@ -453,6 +419,11 @@ TODO what if the client missed the command or start message because it restarted
     Node status is always sent to the Node Execution State, and jobs can subscribe
     to node status.
     TODO: describe new algorithm.
+
+
+** Client command state machine
+#+INCLUDE: "design_client_fsm.org" :minlevel 0
+
 
 #+INCLUDE: "design_rest_api.org" :minlevel 0
 

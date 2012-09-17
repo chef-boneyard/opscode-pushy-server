@@ -30,7 +30,7 @@ General principles:
 |             | START message (job id doesn't)   | Send ERROR (can't start)                        | Running          |
 |             | Current exec'd command succeeds  | Send COMPLETED, success                         | Ready            |
 |             | Current exec'd command fails     | Send COMPLETED, failed                          | Ready            |
-|             | Execution time limit exceeded    | Send COMPLETED, timed out and terminate command | Terminating      |
+|             | Execution time limit exceeded    | Send COMPLETED, timed out                       | Terminating      |
 |-------------+----------------------------------+-------------------------------------------------+------------------|
 | Terminating | PREPARE message                  | Send NACK                                       | Terminating      |
 |             | ABORT message                    | Send ABORTED (terminating)                      | Terminating      |
