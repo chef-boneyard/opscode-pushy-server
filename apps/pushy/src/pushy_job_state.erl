@@ -233,7 +233,8 @@ mark_node_faulty(NodeRef, #state{job = Job, job_nodes = JobNodes} = State) ->
             {_, running}     -> OldNodeState#pushy_job_node{status = crashed};
             {_, terminal}    -> OldNodeState
         end,
-        pushy_sql:update_job_node(NewPushyJobNode)
+        pushy_sql:update_job_node(NewPushyJobNode),
+        NewPushyJobNode
     end, JobNodes),
     State#state{job_nodes = JobNodes2}.
 
@@ -248,7 +249,8 @@ finish_all_nodes(#state{job = Job, job_nodes = JobNodes} = State) ->
             {_, running}     -> OldNodeState#pushy_job_node{status = aborted};
             {_, terminal}    -> OldNodeState
         end,
-        pushy_sql:update_job_node(NewPushyJobNode)
+        pushy_sql:update_job_node(NewPushyJobNode),
+        NewPushyJobNode
     end, JobNodes),
     State#state{job_nodes = JobNodes2}.
 
@@ -295,7 +297,8 @@ finish_job(Reason, #state{job = Job} = State) ->
 
 count_nodes_in_state(NodeStates, #state{job_nodes = JobNodes}) ->
     dict:fold(
-        fun(_, NodeState, Count) ->
+        fun(_Key, NodeState, Count) ->
+            lager:info("NODESTATE: ~p~nKEY: ~p~n", [NodeState, _Key]),
             case lists:member(NodeState#pushy_job_node.status, NodeStates) of
                 true -> Count + 1;
                 _ -> Count
