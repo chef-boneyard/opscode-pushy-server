@@ -24,7 +24,12 @@ content_types_provided(Req, State) ->
     {[{"application/json", to_json}], Req, State}.
 
 to_json(Req, State) ->
-    JobProcesses = pushy_job_state_sup:get_job_processes(),
-    JobIds = [JobId || {JobId, _} <- JobProcesses],
-    {jiffy:encode(JobIds), Req, State}. 
+    Json = {[{<<"status">>, <<"it's alive">>},
+             {<<"job_processes">>, get_job_ids()}]},
 
+    {jiffy:encode(Json), Req, State}. 
+
+%% Private
+
+get_job_ids() ->
+    [JobId || {JobId, _} <- pushy_job_state_sup:get_job_processes()].
