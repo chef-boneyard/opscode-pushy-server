@@ -26,10 +26,19 @@ This repository currently requires a .deb build from the pushy branch of opscode
 
         rake project:load[pushy]
 
-5. Load pushy pedant
+5. Clone the proper repos (from above opscode-dev-vm):
+
+        git clone git@github.com:opscode/oc-pushy-pedant.git
+        git clone git@github.com:opscode/oc-pushy-pedant-tests.git
+        git clone git@github.com:opscode/chef-pedant-core.git
+        git clone git@github.com:opscode/oc-chef-pedant-core.git
+        git clone git@github.com:opscode/opscode-pushy-client.git
+
+6. Load pushy pedant (make sure you have the oc-pushy-pedant, oc-pushy-pedant-tests, chef-pedant-core, oc-chef-pedant-core and opscode-pushy-client repos checked out!!1!1!)
 
         rake project:load[oc-pushy-pedant]
 
-6. Run tests (in /srv/piab/mounts/oc-pushy-pedant):
+7. Run tests:
 
-        ./oc-pushy-pedant -c mulitenant_config.rb
+        cd /srv/piab/mounts/oc-pushy-pedant
+        ./oc-pushy-pedant -c multitenant_config.rb
