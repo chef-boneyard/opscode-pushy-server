@@ -63,6 +63,7 @@ init([#pushy_state{ctx=_Ctx} = PushyState]) ->
                 ?WORKER(chef_keyring, []),
                 ?WORKER(pushy_node_status_updater, []),
                 ?WORKER(pushy_heartbeat_generator, [PushyState]),
+                ?WORKER(pushy_rehab, []),
                 ?WORKER(pushy_command_switch, [PushyState]),
                 ?WORKERNL(webmachine_mochiweb, [WebMachineConfig])  %% FIXME start or start_link here?
                ]}}.
