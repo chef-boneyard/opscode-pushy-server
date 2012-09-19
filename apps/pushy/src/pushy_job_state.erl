@@ -88,9 +88,9 @@ stop_job(JobId) ->
     {'stop', 'shutdown', #state{}}.
 init(#pushy_job{id = JobId, job_nodes = JobNodeList} = Job) ->
     Host = pushy_util:get_env(pushy, server_name, fun is_list/1),
-    pushy_object:create_object(create_job, Job, JobId),
     case pushy_job_state_sup:register_process(JobId) of
         true ->
+            {ok, _} = pushy_object:create_object(create_job, Job, JobId),
             JobNodes = dict:from_list([{{OrgId, NodeName}, JobNode} ||
                                           #pushy_job_node{org_id = OrgId, node_name = NodeName} =
                                               JobNode <- JobNodeList]),
@@ -298,7 +298,6 @@ finish_job(Reason, #state{job = Job} = State) ->
 count_nodes_in_state(NodeStates, #state{job_nodes = JobNodes}) ->
     dict:fold(
         fun(_Key, NodeState, Count) ->
-            lager:info("NODESTATE: ~p~nKEY: ~p~n", [NodeState, _Key]),
             case lists:member(NodeState#pushy_job_node.status, NodeStates) of
                 true -> Count + 1;
                 _ -> Count
