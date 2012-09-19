@@ -68,7 +68,6 @@ fetch_job(JobId) ->
         {ok, Rows} when is_list(Rows) ->
             {ok, job_join_rows_to_record(Rows)};
         {ok, none} ->
-            lager:info("NOT FOUND"),
             {ok, not_found};
         {error, Error} ->
             lager:info("ERROR"),
