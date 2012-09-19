@@ -12,6 +12,7 @@
          update_node_status/1,
          %% job ops
          fetch_job/1,
+         fetch_jobs/1,
          create_job/1,
          update_job/1,
          update_job_node/1,
@@ -69,11 +70,51 @@ fetch_job(JobId) ->
         {ok, none} ->
             {ok, not_found};
         {error, Error} ->
+            lager:info("ERROR"),
             {error, Error}
     end.
 
-create_job(#pushy_job{} = Job) ->
-    create_object(Job).
+fetch_jobs(OrgId) ->
+    case sqerl:select(find_jobs_by_org, [OrgId]) of
+        {ok, Rows} when is_list(Rows) ->
+            {ok, prepare_jobs(Rows)};
+        {ok, none} ->
+            {ok, not_found};
+        {error, Error} ->
+            {error, Error}
+    end.
+
+create_job(#pushy_job{status = Status, job_nodes = JobNodes}=Job) ->
+    %% convert status into an integer
+    Job1 = Job#pushy_job{status=job_status(Status)},
+    Fields0 = flatten_record(Job1),
+    Fields = job_fields_for_insert(Fields0),
+    %% We're not dispatching to the general create_object/2 because creating a job
+    %% involves adding multiple rows to multiple tables. Also, we currently embed a list of
+    %% job nodes in the job record; this won't play nicely with the general
+    %% 'create_object' logic, which passes all record fields (in order) as parameters for a
+    %% prepared statement
+    case create_object(insert_job, Fields) of
+        {ok, 1} ->
+            case insert_job_nodes(JobNodes) of
+                ok ->
+                    %% (Remember, create_object/1 should return {ok, Number})
+                    {ok, 1};
+                {error, Reason} ->
+                    %% We could have potentially inserted some job node rows before the
+                    %% error was thrown. If we had transactions, we could just bail out here, but
+                    %% instead we need to do a little cleanup. Fortunately, this just means
+                    %% deleting all rows with the given job id.
+
+                    % delete_job_nodes(JobId),
+
+                    %% Finally, we'll pass the root cause of
+                    %% the failure back up
+                    parse_error(Reason)
+            end;
+        {error, Reason} ->
+            parse_error(Reason)
+    end.
 
 -spec update_job(#pushy_job{}) -> {ok, 1 | not_found} | {error, term()}.
 update_job(#pushy_job{id = JobId,
@@ -89,7 +130,7 @@ update_job_node(#pushy_job_node{job_id = JobId,
                                 org_id = OrgId,
                                 status = Status,
                                 updated_at = UpdatedAt}) ->
-    UpdateFields = [job_status(Status), UpdatedAt, OrgId, NodeName, JobId],
+    UpdateFields = [job_node_status(Status), UpdatedAt, OrgId, NodeName, JobId],
     do_update(update_job_node_by_orgid_nodename_jobid, UpdateFields).
 
 -spec create_object(Object :: pushy_object()) -> {ok, non_neg_integer()} |
@@ -97,40 +138,7 @@ update_job_node(#pushy_job_node{job_id = JobId,
 %% @doc create an object given a pushy object record
 create_object(#pushy_node_status{status=Status}=NodeStatus) ->
     NodeStatus1 = NodeStatus#pushy_node_status{status=hb_status_as_int(Status)},
-    create_object(insert_node_status, NodeStatus1);
-%% This does not exactly follow the same pattern as it needs to
-%% insert a list of job_nodes into a separate table.
-create_object(#pushy_job{status = Status, job_nodes = JobNodes}=Job) ->
-    %% convert status into an integer
-    Job1 = Job#pushy_job{status=job_status(Status)},
-    Fields0 = flatten_record(Job1),
-    Fields = job_fields_for_insert(Fields0),
-    %% We're not dispatching to the general create_object/2 because creating a job
-    %% involves adding multiple rows to multiple tables. Also, we currently embed a list of
-    %% job nodes in the job record; this won't play nicely with the general
-    %% 'create_object' logic, which passes all record fields (in order) as parameters for a
-    %% prepared statement
-    case create_object(insert_job, Fields) of
-      {ok, 1} ->
-        case insert_job_nodes(JobNodes) of
-          ok ->
-              %% (Remember, create_object/1 should return {ok, Number})
-              {ok, 1};
-          {error, Reason} ->
-              %% We could have potentially inserted some job node rows before the
-              %% error was thrown. If we had transactions, we could just bail out here, but
-              %% instead we need to do a little cleanup. Fortunately, this just means
-              %% deleting all rows with the given job id.
-
-              % delete_job_nodes(JobId),
-
-              %% Finally, we'll pass the root cause of
-              %% the failure back up
-              parse_error(Reason)
-          end;
-      {error, Reason} ->
-        parse_error(Reason)
-    end.
+    create_object(insert_node_status, NodeStatus1).
 
 -spec create_object(atom(), tuple() | list()) -> {ok, non_neg_integer()} | {error, term()}.
 create_object(QueryName, Args) when is_atom(QueryName), is_list(Args) ->
@@ -152,8 +160,10 @@ create_object(QueryName, Record) when is_atom(QueryName), is_tuple(Record) ->
 
 -spec job_fields_for_insert(CbFields:: list()) -> list().
 job_fields_for_insert(CbFields) ->
-   %% We drop the last record field - job_nodes
-   lists:reverse(tl(lists:reverse(CbFields))).
+   Pred = fun(Elem) ->
+           not(is_list(Elem))
+          end,
+   lists:filter(Pred,CbFields).
 
 %% @doc Inserts job_nodes records into the database. All records are timestamped
 %% with the same stamp, namely `CreatedAt`, which is a binary string in SQL date time
@@ -213,20 +223,36 @@ job_join_rows_to_record([LastRow|[]], JobNodes) ->
                   last_updated_by = safe_get(<<"last_updated_by">>, LastRow),
                   created_at = trunc_date_time_to_second(safe_get(<<"created_at">>, LastRow)),
                   updated_at = trunc_date_time_to_second(safe_get(<<"updated_at">>, LastRow)),
-                  job_nodes = lists:reverse([C|JobNodes])};
+                  job_nodes = lists:flatten(lists:reverse([C|JobNodes]))};
 job_join_rows_to_record([Row|Rest], JobNodes ) ->
     C = proplist_to_job_node(Row),
     job_join_rows_to_record(Rest, [C|JobNodes]).
 
+prepare_jobs(Jobs) ->
+    prepare_jobs(Jobs, []).
+
+prepare_jobs([], Acc) ->
+    Acc;
+prepare_jobs([Head | Tail], Acc) ->
+    CreatedAt = trunc_date_time_to_second(safe_get(<<"created_at">>, Head)),
+    CreatedAtFormatted = iolist_to_binary(httpd_util:rfc1123_date(CreatedAt)),
+
+    NewRow = [{<<"id">>, safe_get(<<"id">>, Head)},
+              {<<"created_at">>, CreatedAtFormatted}],
+    prepare_jobs(Tail, lists:append(Acc, NewRow)).
+
 %% @doc Convenience function for assembling a job_node tuple from a proplist
 proplist_to_job_node(Proplist) ->
-    #pushy_job_node{job_id = safe_get(<<"id">>, Proplist),
-                    org_id = safe_get(<<"org_id">>, Proplist),
-                    node_name = safe_get(<<"node_name">>, Proplist),
-                    status = job_status(safe_get(<<"status">>, Proplist)),
-                    created_at = trunc_date_time_to_second(safe_get(<<"created_at">>, Proplist)),
-                    updated_at = trunc_date_time_to_second(safe_get(<<"updated_at">>, Proplist))
-                    }.
+    case safe_get(<<"node_name">>, Proplist) of
+        null -> [];
+        _ ->
+            #pushy_job_node{job_id = safe_get(<<"id">>, Proplist),
+                org_id = safe_get(<<"org_id">>, Proplist),
+                node_name = safe_get(<<"node_name">>, Proplist),
+                status = job_node_status(safe_get(<<"job_node_status">>, Proplist)),
+                created_at = trunc_date_time_to_second(safe_get(<<"created_at">>, Proplist)),
+                updated_at = trunc_date_time_to_second(safe_get(<<"updated_at">>, Proplist))}
+    end.
 
 %% Heartbeat Status translators
 hb_status_as_int(X) when is_integer(X) -> X;
@@ -237,22 +263,40 @@ hb_status_as_atom(0) -> down;
 hb_status_as_atom(1) -> up.
 
 %% Job Status translators
-job_status(new) -> 0;
-job_status(voting) -> 1;
-job_status(executing) -> 2;
-job_status(complete) -> 3;
-job_status(error) -> 4;
-job_status(failed) -> 5;
-job_status(expired) -> 6;
-job_status(aborted) -> 7;
-job_status(0) -> new;
-job_status(1) -> voting;
-job_status(2) -> executing;
-job_status(3) -> complete;
-job_status(4) -> error;
-job_status(5) -> failed;
-job_status(6) -> expired;
-job_status(7) -> aborted.
+job_status(voting) -> 0;
+job_status(running) -> 1;
+job_status(complete) -> 2;
+job_status(quorum_failed) -> 3;
+job_status(aborted) -> 4;
+job_status(new) -> 5;
+job_status(0) -> voting;
+job_status(1) -> running;
+job_status(2) -> complete;
+job_status(3) -> quorum_failed;
+job_status(4) -> aborted;
+job_status(5) -> new.
+
+%% Job Node Status translators
+job_node_status(new) -> 0;
+job_node_status(ready) -> 1;
+job_node_status(running) -> 2;
+job_node_status(complete) -> 3;
+job_node_status(aborted) -> 4;
+job_node_status(unavailable) -> 5;
+job_node_status(nacked) -> 6;
+job_node_status(faulty) -> 7;
+job_node_status(was_ready) -> 8;
+job_node_status(crashed) -> 9;
+job_node_status(0) -> new;
+job_node_status(1) -> ready;
+job_node_status(2) -> running;
+job_node_status(3) -> complete;
+job_node_status(4) -> aborted;
+job_node_status(5) -> unavailable;
+job_node_status(6) -> nacked;
+job_node_status(7) -> faulty;
+job_node_status(8) -> was_ready;
+job_node_status(9) -> crashed.
 
 %% CHEF_COMMON CARGO_CULT
 %% chef_sql:flatten_record/1

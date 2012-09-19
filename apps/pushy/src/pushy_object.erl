@@ -15,6 +15,7 @@
           update_object/2,
           update_object/3,
           new_record/3,
+          new_record/4,
 
           make_org_prefix_id/1,
           make_org_prefix_id/2
@@ -29,12 +30,15 @@ new_record(pushy_node_status, OrgId, NodeStatusData) ->
     #pushy_node_status{org_id = OrgId,
                        node_name = Name,
                        status = Status
-                      };
-new_record(pushy_job, OrgId, NodeNames) ->
+                      }.
+new_record(pushy_job, OrgId, NodeNames, Command) ->
     Id = make_org_prefix_id(OrgId),
     #pushy_job{id = Id,
                 org_id = OrgId,
                 status = new,
+                command = Command,
+                created_at = sql_date(now),
+                updated_at = sql_date(now),
                 job_nodes = [
                   #pushy_job_node{job_id = Id,
                                   org_id = OrgId,
@@ -80,7 +84,7 @@ update_object(Fun, Object) ->
 
 -define(MAKE_SET_UPDATED(Rec),
         set_updated(#Rec{}=Object) ->
-            Object#pushy_job_node{updated_at = sql_date(now)}).
+            Object#Rec{updated_at = sql_date(now)}).
 
 ?MAKE_SET_UPDATED_WITH_ACTOR(pushy_node_status);
 ?MAKE_SET_UPDATED_WITH_ACTOR(pushy_job).

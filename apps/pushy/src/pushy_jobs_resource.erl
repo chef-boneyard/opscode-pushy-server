@@ -62,9 +62,8 @@ post_is_create(Req, State) ->
 % This creates the job record
 create_path(Req, #config_state{organization_guid = OrgId} = State) ->
     [ Command, NodeNames ] = parse_post_body(Req),
-    Job = pushy_object:new_record(pushy_job, OrgId, NodeNames),
-    Job2 = Job#pushy_job{command = Command},
-    State2 = State#config_state{job = Job2},
+    Job = pushy_object:new_record(pushy_job, OrgId, NodeNames, Command),
+    State2 = State#config_state{job = Job},
     {binary_to_list(Job#pushy_job.id), Req, State2}.
 
 % This processes POST /pushy/jobs
@@ -74,29 +73,12 @@ from_json(Req, State) ->
     {true, Req2, State}.
 
 %% GET /pushy/jobs
-to_json(Req, State) ->
-    Jobs = jobs_to_json(get_jobs(pushy_job_state_sup:get_job_processes())),
+to_json(Req, #config_state{organization_guid = OrgId} = State) ->
+    {ok, Jobs} = pushy_sql:fetch_jobs(OrgId),
 
-    {jiffy:encode(Jobs), Req, State}.
+    {jiffy:encode([{Jobs}]), Req, State}.
 
 % Private stuff
-
-get_jobs(JobTuples) ->
-    [pushy_job_state:get_job_state(JobId) || {JobId, _} <- JobTuples].
-
-jobs_to_json(Jobs) ->
-    [job_to_json(Job) || Job <- Jobs].
-
-job_to_json(#pushy_job{
-        id = Id,
-        status = Status
-        %created_at = CreatedAt
-    }) ->
-    %CreatedAtDate =  iolist_to_binary(httpd_util:rfc1123_date(CreatedAt)),
-    {[ {<<"id">>, iolist_to_binary(Id)},
-       {<<"status">>, Status}
-       %{<<"created_at">>, CreatedAtDate}
-    ]}.
 
 parse_post_body(Req) ->
     Body = wrq:req_body(Req),

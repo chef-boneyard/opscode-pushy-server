@@ -14,6 +14,7 @@
          node_nack_run/2,
          node_complete/2,
          node_aborted/2,
+         stop_job/1,
          get_job_state/1]).
 
 %% gen_fsm callbacks
@@ -24,7 +25,7 @@
          terminate/3,
          code_change/4]).
 
-%% gen_fsm states
+%% fsm states
 -export([voting/2,
          running/2,
          complete/2,
@@ -73,6 +74,12 @@ get_job_state(JobId) ->
         Pid -> gen_fsm:sync_send_all_state_event(Pid, get_job_status)
     end.
 
+stop_job(JobId) ->
+    case pushy_job_state_sup:get_process(JobId) of
+        not_found -> not_found;
+        Pid -> gen_fsm:sync_send_all_state_event(Pid, stop_job)
+    end.
+
 %%%
 %%% Initialization
 %%%
@@ -83,6 +90,7 @@ init(#pushy_job{id = JobId, job_nodes = JobNodeList} = Job) ->
     Host = pushy_util:get_env(pushy, server_name, fun is_list/1),
     case pushy_job_state_sup:register_process(JobId) of
         true ->
+            {ok, _} = pushy_object:create_object(create_job, Job, JobId),
             JobNodes = dict:from_list([{{OrgId, NodeName}, JobNode} ||
                                           #pushy_job_node{org_id = OrgId, node_name = NodeName} =
                                               JobNode <- JobNodeList]),
@@ -91,7 +99,10 @@ init(#pushy_job{id = JobId, job_nodes = JobNodeList} = Job) ->
             listen_for_down_nodes(dict:fetch_keys(JobNodes)),
 
             % Start voting--if there are no nodes, the job finishes immediately.
-            start_voting(State);
+            case start_voting(State) of
+                {next_state, StateName, State2} -> {ok, StateName, State2};
+                {stop, Reason, _State} -> {stop, Reason}
+            end;
         false ->
             {stop, shutdown, undefined}
     end.
@@ -172,6 +183,8 @@ handle_sync_event(get_job_status, _From, StateName,
     JobNodesList = [ JobNode || {_,JobNode} <- dict:to_list(JobNodes) ],
     Job2 = Job#pushy_job{job_nodes = JobNodesList},
     {reply, Job2, StateName, State};
+handle_sync_event(stop_job, _From, _StateName, State) ->
+    {stop, shutdown, ok, State};
 handle_sync_event(Event, From, StateName, State) ->
     lager:error("Unknown message handle_sync_event(~p) from ~p", [Event, From]),
     {next_state, StateName, State}.
@@ -202,8 +215,10 @@ get_node_state(NodeRef, #state{job_nodes = JobNodes}) ->
     Node#pushy_job_node.status.
 
 set_node_state(NodeRef, NewNodeState, #state{job_nodes = JobNodes} = State) ->
-    JobNodes2 = dict:update(NodeRef, fun(OldNodeState) ->
-        OldNodeState#pushy_job_node{status = NewNodeState}
+    JobNodes2 = dict:update(NodeRef, fun(OldPushyJobNode) ->
+        NewPushyJobNode = OldPushyJobNode#pushy_job_node{status = NewNodeState},
+        pushy_sql:update_job_node(NewPushyJobNode),
+        NewPushyJobNode
     end, JobNodes),
     State#state{job_nodes = JobNodes2}.
 
@@ -211,13 +226,15 @@ mark_node_faulty(NodeRef, #state{job = Job, job_nodes = JobNodes} = State) ->
     JobNodes2 = dict:update(NodeRef, fun(OldNodeState) ->
         JobStatus = Job#pushy_job.status,
         OldNodeStatus = OldNodeState#pushy_job_node.status,
-        case {JobStatus, terminalize(OldNodeStatus)} of
+        NewPushyJobNode = case {JobStatus, terminalize(OldNodeStatus)} of
             {_, new}         -> OldNodeState#pushy_job_node{status = unavailable};
             {voting, ready}  -> OldNodeState#pushy_job_node{status = unavailable};
             {running, ready} -> OldNodeState#pushy_job_node{status = crashed};
             {_, running}     -> OldNodeState#pushy_job_node{status = crashed};
             {_, terminal}    -> OldNodeState
-        end
+        end,
+        pushy_sql:update_job_node(NewPushyJobNode),
+        NewPushyJobNode
     end, JobNodes),
     State#state{job_nodes = JobNodes2}.
 
@@ -225,13 +242,15 @@ finish_all_nodes(#state{job = Job, job_nodes = JobNodes} = State) ->
     JobNodes2 = dict:map(fun(_, OldNodeState) ->
         JobStatus = Job#pushy_job.status,
         OldNodeStatus = OldNodeState#pushy_job_node.status,
-        case {JobStatus, terminalize(OldNodeStatus)} of
+        NewPushyJobNode = case {JobStatus, terminalize(OldNodeStatus)} of
             {_, new}         -> OldNodeState#pushy_job_node{status = unavailable};
             {voting, ready}  -> OldNodeState#pushy_job_node{status = was_ready};
             {running, ready} -> OldNodeState#pushy_job_node{status = aborted};
             {_, running}     -> OldNodeState#pushy_job_node{status = aborted};
             {_, terminal}    -> OldNodeState
-        end
+        end,
+        pushy_sql:update_job_node(NewPushyJobNode),
+        NewPushyJobNode
     end, JobNodes),
     State#state{job_nodes = JobNodes2}.
 
@@ -256,14 +275,15 @@ start_voting(#state{job = Job} = State) ->
     lager:info("Job ~p -> voting", [Job#pushy_job.id]),
     Job2 = Job#pushy_job{status = voting},
     State2 = State#state{job = Job2},
+    pushy_object:update_object(update_job, Job2, Job2#pushy_job.id),
     send_command_to_all(<<"commit">>, State2),
-    {next_state, StateName, State3} = maybe_finished_voting(State2),
-    {ok, StateName, State3}.
+    maybe_finished_voting(State2).
 
 start_running(#state{job = Job} = State) ->
     lager:info("Job ~p -> running", [Job#pushy_job.id]),
     Job2 = Job#pushy_job{status = running},
     State2 = State#state{job = Job2},
+    pushy_object:update_object(update_job, Job2, Job2#pushy_job.id),
     send_command_to_all(<<"run">>, State2),
     maybe_finished_running(State2).
 
@@ -272,11 +292,12 @@ finish_job(Reason, #state{job = Job} = State) ->
     State2 = finish_all_nodes(State),
     Job2 = Job#pushy_job{status = Reason},
     State3 = State2#state{job = Job2},
-    {next_state, Reason, State3}.
+    pushy_object:update_object(update_job, Job2, Job2#pushy_job.id),
+    {stop, {shutdown, Reason}, State3}.
 
 count_nodes_in_state(NodeStates, #state{job_nodes = JobNodes}) ->
     dict:fold(
-        fun(_, NodeState, Count) ->
+        fun(_Key, NodeState, Count) ->
             case lists:member(NodeState#pushy_job_node.status, NodeStates) of
                 true -> Count + 1;
                 _ -> Count

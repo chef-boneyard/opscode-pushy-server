@@ -24,15 +24,12 @@ content_types_provided(Req, State) ->
     {[{"application/json", to_json}], Req, State}.
 
 to_json(Req, State) ->
-    case check_health(Req, State) of
-%        {pang, Body} ->
-%            {{halt, 500}, wrq:set_resp_body(Body, Req), State};
-        {pong, Body} ->
-            {Body, Req, State}
-    end.
+    Json = {[{<<"status">>, <<"it's alive">>},
+             {<<"job_processes">>, get_job_ids()}]},
 
-%% private functions
+    {jiffy:encode(Json), Req, State}. 
 
-check_health(_Req, _State) ->
-    {pong, jiffy:encode({[{<<"status">>, <<"it's alive">> }]})}. 
+%% Private
 
+get_job_ids() ->
+    [JobId || {JobId, _} <- pushy_job_state_sup:get_job_processes()].
