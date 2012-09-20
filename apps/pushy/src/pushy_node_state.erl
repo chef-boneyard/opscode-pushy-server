@@ -219,9 +219,10 @@ update_status(Status, #state{node_ref=NodeRef}=State) ->
 
 notify_status_change(Status, #state{node_ref=NodeRef}) ->
     lager:info("Status change for ~p : ~p", [NodeRef, Status]),
+
     case Status of
         down -> gproc:send(subscribers_key(NodeRef), {down, NodeRef});
-        up -> nop
+        up -> pushy_rehab:add_node(NodeRef)
     end.
 
 nlog(normal, Format, Args) ->
