@@ -57,13 +57,13 @@ init([#pushy_state{ctx=_Ctx} = PushyState]) ->
                         {enable_perf_logger, true}],
     ?debugVal(WebMachineConfig),
     {ok, {{one_for_one, 60, 120},
-               [?SUP(pushy_node_state_sup, []),
+               [?WORKER(pushy_rehab, []),
+                ?WORKER(chef_keyring, []),
+                ?SUP(pushy_node_state_sup, []),
                 ?SUP(pushy_job_state_sup, []),
                 ?SUP(folsom_sup, []),
-                ?WORKER(chef_keyring, []),
                 ?WORKER(pushy_node_status_updater, []),
                 ?WORKER(pushy_heartbeat_generator, [PushyState]),
-                ?WORKER(pushy_rehab, []),
                 ?WORKER(pushy_command_switch, [PushyState]),
                 ?WORKERNL(webmachine_mochiweb, [WebMachineConfig])  %% FIXME start or start_link here?
                ]}}.

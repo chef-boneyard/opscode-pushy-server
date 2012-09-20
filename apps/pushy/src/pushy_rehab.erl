@@ -10,7 +10,8 @@
 %% API Function Exports
 %% ------------------------------------------------------------------
 
--export([start_link/0]).
+-export([start_link/0,
+         add_node/1]).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Exports
@@ -29,6 +30,11 @@
 
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+
+add_node(NodeRef) ->
+    lager:info("Added ~p to Rehab", [NodeRef]),
+    true = gproc:reg_shared({rehab, NodeRef}),
+    NodeRef.
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
