@@ -232,6 +232,7 @@ send_node_event(JobId, NodeRef, <<"nack_run">>) ->
 send_node_event(JobId, NodeRef, <<"complete">>)->
     pushy_job_state:node_complete(JobId, NodeRef);
 send_node_event(JobId, NodeRef, <<"aborted">>) ->
+    pushy_node_state:node_aborted(NodeRef),
     pushy_job_state:node_aborted(JobId, NodeRef);
 send_node_event(JobId, NodeRef, undefined) ->
     lager:error("Status message for job ~p and node ~p was missing type field!~n", [JobId, NodeRef]);
