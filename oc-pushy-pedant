@@ -9,7 +9,7 @@ require 'pedant/multitenant'
 require 'pedant/organization'
 
 Pedant.config.platform_class = Pedant::MultiTenantPlatform
-Pedant.setup(ARGV)
+Pedant.setup(ARGV, ["core_options", "pushy_options"])
 puts Pedant::UI.new.info_banner
 
 exit RSpec::Core::Runner.run(Pedant.config.rspec_args)
