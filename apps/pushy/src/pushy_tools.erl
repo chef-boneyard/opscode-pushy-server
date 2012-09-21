@@ -20,9 +20,8 @@
 %% where HOSTNAME is the server where the simulated clients are running
 send_job(Host, Num) ->
     Names = [ construct_name(Host, N) || N <- lists:seq(1, Num)],
-    Job0 = pushy_object:new_record(pushy_job, ?PUSHY_ORG, Names),
-    Job1 = Job0#pushy_job{command = <<"chef-client">>},
-    pushy_job_state_sup:start(Job1).
+    Job = pushy_object:new_record(pushy_job, ?PUSHY_ORG, Names, <<"chef-client">>),
+    pushy_job_state_sup:start(Job).
 
 %%
 %% Internal functions
