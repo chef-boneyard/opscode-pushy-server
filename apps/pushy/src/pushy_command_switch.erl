@@ -131,10 +131,13 @@ do_send(#state{addr_node_map = AddrNodeMap,
                command_sock = CommandSocket,
                private_key = PrivateKey}=State,
         NodeRef, Message) ->
-    Address = addr_node_map_lookup_by_node(AddrNodeMap, NodeRef),
-    pushy_messaging:send_message(CommandSocket, [Address,
-        ?TIME_IT(pushy_util, signed_header_from_message, (PrivateKey, Message)),
-        Message]),
+        case addr_node_map_lookup_by_node(AddrNodeMap, NodeRef) of
+            {ok, Address} ->
+                pushy_messaging:send_message(CommandSocket, [Address,
+                    ?TIME_IT(pushy_util, signed_header_from_message, (PrivateKey, Message)),
+                    Message]);
+            error -> ok
+        end,
     State.
 
 do_send_multi(#state{addr_node_map = AddrNodeMap,
@@ -144,7 +147,10 @@ do_send_multi(#state{addr_node_map = AddrNodeMap,
     FrameList = [
         ?TIME_IT(pushy_util, signed_header_from_message, (PrivateKey, Message)), Message],
     % TODO if you communicate with a node that doesn't exist, don't just fail, dude
-    AddressList = [addr_node_map_lookup_by_node(AddrNodeMap, NodeRef) || NodeRef <- NodeRefs],
+    %% Remove any error atoms returned by find and create an AddressList
+    AddressList = [ Address || Entry = {ok, Address} <-
+                    [addr_node_map_lookup_by_node(AddrNodeMap, NodeRef) || NodeRef <- NodeRefs],
+                  Entry /= error],
     pushy_messaging:send_message_multi(CommandSocket, AddressList, FrameList),
     State.
 
@@ -176,6 +182,7 @@ send_node_event(JobId, NodeRef, <<"nack_run">>) ->
 send_node_event(JobId, NodeRef, <<"complete">>)->
     pushy_job_state:node_complete(JobId, NodeRef);
 send_node_event(JobId, NodeRef, <<"aborted">>) ->
+    pushy_node_state:node_aborted(NodeRef),
     pushy_job_state:node_aborted(JobId, NodeRef);
 send_node_event(JobId, NodeRef, undefined) ->
     lager:error("Status message for job ~p and node ~p was missing type field!~n", [JobId, NodeRef]);
@@ -222,11 +229,11 @@ addr_node_map_update({AddrToNode, NodeToAddr}, Addr, Node) ->
 addr_node_map_lookup_by_addr(#state{addr_node_map = AddrNodeMap}, Addr) ->
     addr_node_map_lookup_by_addr(AddrNodeMap, Addr);
 addr_node_map_lookup_by_addr({AddrToNode, _}, Addr) ->
-    dict:fetch(Addr, AddrToNode).
+    dict:find(Addr, AddrToNode).
 
 addr_node_map_lookup_by_node(#state{addr_node_map = AddrNodeMap}, Node) ->
     addr_node_map_lookup_by_addr(AddrNodeMap, Node);
 addr_node_map_lookup_by_node({_, NodeToAddr}, Node) ->
-    dict:fetch(Node, NodeToAddr).
+    dict:find(Node, NodeToAddr).
 
 
