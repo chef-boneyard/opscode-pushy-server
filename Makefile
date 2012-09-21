@@ -2,6 +2,13 @@ DEPS = deps/erlzmq deps/jiffy deps/gproc deps/ej \
        deps/chef_authn deps/sqerl deps/mixer deps\lager \
        deps/folsom
 
+ERLANG_APPS = erts kernel stdlib tools compiler syntax_tools runtime_tools\
+        crypto public_key ssl ibrowse xmerl edoc eunit mnesia inets \
+        mnesia hipe syntax_tools runtime_tools edoc eunit asn1 gs webtool \
+        observer
+
+PLT_FILE = .pushy.plt
+
 all: dialyze eunit
 
 use_locked_config = $(wildcard USE_REBAR_LOCKED)
@@ -26,11 +33,15 @@ compile: $(DEPS)
 compile_app:
 	$(REBAR) skip_deps=true compile
 
-.pushy.plt:
-	dialyzer -nn --output_plt .pushy.plt --build_plt --apps erts kernel stdlib crypto public_key
+$(PLT_FILE):
+	dialyzer -nn --output_plt $(PLT_FILE) --build_plt --apps $(ERLANG_APPS)
+
+plt_deps:
+	dialyzer --plt $(PLT_FILE) --output_plt $(PLT_FILE) --add_to_plt deps/*/ebin
+
 
 dialyze: .pushy.plt compile
-	dialyzer -nn --plt .pushy.plt -Wunmatched_returns -Werror_handling -Wrace_conditions -r apps/pushy/ebin -I deps
+	dialyzer -nn --plt $(PLT_FILE) -Wunmatched_returns -Werror_handling -Wrace_conditions -r apps/pushy/ebin -I deps
 
 #dialyzer:
 #	@rm -rf apps/pushy/.eunit
