@@ -7,6 +7,7 @@ require 'pedant'
 require 'pedant/opensource/platform'
 require 'pedant/multitenant'
 require 'pedant/organization'
+require 'pedant/pushy_command_line'
 
 Pedant.config.platform_class = Pedant::MultiTenantPlatform
 Pedant.setup(ARGV, ["core_options", "pushy_options"])
