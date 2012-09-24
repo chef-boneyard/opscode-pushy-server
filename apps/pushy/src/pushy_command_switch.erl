@@ -41,7 +41,7 @@
 -include_lib("public_key/include/public_key.hrl").
 
 -include("pushy.hrl").
--include_lib("pushy_metrics.hrl").
+-include_lib("pushy_common/include/pushy_metrics.hrl").
 
 %% TODO : figure out where this really should come from
 -opaque dictionary() :: any().

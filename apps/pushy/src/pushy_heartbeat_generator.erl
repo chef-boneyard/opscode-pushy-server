@@ -34,7 +34,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 -include("pushy.hrl").
--include_lib("pushy_metrics.hrl").
+-include_lib("pushy_common/include/pushy_metrics.hrl").
 
 
 %% TODO: tighten typedefs up
