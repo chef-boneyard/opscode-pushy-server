@@ -53,6 +53,12 @@ to_json(Req, State) ->
     {ok, PublicKeyR} = chef_keyring:get_key(pushy_pub),
     PublicKey = public_key:pem_encode(
         [public_key:pem_entry_encode('SubjectPublicKeyInfo', PublicKeyR)]),
+    %% TODO: extract client name somehow
+    ClientName = {<<"AAAAA">>, foo},
+    SessionKey = pushy_key_manager:get_key(ClientName),
+    %% TODO:
+    %% The session key should be sent encrypted using the client's public key. We're
+    %% skipping that for the moment, but this work is not done unless we fix this.
 
     ConfigurationStruct =
         {[{<<"type">>, <<"config">>},
@@ -66,6 +72,7 @@ to_json(Req, State) ->
                         {<<"online_threshold">>, 2}
                        ]}}]}},
           {<<"public_key">>, PublicKey},
+          {<<"session_key">>, SessionKey},
           {<<"lifetime">> ,3600}
          ]},
 
