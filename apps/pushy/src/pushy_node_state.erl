@@ -261,14 +261,16 @@ subscribers_key(NodeRef) ->
 %%-----------------------------------------------------------------------------
 
 send_to_rehab(#state{node_ref = NodeRef} = State) ->
-    {ok, TimerRef} = timer:send_interval(1000, abort_nodes),
+    {ok, TimerRef} = timer:send_interval(interval(), abort_nodes),
     lager:info("Added ~p to Rehab", [NodeRef]),
     State#state{rehab_timer = TimerRef}.
 
-%kick_from_rehab(#state{rehab_timer = TimerRef} = State) when TimerRef == undefined ->
-    %lager:info("I SHOULD NOT BE HERE"),
-    %State;
+kick_from_rehab(#state{rehab_timer = TimerRef} = State) when TimerRef == undefined ->
+    State;
 kick_from_rehab(#state{rehab_timer = TimerRef, node_ref = NodeRef} = State) ->
     {ok, cancel} = timer:cancel(TimerRef),
     lager:info("Removed ~p from Rehab", [NodeRef]),
     State#state{rehab_timer = undefined}.
+
+interval() ->
+    pushy_util:get_env(pushy, rehab_timer, fun is_integer/1).
