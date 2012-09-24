@@ -24,7 +24,7 @@ This repository currently requires a .deb build from the pushy branch of opscode
 
         rake project:load[pushy]
 
-5. Clone the proper repos (from above opscode-dev-vm):
+5. Locally, clone the test repos (from above opscode-dev-vm):
 
         git clone git@github.com:opscode/oc-pushy-pedant.git
         git clone git@github.com:opscode/oc-pushy-pedant-tests.git
@@ -36,7 +36,7 @@ This repository currently requires a .deb build from the pushy branch of opscode
 
         rake project:load[oc-pushy-pedant]
 
-7. Run tests:
+7. In the VM, run the tests:
 
         cd /srv/piab/mounts/oc-pushy-pedant
         ./oc-pushy-pedant -c multitenant_config.rb
