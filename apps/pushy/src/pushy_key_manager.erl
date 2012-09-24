@@ -6,6 +6,15 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+
+%%
+%% Implementation note:
+%% This is implemented as a lookup in an ets table instead of a gen_server
+%% The rationale is that we will likely have multiple processes
+%% looking up keys simultaneously. Each process will likely be
+%% processing messages as fast as it can; the fan in into a gen_server
+%% for key management would likely be a bottleneck.
+
 %% API
 -export([init/0,
          get_key/1,
