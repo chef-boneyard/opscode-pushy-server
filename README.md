@@ -10,11 +10,9 @@ This repository currently requires a .deb build from the pushy branch of opscode
 
 1. Using the pushy .deb, build the OPC dev VM with 'rake start'.
 
-2. Grab the v2 POSIX tarball from:
+2. Grab the v2 POSIX tarball from the [ZeroMQ site](http://www.zeromq.org/intro:get-the-software).  *No, seriously, download v2, not v3.*
 
-        http://www.zeromq.org/intro:get-the-software
-
-3. Build zeromq.  Building it easy (after scp'ing it to the /tmp dir or wherever is convenient on the dev-vm):
+3. In your VM, build zeromq.  Building it easy (after scp'ing it to the /tmp dir or wherever is convenient on the dev-vm):
 
         $ tar xvzf zeromq-<whatever-the-current-version-is>.tar.gz
         $ cd <unpacked dir>
