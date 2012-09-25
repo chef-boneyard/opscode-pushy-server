@@ -27,6 +27,9 @@ start(_StartType, _StartArgs) ->
 
     error_logger:info_msg("Starting Pushy incarnation ~s.~n", [IncarnationId]),
 
+    %% TODO Find better home
+    pushy_key_manager:init(),
+
     IoProcesses = pushy_util:get_env(pushy, zmq_io_processes, 1, fun is_integer/1),
     case erlzmq:context(IoProcesses) of
         {ok, Ctx} ->
