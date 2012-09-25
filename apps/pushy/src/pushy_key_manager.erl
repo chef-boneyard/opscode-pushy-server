@@ -37,7 +37,7 @@ init() ->
 %%%
 -spec generate_key(atom()) -> key().
 generate_key(hmac_sha256) ->
-    Key = pushy_util:rand_bytes(256/8),
+    Key = pushy_util:rand_bytes(erlang:trunc(256/8)),
     {hmac_sha256, Key}.
 
 -spec get_key(any()) -> key().
