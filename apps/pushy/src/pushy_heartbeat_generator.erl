@@ -114,14 +114,10 @@ do_send(#state{heartbeat_sock=HeartbeatSock, beat_count=Count, private_key=Priva
             {sequence, Count},
             {incarnation_id, IncarnationId}
            ]},
-    % JSON encode message
-    BodyFrame = jiffy:encode(Msg), %?TIME_IT(jiffy, encode, (Msg)),
-
-    % Send Header (including signed checksum)
-    HeaderFrame = ?TIME_IT(pushy_util, signed_header_from_message, (PrivateKey, BodyFrame)),
-    pushy_messaging:send_message(HeartbeatSock, [HeaderFrame, BodyFrame]),
+    Packets = ?TIME_IT(pushy_messaging, make_message, (proto_v2, rsa2048_sha1, PrivateKey, Msg)),
+    pushy_messaging:send_message(HeartbeatSock, Packets),
     %?debugVal(BodyFrame),
-    lager:debug("Heartbeat sent: header=~s,body=~s",[HeaderFrame, BodyFrame]),
+    lager:debug("Heartbeat sent: header=~s,body=~s", Packets),
     State#state{beat_count=Count+1}.
 
 %% ------------------------------------------------------------------
