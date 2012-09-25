@@ -36,6 +36,12 @@ This repository currently requires a .deb build from the pushy branch of opscode
 
         rake project:load[oc-pushy-pedant]
 
+7. [OPTIONAL] Increase the heartbeat interval so the tests go faster
+
+        vim /etc/opscode/private-chef.rb
+        Add the line opscode_pushy['heartbeat_interval'] = 100
+        private-chef-ctl reconfigure
+
 7. In the VM, run the tests:
 
         cd /srv/piab/mounts/oc-pushy-pedant
