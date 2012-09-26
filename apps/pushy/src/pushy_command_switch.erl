@@ -16,15 +16,17 @@
 
 -export([start_link/1,
          send_command/2,
-         send_multi_command/2]).
+         send_command/3,
+         send_multi_command/2,
+         send_multi_command/3]).
 
 %% ------------------------------------------------------------------
 %% Private Exports - only exported for instrumentation
 %% ------------------------------------------------------------------
 
 -export([do_receive/3,
-         do_send/3,
-         do_send_multi/3]).
+         do_send/4,
+         do_send_multi/4]).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Exports
@@ -52,6 +54,9 @@
          private_key
         }).
 
+-type ejson() :: tuple(). % TODO Improve
+-type signing_method() :: 'rsa2048_sha1' | 'hmac_sha256'.
+
 %% ------------------------------------------------------------------
 %% API Function Definitions
 %% ------------------------------------------------------------------
@@ -59,13 +64,22 @@
 start_link(PushyState) ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [PushyState], []).
 
--spec send_command(node_ref(), binary()) -> ok.
+-spec send_command(node_ref(), ejson()) -> ok.
 send_command(NodeRef, Message) ->
-    gen_server:cast(?MODULE, {send, NodeRef, Message}).
+    send_command(NodeRef, rsa2048_sha1, Message).
+
+-spec send_command(node_ref(), signing_method(), ejson()) -> ok.
+send_command(NodeRef, Method, Message) ->
+    gen_server:cast(?MODULE, {send, NodeRef, Method, Message}).
+
 
 -spec send_multi_command([node_ref()], binary()) -> ok.
 send_multi_command(NodeRefs, Message) ->
-    gen_server:cast(?MODULE, {send_multi, NodeRefs, Message}).
+    send_multi_command(NodeRefs, rsa2048_sha1, Message).
+
+-spec send_multi_command([node_ref()], signing_method(), binary()) -> ok.
+send_multi_command(NodeRefs, Method, Message) ->
+    gen_server:cast(?MODULE, {send_multi, NodeRefs, Method, Message}).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
@@ -89,10 +103,10 @@ init([#pushy_state{ctx=Ctx}]) ->
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
-handle_cast({send, NodeRef, Message}, #state{}=State) ->
-    {noreply, ?TIME_IT(?MODULE, do_send, (State, NodeRef, Message))};
-handle_cast({send_multi, NodeRefs, Message}, #state{}=State) ->
-    {noreply, ?TIME_IT(?MODULE, do_send_multi, (State, NodeRefs, Message))};
+handle_cast({send, NodeRef, Method, Message}, #state{}=State) ->
+    {noreply, ?TIME_IT(?MODULE, do_send, (State, NodeRef, Method, Message))};
+handle_cast({send_multi, NodeRefs, Method, Message}, #state{}=State) ->
+    {noreply, ?TIME_IT(?MODULE, do_send_multi, (State, NodeRefs, Method, Message))};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -130,22 +144,44 @@ do_receive(CommandSock, Frame, State) ->
 do_send(#state{addr_node_map = AddrNodeMap,
                command_sock = CommandSocket,
                private_key = PrivateKey}=State,
-        NodeRef, Message) ->
+        rsa2048_sha1, NodeRef, Message) ->
+    %% TODO Remove this function body and fold into trailer
     Address = addr_node_map_lookup_by_node(AddrNodeMap, NodeRef),
     pushy_messaging:send_message(CommandSocket, [Address,
         ?TIME_IT(pushy_util, signed_header_from_message, (PrivateKey, Message)),
         Message]),
+    State;
+do_send(#state{addr_node_map = AddrNodeMap,
+               command_sock = CommandSocket}=State,
+        Method, NodeRef, Message) ->
+    Key = get_key_for_method(Method, State, NodeRef),
+    Address = addr_node_map_lookup_by_node(AddrNodeMap, NodeRef),
+    Packets = ?TIME_IT(pushy_messaging, make_message, (proto_v2, Method, Key, Message)),
+    pushy_messaging:send_message(CommandSocket, [Address | Packets]),
     State.
 
+get_key_for_method(rsa2048_sha1, #state{private_key = PrivateKey}, _NodeRef) ->
+    PrivateKey;
+get_key_for_method(hmac_sha256, _State, NodeRef) ->
+    pushy_key_manager:get_key(NodeRef).
+
+
+%%
+%%
+%%
 do_send_multi(#state{addr_node_map = AddrNodeMap,
                      command_sock = CommandSocket,
                      private_key = PrivateKey}=State,
-              NodeRefs, Message) ->
+              rsa2048_sha1, NodeRefs, Message) ->
     FrameList = [
-        ?TIME_IT(pushy_util, signed_header_from_message, (PrivateKey, Message)), Message],
+                 ?TIME_IT(pushy_util, signed_header_from_message, (PrivateKey, Message)), Message],
     % TODO if you communicate with a node that doesn't exist, don't just fail, dude
     AddressList = [addr_node_map_lookup_by_node(AddrNodeMap, NodeRef) || NodeRef <- NodeRefs],
     pushy_messaging:send_message_multi(CommandSocket, AddressList, FrameList),
+    State;
+do_send_multi(State, hmac_sha256, NodeRefs, Message) ->
+    %% TODO OPTIMIZE: we only need to encode json once, but this is the simple implementation
+    [do_send(State, hmac_sha256, NodeRef, Message) || NodeRef <- NodeRefs],
     State.
 
 %% FIX: Take advantage of multiple function heads to make code easier to read
