@@ -16,7 +16,7 @@
                   webmachine,
                   lager
                  ]},
-  {included_applications, [chef_authn]},
+  {included_applications, []},
   {mod, { pushy_app, []}},
   {env, []}
  ]}.
