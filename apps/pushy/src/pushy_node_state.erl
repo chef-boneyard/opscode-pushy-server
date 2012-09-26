@@ -89,7 +89,7 @@ set_logging(NodeRef, Level) when Level =:= verbose orelse Level =:= normal ->
     gen_fsm:send_all_state_event(Pid, {logging, Level}).
 
 -spec start_watching(node_ref()) -> true.
- start_watching(NodeRef) ->
+start_watching(NodeRef) ->
     gproc:reg(subscribers_key(NodeRef)).
 
 -spec stop_watching(node_ref()) -> true.
