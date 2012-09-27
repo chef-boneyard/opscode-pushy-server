@@ -8,6 +8,7 @@
 -module(pushy_config_resource).
 
 -export([init/1,
+         service_available/2,
          allowed_methods/2,
          content_types_provided/2,
          to_json/2]).
@@ -16,9 +17,12 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+-include("pushy_sql.hrl").
+
 -record(config_state, {
           orgname :: string(),
-          organization_guid :: string() }).
+          organization_guid :: string(),
+          nodename :: string() }).
 
 init(_Config) ->
     State = #config_state{},
@@ -33,13 +37,21 @@ init(_Config) ->
 %    State2 = State#config_state{orgname = OrgName},
 %    {{true, foo}, Req, State2}.
 
+service_available(Req, State) ->
+    NodeName = wrq:path_info(node_name, Req),
+    OrgName = wrq:path_info(organization_id, Req),
+    %% TODO find organization guid properly
+    OrgGuid = ?POC_ORG_ID,
+    State1 = State#config_state{orgname = OrgName, organization_guid = OrgGuid, nodename = NodeName},
+    {true, Req, State1}.
+
 allowed_methods(Req, State) ->
     {['GET'], Req, State}.
 
 content_types_provided(Req, State) ->
     {[{"application/json", to_json}], Req, State}.
 
-to_json(Req, State) ->
+to_json(Req, #config_state{orgname = OrgName, organization_guid = OrgGuid, nodename = NodeName} = State) ->
 
     Host = pushy_util:get_env(pushy, server_name, fun is_list/1),
     HeartbeatAddress = iolist_to_binary(
@@ -49,12 +61,13 @@ to_json(Req, State) ->
 
     HeartbeatInterval = pushy_util:get_env(pushy, heartbeat_interval, fun is_integer/1),
 
-%% TODO: Figure out how to get public key out of chef_keyring in encoded form!
+    %% TODO: Figure out how to get public key out of chef_keyring in encoded form!
+    %% This needs the client key fetch work to be done first though...
     {ok, PublicKeyR} = chef_keyring:get_key(pushy_pub),
     PublicKey = public_key:pem_encode(
         [public_key:pem_entry_encode('SubjectPublicKeyInfo', PublicKeyR)]),
-    %% TODO: extract client name somehow
-    ClientName = {<<"AAAAA">>, foo},
+
+    ClientName = {OrgGuid, iolist_to_binary(NodeName)},
     {Method,Key} = pushy_key_manager:get_key(ClientName),
 
     %% TODO:
@@ -73,6 +86,8 @@ to_json(Req, State) ->
                         {<<"offline_threshold">>, 3},
                         {<<"online_threshold">>, 2}
                        ]}}]}},
+          {<<"node">>, NodeName},
+          {<<"organization">>, OrgName},
           {<<"public_key">>, PublicKey},
           {<<"session_key">>, KeyStruct},
           {<<"lifetime">> ,3600}
