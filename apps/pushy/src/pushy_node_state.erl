@@ -266,7 +266,6 @@ send_to_rehab(#state{node_ref = NodeRef} = State) ->
     State#state{rehab_timer = TimerRef}.
 
 kick_from_rehab(#state{rehab_timer = undefined} = State) ->
-    lager:info("LOOK AT ME"),
     State;
 kick_from_rehab(#state{rehab_timer = TimerRef, node_ref = NodeRef} = State) ->
     {ok, cancel} = timer:cancel(TimerRef),

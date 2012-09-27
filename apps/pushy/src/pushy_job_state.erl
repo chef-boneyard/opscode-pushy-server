@@ -236,6 +236,7 @@ mark_node_faulty(NodeRef, #state{job = Job, job_nodes = JobNodes} = State) ->
         pushy_sql:update_job_node(NewPushyJobNode),
         NewPushyJobNode
     end, JobNodes),
+    pushy_node_state:rehab(NodeRef),
     State#state{job_nodes = JobNodes2}.
 
 finish_all_nodes(#state{job = Job, job_nodes = JobNodes} = State) ->
@@ -250,6 +251,8 @@ finish_all_nodes(#state{job = Job, job_nodes = JobNodes} = State) ->
             {_, terminal}    -> OldNodeState
         end,
         pushy_sql:update_job_node(NewPushyJobNode),
+        pushy_node_state:rehab({NewPushyJobNode#pushy_job_node.org_id,
+                                NewPushyJobNode#pushy_job_node.node_name}),
         NewPushyJobNode
     end, JobNodes),
     State#state{job_nodes = JobNodes2}.
@@ -330,6 +333,8 @@ send_node_event(JobId, NodeRef, Event) ->
         Pid when is_pid(Pid) ->
             gen_fsm:send_event(Pid, {Event, NodeRef});
         not_found ->
+            %TODO This isn't working. Need to figure out why
+            %pushy_node_state:rehab(NodeRef),
             not_found
     end.
 
