@@ -44,6 +44,7 @@
 
 -include("pushy.hrl").
 -include_lib("pushy_common/include/pushy_metrics.hrl").
+-include_lib("pushy_common/include/pushy_messaging.hrl").
 
 %% TODO : figure out where this really should come from
 -opaque dictionary() :: any().
@@ -132,12 +133,21 @@ do_receive(CommandSock, Frame, State) ->
     lager:debug("Receiving message with address ~w", [Address]),
 
     lager:debug("Received message~n\tA ~p~n\tH ~s~n\tB ~s", [Address, Header, Body]),
-    State1 = case catch ?TIME_IT(pushy_util, do_authenticate_message, (Header, Body)) of
-                 ok ->
-                     process_message(State, Address, Header, Body);
-                 {no_authn, bad_sig} ->
+
+    KeyFetch = fun(M, EJson) -> get_key_for_method(M, State, EJson) end,
+
+    State1 = try ?TIME_IT(pushy_messaging, parse_message, (Header, Body, KeyFetch)) of
+                 {ok, #pushy_message{} = Msg} ->
+                     process_message(State, Msg);
+                 {error, #pushy_message{validated=bad_sig}} ->
                      lager:error("Command message failed verification: header=~s", [Header]),
                      State
+             catch
+                 error:Error ->
+                     Stack = erlang:get_stacktrace(),
+                     ?debugVal(Error), ?debugVal(Stack),
+                     lager:error("Command message parser failed horribly: header=~w~nstack~s", [Error, Stack]),
+                     State;
              end,
     State1.
 
@@ -160,10 +170,13 @@ do_send(#state{addr_node_map = AddrNodeMap,
     pushy_messaging:send_message(CommandSocket, [Address | Packets]),
     State.
 
-get_key_for_method(rsa2048_sha1, #state{private_key = PrivateKey}, _NodeRef) ->
-    PrivateKey;
-get_key_for_method(hmac_sha256, _State, NodeRef) ->
-    pushy_key_manager:get_key(NodeRef).
+get_key_for_method(rsa2048_sha1, #state{private_key = PrivateKey}, _EJson) ->
+    {ok, PrivateKey};
+get_key_for_method(hmac_sha256, _State, EJson) ->
+    NodeRef = get_node_ref(EJson),
+    {hmac_sha256, Key} = pushy_key_manager:get_key(NodeRef),
+    {ok, Key}.
+
 
 
 %%
@@ -185,18 +198,12 @@ do_send_multi(State, hmac_sha256, NodeRefs, Message) ->
     State.
 
 %% FIX: Take advantage of multiple function heads to make code easier to read
-process_message(State, Address, _Header, Body) ->
-    case catch jiffy:decode(Body) of
-        {Data} ->
-            {State2, NodeRef} = get_node_ref(State, Address, Data),
-            JobId = ej:get({<<"job_id">>}, Data),
-            Type = ej:get({<<"type">>}, Data),
-            send_node_event(JobId, NodeRef, Type),
-            State2;
-        {'EXIT', Error} ->
-            lager:error("Status message JSON parsing failed: body=~s, error=~s", [Body,Error]),
-            State
-    end.
+process_message(State, #pushy_message{address=Address, body=Data}) ->
+    {State2, NodeRef} = get_node_ref(State, Address, Data),
+    JobId = ej:get({<<"job_id">>}, Data),
+    Type = ej:get({<<"type">>}, Data),
+    send_node_event(JobId, NodeRef, Type),
+    State2.
 
 send_node_event(JobId, NodeRef, <<"heartbeat">>) ->
     lager:debug("Received heartbeat for node ~p with job id ~p", [JobId, NodeRef]),
@@ -219,14 +226,16 @@ send_node_event(JobId, NodeRef, UnknownType) ->
     lager:error("Status message for job ~p and node ~p had unknown type ~p!~n", [JobId, NodeRef, UnknownType]).
 
 
-
-get_node_ref(State, Address, Data) ->
+get_node_ref(Data) ->
     % This essentially debug code.
     _ClientName = ej:get({<<"client">>}, Data),
     OrgName  = ej:get({<<"org">>}, Data),
     NodeName = ej:get({<<"node">>}, Data),
     OrgId = pushy_object:fetch_org_id(OrgName),
-    NodeRef = {OrgId, NodeName},
+    {OrgId, NodeName}.
+
+get_node_ref(State, Address, Data) ->
+    NodeRef = get_node_ref(Data),
     %% Every time we get a message from a node, we update it's Addr->Name mapping entry
     State2 = addr_node_map_update(State, Address, NodeRef),
     {State2, NodeRef}.
@@ -264,5 +273,3 @@ addr_node_map_lookup_by_node(#state{addr_node_map = AddrNodeMap}, Node) ->
     addr_node_map_lookup_by_addr(AddrNodeMap, Node);
 addr_node_map_lookup_by_node({_, NodeToAddr}, Node) ->
     dict:fetch(Node, NodeToAddr).
-
-
