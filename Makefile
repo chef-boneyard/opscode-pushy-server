@@ -60,9 +60,8 @@ relclean:
 
 devrel: rel
 	@/bin/echo -n Symlinking deps and apps into release
-	@$(foreach dep,$(wildcard deps/*), /bin/echo -n .;rm -rf rel/pushy/lib/$(shell basename $(dep))-* \
-	   && ln -sf $(abspath $(dep)) rel/pushy/lib;)
-	@rm -rf rel/pushy/lib/pushy*;ln -sf $(abspath apps/pushy) rel/pushy/lib/pushy
+	@$(foreach lib,$(wildcard apps/* deps/*), /bin/echo -n .;rm -rf rel/pushy/lib/$(shell basename $(lib))-* \
+	   && ln -sf $(abspath $(lib)) rel/pushy/lib;)
 	@/bin/echo done.
 	@/bin/echo  Run \'make update\' to pick up changes in a running VM.
 
