@@ -187,6 +187,16 @@ handle_sync_event(Event, From, StateName, State) ->
         {'next_state', job_status(), #state{}}.
 handle_info({down, NodeRef}, StateName, State) ->
     pushy_job_state:StateName({down,NodeRef}, State);
+handle_info(voting_timeout, voting, #state{job = Job} = State) ->
+    lager:info("Timeout occurred during voting on job ~p after ~p milliseconds", [Job#pushy_job.id, voting_timeout()]),
+    maybe_finished_voting(State);
+handle_info(running_timeout, running, #state{job = Job} = State) ->
+    lager:info("Timeout occurred while running job ~p after ~p milliseconds", [Job#pushy_job.id, running_timeout()]),
+    finish_job(timed_out, State);
+% Rather than store and cancel timers, we let them fire and ignore them if we've
+% moved on to a new state.
+handle_info(voting_timeout, StateName, State) ->
+    {next_state, StateName, State};
 handle_info(Info, StateName, State) ->
     lager:error("Unknown message handle_info(~p)", [Info]),
     {next_state, StateName, State}.
@@ -274,6 +284,7 @@ start_voting(#state{job = Job} = State) ->
     State2 = State#state{job = Job2},
     pushy_object:update_object(update_job, Job2, Job2#pushy_job.id),
     send_command_to_all(<<"commit">>, State2),
+    {ok, _} = timer:send_after(voting_timeout(), voting_timeout),
     maybe_finished_voting(State2).
 
 start_running(#state{job = Job} = State) ->
@@ -282,6 +293,7 @@ start_running(#state{job = Job} = State) ->
     State2 = State#state{job = Job2},
     pushy_object:update_object(update_job, Job2, Job2#pushy_job.id),
     send_command_to_all(<<"run">>, State2),
+    {ok, _} = timer:send_after(running_timeout(), running_timeout),
     maybe_finished_running(State2).
 
 finish_job(Reason, #state{job = Job} = State) ->
@@ -339,4 +351,10 @@ terminalize(unavailable) -> terminal;
 terminalize(nacked) -> terminal;
 terminalize(crashed) -> terminal;
 terminalize(was_ready) -> terminal;
-terminalize(NodeState) -> NodeState.
+terminalize(timed_out) -> terminal;
+terminalize(new) -> new;
+terminalize(ready) -> ready;
+terminalize(running) -> running.
+
+voting_timeout() -> 1000.
+running_timeout() -> 4000.

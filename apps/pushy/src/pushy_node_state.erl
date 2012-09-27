@@ -56,7 +56,7 @@
 -record(state, {node_ref              :: node_ref(),
                 heartbeat_interval    :: integer(),
                 decay_window          :: integer(),
-                logging = normal      :: logging_level(),
+                logging = verbose     :: logging_level(),
                 current_status = down :: node_status(),
                 heartbeats_rcvd = 0   :: integer(),
                 up_threshold          :: float(),
