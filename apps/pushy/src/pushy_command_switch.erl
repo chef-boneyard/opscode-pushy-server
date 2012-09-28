@@ -155,7 +155,8 @@ do_receive(CommandSock, Frame, State) ->
              end,
             State1;
         _Packets ->
-            lager:debug("Received runt/overlength message with ~n packets~n", [length(_Packets)])
+            lager:debug("Received runt/overlength message with ~n packets~n", [length(_Packets)]),
+            State
     end.
 
 do_send(#state{addr_node_map = AddrNodeMap,
