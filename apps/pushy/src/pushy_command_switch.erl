@@ -129,27 +129,34 @@ code_change(_OldVsn, State, _Extra) ->
 do_receive(CommandSock, Frame, State) ->
     %% TODO: This needs a more graceful way of handling message sequences. I really feel like we need to
     %% abstract out some more generalized routines to handle the message receipt process.
-    [Address, Header, Body] = pushy_messaging:receive_message_async(CommandSock, Frame),
-    lager:debug("Receiving message with address ~w", [Address]),
+    case pushy_messaging:receive_message_async(CommandSock, Frame) of
+        [Address, Header, Body] ->
+            lager:debug("Receiving message with address ~w", [Address]),
+            lager:debug("Received message~n\tA ~p~n\tH ~s~n\tB ~s", [Address, Header, Body]),
 
-    lager:debug("Received message~n\tA ~p~n\tH ~s~n\tB ~s", [Address, Header, Body]),
-
-    KeyFetch = fun(M, EJson) -> get_key_for_method(M, State, EJson) end,
-
-    State1 = try ?TIME_IT(pushy_messaging, parse_message, (Header, Body, KeyFetch)) of
-                 {ok, #pushy_message{} = Msg} ->
-                     process_message(State, Msg);
+            KeyFetch = fun(M, EJson) -> get_key_for_method(M, State, EJson) end,
+            State1 = try ?TIME_IT(pushy_messaging, parse_message, (Header, Body, KeyFetch)) of
+                         {ok, #pushy_message{} = Msg} ->
+                             process_message(State, Msg);
                  {error, #pushy_message{validated=bad_sig}} ->
-                     lager:error("Command message failed verification: header=~s", [Header]),
-                     State
-             catch
+                             lager:error("Command message failed verification: header=~s", [Header]),
+                             State
+                     catch
                  error:Error ->
                      Stack = erlang:get_stacktrace(),
                      ?debugVal(Error), ?debugVal(Stack),
                      lager:error("Command message parser failed horribly: header=~w~nstack~s", [Error, Stack]),
                      State;
+                 Error ->
+                     Stack = erlang:get_stacktrace(),
+                     ?debugVal(Error), ?debugVal(Stack),
+                     lager:error("Command message parser failed horribly: header=~w~nstack~s", [Error, Stack]),
+                     State
              end,
-    State1.
+            State1;
+        _Packets ->
+            lager:debug("Received runt/overlength message with ~n packets~n", [length(_Packets)])
+    end.
 
 do_send(#state{addr_node_map = AddrNodeMap,
                command_sock = CommandSocket,
