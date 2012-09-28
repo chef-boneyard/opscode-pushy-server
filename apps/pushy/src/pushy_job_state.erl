@@ -87,7 +87,7 @@ stop_job(JobId) ->
     {'ok', job_status(), #state{}} |
     {'stop', 'shutdown', #state{}}.
 init(#pushy_job{id = JobId, job_nodes = JobNodeList} = Job) ->
-    Host = pushy_util:get_env(pushy, server_name, fun is_list/1),
+    Host = envy:get(pushy, server_name, string),
     case pushy_job_state_sup:register_process(JobId) of
         true ->
             {ok, _} = pushy_object:create_object(create_job, Job, JobId),

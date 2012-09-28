@@ -53,13 +53,13 @@ content_types_provided(Req, State) ->
 
 to_json(Req, #config_state{orgname = OrgName, organization_guid = OrgGuid, nodename = NodeName} = State) ->
 
-    Host = pushy_util:get_env(pushy, server_name, fun is_list/1),
+    Host = envy:get(pushy, server_name, string),
     HeartbeatAddress = iolist_to_binary(
         pushy_util:make_zmq_socket_addr(Host, server_heartbeat_port, tcp)),
     CommandAddress = iolist_to_binary(
         pushy_util:make_zmq_socket_addr(Host, command_port, tcp)),
 
-    HeartbeatInterval = pushy_util:get_env(pushy, heartbeat_interval, fun is_integer/1),
+    HeartbeatInterval = envy:get(pushy, heartbeat_interval, integer),
 
     %% TODO: Figure out how to get public key out of chef_keyring in encoded form!
     %% This needs the client key fetch work to be done first though...
