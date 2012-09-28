@@ -143,15 +143,13 @@ do_receive(CommandSock, Frame, State) ->
                              State
                      catch
                  error:Error ->
-                     Stack = erlang:get_stacktrace(),
-                     ?debugVal(Error), ?debugVal(Stack),
-                     lager:error("Command message parser failed horribly: header=~w~nstack~s", [Error, Stack]),
-                     State;
-                 Error ->
-                     Stack = erlang:get_stacktrace(),
-                     ?debugVal(Error), ?debugVal(Stack),
-                     lager:error("Command message parser failed horribly: header=~w~nstack~s", [Error, Stack]),
-                     State
+                             Stack = erlang:get_stacktrace(),
+                             lager:error("Command message parser failed horribly: header=~w~nstack~s", [Error, Stack]),
+                             State;
+                         Error ->
+                             Stack = erlang:get_stacktrace(),
+                             lager:error("Command message parser failed horribly: header=~w~nstack~s", [Error, Stack]),
+                             State
              end,
             State1;
         _Packets ->
