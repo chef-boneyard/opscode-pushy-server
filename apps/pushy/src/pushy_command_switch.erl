@@ -67,7 +67,7 @@ start_link(PushyState) ->
 
 -spec send_command(node_ref(), ejson()) -> ok.
 send_command(NodeRef, Message) ->
-    send_command(NodeRef, rsa2048_sha1, Message).
+    send_command(NodeRef, hmac_sha256, Message).
 
 -spec send_command(node_ref(), signing_method(), ejson()) -> ok.
 send_command(NodeRef, Method, Message) ->
@@ -76,7 +76,7 @@ send_command(NodeRef, Method, Message) ->
 
 -spec send_multi_command([node_ref()], binary()) -> ok.
 send_multi_command(NodeRefs, Message) ->
-    send_multi_command(NodeRefs, rsa2048_sha1, Message).
+    send_multi_command(NodeRefs, hmac_sha256, Message).
 
 -spec send_multi_command([node_ref()], signing_method(), binary()) -> ok.
 send_multi_command(NodeRefs, Method, Message) ->

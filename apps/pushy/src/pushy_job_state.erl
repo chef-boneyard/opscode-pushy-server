@@ -321,7 +321,7 @@ send_command_to_all(Type, #state{job_host=Host, job = Job, job_nodes = JobNodes}
                {server, list_to_binary(Host)},
                {command, Job#pushy_job.command}],
     NodeRefs = dict:fetch_keys(JobNodes),
-    pushy_command_switch:send_multi_command(NodeRefs, {Message}).
+    pushy_command_switch:send_multi_command(NodeRefs, rsa2048_sha1, {Message}).
 
 -spec send_node_event(object_id(), node_ref(), job_event()) -> ok | not_found.
 send_node_event(JobId, NodeRef, Event) ->
