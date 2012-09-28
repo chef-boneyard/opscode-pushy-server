@@ -47,9 +47,9 @@ init([#pushy_state{ctx=_Ctx} = PushyState]) ->
 %%%    {_,_,[{trace_dir, TraceDir}]} = lists:keyfind(["dev", "wmtrace", '*'], 1, Dispatch),
 %%%    ok = filelib:ensure_dir(string:join([TraceDir,"trace"], "/")),
 
-    Port = pushy_util:get_env(pushy, api_port, fun is_integer/1),
-    LogDir = pushy_util:get_env(pushy, log_dir, fun is_list/1),
-    EnableGraphite = pushy_util:get_env(pushy_common, enable_graphite, fun is_boolean/1),
+    Port = envy:get(pushy, api_port, integer),
+    LogDir = envy:get(pushy, log_dir, string),
+    EnableGraphite = envy:get(pushy_common, enable_graphite, boolean),
     WebMachineConfig = [
                         {ip, Ip},
                         {port, Port},

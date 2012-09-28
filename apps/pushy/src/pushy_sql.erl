@@ -148,7 +148,7 @@ create_object(QueryName, Args) when is_atom(QueryName), is_list(Args) ->
         {conflict, Reason} ->
             {conflict, Reason};
         {error, Reason} ->
-            {ok, DbType} = application:get_env(sqerl, db_type),
+            DbType = envy:get(sqerl, db_type, atom),
             parse_error(DbType, Reason)
         %% FIXME: original code for create_node had the following match, but seems like
         %% crashing would be better if we get an unexpected error.
@@ -307,7 +307,7 @@ flatten_record(Rec) ->
 %% CHEF_COMMON CARGO_CULT
 %% chef_sql:parse_error/1
 parse_error(Reason) ->
-    {ok, DbType} = application:get_env(sqerl, db_type),
+    DbType = envy:get(sqerl, db_type, atom),
     parse_error(DbType, Reason).
 %% chef_sql:parse_error/2
 parse_error(mysql, Reason) ->

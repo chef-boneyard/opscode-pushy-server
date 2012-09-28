@@ -66,7 +66,7 @@ heartbeat() ->
 
 init([#pushy_state{ctx=Ctx, incarnation_id=IncarnationId }]) ->
     lager:info("Starting heartbeat generator with incarnation id ~s.", [IncarnationId]),
-    Interval = pushy_util:get_env(pushy, heartbeat_interval, fun is_integer/1),
+    Interval = envy:get(pushy, heartbeat_interval, integer),
 
     {ok, HeartbeatSock} = erlzmq:socket(Ctx, pub),
     {ok, PrivateKey} = chef_keyring:get_key(pushy_priv),

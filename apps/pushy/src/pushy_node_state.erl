@@ -115,10 +115,10 @@ init(NodeRef, StartState) ->
         %% assigned before anyone else tries to start things up gproc:reg can only return
         %% true or throw
         true = gproc:reg({n, l, GprocName}),
-        HeartbeatInterval = pushy_util:get_env(pushy, heartbeat_interval, fun is_integer/1),
-        DecayWindow = pushy_util:get_env(pushy, decay_window, ?DEFAULT_DECAY_INTERVAL, fun is_integer/1),
-        UpThresh   = pushy_util:get_env(pushy, up_threshold, ?DEFAULT_UP_THRESHOLD, any), %% TODO constrain to float
-        DownThresh = pushy_util:get_env(pushy, down_threshold, ?DEFAULT_DOWN_THRESHOLD, any), %% TODO constrain to float
+        HeartbeatInterval = envy:get(pushy, heartbeat_interval, integer),
+        DecayWindow = envy:get(pushy, decay_window, ?DEFAULT_DECAY_INTERVAL, integer),
+        UpThresh   = envy:get(pushy, up_threshold, ?DEFAULT_UP_THRESHOLD, number), %% TODO constrain to float
+        DownThresh = envy:get(pushy, down_threshold, ?DEFAULT_DOWN_THRESHOLD, number), %% TODO constrain to float
 
         InitAvg = case StartState of
                       up -> 1.0;
