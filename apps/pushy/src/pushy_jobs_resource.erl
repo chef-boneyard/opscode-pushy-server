@@ -76,7 +76,7 @@ from_json(Req, State) ->
 to_json(Req, #config_state{organization_guid = OrgId} = State) ->
     {ok, Jobs} = pushy_sql:fetch_jobs(OrgId),
 
-    {jiffy:encode(Jobs), Req, State}.
+    {jiffy:encode(EJson), Req, State}.
 
 % Private stuff
 
