@@ -96,15 +96,22 @@ init(#pushy_job{id = JobId, job_nodes = JobNodeList} = Job) ->
                                               JobNode <- JobNodeList]),
             State = #state{job = Job#pushy_job{job_nodes = undefined},
                            job_nodes = JobNodes, job_host=Host},
-            listen_for_down_nodes(dict:fetch_keys(JobNodes)),
 
-            % Start voting--if there are no nodes, the job finishes immediately.
-            case start_voting(State) of
-                {next_state, StateName, State2} -> {ok, StateName, State2};
-                {stop, Reason, _State} -> {stop, Reason}
+            JobNodes1 = [Node || Node <- dict:fetch_keys(JobNodes), pushy_node_state:current_state(Node) == up],
+
+            case JobNodes1 /= dict:fetch_keys(JobNodes) of
+                true -> {stop, quorum_failed};
+                false ->
+                    listen_for_down_nodes(dict:fetch_keys(JobNodes)),
+
+                % Start voting--if there are no nodes, the job finishes immediately.
+                case start_voting(State) of
+                    {next_state, StateName, State2} -> {ok, StateName, State2};
+                    {stop, Reason, _State} -> {stop, Reason}
+                end
             end;
         false ->
-            {stop, shutdown, undefined}
+            {stop, shutdown}
     end.
 
 %%%
@@ -251,8 +258,8 @@ finish_all_nodes(#state{job = Job, job_nodes = JobNodes} = State) ->
             {_, terminal}    -> OldNodeState
         end,
         pushy_sql:update_job_node(NewPushyJobNode),
-        pushy_node_state:rehab({NewPushyJobNode#pushy_job_node.org_id,
-                                NewPushyJobNode#pushy_job_node.node_name}),
+        %pushy_node_state:rehab({NewPushyJobNode#pushy_job_node.org_id,
+                                %NewPushyJobNode#pushy_job_node.node_name}),
         NewPushyJobNode
     end, JobNodes),
     State#state{job_nodes = JobNodes2}.

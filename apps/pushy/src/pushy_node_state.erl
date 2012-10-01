@@ -16,6 +16,7 @@
 
 %% API
 -export([current_state/1,
+         in_rehab/1,
          heartbeat/1,
          rehab/1,
          node_aborted/1,
@@ -102,6 +103,10 @@ stop_watching(NodeRef) ->
             ok
     end.
 
+in_rehab(NodeRef) ->
+    Pid = pushy_node_state_sup:get_process(NodeRef),
+    gen_fsm:sync_send_all_state_event(Pid, current_rehab_status, infinity).
+
 rehab(NodeRef) ->
     Pid = pushy_node_state_sup:get_process(NodeRef),
     gen_fsm:send_all_state_event(Pid, rehab).
@@ -143,6 +148,8 @@ init(NodeRef, StartState) ->
                        down_threshold = DownThresh,
                        current_status = StartState
                       },
+
+        lager:info("START STATE: ~p~nNODE: ~p~n", [StartState, NodeRef]),
         {ok, StartState, create_status_record(StartState, State)}
     catch
         error:badarg ->
@@ -167,6 +174,8 @@ handle_event({logging, Level}, StateName, State) ->
 handle_event(rehab, up, State) ->
     State1 = send_to_rehab(State),
     {next_state, up, State1};
+handle_event(rehab, down, State) ->
+    {next_state, down, State};
 handle_event(aborted, up, State) ->
     State1 = kick_from_rehab(State),
     {next_state, up, State1};
@@ -187,6 +196,12 @@ handle_event(Event, StateName, #state{node_ref=NodeRef}=State) ->
 
 handle_sync_event(current_state, _From, StateName, State) ->
     {reply, StateName, StateName, State};
+handle_sync_event(current_rehab_status, _From, StateName, #state{rehab_timer = RehabTimer} = State) ->
+    InRehab = case RehabTimer of
+        undefined -> false;
+        _ -> true
+    end,
+    {reply, InRehab, StateName, State};
 handle_sync_event(Event, _From, StateName, #state{node_ref=NodeRef}=State) ->
     lager:error("FSM for ~p received unexpected handle_sync_event(~p)", [NodeRef, Event]),
     {reply, ignored, StateName, State}.
