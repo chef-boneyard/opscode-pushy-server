@@ -78,7 +78,6 @@ to_json(Req, #config_state{organization_guid = OrgId} = State) ->
                 {ok, not_found} -> [{[]}];
                 {ok, Jobs} -> [{Jobs}]
             end,
-    ?debugVal(EJson),
     {jiffy:encode(EJson), Req, State}.
 
 % Private stuff
