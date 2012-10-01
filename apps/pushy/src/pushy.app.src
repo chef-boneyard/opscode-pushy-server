@@ -14,7 +14,8 @@
                   gproc,
                   sqerl,
                   webmachine,
-                  lager
+                  lager,
+                  folsom
                  ]},
   {included_applications, []},
   {mod, { pushy_app, []}},
