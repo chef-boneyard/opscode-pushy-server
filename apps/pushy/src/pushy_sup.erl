@@ -49,6 +49,7 @@ init([#pushy_state{ctx=_Ctx} = PushyState]) ->
 
     Port = pushy_util:get_env(pushy, api_port, fun is_integer/1),
     LogDir = pushy_util:get_env(pushy, log_dir, fun is_list/1),
+    EnableGraphite = pushy_util:get_env(pushy_common, enable_graphite, fun is_boolean/1),
     WebMachineConfig = [
                         {ip, Ip},
                         {port, Port},
@@ -56,14 +57,19 @@ init([#pushy_state{ctx=_Ctx} = PushyState]) ->
                         {dispatch, Dispatch},
                         {enable_perf_logger, true}],
     ?debugVal(WebMachineConfig),
-    {ok, {{one_for_one, 60, 120},
-               [?SUP(pushy_node_state_sup, []),
+    Workers = [?SUP(pushy_node_state_sup, []),
                 ?SUP(pushy_job_state_sup, []),
-                ?SUP(folsom_sup, []),
                 ?WORKER(chef_keyring, []),
                 ?WORKER(pushy_node_status_updater, []),
                 ?WORKER(pushy_heartbeat_generator, [PushyState]),
                 ?WORKER(pushy_command_switch, [PushyState]),
                 ?WORKERNL(webmachine_mochiweb, [WebMachineConfig])  %% FIXME start or start_link here?
-               ]}}.
+               ],
+    {ok, {{one_for_one, 60, 120},
+         maybe_run_graphite(EnableGraphite, Workers)}}.
 
+
+maybe_run_graphite(true, Workers) ->
+    [?SUP(folsom_graphite_sup, []) | Workers];
+maybe_run_graphite(false, Workers) ->
+    Workers.
