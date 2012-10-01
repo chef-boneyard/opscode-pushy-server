@@ -68,9 +68,15 @@ create_path(Req, #config_state{organization_guid = OrgId} = State) ->
 
 % This processes POST /pushy/jobs
 from_json(Req, State) ->
-    pushy_job_state_sup:start(State#config_state.job),
-    Req2 = ripped_from_chef_rest:set_uri_of_created_resource(Req),
-    {true, Req2, State}.
+    case pushy_job_state_sup:start(State#config_state.job) of
+        {ok, JobPid} ->
+            lager:info("Started Job with Pid (~p)~n", [JobPid]),
+            Req2 = ripped_from_chef_rest:set_uri_of_created_resource(Req),
+            {true, Req2, State};
+        {error, Error} ->
+            lager:info("Job failed to start ~p", [Error]),
+            {false, Req, State}
+    end.
 
 %% GET /pushy/jobs
 to_json(Req, #config_state{organization_guid = OrgId} = State) ->

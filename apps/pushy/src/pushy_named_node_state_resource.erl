@@ -47,8 +47,10 @@ to_json(Req, #config_state{organization_guid=OrgId}=State) ->
     NodeName = list_to_binary(wrq:path_info(node_name, Req)),
     % TODO handle missing node
     NodeState = pushy_node_state:current_state({OrgId, NodeName}),
+    InRehab = pushy_node_state:in_rehab({OrgId, NodeName}),
     Result = jiffy:encode({[
         {<<"node_name">>, NodeName},
-        {<<"status">>, NodeState}
+        {<<"status">>, NodeState},
+        {<<"is_in_rehab">>, InRehab}
     ]}),
     {Result, Req, State}.
