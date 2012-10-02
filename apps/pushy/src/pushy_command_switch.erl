@@ -134,7 +134,7 @@ do_receive(CommandSock, Frame, State) ->
             lager:debug("Received message~n\tA ~p~n\tH ~s~n\tB ~s", [Address, Header, Body]),
 
             KeyFetch = fun(M, EJson) -> get_key_for_method(M, State, EJson) end,
-            State1 = try ?TIME_IT(pushy_messaging, parse_message, (Header, Body, KeyFetch)) of
+            State1 = try ?TIME_IT(pushy_messaging, parse_message, (Address, Header, Body, KeyFetch)) of
                          {ok, #pushy_message{} = Msg} ->
                              process_message(State, Msg);
                  {error, #pushy_message{validated=bad_sig}} ->
@@ -162,7 +162,7 @@ do_send(#state{addr_node_map = AddrNodeMap,
     Key = get_key_for_method(Method, State, NodeRef),
     Address = addr_node_map_lookup_by_node(AddrNodeMap, NodeRef),
     Packets = ?TIME_IT(pushy_messaging, make_message, (proto_v2, Method, Key, Message)),
-    pushy_messaging:send_message(CommandSocket, [Address | Packets]),
+    ok = pushy_messaging:send_message(CommandSocket, [Address | Packets]),
     State.
 
 %% This is broken!!! sort it out and fix it!
@@ -209,7 +209,6 @@ do_send_multi(#state{addr_node_map = AddrNodeMap,
 %% FIX: Take advantage of multiple function heads to make code easier to read
 process_message(State, #pushy_message{address=Address, body=Data}) ->
     {State2, NodeRef} = get_node_ref(State, Address, Data),
-    ?debugVal(NodeRef), ?debugVal(Address),
     JobId = ej:get({<<"job_id">>}, Data),
     Type = ej:get({<<"type">>}, Data),
     send_node_event(JobId, NodeRef, Type),
