@@ -180,26 +180,36 @@ get_key_for_method(hmac_sha256, _State, EJson) ->
 %%
 %%
 do_send_multi(#state{addr_node_map = AddrNodeMap,
-                     command_sock = CommandSocket,
-                     private_key = PrivateKey}=State,
-              rsa2048_sha1, NodeRefs, Message) ->
-    JSon = ?TIME_IT(jiffy, encode, (Message)),
-    FrameList = [
-                 ?TIME_IT(pushy_messaging, make_header,
-                          (proto_v2, rsa2048_sha1, PrivateKey, JSon)),
-                 JSon],
-    % TODO if you communicate with a node that doesn't exist, don't just fail, dude
-    AddressList = [addr_node_map_lookup_by_node(AddrNodeMap, NodeRef) || NodeRef <- NodeRefs],
-    pushy_messaging:send_message_multi(CommandSocket, AddressList, FrameList),
+                     command_sock = Socket} = State, 
+              hmac_sha256 = Method, NodeRefs, Message) ->
+    N2Addr = fun(NodeRef) ->
+                     addr_node_map_lookup_by_node(AddrNodeMap, NodeRef)
+             end,
+    N2Key = fun(hmac_sha256, NodeRef) ->
+                    {hmac_sha256, Key} = pushy_key_manager:get_key(NodeRef),
+                    Key
+            end,
+    pushy_messaging:make_send_message_multi(Socket, proto_v2, Method,
+                                            NodeRefs, Message, N2Addr, N2Key),
     State;
-do_send_multi(State, hmac_sha256, NodeRefs, Message) ->
-    %% TODO OPTIMIZE: we only need to encode json once, but this is the simple implementation
-    [do_send(State, hmac_sha256, NodeRef, Message) || NodeRef <- NodeRefs],
+do_send_multi(#state{addr_node_map = AddrNodeMap,
+                     command_sock = Socket,
+                     private_key = PrivateKey}=State,
+              rsa2048_sha1 = Method, NodeRefs, Message) ->
+    N2Addr = fun(NodeRef) ->
+                     addr_node_map_lookup_by_node(AddrNodeMap, NodeRef)
+             end,
+    N2Key = fun(rsa2048_sha1, _) ->
+                    PrivateKey
+            end,
+    pushy_messaging:make_send_message_multi(Socket, proto_v2, Method,
+                                            NodeRefs, Message, N2Addr, N2Key),
     State.
 
 %% FIX: Take advantage of multiple function heads to make code easier to read
 process_message(State, #pushy_message{address=Address, body=Data}) ->
     {State2, NodeRef} = get_node_ref(State, Address, Data),
+    ?debugVal(NodeRef), ?debugVal(Address),
     JobId = ej:get({<<"job_id">>}, Data),
     Type = ej:get({<<"type">>}, Data),
     send_node_event(JobId, NodeRef, Type),
