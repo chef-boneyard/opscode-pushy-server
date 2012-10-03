@@ -148,8 +148,6 @@ init(NodeRef, StartState) ->
                        down_threshold = DownThresh,
                        current_status = StartState
                       },
-
-        lager:info("START STATE: ~p~nNODE: ~p~n", [StartState, NodeRef]),
         {ok, StartState, create_status_record(StartState, State)}
     catch
         error:badarg ->
