@@ -170,7 +170,7 @@ handle_event({logging, Level}, StateName, State) ->
     State1 = State#state{logging=Level},
     {next_state, StateName, State1};
 handle_event(rehab, up, State) ->
-    State1 = send_to_rehab(State),
+    State1 = send_to_rehab(up, State),
     {next_state, up, State1};
 handle_event(rehab, down, State) ->
     {next_state, down, State};
@@ -257,7 +257,7 @@ notify_status_change(Status, #state{node_ref=NodeRef} = State) ->
         down ->
             gproc:send(subscribers_key(NodeRef), {down, NodeRef}),
             kick_from_rehab(State);
-        up -> send_to_rehab(State)
+        up -> send_to_rehab(Status, State)
     end.
 
 nlog(normal, Format, Args) ->
@@ -273,17 +273,29 @@ subscribers_key(NodeRef) ->
 %% Private Functions
 %%-----------------------------------------------------------------------------
 
-send_to_rehab(#state{node_ref = NodeRef} = State) ->
+send_to_rehab(up, #state{node_ref = NodeRef, rehab_timer = TimerRef0} = State) when TimerRef0 =:= undefined ->
     {ok, TimerRef} = timer:send_interval(rehab_timer(), abort_nodes),
     lager:info("Added ~p to Rehab", [NodeRef]),
-    State#state{rehab_timer = TimerRef}.
+    State#state{rehab_timer = TimerRef};
+send_to_rehab(down, #state{node_ref = NodeRef} = State) ->
+    lager:info("Node ~p is down can't be sent to Rehab", [NodeRef]),
+    State;
+send_to_rehab(_Status, #state{node_ref = NodeRef} = State) ->
+    lager:info("~p already in rehab", [NodeRef]),
+    State.
 
 kick_from_rehab(#state{rehab_timer = undefined} = State) ->
     State;
 kick_from_rehab(#state{rehab_timer = TimerRef, node_ref = NodeRef} = State) ->
-    {ok, cancel} = timer:cancel(TimerRef),
-    lager:info("Removed ~p from Rehab", [NodeRef]),
-    State#state{rehab_timer = undefined}.
+    case timer:cancel(TimerRef) of
+        {ok, cancel} ->
+            lager:info("Removed ~p from Rehab", [NodeRef]),
+            State#state{rehab_timer = undefined};
+        Error ->
+            lager:info("Error Canceling Timer: ~p~n", [Error]),
+            State
+    end.
+
 
 rehab_timer() ->
     pushy_util:get_env(pushy, rehab_timer, fun is_integer/1).
