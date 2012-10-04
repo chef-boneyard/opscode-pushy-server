@@ -110,7 +110,8 @@ handle_info({zmq, CommandSock, Frame, [rcvmore]}, State) ->
 handle_info(_Info, State) ->
     {noreply, State}.
 
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{command_sock=CommandSock}) ->
+    erlzmq:close(CommandSock),
     ok.
 
 code_change(_OldVsn, State, _Extra) ->
