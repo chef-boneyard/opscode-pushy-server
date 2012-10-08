@@ -1,0 +1,3 @@
+{
+  "run_list": [ "recipe[pushy-server::show_config]" ]
+}
