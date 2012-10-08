@@ -19,23 +19,23 @@ malformed_request(Req, State) ->
     catch
         throw:bad_clock ->
             Msg1 = malformed_request_message(bad_clock, Req, State),
-            Req3 = wrq:set_resp_body(ejson:encode(Msg1), Req),
+            Req3 = wrq:set_resp_body(jiffy:encode(Msg1), Req),
             {{halt, 401}, Req3, State};
         throw:bad_headers ->
             Msg1 = malformed_request_message(bad_headers, Req, State),
-            Req3 = wrq:set_resp_body(ejson:encode(Msg1), Req),
+            Req3 = wrq:set_resp_body(jiffy:encode(Msg1), Req),
             {{halt, 401}, Req3, State};
         throw:bad_sign_desc ->
             Msg1 = malformed_request_message(bad_sign_desc, Req, State),
-            Req3 = wrq:set_resp_body(ejson:encode(Msg1), Req),
+            Req3 = wrq:set_resp_body(jiffy:encode(Msg1), Req),
             {{halt, 400}, Req3, State};
         throw:{too_big, Msg} ->
             error_logger:info_msg("json too large (~p)", [Msg]),
-            Req3 = wrq:set_resp_body(ejson:encode({[{<<"error">>, Msg}]}), Req),
+            Req3 = wrq:set_resp_body(jiffy:encode({[{<<"error">>, Msg}]}), Req),
             {{halt, 413}, Req3, State};
         throw:Why ->
             Msg = malformed_request_message(Why, Req, State),
-            NewReq = wrq:set_resp_body(ejson:encode(Msg), Req),
+            NewReq = wrq:set_resp_body(jiffy:encode(Msg), Req),
             {true, NewReq, State}
     end.
 
@@ -132,7 +132,7 @@ verify_request_signature(Req, State) ->
         {not_found, What} ->
             NotFoundMsg = verify_request_message({not_found, What},
                                                  UserName, OrgName),
-            {false, wrq:set_resp_body(ejson:encode(NotFoundMsg), Req), State1};
+            {false, wrq:set_resp_body(jiffy:encode(NotFoundMsg), Req), State1};
         PublicKey ->
             %% This is either #chef_client{} or #chef_user{} If the
             %% request originated from the webui, we do authn using
@@ -148,14 +148,14 @@ verify_request_signature(Req, State) ->
                     {true, Req, State1};
                 {no_authn, Reason} ->
                     Msg = verify_request_message(Reason, UserName, OrgName),
-                    Json = ejson:encode(Msg),
+                    Json = jiffy:encode(Msg),
                     Req1 = wrq:set_resp_body(Json, Req),
                     {false, Req1, State1}
             end
     end.
 
 get_public_key(_OrgName, _UserName) ->
-    {not_found, org}.
+    {not_found, user}.
 
 body_or_default(Req, Default) ->
     case wrq:req_body(Req) of

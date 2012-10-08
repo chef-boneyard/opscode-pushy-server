@@ -34,10 +34,6 @@ malformed_request(Req, State) ->
 
 is_authorized(Req, State) ->
     pushy_wm_base:is_authorized(Req, State).
-%    OrgName =  wrq:path_info(organization_id, Req),
-%    %?debugVal(OrgName),
-%    State2 = State#config_state{organization_guid = pushy_object:fetch_org_id(OrgName) },
-%    {true, Req, State2}.
 
 allowed_methods(Req, State) ->
     {['GET'], Req, State}.
