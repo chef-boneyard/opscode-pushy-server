@@ -32,11 +32,13 @@ start(_StartType, _StartArgs) ->
         {ok, Ctx} ->
             case pushy_sup:start_link(#pushy_state{ctx=Ctx, incarnation_id=IncarnationId}) of
                 {ok, Pid} -> {ok, Pid, Ctx};
-                Error -> Error
+                Error ->
+                    stop(Ctx),
+                    Error
             end;
         Error ->
             Error
     end.
 
 stop(Ctx) ->
-    erlzmq:term(Ctx, 5000).
+    erlzmq:term(Ctx, 0).
