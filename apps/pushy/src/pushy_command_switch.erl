@@ -86,6 +86,7 @@ init([#pushy_state{ctx=Ctx}]) ->
     lager:info("Starting command mux listening on ~s.", [CommandAddress]),
 
     {ok, CommandSock} = erlzmq:socket(Ctx, [router, {active, true}]),
+    ok = erlzmq:setsockopt(CommandSock, linger, 0),
     ok = erlzmq:bind(CommandSock, CommandAddress),
     State = #state{command_sock = CommandSock,
                    addr_node_map = addr_node_map_new(),
@@ -236,6 +237,8 @@ send_node_event(JobId, NodeRef, <<"nack_run">>) ->
     pushy_job_state:node_nack_run(JobId, NodeRef);
 send_node_event(JobId, NodeRef, <<"complete">>)->
     pushy_job_state:node_complete(JobId, NodeRef);
+send_node_event(null, NodeRef, <<"aborted">>) ->
+    pushy_node_state:node_aborted(NodeRef);
 send_node_event(JobId, NodeRef, <<"aborted">>) ->
     pushy_node_state:node_aborted(NodeRef),
     pushy_job_state:node_aborted(JobId, NodeRef);
