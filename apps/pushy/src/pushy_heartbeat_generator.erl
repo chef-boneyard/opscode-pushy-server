@@ -65,10 +65,12 @@ heartbeat() ->
 
 
 init([#pushy_state{ctx=Ctx, incarnation_id=IncarnationId }]) ->
+    erlang:process_flag(trap_exit, true),
     lager:info("Starting heartbeat generator with incarnation id ~s.", [IncarnationId]),
     Interval = pushy_util:get_env(pushy, heartbeat_interval, fun is_integer/1),
 
     {ok, HeartbeatSock} = erlzmq:socket(Ctx, pub),
+    ok = erlzmq:setsockopt(HeartbeatSock, linger, 0),
     {ok, PrivateKey} = chef_keyring:get_key(pushy_priv),
 
     HeartbeatAddress = pushy_util:make_zmq_socket_addr(server_heartbeat_port),
@@ -98,7 +100,8 @@ handle_cast(_Msg, State) ->
 handle_info(_Info, State) ->
     {noreply, State}.
 
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{heartbeat_sock=HeartbeatSock}) ->
+    erlzmq:close(HeartbeatSock),
     ok.
 
 code_change(_OldVsn, State, _Extra) ->
