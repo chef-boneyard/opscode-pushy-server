@@ -3,11 +3,11 @@
 %% @author Douglas Triggs <doug@opscode.com>
 %% @copyright Copyright 2012 Opscode Inc.
 
--module(pushy_auth_connect).
+-module(pushy_public_key).
 
--export([get_public_key/2]).
+-export([fetch_public_key/2]).
 
--spec get_public_key(OrgName :: binary(), Requestor :: binary()) ->
+-spec fetch_public_key(OrgName :: binary(), Requestor :: binary()) ->
                             binary() | not_found.
 %% @doc get pubkey for given requestor against given organization
 get_public_key(OrgName, Requestor) ->
