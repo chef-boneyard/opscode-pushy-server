@@ -155,7 +155,7 @@ verify_request_signature(Req, State) ->
     end.
 
 get_public_key(OrgName, UserName) ->
-    pushy_auth_connect:get_public_key(OrgName, UserName).
+    pushy_public_key:fetch_public_key(OrgName, UserName).
 
 body_or_default(Req, Default) ->
     case wrq:req_body(Req) of
