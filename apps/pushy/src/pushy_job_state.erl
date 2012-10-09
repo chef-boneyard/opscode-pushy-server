@@ -152,12 +152,6 @@ running({complete, NodeRef}, State) ->
         _       -> mark_node_faulty(NodeRef, State)
     end,
     maybe_finished_running(State2);
-running({aborted, NodeRef}, State) ->
-    State2 = case get_node_state(NodeRef, State) of
-        running -> set_node_state(NodeRef, aborted, State);
-        _       -> mark_node_faulty(NodeRef, State)
-    end,
-    maybe_finished_running(State2);
 running({_,NodeRef}, State) ->
     State2 = mark_node_faulty(NodeRef, State),
     maybe_finished_running(State2).
@@ -333,8 +327,7 @@ send_node_event(JobId, NodeRef, Event) ->
         Pid when is_pid(Pid) ->
             gen_fsm:send_event(Pid, {Event, NodeRef});
         not_found ->
-            %TODO This isn't working. Need to figure out why
-            %pushy_node_state:rehab(NodeRef),
+            pushy_node_state:rehab(NodeRef),
             not_found
     end.
 
