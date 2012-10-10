@@ -37,7 +37,7 @@ if node['pushy']['bootstrap']['enable']
   end
 
   execute "migrate_database" do
-    command "/opt/opscode/embedded/bin/bundle exec ./bin/rake pg:remigrate"
+    command "#{psql_cmd} opscode_pushy < pgsql_schema.sql"
     cwd "#{node['pushy']['install_path']}/embedded/service/opscode-pushy-server/db"
     user node['pushy']['postgresql']['username']
     action :nothing

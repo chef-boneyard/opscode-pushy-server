@@ -26,11 +26,11 @@ directory "/etc/opscode" do
   action :nothing
 end.run_action(:create)
 
-PushyServer[:node] = node
-if File.exists?("/etc/opscode/opscode-pushy-server.rb")
-  PushyServer.from_file("/etc/opscode/opscode-pushy-server.rb")
+PushJobsServer[:node] = node
+if File.exists?("/etc/opscode/opscode-push-jobs-server.rb")
+  PushJobsServer.from_file("/etc/opscode/opscode-push-jobs-server.rb")
 end
-node.consume_attributes(PushyServer.generate_config(node['fqdn']))
+node.consume_attributes(PushJobsServer.generate_config(node['fqdn']))
 
 if File.exists?("/var/opt/opscode/pushy-bootstrapped")
   node['pushy']['bootstrap']['enable'] = false
@@ -38,6 +38,22 @@ end
 
 # Create the Chef User
 include_recipe "opscode-pushy-server::users"
+
+pushy_key = OpenSSL::PKey::RSA.generate(2048) unless File.exists?('/etc/opscode/pushy_pub.pem')
+
+file "/etc/opscode/pushy_pub.pem" do
+  owner "root"
+  group "root"
+  mode "0644"
+  content pushy_key.public_key.to_s unless File.exists?('/etc/opscode/pushy_pub.pem')
+end
+
+file "/etc/opscode/pushy_priv.pem" do
+  owner node["pushy"]["user"]["username"]
+  group "root"
+  mode "0600"
+  content pushy_key.to_pem.to_s unless File.exists?('/etc/opscode/pushy_pub.pem')
+end
 
 directory "/var/opt/opscode" do
   owner "root"
@@ -67,7 +83,7 @@ end
 # TODO - JC
 # include_recipe "opscode-pushy-server::pushy-pedant"
 
-file "/etc/opscode/opscode-pushy-server-running.json" do
+file "/etc/opscode/opscode-push-jobs-server-running.json" do
   owner node['pushy']['user']['username']
   group "root"
   mode "0644"
