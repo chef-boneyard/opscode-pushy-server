@@ -10,18 +10,19 @@
 -spec fetch_public_key(OrgName :: binary(), Requestor :: binary()) ->
                             binary() | not_found.
 %% @doc get pubkey for given requestor against given organization
-get_public_key(OrgName, Requestor) ->
-    request_pubkey(OrgName, Requestor).
-%    try
-%        request_pubkey(OrgName, Requestor)
-%    catch
-%        throw:_ ->
-%            not_found
-%    end.
+fetch_public_key(OrgName, Requestor) ->
+    try
+        request_pubkey(OrgName, Requestor)
+    catch
+        throw:{error, {not_found, Why}} ->
+            {not_found, Why}
+    end.
 
 request_pubkey(OrgName, Requestor) ->
     Headers = [{"Accept", "application/json"}],
     Url = api_url(OrgName, Requestor),
+    io:format("~n----->~p", [Url]),
+    ibrowse:start(),
     case ibrowse:send_req(Url, Headers, get) of
         {ok, Code, ResponseHeaders, ResponseBody} ->
             ok = check_http_response(Code, ResponseHeaders, ResponseBody),
@@ -40,9 +41,9 @@ parse_json_response(Body) ->
     end.
 
 api_url(OrgName, Requestor) ->
-    Hostname = "i.have.no.idea",
-    Port = 9999,
-    lists:flatten(io_lib:format("http://~s:~w/organizations/~w/principals/~w",
+    Hostname = "private-chef.opscode.piab",
+    Port = 443,
+    lists:flatten(io_lib:format("https://~s:~w/organizations/~s/principals/~s",
                                 [Hostname, Port, OrgName, Requestor])).
 
 check_http_response(Code, Headers, Body) ->
