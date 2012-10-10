@@ -19,13 +19,20 @@ fetch_public_key(OrgName, Requestor) ->
     end.
 
 request_pubkey(OrgName, Requestor) ->
-    Headers = [{"Accept", "application/json"}],
+    Headers = [{"Accept", "application/json"},
+               {"Content-Type", "application/json"},
+               {"User-Agent", "opscode-pushy-server pushy pubkey"},
+               {"X-Ops-UserId", ""},
+               {"X-Ops-Content-Hash", ""},
+               {"X-Ops-Sign", ""},
+               {"X-Ops-Timestamp", ""}],
     Url = api_url(OrgName, Requestor),
-    io:format("~n----->~p", [Url]),
+    io:format("~n----->~p~n", [Url]),
     ibrowse:start(),
-    case ibrowse:send_req(Url, Headers, get) of
+    case ibrowse:send_req(Url, Headers, get, [], [{ssl_options, []}]) of
         {ok, Code, ResponseHeaders, ResponseBody} ->
             ok = check_http_response(Code, ResponseHeaders, ResponseBody),
+            io:format("----->~p~n~n", [ResponseBody]),
             parse_json_response(ResponseBody);
         {error, Reason} ->
             throw({error, Reason})
@@ -41,9 +48,10 @@ parse_json_response(Body) ->
     end.
 
 api_url(OrgName, Requestor) ->
-    Hostname = "private-chef.opscode.piab",
-    Port = 443,
-    lists:flatten(io_lib:format("https://~s:~w/organizations/~s/principals/~s",
+    % This needs to be configurable:
+    Hostname = "localhost",
+    Port = 8000,
+    lists:flatten(io_lib:format("http://~s:~w/organizations/~s/principals/~s",
                                 [Hostname, Port, OrgName, Requestor])).
 
 check_http_response(Code, Headers, Body) ->
