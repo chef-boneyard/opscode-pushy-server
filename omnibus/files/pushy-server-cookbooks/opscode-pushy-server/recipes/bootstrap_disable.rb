@@ -1,8 +1,6 @@
 #
-# Cookbook Name:: runit
-# Attribute File:: sv_bin
-#
-# Copyright 2008-2009, Opscode, Inc.
+# Copyright:: Copyright (c) 2012 Opscode, Inc.
+# License:: Apache License, Version 2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,9 +14,3 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-default[:runit][:sv_bin] = "/opt/opscode-push-jobs-server/embedded/bin/sv"
-default[:runit][:chpst_bin] = "/opt/opscode-push-jobs-server/embedded/bin/chpst"
-default[:runit][:service_dir] = "/opt/opscode-push-jobs-server/service"
-default[:runit][:sv_dir] = "/opt/opscode-push-jobs-server/sv"
-
