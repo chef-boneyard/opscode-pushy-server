@@ -27,12 +27,10 @@ request_pubkey(OrgName, Requestor) ->
                {"X-Ops-Sign", ""},
                {"X-Ops-Timestamp", ""}],
     Url = api_url(OrgName, Requestor),
-    io:format("~n----->~p~n", [Url]),
     ibrowse:start(),
     case ibrowse:send_req(Url, Headers, get, [], [{ssl_options, []}]) of
         {ok, Code, ResponseHeaders, ResponseBody} ->
             ok = check_http_response(Code, ResponseHeaders, ResponseBody),
-            io:format("----->~p~n~n", [ResponseBody]),
             parse_json_response(ResponseBody);
         {error, Reason} ->
             throw({error, Reason})
@@ -40,12 +38,7 @@ request_pubkey(OrgName, Requestor) ->
 
 parse_json_response(Body) ->
     EJson = jiffy:decode(Body),
-    case chef_authn:extract_public_or_private_key(ej:get({"public_key"}, EJson)) of
-        {error, bad_key} ->
-            throw({error, bad_key});
-        Key when is_tuple(Key) ->
-            Key
-    end.
+    ej:get({"public_key"}, EJson).
 
 api_url(OrgName, Requestor) ->
     % This needs to be configurable:
