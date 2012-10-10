@@ -79,7 +79,7 @@ fetch_jobs(OrgId) ->
         {ok, Rows} when is_list(Rows) ->
             {ok, prepare_jobs(Rows)};
         {ok, none} ->
-            {ok, not_found};
+            {ok, []};
         {error, Error} ->
             {error, Error}
     end.
