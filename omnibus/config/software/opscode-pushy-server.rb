@@ -30,6 +30,7 @@ relative_path "opscode-pushy-server"
 env = {
   "PATH" => "#{install_dir}/embedded/bin:#{ENV["PATH"]}",
   "LDFLAGS" => "-L#{install_dir}/embedded/lib -I#{install_dir}/embedded/include",
+  "CFLAGS" => "-L#{install_dir}/embedded/lib -I#{install_dir}/embedded/include",
   "CXXFLAGS" => "-L#{install_dir}/embedded/lib -I#{install_dir}/embedded/include",
   "LD_RUN_PATH" => "#{install_dir}/embedded/lib"
 }
@@ -39,6 +40,5 @@ build do
   command "make rel", :env => env
   command "mkdir -p #{install_dir}/embedded/service/opscode-pushy-server"
   command "#{install_dir}/embedded/bin/rsync -a --delete --exclude=.git/*** --exclude=.gitignore ./rel/opscode-pushy-server/ #{install_dir}/embedded/service/opscode-pushy-server/"
-  command "cd #{install_dir}/embedded/service/opscode-pushy-server/db && bundle install --binstubs"
   command "rm -rf #{install_dir}/embedded/service/opscode-pushy-server/log"
 end

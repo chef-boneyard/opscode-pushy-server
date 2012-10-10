@@ -21,7 +21,7 @@ require 'chef/json_compat'
 require 'chef/mixin/deep_merge'
 require 'securerandom'
 
-module PushyServer
+module PushJobsServer
   extend(Mixlib::Config)
 
   pushy Mash.new
@@ -32,15 +32,15 @@ module PushyServer
     # TODO JC - Don't need this ?
     def server(name=nil, opts={})
       if name
-        PushyServer["servers"] ||= Mash.new
-        PushyServer["servers"][name] = Mash.new(opts)
+        PushJobsServer["servers"] ||= Mash.new
+        PushJobsServer["servers"][name] = Mash.new(opts)
       end
-      PushyServer["servers"]
+      PushJobsServer["servers"]
     end
 
     # TODO JC - Don't need this ?
     def servers
-      PushyServer["servers"]
+      PushJobsServer["servers"]
     end
 
     # guards against creating secrets on non-bootstrap node
@@ -50,29 +50,29 @@ module PushyServer
 
     def generate_secrets(node_name)
       existing_secrets ||= Hash.new
-      if File.exists?("/etc/opscode/opscode-pushy-server-secrets.json")
-        existing_secrets = Chef::JSONCompat.from_json(File.read("/etc/opscode/opscode-pushy-server-secrets.json"))
+      if File.exists?("/etc/opscode/opscode-push-jobs-server-secrets.json")
+        existing_secrets = Chef::JSONCompat.from_json(File.read("/etc/opscode/opscode-push-jobs-server-secrets.json"))
       end
       existing_secrets.each do |k, v|
         v.each do |pk, p|
-          PushyServer[k][pk] = p
+          PushJobsServer[k][pk] = p
         end
       end
 
-      PushyServer['postgresql']['sql_password'] ||= generate_hex(50)
-      PushyServer['postgresql']['sql_ro_password'] ||= generate_hex(50)
+      PushJobsServer['postgresql']['sql_password'] ||= generate_hex(50)
+      PushJobsServer['postgresql']['sql_ro_password'] ||= generate_hex(50)
 
       if File.directory?("/etc/opscode")
-        File.open("/etc/opscode/opscode-pushy-server-secrets.json", "w") do |f|
+        File.open("/etc/opscode/opscode-push-jobs-server-secrets.json", "w") do |f|
           f.puts(
             Chef::JSONCompat.to_json_pretty({
               'postgresql' => {
-                'sql_password' => PushyServer['postgresql']['sql_password'],
-                'sql_ro_password' => PushyServer['postgresql']['sql_ro_password']
+                'sql_password' => PushJobsServer['postgresql']['sql_password'],
+                'sql_ro_password' => PushJobsServer['postgresql']['sql_ro_password']
               }
             })
           )
-          system("chmod 0600 /etc/opscode/opscode-pushy-server-secrets.json")
+          system("chmod 0600 /etc/opscode/opscode-push-jobs-server-secrets.json")
         end
       end
     end
@@ -85,7 +85,7 @@ module PushyServer
         "bootstrap"
       ].each do |key|
         rkey = key.gsub('_', '-')
-        results['pushy'][rkey] = PushyServer[key]
+        results['pushy'][rkey] = PushJobsServer[key]
       end
 
       results

@@ -54,7 +54,7 @@
         ]},
  {sqerl, [
           %% The database system you are using (e.g., mysql, pgsql)
-          {db_type, <%= node['pushy']['db_type'] %> },
+          {db_type, <%= node['pushy']['database_type'] == "postgresql" ? "pgsql" : "mysql" %> },
 
           %% Database connection parameters
           {db_host, "<%= node['pushy'][node['pushy']['database_type']]['vip'] %>"},
@@ -87,7 +87,10 @@
           %% Zeromq tunings
           {zmq_io_processes, <%= @zmq_io_processes %> }
          ]},
- {pushy_common,[ {metrics_module, folsom_metrics} ]},
+         {pushy_common,[
+                        {metrics_module, folsom_metrics},
+                        {enable_graphite, false}
+                       ]},
  {folsom_graphite,[ {application, "pushy"}]},
  {chef_authn,  [{keyring_dir, "<%= @keyring_dir %>"}]}
 ].

@@ -25,12 +25,6 @@ pushy_dir = "#{node['pushy']['install_path']}/embedded/service/opscode-pushy-ser
 #  not_if { File.exists?(bootstrap_status_file) }
 #end
 
-execute "boostrap-opscode-pushy-server" do
-  command "bin/bootstrap-opscode-pushy-server"
-  cwd pushy_dir
-  not_if { File.exists?(bootstrap_status_file) }
-end
-
 file bootstrap_status_file do
   owner "root"
   group "root"

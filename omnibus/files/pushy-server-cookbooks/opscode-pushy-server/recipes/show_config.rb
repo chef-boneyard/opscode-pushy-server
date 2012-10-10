@@ -15,11 +15,11 @@
 # limitations under the License.
 #
 
-if File.exists?("/etc/pushy-server/pushy-server.rb")
-  PushyServer[:node] = node
-  PushyServer.from_file("/etc/pushy-server/pushy-server.rb")
+if File.exists?("/etc/opscode/opscode-pushy-jobs-server.rb")
+  PushJobsServer[:node] = node
+  PushJobsServer.from_file("/etc/opscode/opscode-push-jobs-server.rb")
 end
-config = PushyServer.generate_config(node['fqdn'])
+config = PushJobsServer.generate_config(node['fqdn'])
 
 puts Chef::JSONCompat.to_json_pretty(config)
 exit 0
