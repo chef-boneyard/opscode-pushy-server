@@ -134,6 +134,7 @@ verify_request_signature(Req, State) ->
                                                  UserName, OrgName),
             {false, wrq:set_resp_body(jiffy:encode(NotFoundMsg), Req), State1};
         PublicKey ->
+            io:format("~n----->~p~n~n", [PublicKey]),
             %% This is either #chef_client{} or #chef_user{} If the
             %% request originated from the webui, we do authn using
             %% the webui public key, not the user's key.
