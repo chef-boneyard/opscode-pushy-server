@@ -27,9 +27,7 @@
 
 %% fsm states
 -export([voting/2,
-         running/2,
-         complete/2,
-         quorum_failed/2]).
+         running/2]).
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
@@ -161,14 +159,6 @@ running({aborted, NodeRef}, State) ->
 running({_,NodeRef}, State) ->
     State2 = mark_node_faulty(NodeRef, State),
     maybe_finished_running(State2).
-
-complete({Event,NodeRef}, State) ->
-    lager:error("Unexpectedly received node_event message in finished state (~p, ~p)", [Event,NodeRef]),
-    {next_state, complete, State}.
-
-quorum_failed({Event,NodeRef}, State) ->
-    lager:error("Unexpectedly received node_event message in finished state (~p, ~p)", [Event,NodeRef]),
-    {next_state, quorum_failed, State}.
 
 -spec handle_event(any(), job_status(), #state{}) ->
         {'next_state', job_status(), #state{}}.
