@@ -21,8 +21,7 @@
 
 %% API
 -export([init/0,
-         get_key/1,
-         generate_key/1
+         get_key/1
         ]).
 
 -define(TABLE, pushy_key_manager).
