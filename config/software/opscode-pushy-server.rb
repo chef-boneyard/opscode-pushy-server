@@ -16,9 +16,11 @@
 #
 
 name "opscode-pushy-server"
-version "master"
+version "jc/OC-4259/add-schema-dump"
 
-dependencies ["erlang", "rebar", "rsync", "curl", "libuuid"]
+dependencies ["erlang", "rebar", "rsync", "curl",
+              "automake", "autoconf", "libuuid", "libtool",
+              "bundler"]
 
 # TODO - use public GIT URL when repo made public
 source :git => "git@github.com:opscode/opscode-pushy-server.git"
@@ -28,7 +30,7 @@ relative_path "opscode-pushy-server"
 env = {
   "PATH" => "#{install_dir}/embedded/bin:#{ENV["PATH"]}",
   "LDFLAGS" => "-L#{install_dir}/embedded/lib -I#{install_dir}/embedded/include",
-  "CFLAGS" => "-L#{install_dir}/embedded/lib -I#{install_dir}/embedded/include",
+  "CXXFLAGS" => "-L#{install_dir}/embedded/lib -I#{install_dir}/embedded/include",
   "LD_RUN_PATH" => "#{install_dir}/embedded/lib"
 }
 
@@ -36,6 +38,7 @@ build do
   command "make distclean", :env => env
   command "make rel", :env => env
   command "mkdir -p #{install_dir}/embedded/service/opscode-pushy-server"
-  command "#{install_dir}/embedded/bin/rsync -a --delete --exclude=.git/*** --exclude=.gitignore ./rel/pushy/ #{install_dir}/embedded/service/pushy/"
-  command "rm -rf #{install_dir}/embedded/service/pushy/log"
+  command "#{install_dir}/embedded/bin/rsync -a --delete --exclude=.git/*** --exclude=.gitignore ./rel/opscode-pushy-server/ #{install_dir}/embedded/service/opscode-pushy-server/"
+  command "cd #{install_dir}/embedded/service/opscode-pushy-server/db && bundle install --binstubs"
+  command "rm -rf #{install_dir}/embedded/service/opscode-pushy-server/log"
 end

@@ -1,8 +1,6 @@
 #
-# Cookbook Name:: runit
-# Attribute File:: sv_bin
-#
-# Copyright 2008-2009, Opscode, Inc.
+# Copyright:: Copyright (c) 2012 Opscode, Inc.
+# License:: Apache License, Version 2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,8 +15,18 @@
 # limitations under the License.
 #
 
-default[:runit][:sv_bin] = "/opt/opscode-push-jobs-server/embedded/bin/sv"
-default[:runit][:chpst_bin] = "/opt/opscode-push-jobs-server/embedded/bin/chpst"
-default[:runit][:service_dir] = "/opt/opscode-push-jobs-server/service"
-default[:runit][:sv_dir] = "/opt/opscode-push-jobs-server/sv"
+require 'chef/shell_out'
+
+class OmnibusHelper
+  def self.should_notify?(service_name)
+    File.symlink?("/opt/opscode-push-jobs-server/service/#{service_name}") && check_status(service_name)
+  end
+
+  def self.check_status(service_name)
+    o = Chef::ShellOut.new("/opt/opscode-push-jobs-server/bin/pushy-server-ctl status #{service_name}")
+    o.run_command
+    o.exitstatus == 0 ? true : false
+  end
+
+end
 

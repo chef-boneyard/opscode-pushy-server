@@ -1,8 +1,6 @@
 #
-# Cookbook Name:: runit
-# Attribute File:: sv_bin
-#
-# Copyright 2008-2009, Opscode, Inc.
+# Copyright:: Copyright (c) 2012 Opscode, Inc.
+# License:: Apache License, Version 2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,8 +15,12 @@
 # limitations under the License.
 #
 
-default[:runit][:sv_bin] = "/opt/opscode-push-jobs-server/embedded/bin/sv"
-default[:runit][:chpst_bin] = "/opt/opscode-push-jobs-server/embedded/bin/chpst"
-default[:runit][:service_dir] = "/opt/opscode-push-jobs-server/service"
-default[:runit][:sv_dir] = "/opt/opscode-push-jobs-server/sv"
+if File.exists?("/etc/pushy-server/pushy-server.rb")
+  PushyServer[:node] = node
+  PushyServer.from_file("/etc/pushy-server/pushy-server.rb")
+end
+config = PushyServer.generate_config(node['fqdn'])
+
+puts Chef::JSONCompat.to_json_pretty(config)
+exit 0
 

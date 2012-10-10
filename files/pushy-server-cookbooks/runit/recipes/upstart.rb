@@ -17,22 +17,22 @@
 # limitations under the License.
 #
 
-cookbook_file "/etc/init/opscode-runsvdir.conf" do
+cookbook_file "/etc/init/opscode-pushy-runsvdir.conf" do
   owner "root"
   group "root"
   mode "0644"
-  source "opscode-runsvdir"
+  source "opscode-pushy-runsvdir"
 end
 
 # Keep on trying till the job is found :(
-execute "initctl status opscode-runsvdir" do
+execute "initctl status opscode-pushy-runsvdir" do
   retries 30
 end
 
 # If we are stop/waiting, start
 #
 # Why, upstart, aren't you idempotent? :(
-execute "initctl start opscode-runsvdir" do
-  only_if "initctl status opscode-runsvdir | grep stop"
+execute "initctl start opscode-pushy-runsvdir" do
+  only_if "initctl status opscode-pushy-runsvdir | grep stop"
   retries 30
 end
