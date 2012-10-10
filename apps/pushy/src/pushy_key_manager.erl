@@ -15,11 +15,14 @@
 %% processing messages as fast as it can; the fan in into a gen_server
 %% for key management would likely be a bottleneck.
 
+
+%% TODO: add key lifetimes and forcible rekeying...
+%%
+
 %% API
 -export([init/0,
          get_key/1,
-         generate_key/1,
-         rekey/1
+         generate_key/1
         ]).
 
 -define(TABLE, pushy_key_manager).
@@ -46,12 +49,18 @@ get_key(Name) ->
         [{Name, Key}] ->
             Key;
         [] ->
-           rekey(Name)
+           make_key(Name)
     end.
 
 
--spec rekey(any()) -> key().
-rekey(Name) ->
+-spec make_key(any()) -> key().
+make_key(Name) ->
     NewKey = generate_key(?KEYTYPE),
-    ets:insert(?TABLE, {Name, NewKey}),
-    NewKey.
+    case ets:insert_new(?TABLE, {Name, NewKey}) of
+        false ->
+            %% if we get anything but a keypair here something strange is happening...
+            [{Name, Key}] = ets:lookup(?TABLE, Name),
+            Key;
+        true ->
+            NewKey
+    end.
