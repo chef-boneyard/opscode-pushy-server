@@ -2,6 +2,6 @@
 
 # see: http://tickets.opscode.com/browse/CHEF-3022
 if [ ! -e /etc/redhat-release -o "x$1" == "x0" ]; then
-  rm -f /usr/bin/opscode-pushy-server-ctl
+  rm -f /usr/bin/opscode-push-jobs-server-ctl
 fi
 

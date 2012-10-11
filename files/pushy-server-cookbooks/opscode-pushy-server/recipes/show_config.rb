@@ -22,5 +22,3 @@ end
 config = PushJobsServer.generate_config(node['fqdn'])
 
 puts Chef::JSONCompat.to_json_pretty(config)
-exit 0
-

@@ -24,24 +24,11 @@ require 'securerandom'
 module PushJobsServer
   extend(Mixlib::Config)
 
-  pushy Mash.new
+  opscode_pushy_server Mash.new
   postgresql Mash.new
+  bootstrap Mash.new
 
   class << self
-
-    # TODO JC - Don't need this ?
-    def server(name=nil, opts={})
-      if name
-        PushJobsServer["servers"] ||= Mash.new
-        PushJobsServer["servers"][name] = Mash.new(opts)
-      end
-      PushJobsServer["servers"]
-    end
-
-    # TODO JC - Don't need this ?
-    def servers
-      PushJobsServer["servers"]
-    end
 
     # guards against creating secrets on non-bootstrap node
     def generate_hex(chars)
@@ -80,7 +67,7 @@ module PushJobsServer
     def generate_hash
       results = { "pushy" => {} }
       [
-        "opscode-pushy-server",
+        "opscode_pushy_server",
         "postgresql",
         "bootstrap"
       ].each do |key|

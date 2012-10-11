@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Perform necessary pushy-server setup steps after package is installed.
+# Perform necessary push-jobs-server setup steps after package is installed.
 #
 
 PROGNAME=$(basename $0)
@@ -11,14 +11,14 @@ function error_exit
 	exit 1
 }
 
-ln -sf /opt/opscode-push-jobs-server/bin/opscode-pushy-server-ctl /usr/bin || error_exit "Cannot link opscode-pushy-server-ctl in /usr/bin"
+ln -sf /opt/opscode-push-jobs-server/bin/opscode-push-jobs-server-ctl /usr/bin || error_exit "Cannot link opscode-push-jobs-server-ctl in /usr/bin"
 
-if [ -e /etc/opscode/opscode-pushy-server-running.json ]; then
+if [ -e /etc/opscode/opscode-push-jobs-server-running.json ]; then
   echo -e "\033[1mYou have upgraded the Push Jobs Server!\033[0m"
   echo
   echo "The next step in the upgrade process is to run:"
   echo
-  echo -e "\033[1;31mopscode-pushy-server-ctl upgrade\033[0m"
+  echo -e "\033[1;31mopscode-push-jobs-server-ctl upgrade\033[0m"
 else
   echo -e "\033[1mThank you for installing the Push Jobs Server!\033[0m"
 fi
