@@ -148,8 +148,7 @@ create_object(QueryName, Args) when is_atom(QueryName), is_list(Args) ->
         {conflict, Reason} ->
             {conflict, Reason};
         {error, Reason} ->
-            DbType = envy:get(sqerl, db_type, atom),
-            parse_error(DbType, Reason)
+            parse_error(Reason)
         %% FIXME: original code for create_node had the following match, but seems like
         %% crashing would be better if we get an unexpected error.
         %% Error -> Error
