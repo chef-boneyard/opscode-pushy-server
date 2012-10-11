@@ -137,11 +137,11 @@ do_receive(CommandSock, Frame, State) ->
             State1 = try ?TIME_IT(pushy_messaging, parse_message, (Address, Header, Body, KeyFetch)) of
                          {ok, #pushy_message{} = Msg} ->
                              process_message(State, Msg);
-                 {error, #pushy_message{validated=bad_sig}} ->
+                         {error, #pushy_message{validated=bad_sig}} ->
                              lager:error("Command message failed verification: header=~s", [Header]),
                              State
                      catch
-                 error:Error ->
+                         error:Error ->
                              Stack = erlang:get_stacktrace(),
                              lager:error("Command message parser failed horribly: header=~w~nstack~s", [Error, Stack]),
                              State;
@@ -149,7 +149,7 @@ do_receive(CommandSock, Frame, State) ->
                              Stack = erlang:get_stacktrace(),
                              lager:error("Command message parser failed horribly: header=~w~nstack~s", [Error, Stack]),
                              State
-             end,
+                     end,
             State1;
         _Packets ->
             lager:debug("Received runt/overlength message with ~n packets~n", [length(_Packets)]),
@@ -236,7 +236,7 @@ send_node_event(JobId, NodeRef, UnknownType) ->
 
 
 get_node_ref(Data) ->
-    % This essentially debug code.
+    %% This essentially debug code.
     _ClientName = ej:get({<<"client">>}, Data),
     OrgName  = ej:get({<<"org">>}, Data),
     NodeName = ej:get({<<"node">>}, Data),
@@ -267,7 +267,7 @@ kill_crossref(Forward, Backward, Key) ->
 addr_node_map_update(#state{addr_node_map = AddrNodeMap} = State, Addr, Node) ->
     State#state{addr_node_map = addr_node_map_update(AddrNodeMap, Addr, Node)};
 addr_node_map_update({AddrToNode, NodeToAddr}, Addr, Node) ->
-    % purge any old references
+    %% purge any old references
     NodeToAddr1 = kill_crossref(AddrToNode, NodeToAddr, Addr),
     AddrToNode1 = kill_crossref(NodeToAddr, AddrToNode, Node),
     { dict:store(Addr, Node, AddrToNode1),
