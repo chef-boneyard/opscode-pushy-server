@@ -28,7 +28,7 @@ request_pubkey(OrgName, Requestor) ->
                {"X-Ops-Timestamp", ""}],
     Url = api_url(OrgName, Requestor),
     ibrowse:start(),
-    case ibrowse:send_req(Url, Headers, get, [], [{ssl_options, []}]) of
+    case ibrowse:send_req(Url, Headers, get) of
         {ok, Code, ResponseHeaders, ResponseBody} ->
             ok = check_http_response(Code, ResponseHeaders, ResponseBody),
             parse_json_response(ResponseBody);
