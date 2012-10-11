@@ -27,9 +27,6 @@ start(_StartType, _StartArgs) ->
 
     error_logger:info_msg("Starting Pushy incarnation ~s.~n", [IncarnationId]),
 
-    %% TODO Find better home
-    pushy_key_manager:init(),
-
     IoProcesses = envy:get(pushy, zmq_io_processes, 1, integer),
     case erlzmq:context(IoProcesses) of
         {ok, Ctx} ->
