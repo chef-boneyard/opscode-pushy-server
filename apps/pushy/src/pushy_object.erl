@@ -21,6 +21,8 @@
           make_org_prefix_id/2
         ]).
 
+
+%%% TODO: Make this actually work: (OC-4352)
 fetch_org_id(_OrgName) ->
   ?POC_ORG_ID.
 
