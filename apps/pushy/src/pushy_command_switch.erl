@@ -15,10 +15,7 @@
 %% ------------------------------------------------------------------
 
 -export([start_link/1,
-         send_command/2,
-         send_command/3,
-         send_multi_command/2,
-         send_multi_command/3]).
+         send_command/2]).
 
 %% ------------------------------------------------------------------
 %% Private Exports - only exported for instrumentation
@@ -66,20 +63,14 @@ start_link(PushyState) ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [PushyState], []).
 
 -spec send_command(node_ref(), ejson()) -> ok.
-send_command(NodeRef, Message) ->
-    send_command(hmac_sha256, NodeRef, Message).
-
--spec send_command(node_ref(), signing_method(), ejson()) -> ok.
-send_command(Method, NodeRef, Message) ->
-    gen_server:cast(?MODULE, {send, Method, NodeRef, Message}).
-
-
--spec send_multi_command([node_ref()], binary()) -> ok.
-send_multi_command(NodeRefs, Message) ->
-    send_multi_command(hmac_sha256, NodeRefs, Message).
-
-send_multi_command(Method, NodeRefs, Message) ->
-    gen_server:cast(?MODULE, {send_multi, Method, NodeRefs, Message}).
+send_command(NodeRef, Message) when is_tuple(NodeRef) ->
+    gen_server:cast(?MODULE, {send, hmac_sha256, NodeRef, Message});
+%%% A good optimization is to use HMAC when the number of nodes is small. 
+%%% We should do more work to determine exactly where the crossover point between doing a
+%%% single expensive signature vs many cheap HMAC sigatures. The number is somewhere between
+%%% 100 and 1000
+send_command(NodeRefs, Message) when is_list(NodeRefs)  ->
+    gen_server:cast(?MODULE, {send_multi, rsa2048_sha1, NodeRefs, Message}).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
@@ -156,6 +147,10 @@ do_receive(CommandSock, Frame, State) ->
             State
     end.
 
+%%%
+%%% Send a message to a single node
+%%%
+-spec do_send(#state{}, signing_method(), node_ref(), ejson()) -> #state{}.
 do_send(#state{addr_node_map = AddrNodeMap,
                command_sock = CommandSocket}=State,
         Method, NodeRef, Message) ->
@@ -165,8 +160,12 @@ do_send(#state{addr_node_map = AddrNodeMap,
     ok = pushy_messaging:send_message(CommandSocket, [Address | Packets]),
     State.
 
-%% This is broken!!! sort it out and fix it!
-
+%%%
+%%% Given a key type and json blob, return a key to use to check the signature.
+%%%
+%%% This is ugly and could use a refactoring; specifically the {ok, Key} style of return
+%%% makes life harder for the pushy_messaging:send_message code.
+%%%
 get_key_for_method(rsa2048_sha1, #state{private_key = PrivateKey}, _EJson) ->
     {ok, PrivateKey};
 get_key_for_method(hmac_sha256, _State, EJson) ->
@@ -177,10 +176,11 @@ get_key_for_method(hmac_sha256, _State, EJson) ->
 
 
 %%
+%% Send multiple messages
 %%
-%%
+-spec do_send_multi(#state{}, signing_method(), [node_ref()], ejson()) -> #state{}.
 do_send_multi(#state{addr_node_map = AddrNodeMap,
-                     command_sock = Socket} = State, 
+                     command_sock = Socket} = State,
               hmac_sha256 = Method, NodeRefs, Message) ->
     N2Addr = fun(NodeRef) ->
                      addr_node_map_lookup_by_node(AddrNodeMap, NodeRef)
