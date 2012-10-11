@@ -1,6 +1,6 @@
 GIT
   remote: git@github.com:opscode/chef-pedant-core.git
-  revision: 83b1a411aac64b058c0d891d75ea365f578be4f2
+  revision: eb3865c5294e9ea53db24f2864729f351f2f4ac2
   specs:
     chef-pedant-core (0.0.1)
       activesupport (~> 3.2.8)
@@ -15,22 +15,22 @@ GIT
       rspec_junit_formatter (~> 0.1.1)
 
 GIT
-  remote: git@github.com:opscode/chef-pedant-tests.git
-  revision: ffdcfd3c4480d81150f1535cdc5f2e72e6508eeb
-  specs:
-    chef-pedant-tests (0.0.1)
-
-GIT
   remote: git@github.com:opscode/oc-chef-pedant-core.git
-  revision: 851bc6034690c55b886da83473cad40082f98ffa
+  revision: b8cca93dc68edc57e499a756814020713080322a
   specs:
     oc-chef-pedant-core (0.0.1)
 
 GIT
-  remote: git@github.com:opscode/oc-chef-pedant-tests.git
-  revision: 4263c5d706231ddafeb1e3f0e42265eef88f442e
+  remote: git@github.com:opscode/oc-pushy-pedant-tests.git
+  revision: 292acd840e8a5ede435eb06a4f110a4999e05a35
   specs:
-    oc-chef-pedant-tests (0.0.1)
+    oc-pushy-pedant-tests (0.0.1)
+
+GIT
+  remote: git@github.com:opscode/opscode-pushy-client.git
+  revision: 3f20cccea3a2608842133188764a2ae0be2fe1ec
+  specs:
+    opscode-pushy-client (0.0.1)
 
 GEM
   remote: http://rubygems.org/
@@ -38,7 +38,7 @@ GEM
     activesupport (3.2.8)
       i18n (~> 0.6)
       multi_json (~> 1.0)
-    builder (3.0.0)
+    builder (3.1.3)
     bunny (0.8.0)
     chef (10.12.0)
       bunny (>= 0.6.0)
@@ -59,8 +59,16 @@ GEM
       uuidtools
       yajl-ruby (~> 1.1)
     diff-lcs (1.1.3)
+    em-zeromq (0.3.1)
+      eventmachine (= 1.0.0.beta.4)
+      ffi (>= 1.0.0)
+      ffi-rzmq (= 0.9.3)
     erubis (2.7.0)
-    highline (1.6.14)
+    eventmachine (1.0.0.beta.4)
+    ffi (1.1.5)
+    ffi-rzmq (0.9.3)
+      ffi
+    highline (1.6.15)
     i18n (0.6.1)
     ipaddress (0.8.0)
     json (1.6.1)
@@ -95,14 +103,14 @@ GEM
       rspec-expectations (~> 2.11.0)
       rspec-mocks (~> 2.11.0)
     rspec-core (2.11.1)
-    rspec-expectations (2.11.2)
+    rspec-expectations (2.11.3)
       diff-lcs (~> 1.1.3)
-    rspec-mocks (2.11.2)
-    rspec_junit_formatter (0.1.1)
+    rspec-mocks (2.11.3)
+    rspec_junit_formatter (0.1.2)
       builder
       rspec (~> 2.0)
     systemu (2.5.2)
-    treetop (1.4.10)
+    treetop (1.4.11)
       polyglot
       polyglot (>= 0.3.1)
     uuidtools (2.1.3)
@@ -112,7 +120,9 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  chef
   chef-pedant-core!
-  chef-pedant-tests!
+  em-zeromq
   oc-chef-pedant-core!
-  oc-chef-pedant-tests!
+  oc-pushy-pedant-tests!
+  opscode-pushy-client!
