@@ -34,10 +34,9 @@ start_link(Ctx) ->
 %% ===================================================================
 
 init([#pushy_state{ctx=_Ctx} = PushyState]) ->
-    %% DEBUGGING AID; having the context available can help
-    %% But this is a bad idea to do with nif hooks.
-    %% Tbl = ets:new(debug, [named_table]),
-    %% ets:insert(Tbl, {context, Ctx}),
+
+    %% This attaches the ownership of the ETS table for keys to this process.
+    pushy_key_manager:init(),
 
     Ip = case os:getenv("WEBMACHINE_IP") of false -> "0.0.0.0"; Any -> Any end,
     {ok, Dispatch} = file:consult(filename:join(
