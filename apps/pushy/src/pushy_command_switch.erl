@@ -240,6 +240,7 @@ get_node_ref(Data) ->
     _ClientName = ej:get({<<"client">>}, Data),
     OrgName  = ej:get({<<"org">>}, Data),
     NodeName = ej:get({<<"node">>}, Data),
+    %% TODO: Clean up usage and propagation of org name vs org guid (OC-4351)
     OrgId = pushy_object:fetch_org_id(OrgName),
     {OrgId, NodeName}.
 
