@@ -3,7 +3,7 @@ DEPS = deps/erlzmq deps/jiffy deps/gproc deps/ej \
        deps/folsom
 
 ERLANG_APPS = erts kernel stdlib tools compiler syntax_tools runtime_tools\
-        crypto public_key ssl ibrowse xmerl edoc eunit mnesia inets \
+        crypto public_key ssl xmerl edoc eunit mnesia inets \
         mnesia hipe syntax_tools runtime_tools edoc eunit asn1 gs webtool \
         observer
 
@@ -40,7 +40,7 @@ plt_deps:
 	dialyzer --plt $(PLT_FILE) --output_plt $(PLT_FILE) --add_to_plt deps/*/ebin
 
 
-dialyze: .pushy.plt compile
+dialyze: compile $(PLT_FILE)
 	dialyzer -nn --plt $(PLT_FILE) -Wunmatched_returns -Werror_handling -Wrace_conditions -r apps/pushy/ebin -I deps
 
 #dialyzer:
