@@ -41,9 +41,8 @@ parse_json_response(Body) ->
     ej:get({"public_key"}, EJson).
 
 api_url(OrgName, Requestor) ->
-    % This needs to be configurable:
-    Hostname = "localhost",
-    Port = 8000,
+    Hostname = pushy_util:get_env(erchef, hostname, "localhost", fun is_list/1),
+    Port = pushy_util:get_env(erchef, port, 8000, fun is_integer/1),
     lists:flatten(io_lib:format("http://~s:~w/organizations/~s/principals/~s",
                                 [Hostname, Port, OrgName, Requestor])).
 
