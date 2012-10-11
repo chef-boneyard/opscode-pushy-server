@@ -61,8 +61,8 @@ to_json(Req, #config_state{orgname = OrgName, organization_guid = OrgGuid, noden
 
     HeartbeatInterval = envy:get(pushy, heartbeat_interval, integer),
 
-    %% TODO: Figure out how to get public key out of chef_keyring in encoded form!
-    %% This needs the client key fetch work to be done first though...
+    %% TODO: OC-4352
+    %% Perhaps chef_keyring should be enhanced with key format management functions.
     {ok, PublicKeyR} = chef_keyring:get_key(pushy_pub),
     PublicKey = public_key:pem_encode(
         [public_key:pem_entry_encode('SubjectPublicKeyInfo', PublicKeyR)]),
@@ -70,9 +70,10 @@ to_json(Req, #config_state{orgname = OrgName, organization_guid = OrgGuid, noden
     ClientName = {OrgGuid, iolist_to_binary(NodeName)},
     {Method,Key} = pushy_key_manager:get_key(ClientName),
 
-    %% TODO:
+    %% TODO: OC-4204
     %% The session key should be sent encrypted using the client's public key. We're
     %% skipping that for the moment, but this work is not done unless we fix this.
+    %% This needs the client key fetch work to be done first though...
     KeyStruct =  {[{<<"method">>, Method}, {<<"key">>, base64:encode(Key) }]},
 
     ConfigurationStruct =
