@@ -23,7 +23,7 @@ source :path => File.expand_path("files/pushy-server-ctl-commands", Omnibus.root
 
 build do
   block do
-    open("#{install_dir}/bin/opscode-pushy-server-ctl", "w") do |file|
+    open("#{install_dir}/bin/opscode-push-jobs-server-ctl", "w") do |file|
       file.print <<-EOH
 #!/bin/bash
 #
@@ -43,12 +43,12 @@ build do
 # limitations under the License.
 #
 
-#{install_dir}/embedded/bin/omnibus-ctl opscode-pushy-server #{install_dir}/embedded/service/omnibus-ctl $@
+#{install_dir}/embedded/bin/omnibus-ctl opscode-push-jobs-server #{install_dir}/embedded/service/omnibus-ctl $@
        EOH
     end
   end
 
-  command "chmod 755 #{install_dir}/bin/opscode-pushy-server-ctl"
+  command "chmod 755 #{install_dir}/bin/opscode-push-jobs-server-ctl"
 
   # additional omnibus-ctl commands
   command "#{install_dir}/embedded/bin/rsync -a ./ #{install_dir}/embedded/service/omnibus-ctl/"
