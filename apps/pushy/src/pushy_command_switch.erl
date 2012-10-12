@@ -220,10 +220,13 @@ process_message(State, #pushy_message{address=Address, body=Data}) ->
     send_node_event(JobId, NodeRef, Type),
     State2.
 
+send_node_event(null, NodeRef, <<"heartbeat">>) ->
+    lager:debug("Received heartbeat for node ~p with NULL job id", [NodeRef]),
+    pushy_node_state:heartbeat(NodeRef);
 send_node_event(JobId, NodeRef, <<"heartbeat">>) ->
     lager:debug("Received heartbeat for node ~p with job id ~p", [NodeRef, JobId]),
     case pushy_job_state_sup:get_process(JobId) of
-        not_found when JobId /= null -> pushy_node_state:rehab(NodeRef);
+        not_found -> pushy_node_state:rehab(NodeRef);
         _ -> noop
     end,
     pushy_node_state:heartbeat(NodeRef);
