@@ -22,13 +22,13 @@ GIT
 
 GIT
   remote: git@github.com:opscode/oc-pushy-pedant-tests.git
-  revision: 292acd840e8a5ede435eb06a4f110a4999e05a35
+  revision: d81f8050c82f7e0d356956d53ba09dfe1c247934
   specs:
     oc-pushy-pedant-tests (0.0.1)
 
 GIT
   remote: git@github.com:opscode/opscode-pushy-client.git
-  revision: 3f20cccea3a2608842133188764a2ae0be2fe1ec
+  revision: a3eed59216e7dcf542f8e0efd29f2d6b8ab872c6
   specs:
     opscode-pushy-client (0.0.1)
 
