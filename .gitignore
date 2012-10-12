@@ -10,7 +10,7 @@ apps/pushy/ebin
 apps/pushy/.eunit
 .DS_STORE
 *.beam
-rel/pushy
+rel/opscode-pushy-server
 deps
 .eunit
 .pushy.plt

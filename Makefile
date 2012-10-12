@@ -51,25 +51,25 @@ test: eunit
 tags:
 	@find src deps -name "*.[he]rl" -print | etags -
 
-rel: compile rel/pushy
-rel/pushy:
+rel: compile rel/opscode-pushy-server
+rel/opscode-pushy-server:
 	@cd rel;$(REBAR) generate overlay_vars=db_vars.config
 
 relclean:
-	@rm -rf rel/pushy
+	@rm -rf rel/opscode-pushy-server
 
 devrel: rel
 	@/bin/echo -n Symlinking deps and apps into release
-	@$(foreach lib,$(wildcard apps/* deps/*), /bin/echo -n .;rm -rf rel/pushy/lib/$(shell basename $(lib))-* \
-	   && ln -sf $(abspath $(lib)) rel/pushy/lib;)
+	@$(foreach lib,$(wildcard apps/* deps/*), /bin/echo -n .;rm -rf rel/opscode-pushy-server/lib/$(shell basename $(lib))-* \
+	   && ln -sf $(abspath $(lib)) rel/opscode-pushy-server/lib;)
 	@/bin/echo done.
 	@/bin/echo  Run \'make update\' to pick up changes in a running VM.
 
 update: compile
-	@cd rel/pushy;bin/pushy restart
+	@cd rel/opscode-pushy-server;bin/opscode-pushy-server restart
 
 update_app: compile_app
-	@cd rel/pushy;bin/pushy restart
+	@cd rel/opscode-pushy-server;bin/opscode-pushy-server restart
 
 distclean: relclean
 	@rm -rf deps
