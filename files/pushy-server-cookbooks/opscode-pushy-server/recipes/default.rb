@@ -55,7 +55,7 @@ file "/etc/opscode-push-jobs-server/pushy_priv.pem" do
   content pushy_key.to_pem.to_s unless File.exists?('/etc/opscode-push-jobs-server/pushy_pub.pem')
 end
 
-directory "/var/opt/opscode" do
+directory "/var/opt/opscode-push-jobs-server" do
   owner "root"
   group "root"
   mode "0755"
@@ -81,7 +81,7 @@ include_recipe "opscode-pushy-server::postgresql"
 end
 
 # TODO - JC
-# include_recipe "opscode-pushy-server::pushy-pedant"
+include_recipe "opscode-pushy-server::oc-pushy-pedant"
 
 file "/etc/opscode-push-jobs-server/opscode-push-jobs-server-running.json" do
   owner node['pushy']['user']['username']
