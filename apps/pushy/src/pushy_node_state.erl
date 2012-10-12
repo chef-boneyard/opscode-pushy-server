@@ -298,4 +298,4 @@ kick_from_rehab(#state{rehab_timer = TimerRef, node_ref = NodeRef} = State) ->
 
 
 rehab_timer() ->
-    pushy_util:get_env(pushy, rehab_timer, fun is_integer/1).
+    pushy_util:get_env(pushy, rehab_timer, 1000, fun is_integer/1).
