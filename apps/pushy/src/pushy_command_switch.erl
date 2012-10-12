@@ -53,7 +53,6 @@
         }).
 
 -type ejson() :: tuple(). % TODO Improve
--type signing_method() :: 'rsa2048_sha1' | 'hmac_sha256'.
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
@@ -152,7 +151,7 @@ do_receive(CommandSock, Frame, State) ->
 %%%
 %%% Send a message to a single node
 %%%
--spec do_send(#state{}, signing_method(), node_ref(), ejson()) -> #state{}.
+-spec do_send(#state{}, pushy_signing_method(), node_ref(), ejson()) -> #state{}.
 do_send(#state{addr_node_map = AddrNodeMap,
                command_sock = CommandSocket}=State,
         Method, NodeRef, Message) ->
@@ -180,7 +179,7 @@ get_key_for_method(hmac_sha256, _State, EJson) ->
 %%
 %% Send multiple messages
 %%
--spec do_send_multi(#state{}, signing_method(), [node_ref()], ejson()) -> #state{}.
+-spec do_send_multi(#state{}, pushy_signing_method(), [node_ref()], ejson()) -> #state{}.
 do_send_multi(#state{addr_node_map = AddrNodeMap,
                      command_sock = Socket} = State,
               hmac_sha256 = Method, NodeRefs, Message) ->
