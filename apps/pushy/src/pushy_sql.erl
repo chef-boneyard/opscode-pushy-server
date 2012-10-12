@@ -65,10 +65,10 @@ update_node_status(#pushy_node_status{status = Status,
 
 fetch_job(JobId) ->
     case sqerl:select(find_job_by_id, [JobId]) of
-        {ok, Rows} when is_list(Rows) ->
-            {ok, job_join_rows_to_record(Rows)};
         {ok, none} ->
             {ok, not_found};
+        {ok, Rows} ->
+            {ok, job_join_rows_to_record(Rows)};
         {error, Error} ->
             lager:info("ERROR"),
             {error, Error}
@@ -76,10 +76,10 @@ fetch_job(JobId) ->
 
 fetch_jobs(OrgId) ->
     case sqerl:select(find_jobs_by_org, [OrgId]) of
-        {ok, Rows} when is_list(Rows) ->
-            {ok, prepare_jobs(Rows)};
         {ok, none} ->
-            {ok, not_found};
+            {ok, []};
+        {ok, Rows} ->
+            {ok, [prepare_job(Row) || Row <- Rows]};
         {error, Error} ->
             {error, Error}
     end.
@@ -228,18 +228,15 @@ job_join_rows_to_record([Row|Rest], JobNodes ) ->
     C = proplist_to_job_node(Row),
     job_join_rows_to_record(Rest, [C|JobNodes]).
 
-prepare_jobs(Jobs) ->
-    prepare_jobs(Jobs, []).
-
-prepare_jobs([], Acc) ->
-    Acc;
-prepare_jobs([Head | Tail], Acc) ->
-    CreatedAt = trunc_date_time_to_second(safe_get(<<"created_at">>, Head)),
+prepare_job(Job) ->
+    CreatedAt = trunc_date_time_to_second(safe_get(<<"created_at">>, Job)),
     CreatedAtFormatted = iolist_to_binary(httpd_util:rfc1123_date(CreatedAt)),
+    Status = atom_to_binary(job_status(safe_get(<<"status">>, Job)), utf8),
 
-    NewRow = [{<<"id">>, safe_get(<<"id">>, Head)},
-              {<<"created_at">>, CreatedAtFormatted}],
-    prepare_jobs(Tail, lists:append(Acc, NewRow)).
+    {[{<<"id">>, safe_get(<<"id">>, Job)},
+      {<<"created_at">>, CreatedAtFormatted},
+      {<<"status">>, Status}]}.
+
 
 %% @doc Convenience function for assembling a job_node tuple from a proplist
 proplist_to_job_node(Proplist) ->
