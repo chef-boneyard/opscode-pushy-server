@@ -18,7 +18,7 @@ if [ -e /etc/opscode/opscode-push-jobs-server-running.json ]; then
   echo
   echo "The next step in the upgrade process is to run:"
   echo
-  echo -e "\033[1;31mopscode-push-jobs-server-ctl upgrade\033[0m"
+  echo -e "\033[1;31mopscode-push-jobs-server-ctl reconfigure\033[0m"
 else
   echo -e "\033[1mThank you for installing the Push Jobs Server!\033[0m"
 fi

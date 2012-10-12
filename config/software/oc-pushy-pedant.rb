@@ -18,7 +18,9 @@
 name "oc-pushy-pedant"
 version "master"
 
-dependencies ["ruby",
+
+dependencies ["libzmq",
+              "ruby",
               "bundler",
               "rsync"]
 
