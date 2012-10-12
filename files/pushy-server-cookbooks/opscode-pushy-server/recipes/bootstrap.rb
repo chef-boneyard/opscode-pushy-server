@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 
-bootstrap_status_file = "/var/opt/opscode/pushy-bootstrapped"
+bootstrap_status_file = "/var/opt/opscode-push-jobs-server/bootstrapped"
 pushy_dir = "#{node['pushy']['install_path']}/embedded/service/opscode-pushy-server"
 
 # JC - TODO when status is ready for pushy API
