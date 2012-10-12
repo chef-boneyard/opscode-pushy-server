@@ -34,10 +34,9 @@ start_link(Ctx) ->
 %% ===================================================================
 
 init([#pushy_state{ctx=_Ctx} = PushyState]) ->
-    %% DEBUGGING AID; having the context available can help
-    %% But this is a bad idea to do with nif hooks.
-    %% Tbl = ets:new(debug, [named_table]),
-    %% ets:insert(Tbl, {context, Ctx}),
+
+    %% This attaches the ownership of the ETS table for keys to this process.
+    pushy_key_manager:init(),
 
     Ip = case os:getenv("WEBMACHINE_IP") of false -> "0.0.0.0"; Any -> Any end,
     {ok, Dispatch} = file:consult(filename:join(
@@ -47,9 +46,9 @@ init([#pushy_state{ctx=_Ctx} = PushyState]) ->
 %%%    {_,_,[{trace_dir, TraceDir}]} = lists:keyfind(["dev", "wmtrace", '*'], 1, Dispatch),
 %%%    ok = filelib:ensure_dir(string:join([TraceDir,"trace"], "/")),
 
-    Port = pushy_util:get_env(pushy, api_port, fun is_integer/1),
-    LogDir = pushy_util:get_env(pushy, log_dir, fun is_list/1),
-    EnableGraphite = pushy_util:get_env(pushy_common, enable_graphite, fun is_boolean/1),
+    Port = envy:get(pushy, api_port, integer),
+    LogDir = envy:get(pushy, log_dir, string),
+    EnableGraphite = envy:get(pushy_common, enable_graphite, boolean),
     WebMachineConfig = [
                         {ip, Ip},
                         {port, Port},

@@ -15,16 +15,15 @@
 %% ------------------------------------------------------------------
 
 -export([start_link/1,
-         send_command/2,
-         send_multi_command/2]).
+         send_command/2]).
 
 %% ------------------------------------------------------------------
 %% Private Exports - only exported for instrumentation
 %% ------------------------------------------------------------------
 
 -export([do_receive/3,
-         do_send/3,
-         do_send_multi/3]).
+         do_send/4,
+         do_send_multi/4]).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Exports
@@ -42,15 +41,18 @@
 
 -include("pushy.hrl").
 -include_lib("pushy_common/include/pushy_metrics.hrl").
+-include_lib("pushy_common/include/pushy_messaging.hrl").
 
-%% TODO : figure out where this really should come from
--opaque dictionary() :: any().
+
+-define(PUSHY_MULTI_SEND_CROSSOVER, 100).
 
 -record(state,
         {command_sock,
-         addr_node_map :: {dictionary(), dictionary()},
+         addr_node_map :: {dict(), dict()},
          private_key
         }).
+
+-type ejson() :: tuple(). % TODO Improve
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
@@ -59,13 +61,18 @@
 start_link(PushyState) ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [PushyState], []).
 
--spec send_command(node_ref(), binary()) -> ok.
-send_command(NodeRef, Message) ->
-    gen_server:cast(?MODULE, {send, NodeRef, Message}).
-
--spec send_multi_command([node_ref()], binary()) -> ok.
-send_multi_command(NodeRefs, Message) ->
-    gen_server:cast(?MODULE, {send_multi, NodeRefs, Message}).
+-spec send_command(node_ref(), ejson()) -> ok.
+send_command(NodeRef, Message) when is_tuple(NodeRef) ->
+    gen_server:call(?MODULE, {send, hmac_sha256, NodeRef, Message});
+%%% A good optimization is to use HMAC when the number of nodes is small.
+%%% We should do more work to determine exactly where the crossover point between doing a
+%%% single expensive signature vs many cheap HMAC signatures. The number is somewhere between
+%%% 100 and 1000.
+send_command(NodeRefs, Message) when is_list(NodeRefs)
+                                     andalso length(NodeRefs) < ?PUSHY_MULTI_SEND_CROSSOVER ->
+    gen_server:call(?MODULE, {send_multi, hmac_sha256, NodeRefs, Message});
+send_command(NodeRefs, Message) when is_list(NodeRefs)  ->
+    gen_server:call(?MODULE, {send_multi, rsa2048_sha1, NodeRefs, Message}).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
@@ -86,13 +93,15 @@ init([#pushy_state{ctx=Ctx}]) ->
                   },
     {ok, State}.
 
+handle_call({send, Method, NodeRef, Message}, _From, #state{}=State) ->
+    NState = ?TIME_IT(?MODULE, do_send, (State, Method, NodeRef, Message)),
+    {reply, ok, NState};
+handle_call({send_multi, Method, NodeRefs, Message}, _From, #state{}=State) ->
+    NState = ?TIME_IT(?MODULE, do_send_multi, (State, Method, NodeRefs, Message)),
+    {reply, ok, NState};
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
-handle_cast({send, NodeRef, Message}, #state{}=State) ->
-    {noreply, ?TIME_IT(?MODULE, do_send, (State, NodeRef, Message))};
-handle_cast({send_multi, NodeRefs, Message}, #state{}=State) ->
-    {noreply, ?TIME_IT(?MODULE, do_send_multi, (State, NodeRefs, Message))};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -114,53 +123,100 @@ code_change(_OldVsn, State, _Extra) ->
 do_receive(CommandSock, Frame, State) ->
     %% TODO: This needs a more graceful way of handling message sequences. I really feel like we need to
     %% abstract out some more generalized routines to handle the message receipt process.
-    [Address, Header, Body] = pushy_messaging:receive_message_async(CommandSock, Frame),
-    lager:debug("Receiving message with address ~w", [Address]),
+    case pushy_messaging:receive_message_async(CommandSock, Frame) of
+        [Address, Header, Body] ->
+            lager:debug("Receiving message with address ~w", [Address]),
+            lager:debug("Received message~n\tA ~p~n\tH ~s~n\tB ~s", [Address, Header, Body]),
 
-    lager:debug("Received message~n\tA ~p~n\tH ~s~n\tB ~s", [Address, Header, Body]),
-    State1 = case catch ?TIME_IT(pushy_util, do_authenticate_message, (Header, Body)) of
-                 ok ->
-                     process_message(State, Address, Header, Body);
-                 {no_authn, bad_sig} ->
-                     lager:error("Command message failed verification: header=~s", [Header]),
-                     State
-             end,
-    State1.
+            KeyFetch = fun(M, EJson) -> get_key_for_method(M, State, EJson) end,
+            State1 = try ?TIME_IT(pushy_messaging, parse_message, (Address, Header, Body, KeyFetch)) of
+                         {ok, #pushy_message{} = Msg} ->
+                             process_message(State, Msg);
+                         {error, #pushy_message{validated=bad_sig}} ->
+                             lager:error("Command message failed verification: header=~s", [Header]),
+                             State
+                     catch
+                         error:Error ->
+                             Stack = erlang:get_stacktrace(),
+                             lager:error("Command message parser failed horribly: header=~w~nstack~s", [Error, Stack]),
+                             State;
+                         Error ->
+                             Stack = erlang:get_stacktrace(),
+                             lager:error("Command message parser failed horribly: header=~w~nstack~s", [Error, Stack]),
+                             State
+                     end,
+            State1;
+        _Packets ->
+            lager:debug("Received runt/overlength message with ~n packets~n", [length(_Packets)]),
+            State
+    end.
 
+%%%
+%%% Send a message to a single node
+%%%
+-spec do_send(#state{}, pushy_signing_method(), node_ref(), ejson()) -> #state{}.
 do_send(#state{addr_node_map = AddrNodeMap,
-               command_sock = CommandSocket,
-               private_key = PrivateKey}=State,
-        NodeRef, Message) ->
+               command_sock = CommandSocket}=State,
+        Method, NodeRef, Message) ->
+    Key = get_key_for_method(Method, State, NodeRef),
     Address = addr_node_map_lookup_by_node(AddrNodeMap, NodeRef),
-    pushy_messaging:send_message(CommandSocket, [Address,
-        ?TIME_IT(pushy_util, signed_header_from_message, (PrivateKey, Message)),
-        Message]),
+    Packets = ?TIME_IT(pushy_messaging, make_message, (proto_v2, Method, Key, Message)),
+    ok = pushy_messaging:send_message(CommandSocket, [Address | Packets]),
     State.
 
+%%%
+%%% Given a key type and json blob, return a key to use to check the signature.
+%%%
+%%% This is ugly and could use a refactoring; specifically the {ok, Key} style of return
+%%% makes life harder for the pushy_messaging:send_message code.
+%%%
+get_key_for_method(rsa2048_sha1, #state{private_key = PrivateKey}, _EJson) ->
+    {ok, PrivateKey};
+get_key_for_method(hmac_sha256, _State, EJson) ->
+    NodeRef = get_node_ref(EJson),
+    {hmac_sha256, Key} = pushy_key_manager:get_key(NodeRef),
+    {ok, Key}.
+
+
+
+%%
+%% Send multiple messages
+%%
+-spec do_send_multi(#state{}, pushy_signing_method(), [node_ref()], ejson()) -> #state{}.
 do_send_multi(#state{addr_node_map = AddrNodeMap,
-                     command_sock = CommandSocket,
+                     command_sock = Socket} = State,
+              hmac_sha256 = Method, NodeRefs, Message) ->
+    N2Addr = fun(NodeRef) ->
+                     addr_node_map_lookup_by_node(AddrNodeMap, NodeRef)
+             end,
+    N2Key = fun(hmac_sha256, NodeRef) ->
+                    {hmac_sha256, Key} = pushy_key_manager:get_key(NodeRef),
+                    Key
+            end,
+    pushy_messaging:make_send_message_multi(Socket, proto_v2, Method,
+                                            NodeRefs, Message, N2Addr, N2Key),
+    State;
+do_send_multi(#state{addr_node_map = AddrNodeMap,
+                     command_sock = Socket,
                      private_key = PrivateKey}=State,
-              NodeRefs, Message) ->
-    FrameList = [
-        ?TIME_IT(pushy_util, signed_header_from_message, (PrivateKey, Message)), Message],
-    % TODO if you communicate with a node that doesn't exist, don't just fail, dude
-    AddressList = [addr_node_map_lookup_by_node(AddrNodeMap, NodeRef) || NodeRef <- NodeRefs],
-    pushy_messaging:send_message_multi(CommandSocket, AddressList, FrameList),
+              rsa2048_sha1 = Method, NodeRefs, Message) ->
+    N2Addr = fun(NodeRef) ->
+                     addr_node_map_lookup_by_node(AddrNodeMap, NodeRef)
+             end,
+    N2Key = fun(rsa2048_sha1, _) ->
+                    PrivateKey
+            end,
+    pushy_messaging:make_send_message_multi(Socket, proto_v2, Method,
+                                            NodeRefs, Message, N2Addr, N2Key),
     State.
 
 %% FIX: Take advantage of multiple function heads to make code easier to read
-process_message(State, Address, _Header, Body) ->
-    case catch jiffy:decode(Body) of
-        {Data} ->
-            {State2, NodeRef} = get_node_ref(State, Address, Data),
-            JobId = ej:get({<<"job_id">>}, Data),
-            Type = ej:get({<<"type">>}, Data),
-            send_node_event(JobId, NodeRef, Type),
-            State2;
-        {'EXIT', Error} ->
-            lager:error("Status message JSON parsing failed: body=~s, error=~s", [Body,Error]),
-            State
-    end.
+process_message(State, #pushy_message{address=Address, body=Data}) ->
+    {State2, NodeRef} = get_node_ref(State, Address, Data),
+    JobId = ej:get({<<"job_id">>}, Data),
+    Type = ej:get({<<"type">>}, Data),
+    send_node_event(JobId, NodeRef, Type),
+    State2.
 
 send_node_event(JobId, NodeRef, <<"heartbeat">>) ->
     lager:debug("Received heartbeat for node ~p with job id ~p", [JobId, NodeRef]),
@@ -183,14 +239,17 @@ send_node_event(JobId, NodeRef, UnknownType) ->
     lager:error("Status message for job ~p and node ~p had unknown type ~p!~n", [JobId, NodeRef, UnknownType]).
 
 
-
-get_node_ref(State, Address, Data) ->
-    % This essentially debug code.
+get_node_ref(Data) ->
+    %% This essentially debug code.
     _ClientName = ej:get({<<"client">>}, Data),
     OrgName  = ej:get({<<"org">>}, Data),
     NodeName = ej:get({<<"node">>}, Data),
+    %% TODO: Clean up usage and propagation of org name vs org guid (OC-4351)
     OrgId = pushy_object:fetch_org_id(OrgName),
-    NodeRef = {OrgId, NodeName},
+    {OrgId, NodeName}.
+
+get_node_ref(State, Address, Data) ->
+    NodeRef = get_node_ref(Data),
     %% Every time we get a message from a node, we update it's Addr->Name mapping entry
     State2 = addr_node_map_update(State, Address, NodeRef),
     {State2, NodeRef}.
@@ -213,7 +272,7 @@ kill_crossref(Forward, Backward, Key) ->
 addr_node_map_update(#state{addr_node_map = AddrNodeMap} = State, Addr, Node) ->
     State#state{addr_node_map = addr_node_map_update(AddrNodeMap, Addr, Node)};
 addr_node_map_update({AddrToNode, NodeToAddr}, Addr, Node) ->
-    % purge any old references
+    %% purge any old references
     NodeToAddr1 = kill_crossref(AddrToNode, NodeToAddr, Addr),
     AddrToNode1 = kill_crossref(NodeToAddr, AddrToNode, Node),
     { dict:store(Addr, Node, AddrToNode1),
@@ -228,5 +287,3 @@ addr_node_map_lookup_by_node(#state{addr_node_map = AddrNodeMap}, Node) ->
     addr_node_map_lookup_by_addr(AddrNodeMap, Node);
 addr_node_map_lookup_by_node({_, NodeToAddr}, Node) ->
     dict:fetch(Node, NodeToAddr).
-
-
