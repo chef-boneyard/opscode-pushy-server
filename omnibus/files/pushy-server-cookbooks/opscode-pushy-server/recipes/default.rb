@@ -19,7 +19,7 @@ require 'openssl'
 
 ENV['PATH'] = "#{node['pushy']['install_path']}/bin:#{node['pushy']['install_path']}/embedded/bin:#{ENV['PATH']}"
 
-directory "/etc/opscode" do
+directory "/etc/opscode-push-jobs-server" do
   owner "root"
   group "root"
   mode "0775"
@@ -27,32 +27,32 @@ directory "/etc/opscode" do
 end.run_action(:create)
 
 PushJobsServer[:node] = node
-if File.exists?("/etc/opscode/opscode-push-jobs-server.rb")
-  PushJobsServer.from_file("/etc/opscode/opscode-push-jobs-server.rb")
+if File.exists?("/etc/opscode-push-jobs-server/opscode-push-jobs-server.rb")
+  PushJobsServer.from_file("/etc/opscode-push-jobs-server/opscode-push-jobs-server.rb")
 end
 node.consume_attributes(PushJobsServer.generate_config(node['fqdn']))
 
-if File.exists?("/var/opt/opscode/pushy-bootstrapped")
+if File.exists?("/var/opt/opscode-push-jobs-server/bootstrapped")
   node['pushy']['bootstrap']['enable'] = false
 end
 
 # Create the Chef User
 include_recipe "opscode-pushy-server::users"
 
-pushy_key = OpenSSL::PKey::RSA.generate(2048) unless File.exists?('/etc/opscode/pushy_pub.pem')
+pushy_key = OpenSSL::PKey::RSA.generate(2048) unless File.exists?('/etc/opscode-push-jobs-server/pushy_pub.pem')
 
-file "/etc/opscode/pushy_pub.pem" do
+file "/etc/opscode-push-jobs-server/pushy_pub.pem" do
   owner "root"
   group "root"
   mode "0644"
-  content pushy_key.public_key.to_s unless File.exists?('/etc/opscode/pushy_pub.pem')
+  content pushy_key.public_key.to_s unless File.exists?('/etc/opscode-push-jobs-server/pushy_pub.pem')
 end
 
-file "/etc/opscode/pushy_priv.pem" do
+file "/etc/opscode-push-jobs-server/pushy_priv.pem" do
   owner node["pushy"]["user"]["username"]
   group "root"
   mode "0600"
-  content pushy_key.to_pem.to_s unless File.exists?('/etc/opscode/pushy_pub.pem')
+  content pushy_key.to_pem.to_s unless File.exists?('/etc/opscode-push-jobs-server/pushy_pub.pem')
 end
 
 directory "/var/opt/opscode" do
@@ -83,7 +83,7 @@ end
 # TODO - JC
 # include_recipe "opscode-pushy-server::pushy-pedant"
 
-file "/etc/opscode/opscode-push-jobs-server-running.json" do
+file "/etc/opscode-push-jobs-server/opscode-push-jobs-server-running.json" do
   owner node['pushy']['user']['username']
   group "root"
   mode "0644"

@@ -37,8 +37,8 @@ module PushJobsServer
 
     def generate_secrets(node_name)
       existing_secrets ||= Hash.new
-      if File.exists?("/etc/opscode/opscode-push-jobs-server-secrets.json")
-        existing_secrets = Chef::JSONCompat.from_json(File.read("/etc/opscode/opscode-push-jobs-server-secrets.json"))
+      if File.exists?("/etc/opscode-push-jobs-server/opscode-push-jobs-server-secrets.json")
+        existing_secrets = Chef::JSONCompat.from_json(File.read("/etc/opscode-push-jobs-server/opscode-push-jobs-server-secrets.json"))
       end
       existing_secrets.each do |k, v|
         v.each do |pk, p|
@@ -49,8 +49,8 @@ module PushJobsServer
       PushJobsServer['postgresql']['sql_password'] ||= generate_hex(50)
       PushJobsServer['postgresql']['sql_ro_password'] ||= generate_hex(50)
 
-      if File.directory?("/etc/opscode")
-        File.open("/etc/opscode/opscode-push-jobs-server-secrets.json", "w") do |f|
+      if File.directory?("/etc/opscode-push-jobs-server")
+        File.open("/etc/opscode-push-jobs-server/opscode-push-jobs-server-secrets.json", "w") do |f|
           f.puts(
             Chef::JSONCompat.to_json_pretty({
               'postgresql' => {
@@ -59,7 +59,7 @@ module PushJobsServer
               }
             })
           )
-          system("chmod 0600 /etc/opscode/opscode-push-jobs-server-secrets.json")
+          system("chmod 0600 /etc/opscode-push-jobs-server/opscode-push-jobs-server-secrets.json")
         end
       end
     end

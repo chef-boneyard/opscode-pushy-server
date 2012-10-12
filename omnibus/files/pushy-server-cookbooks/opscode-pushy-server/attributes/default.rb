@@ -39,7 +39,7 @@ default['pushy']['user']['home'] = "/opt/opscode/embedded"
 ####
 default['pushy']['opscode-pushy-server']['enable'] = true
 default['pushy']['opscode-pushy-server']['dir'] = "/var/opt/opscode/opscode-pushy-server"
-default['pushy']['opscode-pushy-server']['log_directory'] = "/var/log/opscode/opscode-pushy-server"
+default['pushy']['opscode-pushy-server']['log_directory'] = "/var/log/opscode-push-jobs-server/opscode-pushy-server"
 default['pushy']['opscode-pushy-server']['listen'] = '127.0.0.1'
 default['pushy']['opscode-pushy-server']['db_pool_size'] = '20'
 
@@ -52,7 +52,7 @@ default['pushy']['opscode-pushy-server']['zmq_io_processes'] = '1'
 default['pushy']['opscode-pushy-server']['server_heartbeat_port'] = '10000'
 default['pushy']['opscode-pushy-server']['command_port'] = '10002'
 default['pushy']['opscode-pushy-server']['api_port'] = '10003'
-default['pushy']['opscode-pushy-server']['keyring_dir'] = '/etc/opscode'
+default['pushy']['opscode-pushy-server']['keyring_dir'] = '/etc/opscode-push-jobs-server'
 
 ###
 # PostgreSQL

@@ -15,10 +15,6 @@
 # limitations under the License.
 #
 
-if File.exists?("/etc/opscode-push-jobs-server/opscode-push-jobs-server.rb")
-  PushJobsServer[:node] = node
-  PushJobsServer.from_file("/etc/opscode-push-jobs-server/opscode-push-jobs-server.rb")
-end
-config = PushJobsServer.generate_config(node['fqdn'])
+# exclude SASL logs which are in binary format from tail sub-command
 
-puts Chef::JSONCompat.to_json_pretty(config)
+@log_exclude = "(lock|@|sasl)"
