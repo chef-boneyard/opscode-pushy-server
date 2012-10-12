@@ -16,7 +16,7 @@
 #
 
 name "opscode-pushy-server"
-version "jc/OC-4259/add-schema-dump"
+version "master"
 
 dependencies ["erlang", "rebar", "rsync", "curl",
               "automake", "autoconf", "libuuid", "libtool",
