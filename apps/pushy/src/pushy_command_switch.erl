@@ -43,12 +43,12 @@
 -include_lib("pushy_common/include/pushy_metrics.hrl").
 -include_lib("pushy_common/include/pushy_messaging.hrl").
 
-%% TODO : figure out where this really should come from
--opaque dictionary() :: any().
+
+-define(PUSHY_MULTI_SEND_CROSSOVER, 100).
 
 -record(state,
         {command_sock,
-         addr_node_map :: {dictionary(), dictionary()},
+         addr_node_map :: {dict(), dict()},
          private_key
         }).
 
@@ -64,10 +64,13 @@ start_link(PushyState) ->
 -spec send_command(node_ref(), ejson()) -> ok.
 send_command(NodeRef, Message) when is_tuple(NodeRef) ->
     gen_server:call(?MODULE, {send, hmac_sha256, NodeRef, Message});
-%%% A good optimization is to use HMAC when the number of nodes is small. 
+%%% A good optimization is to use HMAC when the number of nodes is small.
 %%% We should do more work to determine exactly where the crossover point between doing a
-%%% single expensive signature vs many cheap HMAC sigatures. The number is somewhere between
-%%% 100 and 1000
+%%% single expensive signature vs many cheap HMAC signatures. The number is somewhere between
+%%% 100 and 1000.
+send_command(NodeRefs, Message) when is_list(NodeRefs)
+                                     andalso length(NodeRefs) < ?PUSHY_MULTI_SEND_CROSSOVER ->
+    gen_server:call(?MODULE, {send_multi, hmac_sha256, NodeRefs, Message});
 send_command(NodeRefs, Message) when is_list(NodeRefs)  ->
     gen_server:call(?MODULE, {send_multi, rsa2048_sha1, NodeRefs, Message}).
 
