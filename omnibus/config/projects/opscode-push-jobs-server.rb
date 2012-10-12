@@ -33,7 +33,7 @@ deps << "opscode-pushy-server-ctl"
 deps << "runit"
 
 deps << "opscode-pushy-server"
-##deps << "oc-pushy-pedant"
+deps << "oc-pushy-pedant"
 
 
 # version manifest file
