@@ -64,13 +64,13 @@ start_link(PushyState) ->
 
 -spec send_command(node_ref(), ejson()) -> ok.
 send_command(NodeRef, Message) when is_tuple(NodeRef) ->
-    gen_server:cast(?MODULE, {send, hmac_sha256, NodeRef, Message});
+    gen_server:call(?MODULE, {send, hmac_sha256, NodeRef, Message});
 %%% A good optimization is to use HMAC when the number of nodes is small. 
 %%% We should do more work to determine exactly where the crossover point between doing a
 %%% single expensive signature vs many cheap HMAC sigatures. The number is somewhere between
 %%% 100 and 1000
 send_command(NodeRefs, Message) when is_list(NodeRefs)  ->
-    gen_server:cast(?MODULE, {send_multi, rsa2048_sha1, NodeRefs, Message}).
+    gen_server:call(?MODULE, {send_multi, rsa2048_sha1, NodeRefs, Message}).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
@@ -91,13 +91,15 @@ init([#pushy_state{ctx=Ctx}]) ->
                   },
     {ok, State}.
 
+handle_call({send, Method, NodeRef, Message}, _From, #state{}=State) ->
+    NState = ?TIME_IT(?MODULE, do_send, (State, Method, NodeRef, Message)),
+    {reply, ok, NState};
+handle_call({send_multi, Method, NodeRefs, Message}, _From, #state{}=State) ->
+    NState = ?TIME_IT(?MODULE, do_send_multi, (State, Method, NodeRefs, Message)),
+    {reply, ok, NState};
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
-handle_cast({send, Method, NodeRef, Message}, #state{}=State) ->
-    {noreply, ?TIME_IT(?MODULE, do_send, (State, Method, NodeRef, Message))};
-handle_cast({send_multi, Method, NodeRefs, Message}, #state{}=State) ->
-    {noreply, ?TIME_IT(?MODULE, do_send_multi, (State, Method, NodeRefs, Message))};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
