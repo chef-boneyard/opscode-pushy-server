@@ -40,4 +40,4 @@ start(_StartType, _StartArgs) ->
     end.
 
 stop(Ctx) ->
-    erlzmq:term(Ctx, 0).
+    erlzmq:term(Ctx, 5000).
