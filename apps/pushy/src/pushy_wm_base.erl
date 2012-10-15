@@ -134,9 +134,6 @@ verify_request_signature(Req, State) ->
                                                  UserName, OrgName),
             {false, wrq:set_resp_body(jiffy:encode(NotFoundMsg), Req), State1};
         PublicKey ->
-            %% This is either #chef_client{} or #chef_user{} If the
-            %% request originated from the webui, we do authn using
-            %% the webui public key, not the user's key.
             Body = body_or_default(Req, <<>>),
             HTTPMethod = method_as_binary(Req),
             Path = iolist_to_binary(wrq:path(Req)),
