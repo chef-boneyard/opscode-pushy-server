@@ -48,8 +48,10 @@ api_url(OrgName, Requestor) ->
 
 check_http_response(Code, Headers, Body) ->
     case Code of
-        "2" ++ _Digits ->
+        "200" ->
             ok;
+        "2" ++ _Digits ->
+            throw({error, {unexpected, {Code, Headers, Body}}});
         "3" ++ _Digits ->
             throw({error, {redirection, {Code, Headers, Body}}});
         "404" ->
