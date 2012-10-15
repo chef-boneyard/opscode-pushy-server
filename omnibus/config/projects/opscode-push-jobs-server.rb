@@ -15,22 +15,31 @@
 # limitations under the License.
 #
 
-name "oc-pushy-pedant"
-version "master"
+name "opscode-push-jobs-server"
+
+replaces        "opscode-push-jobs-server"
+install_path    "/opt/opscode-push-jobs-server"
+build_version   Omnibus::BuildVersion.full
+build_iteration "1"
+
+deps = []
+
+# global
+deps << "chef-gem"
+deps << "preparation"
+deps << "pushy-server-cookbooks"
+deps << "pushy-server-scripts"
+deps << "opscode-pushy-server-ctl"
+deps << "runit"
+
+deps << "opscode-pushy-server"
+deps << "oc-pushy-pedant"
 
 
-dependencies ["libzmq",
-              "ruby",
-              "bundler",
-              "rsync"]
+# version manifest file
+deps << "version-manifest"
 
-# TODO: use the public git:// uri once this repo is public
-source :git => "git@github.com:opscode/oc-pushy-pedant"
+dependencies deps
 
-relative_path "oc-pushy-pedant"
-
-build do
-  bundle "install --path=#{install_dir}/embedded/service/gem"
-  command "mkdir -p #{install_dir}/embedded/service/oc-pushy-pedant"
-  command "#{install_dir}/embedded/bin/rsync -a --delete --exclude=.git/*** --exclude=.gitignore ./ #{install_dir}/embedded/service/oc-pushy-pedant/"
-end
+exclude "\.git*"
+exclude "bundler\/git"

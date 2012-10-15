@@ -3,5 +3,5 @@
 pkg/*
 .vagrant
 bin/*
-files/chef-server-cookbooks/cache/
+files/pushy-server-cookbooks/cache/
 omnibus.rb

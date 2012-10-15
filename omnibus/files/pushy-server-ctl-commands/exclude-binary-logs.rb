@@ -15,22 +15,6 @@
 # limitations under the License.
 #
 
-name "oc-pushy-pedant"
-version "master"
+# exclude SASL logs which are in binary format from tail sub-command
 
-
-dependencies ["libzmq",
-              "ruby",
-              "bundler",
-              "rsync"]
-
-# TODO: use the public git:// uri once this repo is public
-source :git => "git@github.com:opscode/oc-pushy-pedant"
-
-relative_path "oc-pushy-pedant"
-
-build do
-  bundle "install --path=#{install_dir}/embedded/service/gem"
-  command "mkdir -p #{install_dir}/embedded/service/oc-pushy-pedant"
-  command "#{install_dir}/embedded/bin/rsync -a --delete --exclude=.git/*** --exclude=.gitignore ./ #{install_dir}/embedded/service/oc-pushy-pedant/"
-end
+@log_exclude = "(lock|@|sasl)"

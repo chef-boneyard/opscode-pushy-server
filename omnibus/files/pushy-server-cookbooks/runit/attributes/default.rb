@@ -17,8 +17,8 @@
 # limitations under the License.
 #
 
-default[:runit][:sv_bin] = "/opt/chef-server/embedded/bin/sv"
-default[:runit][:chpst_bin] = "/opt/chef-server/embedded/bin/chpst"
-default[:runit][:service_dir] = "/opt/chef-server/service"
-default[:runit][:sv_dir] = "/opt/chef-server/sv"
+default[:runit][:sv_bin] = "/opt/opscode-push-jobs-server/embedded/bin/sv"
+default[:runit][:chpst_bin] = "/opt/opscode-push-jobs-server/embedded/bin/chpst"
+default[:runit][:service_dir] = "/opt/opscode-push-jobs-server/service"
+default[:runit][:sv_dir] = "/opt/opscode-push-jobs-server/sv"
 

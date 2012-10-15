@@ -15,22 +15,18 @@
 # limitations under the License.
 #
 
-name "oc-pushy-pedant"
-version "master"
+require 'chef/shell_out'
 
+class OmnibusHelper
+  def self.should_notify?(service_name)
+    File.symlink?("/opt/opscode-push-jobs-server/service/#{service_name}") && check_status(service_name)
+  end
 
-dependencies ["libzmq",
-              "ruby",
-              "bundler",
-              "rsync"]
+  def self.check_status(service_name)
+    o = Chef::ShellOut.new("/opt/opscode-push-jobs-server/bin/opscode-push-jobs-server-ctl status #{service_name}")
+    o.run_command
+    o.exitstatus == 0 ? true : false
+  end
 
-# TODO: use the public git:// uri once this repo is public
-source :git => "git@github.com:opscode/oc-pushy-pedant"
-
-relative_path "oc-pushy-pedant"
-
-build do
-  bundle "install --path=#{install_dir}/embedded/service/gem"
-  command "mkdir -p #{install_dir}/embedded/service/oc-pushy-pedant"
-  command "#{install_dir}/embedded/bin/rsync -a --delete --exclude=.git/*** --exclude=.gitignore ./ #{install_dir}/embedded/service/oc-pushy-pedant/"
 end
+
