@@ -28,7 +28,7 @@ GIT
 
 GIT
   remote: git@github.com:opscode/opscode-pushy-client.git
-  revision: a3eed59216e7dcf542f8e0efd29f2d6b8ab872c6
+  revision: f9db9f388dc11bafff87da8d67d735427383ca2b
   specs:
     opscode-pushy-client (0.0.1)
 
