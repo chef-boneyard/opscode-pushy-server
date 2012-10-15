@@ -87,7 +87,7 @@ stop_job(JobId) ->
     {'ok', job_status(), #state{}} |
     {'stop', 'shutdown', #state{}}.
 init(#pushy_job{id = JobId, job_nodes = JobNodeList} = Job) ->
-    Host = pushy_util:get_env(pushy, server_name, fun is_list/1),
+    Host = envy:get(pushy, server_name, string),
     case pushy_job_state_sup:register_process(JobId) of
         true ->
             {ok, _} = pushy_object:create_object(create_job, Job, JobId),
@@ -321,7 +321,7 @@ send_command_to_all(Type, #state{job_host=Host, job = Job, job_nodes = JobNodes}
                {server, list_to_binary(Host)},
                {command, Job#pushy_job.command}],
     NodeRefs = dict:fetch_keys(JobNodes),
-    pushy_command_switch:send_multi_command(NodeRefs, jiffy:encode({Message})).
+    pushy_command_switch:send_command(NodeRefs, {Message}).
 
 -spec send_node_event(object_id(), node_ref(), job_event()) -> ok | not_found.
 send_node_event(JobId, NodeRef, Event) ->

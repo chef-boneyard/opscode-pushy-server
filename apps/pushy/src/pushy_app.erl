@@ -27,7 +27,7 @@ start(_StartType, _StartArgs) ->
 
     error_logger:info_msg("Starting Pushy incarnation ~s.~n", [IncarnationId]),
 
-    IoProcesses = pushy_util:get_env(pushy, zmq_io_processes, 1, fun is_integer/1),
+    IoProcesses = envy:get(pushy, zmq_io_processes, 1, integer),
     case erlzmq:context(IoProcesses) of
         {ok, Ctx} ->
             case pushy_sup:start_link(#pushy_state{ctx=Ctx, incarnation_id=IncarnationId}) of
