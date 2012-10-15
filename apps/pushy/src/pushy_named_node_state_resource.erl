@@ -15,14 +15,11 @@
          to_json/2]).
 
 -include("pushy_sql.hrl").
+-include("pushy_wm.hrl").
 
 -include_lib("webmachine/include/webmachine.hrl").
 
 -include_lib("eunit/include/eunit.hrl").
-
--record(config_state, {
-          orgname :: string(),
-          organization_guid :: string() }).
 
 init(_Config) ->
     % ?debugVal(_Config),
