@@ -15,22 +15,19 @@
 # limitations under the License.
 #
 
-name "oc-pushy-pedant"
-version "master"
+bootstrap_status_file = "/var/opt/opscode-push-jobs-server/bootstrapped"
+pushy_dir = "#{node['pushy']['install_path']}/embedded/service/opscode-pushy-server"
 
+# JC - TODO when status is ready for pushy API
+#execute "verify-system-status" do
+#  command "curl -sf http://localhost:8000/_status"
+#  retries 20
+#  not_if { File.exists?(bootstrap_status_file) }
+#end
 
-dependencies ["libzmq",
-              "ruby",
-              "bundler",
-              "rsync"]
-
-# TODO: use the public git:// uri once this repo is public
-source :git => "git@github.com:opscode/oc-pushy-pedant"
-
-relative_path "oc-pushy-pedant"
-
-build do
-  bundle "install --path=#{install_dir}/embedded/service/gem"
-  command "mkdir -p #{install_dir}/embedded/service/oc-pushy-pedant"
-  command "#{install_dir}/embedded/bin/rsync -a --delete --exclude=.git/*** --exclude=.gitignore ./ #{install_dir}/embedded/service/oc-pushy-pedant/"
+file bootstrap_status_file do
+  owner "root"
+  group "root"
+  mode "0600"
+  content "All your bootstraps are belong to Pushy"
 end

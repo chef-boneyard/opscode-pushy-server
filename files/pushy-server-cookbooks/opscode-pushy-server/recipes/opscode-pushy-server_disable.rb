@@ -15,34 +15,6 @@
 # limitations under the License.
 #
 
-name "pushy-server"
-
-replaces        "pushy-server"
-install_path    "/opt/pushy-server"
-build_version   Omnibus::BuildVersion.full
-build_iteration "1"
-
-deps = []
-
-# global
-deps << "chef-gem"
-deps << "preparation"
-#deps << "pushy-server-cookbooks"
-#deps << "pushy-server-scripts"
-#deps << "pushy-server-ctl"
-deps << "runit"
-
-deps << "postgresql"
-#deps << "chef_db" # required to migrate the DB.
-
-deps << "opscode-pushy-server"
-#deps << "oc-pushy-pedant"
-
-
-# version manifest file
-deps << "version-manifest"
-
-dependencies deps
-
-exclude "\.git*"
-exclude "bundler\/git"
+runit_service "pushy" do
+  action :disable
+end

@@ -1,0 +1,5 @@
+#!/bin/sh
+exec 2>&1
+
+
+exec chpst -P -u <%= node['pushy']['user']['username'] %> -U <%= node['pushy']['user']['username'] %> env HOME=<%= node['pushy']['opscode-pushy-server']['dir'] %> <%= node['pushy']['install_path'] %>/embedded/service/opscode-pushy-server/bin/opscode-pushy-server runit

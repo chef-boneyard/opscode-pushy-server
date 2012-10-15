@@ -56,21 +56,21 @@ Vagrant::Config.run do |config|
     chef.add_recipe "omnibus"
     chef.json = {
       "omnibus" => {
-        "install-dirs" => ["/opt/pushy", "/opt/pushy-server"]
+        "install-dirs" => ["/opt/opscode-push-jobs-server"]
       }
     }
   end
 
   # Enable SSH agent forwarding for git clones
   config.ssh.forward_agent = true
-  
+
   # Give enough horsepower to build PC without taking all day
   # or several hours worth of swapping  Disable support we don't need
-  config.vm.customize [ 
+  config.vm.customize [
     "modifyvm", :id,
-    "--memory", "1536", 
-    "--cpus", "2", 
-    "--usb", "off", 
+    "--memory", "1536",
+    "--cpus", "2",
+    "--usb", "off",
     "--usbehci", "off",
     "--audio", "none"
   ]
