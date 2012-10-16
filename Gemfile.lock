@@ -22,13 +22,13 @@ GIT
 
 GIT
   remote: git@github.com:opscode/oc-pushy-pedant-tests.git
-  revision: d81f8050c82f7e0d356956d53ba09dfe1c247934
+  revision: fed932fe379d7031ae890cb8767ba701548e9c99
   specs:
     oc-pushy-pedant-tests (0.0.1)
 
 GIT
   remote: git@github.com:opscode/opscode-pushy-client.git
-  revision: f9db9f388dc11bafff87da8d67d735427383ca2b
+  revision: 5f79110090fd380024c9b86a662cac6f306501b0
   specs:
     opscode-pushy-client (0.0.1)
 
@@ -38,7 +38,7 @@ GEM
     activesupport (3.2.8)
       i18n (~> 0.6)
       multi_json (~> 1.0)
-    builder (3.1.3)
+    builder (3.1.4)
     bunny (0.8.0)
     chef (10.12.0)
       bunny (>= 0.6.0)
