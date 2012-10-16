@@ -1,12 +1,10 @@
-# Omnibus Chef
+# Omnibus Pushy
 
-This repository contains the skeleton for building Omnibus Chef packages.
+This repository contains the skeleton for building Omnibus Push Jobs packages.
 
-# Building Chef
+# Building opscode-push-jobs-server
 
-As root:
-$ bundle install
-$ CHEF_GIT_REV=10.14.4 rake projects:chef
+    > bundle exec vagrant omnibus build ubuntu-10.04 opscode-push-jobs-server
 
 Packages will be in pkg/
 
