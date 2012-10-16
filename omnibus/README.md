@@ -4,11 +4,12 @@ This repository contains the skeleton for building Omnibus Push Jobs packages.
 
 # Building opscode-push-jobs-server
 
-    > git clone git@github.com:opscode/omnibus-pushy.git
-    > git clone git@github.com:opscode/omnibus-software.git
-    > bundle install
-
-    > bundle exec vagrant omnibus build ubuntu-10.04 opscode-push-jobs-server
+    git clone git@github.com:opscode/omnibus-pushy.git
+    git clone git@github.com:opscode/omnibus-software.git
+    cd omnibus-pushy
+    cp omnibus.rb.example omnibus.rb
+    bundle install
+    bundle exec vagrant omnibus build ubuntu-10.04 opscode-push-jobs-server
 
 Packages will be in pkg/
 
