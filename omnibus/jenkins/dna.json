@@ -1,0 +1,12 @@
+{
+  "omnibus": {
+    "build-user": "jenkins-node",
+    "build-path": "/home/jenkins/omnibus",
+    "install-dirs": [
+      "/opt/opscode-push-jobs-server"
+    ]
+  },
+  "run_list": [
+    "recipe[omnibus]"
+  ]
+}
