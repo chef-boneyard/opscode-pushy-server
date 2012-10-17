@@ -39,9 +39,11 @@
 -include("pushy_sql.hrl").
 
 %% This is Erlang not C/C++
--record(state, {job_host  :: string(),
-                job       :: #pushy_job{},
-                job_nodes :: dict()}).
+-record(state, {job_host        :: string(),
+                job             :: #pushy_job{},
+                job_nodes       :: dict(),
+                voting_timeout  :: integer(),
+                running_timeout :: integer()}).
 
 %%%
 %%% External API
@@ -95,8 +97,14 @@ init(#pushy_job{id = JobId, job_nodes = JobNodeList} = Job) ->
                                           #pushy_job_node{org_id = OrgId, node_name = NodeName} =
                                               JobNode <- JobNodeList]),
             State = #state{job = Job#pushy_job{job_nodes = undefined},
-                           job_nodes = JobNodes, job_host=Host},
+                           job_nodes = JobNodes,
+                           job_host = Host,
+                           voting_timeout = envy:get(pushy, voting_timeout, 5000, integer),
+                           running_timeout = envy:get(pushy, default_running_timeout, 36000000, integer)},
             listen_for_down_nodes(dict:fetch_keys(JobNodes)),
+
+            lager:info("Job ~p starting '~p' on ~p nodes, with timeout ~p",
+                [JobId, Job#pushy_job.command, length(JobNodeList), State#state.running_timeout]),
 
             % Start voting--if there are no nodes, the job finishes immediately.
             case start_voting(State) of
@@ -187,16 +195,18 @@ handle_sync_event(Event, From, StateName, State) ->
         {'next_state', job_status(), #state{}}.
 handle_info({down, NodeRef}, StateName, State) ->
     pushy_job_state:StateName({down,NodeRef}, State);
-handle_info(voting_timeout, voting, #state{job = Job} = State) ->
-    lager:info("Timeout occurred during voting on job ~p after ~p milliseconds", [Job#pushy_job.id, voting_timeout()]),
+handle_info(voting_timeout, voting,
+        #state{job = Job, voting_timeout = VotingTimeout} = State) ->
+    lager:info("Timeout occurred during voting on job ~p after ~p milliseconds", [Job#pushy_job.id, VotingTimeout]),
     maybe_finished_voting(State);
-handle_info(running_timeout, running, #state{job = Job} = State) ->
-    lager:info("Timeout occurred while running job ~p after ~p milliseconds", [Job#pushy_job.id, running_timeout()]),
-    finish_job(timed_out, State);
 % Rather than store and cancel timers, we let them fire and ignore them if we've
 % moved on to a new state.
-handle_info(voting_timeout, StateName, State) ->
-    {next_state, StateName, State};
+handle_info(voting_timeout, running, State) ->
+    {next_state, running, State};
+handle_info(running_timeout, running,
+        #state{job = Job, running_timeout = RunningTimeout} = State) ->
+    lager:info("Timeout occurred while running job ~p after ~p milliseconds", [Job#pushy_job.id, RunningTimeout]),
+    finish_job(timed_out, State);
 handle_info(Info, StateName, State) ->
     lager:error("Unknown message handle_info(~p)", [Info]),
     {next_state, StateName, State}.
@@ -278,22 +288,22 @@ maybe_finished_running(State) ->
         _ -> {next_state, running, State}
     end.
 
-start_voting(#state{job = Job} = State) ->
+start_voting(#state{job = Job, voting_timeout = VotingTimeout} = State) ->
     lager:info("Job ~p -> voting", [Job#pushy_job.id]),
     Job2 = Job#pushy_job{status = voting},
     State2 = State#state{job = Job2},
     pushy_object:update_object(update_job, Job2, Job2#pushy_job.id),
     send_command_to_all(<<"commit">>, State2),
-    {ok, _} = timer:send_after(voting_timeout(), voting_timeout),
+    {ok, _} = timer:send_after(VotingTimeout, voting_timeout),
     maybe_finished_voting(State2).
 
-start_running(#state{job = Job} = State) ->
+start_running(#state{job = Job, running_timeout = RunningTimeout} = State) ->
     lager:info("Job ~p -> running", [Job#pushy_job.id]),
     Job2 = Job#pushy_job{status = running},
     State2 = State#state{job = Job2},
     pushy_object:update_object(update_job, Job2, Job2#pushy_job.id),
     send_command_to_all(<<"run">>, State2),
-    {ok, _} = timer:send_after(running_timeout(), running_timeout),
+    {ok, _} = timer:send_after(RunningTimeout, running_timeout),
     maybe_finished_running(State2).
 
 finish_job(Reason, #state{job = Job} = State) ->
@@ -355,6 +365,3 @@ terminalize(timed_out) -> terminal;
 terminalize(new) -> new;
 terminalize(ready) -> ready;
 terminalize(running) -> running.
-
-voting_timeout() -> 1000.
-running_timeout() -> 4000.
