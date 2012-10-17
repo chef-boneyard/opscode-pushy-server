@@ -59,7 +59,6 @@ init([#pushy_state{ctx=_Ctx} = PushyState]) ->
     Workers = [?SUP(pushy_node_state_sup, []),
                 ?SUP(pushy_job_state_sup, []),
                 ?WORKER(chef_keyring, []),
-                ?SUP(folsom_sup, []),
                 ?WORKER(pushy_node_status_updater, []),
                 ?WORKER(pushy_heartbeat_generator, [PushyState]),
                 ?WORKER(pushy_command_switch, [PushyState]),

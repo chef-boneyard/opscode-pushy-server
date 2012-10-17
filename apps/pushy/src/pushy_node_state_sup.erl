@@ -34,7 +34,7 @@ start_link() ->
 
 -spec get_process(node_ref()) -> pid().
 get_process(NodeRef) ->
-    StartState = up,
+    StartState = down,
     GprocName = mk_gproc_name(NodeRef),
     case catch gproc:lookup_pid({n,l,GprocName}) of
         {'EXIT', _} ->

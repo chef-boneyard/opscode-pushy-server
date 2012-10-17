@@ -160,7 +160,7 @@ do_receive(CommandSock, Frame, State) ->
 do_send(#state{addr_node_map = AddrNodeMap,
                command_sock = CommandSocket}=State,
         Method, NodeRef, Message) ->
-    Key = get_key_for_method(Method, State, NodeRef),
+        {ok, Key} = get_key_for_method(Method, State, NodeRef),
     Address = addr_node_map_lookup_by_node(AddrNodeMap, NodeRef),
     Packets = ?TIME_IT(pushy_messaging, make_message, (proto_v2, Method, Key, Message)),
     ok = pushy_messaging:send_message(CommandSocket, [Address | Packets]),
@@ -174,6 +174,9 @@ do_send(#state{addr_node_map = AddrNodeMap,
 %%%
 get_key_for_method(rsa2048_sha1, #state{private_key = PrivateKey}, _EJson) ->
     {ok, PrivateKey};
+get_key_for_method(hmac_sha256, _State, {_,_}=NodeRef) ->
+    {hmac_sha256, Key} = pushy_key_manager:get_key(NodeRef),
+    {ok, Key};
 get_key_for_method(hmac_sha256, _State, EJson) ->
     NodeRef = get_node_ref(EJson),
     {hmac_sha256, Key} = pushy_key_manager:get_key(NodeRef),

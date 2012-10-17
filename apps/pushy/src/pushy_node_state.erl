@@ -210,8 +210,8 @@ handle_sync_event(Event, _From, StateName, #state{node_ref=NodeRef}=State) ->
 handle_info(down, down, State) ->
     {next_state, down, State};
 handle_info(abort_nodes, StateName, #state{node_ref = NodeRef} = State) ->
-    Message = [{type, abort}],
-    ok = pushy_command_switch:send_command(NodeRef, jiffy:encode({Message})),
+    Message = {[{type, abort}]},
+    ok = pushy_command_switch:send_command(NodeRef, Message),
     {next_state, StateName, State};
 handle_info({timeout, _Ref, update_avg}, CurStatus, #state{heartbeat_rate=HRate, up_threshold=UThresh, down_threshold=DThresh}=State) ->
     NHRate = pushy_ema:tick(HRate),
