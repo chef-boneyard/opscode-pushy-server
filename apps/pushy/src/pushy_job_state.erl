@@ -122,46 +122,48 @@ init(#pushy_job{id = JobId, job_nodes = JobNodeList} = Job) ->
 voting({ack_commit, NodeRef}, State) ->
     % Node from new -> ready
     State2 = case get_node_state(NodeRef, State) of
-        new   -> set_node_state(NodeRef, ready, State);
-        ready -> State;
-        _     -> mark_node_faulty(NodeRef, State)
+        new      -> set_node_state(NodeRef, ready, State);
+        ready    -> State;
+        terminal -> send_to_rehab(NodeRef, State)
     end,
     maybe_finished_voting(State2);
 voting({nack_commit, NodeRef}, State) ->
     % Node from new -> nacked.
     State2 = case get_node_state(NodeRef, State) of
-        new -> set_node_state(NodeRef, nacked, State);
-        _   -> mark_node_faulty(NodeRef, State)
-    end,
-    maybe_finished_voting(State2);
-voting({down, NodeRef}, State) ->
-    % Node from new/ready -> unavailable.
-    State2 = case get_node_state(NodeRef, State) of
-        new   -> set_node_state(NodeRef, unavailable, State);
-        ready -> set_node_state(NodeRef, unavailable, State);
-        _     -> mark_node_faulty(NodeRef, State)
+        new      -> set_node_state(NodeRef, nacked, State);
+        ready    -> send_to_rehab(NodeRef, unavailable, State);
+        terminal -> send_to_rehab(NodeRef, State)
     end,
     maybe_finished_voting(State2);
 voting({_, NodeRef}, State) ->
-    State2 = mark_node_faulty(NodeRef, State),
+    State2 = case get_node_state(NodeRef, State) of
+        new      -> send_to_rehab(NodeRef, unavailable, State);
+        ready    -> send_to_rehab(NodeRef, unavailable, State);
+        terminal -> send_to_rehab(NodeRef, State)
+    end,
     maybe_finished_voting(State2).
 
 running({ack_run, NodeRef}, State) ->
     % Node from ready -> running
     State2 = case get_node_state(NodeRef, State) of
-        ready   -> set_node_state(NodeRef, running, State);
-        running -> State;
-        _ -> mark_node_faulty(NodeRef, State)
+        ready    -> set_node_state(NodeRef, running, State);
+        running  -> State;
+        terminal -> send_to_rehab(NodeRef, State)
     end,
     maybe_finished_running(State2);
 running({complete, NodeRef}, State) ->
     State2 = case get_node_state(NodeRef, State) of
-        running -> set_node_state(NodeRef, complete, State);
-        _       -> mark_node_faulty(NodeRef, State)
+        ready    -> send_to_rehab(NodeRef, crashed, State);
+        running  -> set_node_state(NodeRef, complete, State);
+        terminal -> send_to_rehab(NodeRef, State)
     end,
     maybe_finished_running(State2);
 running({_,NodeRef}, State) ->
-    State2 = mark_node_faulty(NodeRef, State),
+    State2 = case get_node_state(NodeRef, State) of
+        ready    -> send_to_rehab(NodeRef, crashed, State);
+        running  -> send_to_rehab(NodeRef, crashed, State);
+        terminal -> send_to_rehab(NodeRef, State)
+    end,
     maybe_finished_running(State2).
 
 complete({Event,NodeRef}, State) ->
@@ -226,7 +228,7 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 
 get_node_state(NodeRef, #state{job_nodes = JobNodes}) ->
     Node = dict:fetch(NodeRef, JobNodes),
-    Node#pushy_job_node.status.
+    terminalize(Node#pushy_job_node.status).
 
 set_node_state(NodeRef, NewNodeState, #state{job_nodes = JobNodes} = State) ->
     JobNodes2 = dict:update(NodeRef, fun(OldPushyJobNode) ->
@@ -236,22 +238,13 @@ set_node_state(NodeRef, NewNodeState, #state{job_nodes = JobNodes} = State) ->
     end, JobNodes),
     State#state{job_nodes = JobNodes2}.
 
-mark_node_faulty(NodeRef, #state{job = Job, job_nodes = JobNodes} = State) ->
-    JobNodes2 = dict:update(NodeRef, fun(OldNodeState) ->
-        JobStatus = Job#pushy_job.status,
-        OldNodeStatus = OldNodeState#pushy_job_node.status,
-        NewPushyJobNode = case {JobStatus, terminalize(OldNodeStatus)} of
-            {_, new}         -> OldNodeState#pushy_job_node{status = unavailable};
-            {voting, ready}  -> OldNodeState#pushy_job_node{status = unavailable};
-            {running, ready} -> OldNodeState#pushy_job_node{status = crashed};
-            {_, running}     -> OldNodeState#pushy_job_node{status = crashed};
-            {_, terminal}    -> OldNodeState
-        end,
-        pushy_sql:update_job_node(NewPushyJobNode),
-        NewPushyJobNode
-    end, JobNodes),
+send_to_rehab(NodeRef, NewNodeState, State) ->
+    State2 = set_node_state(NodeRef, NewNodeState, State),
+    send_to_rehab(NodeRef, State2).
+
+send_to_rehab(NodeRef, State) ->
     pushy_node_state:rehab(NodeRef),
-    State#state{job_nodes = JobNodes2}.
+    State.
 
 finish_all_nodes(#state{job = Job, job_nodes = JobNodes} = State) ->
     JobNodes2 = dict:map(fun(_, OldNodeState) ->
