@@ -16,7 +16,10 @@
 
 %% API
 -export([current_state/1,
+         in_rehab/1,
          heartbeat/1,
+         rehab/1,
+         node_aborted/1,
          set_logging/2,
          start_link/1,
          start_link/2]).
@@ -58,7 +61,7 @@
                 heartbeats_rcvd = 0   :: integer(),
                 up_threshold          :: float(),
                 down_threshold        :: float(),
-                tref,
+                rehab_timer,
                 heartbeat_rate   :: eavg()
                }).
 
@@ -99,6 +102,18 @@ stop_watching(NodeRef) ->
     catch error:badarg ->
             ok
     end.
+
+in_rehab(NodeRef) ->
+    Pid = pushy_node_state_sup:get_process(NodeRef),
+    gen_fsm:sync_send_all_state_event(Pid, current_rehab_status, infinity).
+
+rehab(NodeRef) ->
+    Pid = pushy_node_state_sup:get_process(NodeRef),
+    gen_fsm:send_all_state_event(Pid, rehab).
+
+node_aborted(NodeRef) ->
+    Pid = pushy_node_state_sup:get_process(NodeRef),
+    gen_fsm:send_all_state_event(Pid, aborted).
 
 init({NodeRef,StartState}) ->
     init(NodeRef,StartState);
@@ -154,6 +169,14 @@ init(NodeRef, StartState) ->
 handle_event({logging, Level}, StateName, State) ->
     State1 = State#state{logging=Level},
     {next_state, StateName, State1};
+handle_event(rehab, up, State) ->
+    State1 = send_to_rehab(up, State),
+    {next_state, up, State1};
+handle_event(rehab, down, State) ->
+    {next_state, down, State};
+handle_event(aborted, up, State) ->
+    State1 = kick_from_rehab(State),
+    {next_state, up, State1};
 handle_event(heartbeat,
             StateName,
             #state{node_ref=NodeRef, heartbeats_rcvd=HeartBeats, logging=Level, current_status=CurStatus, heartbeat_rate=HRate}=State) ->
@@ -171,6 +194,12 @@ handle_event(Event, StateName, #state{node_ref=NodeRef}=State) ->
 
 handle_sync_event(current_state, _From, StateName, State) ->
     {reply, StateName, StateName, State};
+handle_sync_event(current_rehab_status, _From, StateName, #state{rehab_timer = RehabTimer} = State) ->
+    InRehab = case RehabTimer of
+        undefined -> false;
+        _ -> true
+    end,
+    {reply, InRehab, StateName, State};
 handle_sync_event(Event, _From, StateName, #state{node_ref=NodeRef}=State) ->
     lager:error("FSM for ~p received unexpected handle_sync_event(~p)", [NodeRef, Event]),
     {reply, ignored, StateName, State}.
@@ -180,6 +209,10 @@ handle_sync_event(Event, _From, StateName, #state{node_ref=NodeRef}=State) ->
 %%
 handle_info(down, down, State) ->
     {next_state, down, State};
+handle_info(abort_nodes, StateName, #state{node_ref = NodeRef} = State) ->
+    Message = {[{type, abort}]},
+    ok = pushy_command_switch:send_command(NodeRef, Message),
+    {next_state, StateName, State};
 handle_info({timeout, _Ref, update_avg}, CurStatus, #state{heartbeat_rate=HRate, up_threshold=UThresh, down_threshold=DThresh}=State) ->
     NHRate = pushy_ema:tick(HRate),
     EAvg = pushy_ema:value(NHRate),
@@ -208,20 +241,23 @@ code_change(_OldVsn, CurState, State, _Extra) ->
 %% Internal functions
 
 create_status_record(Status, #state{node_ref=NodeRef}=State) ->
-    notify_status_change(Status, State),
+    State1 = notify_status_change(Status, State),
     pushy_node_status_updater:create(NodeRef, ?POC_ACTOR_ID, Status),
-    State.
+    State1.
 
 update_status(Status, #state{node_ref=NodeRef}=State) ->
-    notify_status_change(Status, State),
+    State1 = notify_status_change(Status, State),
     pushy_node_status_updater:update(NodeRef, ?POC_ACTOR_ID, Status),
-    State.
+    State1.
 
-notify_status_change(Status, #state{node_ref=NodeRef}) ->
+notify_status_change(Status, #state{node_ref=NodeRef} = State) ->
     lager:info("Status change for ~p : ~p", [NodeRef, Status]),
+
     case Status of
-        down -> gproc:send(subscribers_key(NodeRef), {down, NodeRef});
-        up -> nop
+        down ->
+            gproc:send(subscribers_key(NodeRef), {down, NodeRef}),
+            kick_from_rehab(State);
+        up -> send_to_rehab(Status, State)
     end.
 
 nlog(normal, Format, Args) ->
@@ -232,3 +268,34 @@ nlog(verbose, Format, Args) ->
 -spec subscribers_key(node_ref()) -> {p,l,{node_state_monitor,node_ref()}}.
 subscribers_key(NodeRef) ->
     {p,l,{node_state_monitor,NodeRef}}.
+
+%%-----------------------------------------------------------------------------
+%% Private Functions
+%%-----------------------------------------------------------------------------
+
+send_to_rehab(up, #state{node_ref = NodeRef, rehab_timer = TimerRef0} = State) when TimerRef0 =:= undefined ->
+    {ok, TimerRef} = timer:send_interval(rehab_timer(), abort_nodes),
+    lager:info("Added ~p to Rehab", [NodeRef]),
+    State#state{rehab_timer = TimerRef};
+send_to_rehab(down, #state{node_ref = NodeRef} = State) ->
+    lager:info("Node ~p is down can't be sent to Rehab", [NodeRef]),
+    State;
+send_to_rehab(_Status, #state{node_ref = NodeRef} = State) ->
+    lager:info("~p already in rehab", [NodeRef]),
+    State.
+
+kick_from_rehab(#state{rehab_timer = undefined} = State) ->
+    State;
+kick_from_rehab(#state{rehab_timer = TimerRef, node_ref = NodeRef} = State) ->
+    case timer:cancel(TimerRef) of
+        {ok, cancel} ->
+            lager:info("Removed ~p from Rehab", [NodeRef]),
+            State#state{rehab_timer = undefined};
+        Error ->
+            lager:info("Error Canceling Timer: ~p~n", [Error]),
+            State
+    end.
+
+
+rehab_timer() ->
+    pushy_util:get_env(pushy, rehab_timer, 1000, fun is_integer/1).

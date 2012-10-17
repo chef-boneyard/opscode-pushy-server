@@ -101,10 +101,10 @@ init(#pushy_job{id = JobId, job_nodes = JobNodeList} = Job) ->
             % Start voting--if there are no nodes, the job finishes immediately.
             case start_voting(State) of
                 {next_state, StateName, State2} -> {ok, StateName, State2};
-                {stop, Reason, _State} -> {stop, Reason}
+                {stop, Reason, _State} -> {stop, {shutdown, Reason}}
             end;
         false ->
-            {stop, shutdown, undefined}
+            {stop, shutdown}
     end.
 
 %%%
@@ -149,12 +149,6 @@ running({ack_run, NodeRef}, State) ->
 running({complete, NodeRef}, State) ->
     State2 = case get_node_state(NodeRef, State) of
         running -> set_node_state(NodeRef, complete, State);
-        _       -> mark_node_faulty(NodeRef, State)
-    end,
-    maybe_finished_running(State2);
-running({aborted, NodeRef}, State) ->
-    State2 = case get_node_state(NodeRef, State) of
-        running -> set_node_state(NodeRef, aborted, State);
         _       -> mark_node_faulty(NodeRef, State)
     end,
     maybe_finished_running(State2);
@@ -236,6 +230,7 @@ mark_node_faulty(NodeRef, #state{job = Job, job_nodes = JobNodes} = State) ->
         pushy_sql:update_job_node(NewPushyJobNode),
         NewPushyJobNode
     end, JobNodes),
+    pushy_node_state:rehab(NodeRef),
     State#state{job_nodes = JobNodes2}.
 
 finish_all_nodes(#state{job = Job, job_nodes = JobNodes} = State) ->
@@ -250,6 +245,8 @@ finish_all_nodes(#state{job = Job, job_nodes = JobNodes} = State) ->
             {_, terminal}    -> OldNodeState
         end,
         pushy_sql:update_job_node(NewPushyJobNode),
+        pushy_node_state:rehab({NewPushyJobNode#pushy_job_node.org_id,
+                                NewPushyJobNode#pushy_job_node.node_name}),
         NewPushyJobNode
     end, JobNodes),
     State#state{job_nodes = JobNodes2}.
@@ -330,6 +327,7 @@ send_node_event(JobId, NodeRef, Event) ->
         Pid when is_pid(Pid) ->
             gen_fsm:send_event(Pid, {Event, NodeRef});
         not_found ->
+            pushy_node_state:rehab(NodeRef),
             not_found
     end.
 

@@ -86,6 +86,7 @@ init([#pushy_state{ctx=Ctx}]) ->
     lager:info("Starting command mux listening on ~s.", [CommandAddress]),
 
     {ok, CommandSock} = erlzmq:socket(Ctx, [router, {active, true}]),
+    ok = erlzmq:setsockopt(CommandSock, linger, 0),
     ok = erlzmq:bind(CommandSock, CommandAddress),
     State = #state{command_sock = CommandSock,
                    addr_node_map = addr_node_map_new(),
@@ -110,7 +111,8 @@ handle_info({zmq, CommandSock, Frame, [rcvmore]}, State) ->
 handle_info(_Info, State) ->
     {noreply, State}.
 
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{command_sock=CommandSock}) ->
+    erlzmq:close(CommandSock),
     ok.
 
 code_change(_OldVsn, State, _Extra) ->
@@ -158,7 +160,7 @@ do_receive(CommandSock, Frame, State) ->
 do_send(#state{addr_node_map = AddrNodeMap,
                command_sock = CommandSocket}=State,
         Method, NodeRef, Message) ->
-    Key = get_key_for_method(Method, State, NodeRef),
+        {ok, Key} = get_key_for_method(Method, State, NodeRef),
     Address = addr_node_map_lookup_by_node(AddrNodeMap, NodeRef),
     Packets = ?TIME_IT(pushy_messaging, make_message, (proto_v2, Method, Key, Message)),
     ok = pushy_messaging:send_message(CommandSocket, [Address | Packets]),
@@ -172,6 +174,9 @@ do_send(#state{addr_node_map = AddrNodeMap,
 %%%
 get_key_for_method(rsa2048_sha1, #state{private_key = PrivateKey}, _EJson) ->
     {ok, PrivateKey};
+get_key_for_method(hmac_sha256, _State, {_,_}=NodeRef) ->
+    {hmac_sha256, Key} = pushy_key_manager:get_key(NodeRef),
+    {ok, Key};
 get_key_for_method(hmac_sha256, _State, EJson) ->
     NodeRef = get_node_ref(EJson),
     {hmac_sha256, Key} = pushy_key_manager:get_key(NodeRef),
@@ -218,8 +223,15 @@ process_message(State, #pushy_message{address=Address, body=Data}) ->
     send_node_event(JobId, NodeRef, Type),
     State2.
 
+send_node_event(null, NodeRef, <<"heartbeat">>) ->
+    lager:debug("Received heartbeat for node ~p with NULL job id", [NodeRef]),
+    pushy_node_state:heartbeat(NodeRef);
 send_node_event(JobId, NodeRef, <<"heartbeat">>) ->
-    lager:debug("Received heartbeat for node ~p with job id ~p", [JobId, NodeRef]),
+    lager:debug("Received heartbeat for node ~p with job id ~p", [NodeRef, JobId]),
+    case pushy_job_state_sup:get_process(JobId) of
+        not_found -> pushy_node_state:rehab(NodeRef);
+        _ -> noop
+    end,
     pushy_node_state:heartbeat(NodeRef);
 send_node_event(JobId, NodeRef, <<"ack_commit">>) ->
     pushy_job_state:node_ack_commit(JobId, NodeRef);
@@ -231,7 +243,10 @@ send_node_event(JobId, NodeRef, <<"nack_run">>) ->
     pushy_job_state:node_nack_run(JobId, NodeRef);
 send_node_event(JobId, NodeRef, <<"complete">>)->
     pushy_job_state:node_complete(JobId, NodeRef);
+send_node_event(null, NodeRef, <<"aborted">>) ->
+    pushy_node_state:node_aborted(NodeRef);
 send_node_event(JobId, NodeRef, <<"aborted">>) ->
+    pushy_node_state:node_aborted(NodeRef),
     pushy_job_state:node_aborted(JobId, NodeRef);
 send_node_event(JobId, NodeRef, undefined) ->
     lager:error("Status message for job ~p and node ~p was missing type field!~n", [JobId, NodeRef]);
