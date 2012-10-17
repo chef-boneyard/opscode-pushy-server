@@ -176,9 +176,9 @@ quorum_failed({Event,NodeRef}, State) ->
 
 -spec handle_event(any(), job_status(), #state{}) ->
         {'next_state', job_status(), #state{}}.
-handle_event(Event, _StateName, State) ->
+handle_event(Event, StateName, State) ->
     lager:error("Unknown message handle_event(~p)", [Event]),
-    finish_job(faulty, State).
+    {next_state, StateName, State}.
 
 -spec handle_sync_event(any(), any(), job_status(), #state{}) ->
         {'reply', 'ok', job_status(), #state{}}.
@@ -208,7 +208,9 @@ handle_info(voting_timeout, running, State) ->
 handle_info(running_timeout, running,
         #state{job = Job, running_timeout = RunningTimeout} = State) ->
     lager:info("Timeout occurred while running job ~p after ~p milliseconds", [Job#pushy_job.id, RunningTimeout]),
-    finish_job(timed_out, State);
+    State2 = send_matching_to_rehab(ready, aborted, State),
+    State3 = send_matching_to_rehab(running, aborted, State2),
+    finish_job(timed_out, State3);
 handle_info(Info, StateName, State) ->
     lager:error("Unknown message handle_info(~p)", [Info]),
     {next_state, StateName, State}.
@@ -246,21 +248,17 @@ send_to_rehab(NodeRef, State) ->
     pushy_node_state:rehab(NodeRef),
     State.
 
-finish_all_nodes(#state{job = Job, job_nodes = JobNodes} = State) ->
-    JobNodes2 = dict:map(fun(_, OldNodeState) ->
-        JobStatus = Job#pushy_job.status,
-        OldNodeStatus = OldNodeState#pushy_job_node.status,
-        NewPushyJobNode = case {JobStatus, terminalize(OldNodeStatus)} of
-            {_, new}         -> OldNodeState#pushy_job_node{status = unavailable};
-            {voting, ready}  -> OldNodeState#pushy_job_node{status = was_ready};
-            {running, ready} -> OldNodeState#pushy_job_node{status = aborted};
-            {_, running}     -> OldNodeState#pushy_job_node{status = aborted};
-            {_, terminal}    -> OldNodeState
-        end,
-        pushy_sql:update_job_node(NewPushyJobNode),
-        pushy_node_state:rehab({NewPushyJobNode#pushy_job_node.org_id,
-                                NewPushyJobNode#pushy_job_node.node_name}),
-        NewPushyJobNode
+send_matching_to_rehab(OldNodeState, NewNodeState, #state{job_nodes = JobNodes} = State) ->
+    JobNodes2 = dict:map(fun(_, OldPushyJobNode) ->
+        case OldPushyJobNode#pushy_job_node.status of
+            OldNodeState ->
+                NewPushyJobNode = OldPushyJobNode#pushy_job_node{status = NewNodeState},
+                pushy_sql:update_job_node(NewPushyJobNode),
+                pushy_node_state:rehab({NewPushyJobNode#pushy_job_node.org_id,
+                                        NewPushyJobNode#pushy_job_node.node_name}),
+                NewPushyJobNode;
+           _ -> OldPushyJobNode
+        end
     end, JobNodes),
     State#state{job_nodes = JobNodes2}.
 
@@ -270,7 +268,9 @@ maybe_finished_voting(#state{job_nodes = JobNodes} = State) ->
             NumNodes = dict:size(JobNodes),
             case count_nodes_in_state([ready], State) of
                 NumNodes -> start_running(State);
-                _ -> finish_job(quorum_failed, State)
+                _ ->
+                    State2 = send_matching_to_rehab(ready, was_ready, State),
+                    finish_job(quorum_failed, State2)
             end;
         _ -> {next_state, voting, State}
     end.
@@ -301,11 +301,10 @@ start_running(#state{job = Job, running_timeout = RunningTimeout} = State) ->
 
 finish_job(Reason, #state{job = Job} = State) ->
     lager:info("Job ~p -> ~p", [Job#pushy_job.id, Reason]),
-    State2 = finish_all_nodes(State),
     Job2 = Job#pushy_job{status = Reason},
-    State3 = State2#state{job = Job2},
+    State2 = State#state{job = Job2},
     pushy_object:update_object(update_job, Job2, Job2#pushy_job.id),
-    {stop, {shutdown, Reason}, State3}.
+    {stop, {shutdown, Reason}, State2}.
 
 count_nodes_in_state(NodeStates, #state{job_nodes = JobNodes}) ->
     dict:fold(
