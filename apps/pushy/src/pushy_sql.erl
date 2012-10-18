@@ -265,12 +265,14 @@ job_status(complete) -> 2;
 job_status(quorum_failed) -> 3;
 job_status(aborted) -> 4;
 job_status(new) -> 5;
+job_status(timed_out) -> 6;
 job_status(0) -> voting;
 job_status(1) -> running;
 job_status(2) -> complete;
 job_status(3) -> quorum_failed;
 job_status(4) -> aborted;
-job_status(5) -> new.
+job_status(5) -> new;
+job_status(6) -> timed_out.
 
 %% Job Node Status translators
 job_node_status(new) -> 0;
@@ -283,6 +285,7 @@ job_node_status(nacked) -> 6;
 job_node_status(faulty) -> 7;
 job_node_status(was_ready) -> 8;
 job_node_status(crashed) -> 9;
+job_node_status(timed_out) -> 10;
 job_node_status(0) -> new;
 job_node_status(1) -> ready;
 job_node_status(2) -> running;
@@ -292,7 +295,8 @@ job_node_status(5) -> unavailable;
 job_node_status(6) -> nacked;
 job_node_status(7) -> faulty;
 job_node_status(8) -> was_ready;
-job_node_status(9) -> crashed.
+job_node_status(9) -> crashed;
+job_node_status(10) -> timed_out.
 
 %% CHEF_COMMON CARGO_CULT
 %% chef_sql:flatten_record/1
