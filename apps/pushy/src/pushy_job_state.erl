@@ -200,7 +200,9 @@ handle_info({down, NodeRef}, StateName, State) ->
 handle_info(voting_timeout, voting,
         #state{job = Job, voting_timeout = VotingTimeout} = State) ->
     lager:info("Timeout occurred during voting on job ~p after ~p milliseconds", [Job#pushy_job.id, VotingTimeout]),
-    maybe_finished_voting(State);
+    % Set all nodes that have not responded to the vote, to new, forcing voting to finish
+    State2 = send_matching_to_rehab(new, unavailable, State),
+    maybe_finished_voting(State2);
 % Rather than store and cancel timers, we let them fire and ignore them if we've
 % moved on to a new state.
 handle_info(voting_timeout, running, State) ->
