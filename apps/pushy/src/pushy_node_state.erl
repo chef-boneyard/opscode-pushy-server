@@ -209,7 +209,7 @@ handle_sync_event(Event, _From, StateName, #state{node_ref=NodeRef}=State) ->
 %%
 handle_info(down, down, State) ->
     {next_state, down, State};
-handle_info(abort_nodes, StateName, #state{node_ref = NodeRef} = State) ->
+handle_info(send_abort, StateName, #state{node_ref = NodeRef} = State) ->
     Message = {[{type, abort}]},
     ok = pushy_command_switch:send_command(NodeRef, Message),
     {next_state, StateName, State};
@@ -273,8 +273,9 @@ subscribers_key(NodeRef) ->
 %% Private Functions
 %%-----------------------------------------------------------------------------
 
-send_to_rehab(up, #state{node_ref = NodeRef, rehab_timer = TimerRef0} = State) when TimerRef0 =:= undefined ->
-    {ok, TimerRef} = timer:send_interval(rehab_timer(), abort_nodes),
+send_to_rehab(up, #state{node_ref = NodeRef, rehab_timer = undefined} = State) ->
+    self() ! send_abort,
+    {ok, TimerRef} = timer:send_interval(rehab_timer(), send_abort),
     lager:info("Added ~p to Rehab", [NodeRef]),
     State#state{rehab_timer = TimerRef};
 send_to_rehab(down, #state{node_ref = NodeRef} = State) ->
