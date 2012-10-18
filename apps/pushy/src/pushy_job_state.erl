@@ -236,9 +236,13 @@ get_node_state(NodeRef, #state{job_nodes = JobNodes}) ->
 
 set_node_state(NodeRef, NewNodeState, #state{job_nodes = JobNodes} = State) ->
     JobNodes2 = dict:update(NodeRef, fun(OldPushyJobNode) ->
-        NewPushyJobNode = OldPushyJobNode#pushy_job_node{status = NewNodeState},
-        pushy_sql:update_job_node(NewPushyJobNode),
-        NewPushyJobNode
+        case terminalize(OldPushyJobNode#pushy_job_node.status) of
+            terminal -> error("Attempt to change node ~p from terminal state ~p to state ~p");
+            _ ->
+                NewPushyJobNode = OldPushyJobNode#pushy_job_node{status = NewNodeState},
+                pushy_sql:update_job_node(NewPushyJobNode),
+                NewPushyJobNode
+        end
     end, JobNodes),
     State#state{job_nodes = JobNodes2}.
 
@@ -247,7 +251,10 @@ send_to_rehab(NodeRef, NewNodeState, State) ->
     send_to_rehab(NodeRef, State2).
 
 send_to_rehab(NodeRef, State) ->
-    pushy_node_state:rehab(NodeRef),
+    case get_node_state(NodeRef, State) of
+        terminal -> pushy_node_state:rehab(NodeRef);
+        _ -> error("Attempt to send node ~p to rehab even though it is in non-terminal state ~p")
+    end,
     State.
 
 send_matching_to_rehab(OldNodeState, NewNodeState, #state{job_nodes = JobNodes} = State) ->
