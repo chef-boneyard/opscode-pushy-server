@@ -260,17 +260,18 @@ send_to_rehab(NodeRef, State) ->
     State.
 
 send_matching_to_rehab(OldNodeState, NewNodeState, #state{job_nodes = JobNodes} = State) ->
-    JobNodes2 = dict:map(fun(_, OldPushyJobNode) ->
-        case OldPushyJobNode#pushy_job_node.status of
-            OldNodeState ->
-                NewPushyJobNode = OldPushyJobNode#pushy_job_node{status = NewNodeState},
-                pushy_sql:update_job_node(NewPushyJobNode),
-                pushy_node_state:rehab({NewPushyJobNode#pushy_job_node.org_id,
-                                        NewPushyJobNode#pushy_job_node.node_name}),
-                NewPushyJobNode;
-           _ -> OldPushyJobNode
-        end
-    end, JobNodes),
+    JobNodes2 = dict:map(
+        fun(_, OldPushyJobNode) ->
+            case OldPushyJobNode#pushy_job_node.status of
+                OldNodeState ->
+                    NewPushyJobNode = OldPushyJobNode#pushy_job_node{status = NewNodeState},
+                    pushy_sql:update_job_node(NewPushyJobNode),
+                    pushy_node_state:rehab({NewPushyJobNode#pushy_job_node.org_id,
+                                            NewPushyJobNode#pushy_job_node.node_name}),
+                    NewPushyJobNode;
+               _ -> OldPushyJobNode
+            end
+        end, JobNodes),
     State#state{job_nodes = JobNodes2}.
 
 maybe_finished_voting(#state{job_nodes = JobNodes} = State) ->
