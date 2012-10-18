@@ -119,6 +119,7 @@ init(#pushy_job{id = JobId, job_nodes = JobNodeList} = Job) ->
 %%% Incoming events
 %%%
 
+% Nodes can only be new, ready or terminal while we're voting.
 voting({ack_commit, NodeRef}, State) ->
     % Node from new -> ready
     State2 = case get_node_state(NodeRef, State) of
@@ -143,6 +144,7 @@ voting({_, NodeRef}, State) ->
     end,
     maybe_finished_voting(State2).
 
+% Nodes can never be "new" in voting--only ready, running or terminal.
 running({ack_run, NodeRef}, State) ->
     % Node from ready -> running
     State2 = case get_node_state(NodeRef, State) of
