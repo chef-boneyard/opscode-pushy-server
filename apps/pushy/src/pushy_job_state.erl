@@ -37,9 +37,11 @@
 -include("pushy_sql.hrl").
 
 %% This is Erlang not C/C++
--record(state, {job_host  :: string(),
-                job       :: #pushy_job{},
-                job_nodes :: dict()}).
+-record(state, {job_host        :: string(),
+                job             :: #pushy_job{},
+                job_nodes       :: dict(),
+                voting_timeout  :: integer(),
+                running_timeout :: integer()}).
 
 %%%
 %%% External API
@@ -93,8 +95,14 @@ init(#pushy_job{id = JobId, job_nodes = JobNodeList} = Job) ->
                                           #pushy_job_node{org_id = OrgId, node_name = NodeName} =
                                               JobNode <- JobNodeList]),
             State = #state{job = Job#pushy_job{job_nodes = undefined},
-                           job_nodes = JobNodes, job_host=Host},
+                           job_nodes = JobNodes,
+                           job_host = Host,
+                           voting_timeout = envy:get(pushy, voting_timeout, 5000, integer),
+                           running_timeout = envy:get(pushy, default_running_timeout, 36000000, integer)},
             listen_for_down_nodes(dict:fetch_keys(JobNodes)),
+
+            lager:info("Job ~p starting '~p' on ~p nodes, with timeout ~p",
+                [JobId, Job#pushy_job.command, length(JobNodeList), State#state.running_timeout]),
 
             % Start voting--if there are no nodes, the job finishes immediately.
             case start_voting(State) of
@@ -109,56 +117,60 @@ init(#pushy_job{id = JobId, job_nodes = JobNodeList} = Job) ->
 %%% Incoming events
 %%%
 
+% Nodes can only be new, ready or terminal while we're voting.
 voting({ack_commit, NodeRef}, State) ->
     % Node from new -> ready
     State2 = case get_node_state(NodeRef, State) of
-        new   -> set_node_state(NodeRef, ready, State);
-        ready -> State;
-        _     -> mark_node_faulty(NodeRef, State)
+        new      -> set_node_state(NodeRef, ready, State);
+        ready    -> State;
+        terminal -> send_to_rehab(NodeRef, State)
     end,
     maybe_finished_voting(State2);
 voting({nack_commit, NodeRef}, State) ->
     % Node from new -> nacked.
     State2 = case get_node_state(NodeRef, State) of
-        new -> set_node_state(NodeRef, nacked, State);
-        _   -> mark_node_faulty(NodeRef, State)
-    end,
-    maybe_finished_voting(State2);
-voting({down, NodeRef}, State) ->
-    % Node from new/ready -> unavailable.
-    State2 = case get_node_state(NodeRef, State) of
-        new   -> set_node_state(NodeRef, unavailable, State);
-        ready -> set_node_state(NodeRef, unavailable, State);
-        _     -> mark_node_faulty(NodeRef, State)
+        new      -> set_node_state(NodeRef, nacked, State);
+        ready    -> send_to_rehab(NodeRef, unavailable, State);
+        terminal -> send_to_rehab(NodeRef, State)
     end,
     maybe_finished_voting(State2);
 voting({_, NodeRef}, State) ->
-    State2 = mark_node_faulty(NodeRef, State),
+    State2 = case get_node_state(NodeRef, State) of
+        new      -> send_to_rehab(NodeRef, unavailable, State);
+        ready    -> send_to_rehab(NodeRef, unavailable, State);
+        terminal -> send_to_rehab(NodeRef, State)
+    end,
     maybe_finished_voting(State2).
 
+% Nodes can never be "new" in voting--only ready, running or terminal.
 running({ack_run, NodeRef}, State) ->
     % Node from ready -> running
     State2 = case get_node_state(NodeRef, State) of
-        ready   -> set_node_state(NodeRef, running, State);
-        running -> State;
-        _ -> mark_node_faulty(NodeRef, State)
+        ready    -> set_node_state(NodeRef, running, State);
+        running  -> State;
+        terminal -> send_to_rehab(NodeRef, State)
     end,
     maybe_finished_running(State2);
 running({complete, NodeRef}, State) ->
     State2 = case get_node_state(NodeRef, State) of
-        running -> set_node_state(NodeRef, complete, State);
-        _       -> mark_node_faulty(NodeRef, State)
+        ready    -> send_to_rehab(NodeRef, crashed, State);
+        running  -> set_node_state(NodeRef, complete, State);
+        terminal -> send_to_rehab(NodeRef, State)
     end,
     maybe_finished_running(State2);
 running({_,NodeRef}, State) ->
-    State2 = mark_node_faulty(NodeRef, State),
+    State2 = case get_node_state(NodeRef, State) of
+        ready    -> send_to_rehab(NodeRef, crashed, State);
+        running  -> send_to_rehab(NodeRef, crashed, State);
+        terminal -> send_to_rehab(NodeRef, State)
+    end,
     maybe_finished_running(State2).
 
 -spec handle_event(any(), job_status(), #state{}) ->
         {'next_state', job_status(), #state{}}.
-handle_event(Event, _StateName, State) ->
+handle_event(Event, StateName, State) ->
     lager:error("Unknown message handle_event(~p)", [Event]),
-    finish_job(faulty, State).
+    {next_state, StateName, State}.
 
 -spec handle_sync_event(any(), any(), job_status(), #state{}) ->
         {'reply', 'ok', job_status(), #state{}}.
@@ -177,6 +189,22 @@ handle_sync_event(Event, From, StateName, State) ->
         {'next_state', job_status(), #state{}}.
 handle_info({down, NodeRef}, StateName, State) ->
     pushy_job_state:StateName({down,NodeRef}, State);
+handle_info(voting_timeout, voting,
+        #state{job = Job, voting_timeout = VotingTimeout} = State) ->
+    lager:info("Timeout occurred during voting on job ~p after ~p milliseconds", [Job#pushy_job.id, VotingTimeout]),
+    % Set all nodes that have not responded to the vote, to new, forcing voting to finish
+    State2 = send_matching_to_rehab(new, unavailable, State),
+    maybe_finished_voting(State2);
+% Rather than store and cancel timers, we let them fire and ignore them if we've
+% moved on to a new state.
+handle_info(voting_timeout, running, State) ->
+    {next_state, running, State};
+handle_info(running_timeout, running,
+        #state{job = Job, running_timeout = RunningTimeout} = State) ->
+    lager:info("Timeout occurred while running job ~p after ~p milliseconds", [Job#pushy_job.id, RunningTimeout]),
+    State2 = send_matching_to_rehab(ready, aborted, State),
+    State3 = send_matching_to_rehab(running, aborted, State2),
+    finish_job(timed_out, State3);
 handle_info(Info, StateName, State) ->
     lager:error("Unknown message handle_info(~p)", [Info]),
     {next_state, StateName, State}.
@@ -196,49 +224,44 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 
 get_node_state(NodeRef, #state{job_nodes = JobNodes}) ->
     Node = dict:fetch(NodeRef, JobNodes),
-    Node#pushy_job_node.status.
+    terminalize(Node#pushy_job_node.status).
 
 set_node_state(NodeRef, NewNodeState, #state{job_nodes = JobNodes} = State) ->
     JobNodes2 = dict:update(NodeRef, fun(OldPushyJobNode) ->
-        NewPushyJobNode = OldPushyJobNode#pushy_job_node{status = NewNodeState},
-        pushy_sql:update_job_node(NewPushyJobNode),
-        NewPushyJobNode
+        case terminalize(OldPushyJobNode#pushy_job_node.status) of
+            terminal -> error("Attempt to change node ~p from terminal state ~p to state ~p");
+            _ ->
+                NewPushyJobNode = OldPushyJobNode#pushy_job_node{status = NewNodeState},
+                pushy_sql:update_job_node(NewPushyJobNode),
+                NewPushyJobNode
+        end
     end, JobNodes),
     State#state{job_nodes = JobNodes2}.
 
-mark_node_faulty(NodeRef, #state{job = Job, job_nodes = JobNodes} = State) ->
-    JobNodes2 = dict:update(NodeRef, fun(OldNodeState) ->
-        JobStatus = Job#pushy_job.status,
-        OldNodeStatus = OldNodeState#pushy_job_node.status,
-        NewPushyJobNode = case {JobStatus, terminalize(OldNodeStatus)} of
-            {_, new}         -> OldNodeState#pushy_job_node{status = unavailable};
-            {voting, ready}  -> OldNodeState#pushy_job_node{status = unavailable};
-            {running, ready} -> OldNodeState#pushy_job_node{status = crashed};
-            {_, running}     -> OldNodeState#pushy_job_node{status = crashed};
-            {_, terminal}    -> OldNodeState
-        end,
-        pushy_sql:update_job_node(NewPushyJobNode),
-        NewPushyJobNode
-    end, JobNodes),
-    pushy_node_state:rehab(NodeRef),
-    State#state{job_nodes = JobNodes2}.
+send_to_rehab(NodeRef, NewNodeState, State) ->
+    State2 = set_node_state(NodeRef, NewNodeState, State),
+    send_to_rehab(NodeRef, State2).
 
-finish_all_nodes(#state{job = Job, job_nodes = JobNodes} = State) ->
-    JobNodes2 = dict:map(fun(_, OldNodeState) ->
-        JobStatus = Job#pushy_job.status,
-        OldNodeStatus = OldNodeState#pushy_job_node.status,
-        NewPushyJobNode = case {JobStatus, terminalize(OldNodeStatus)} of
-            {_, new}         -> OldNodeState#pushy_job_node{status = unavailable};
-            {voting, ready}  -> OldNodeState#pushy_job_node{status = was_ready};
-            {running, ready} -> OldNodeState#pushy_job_node{status = aborted};
-            {_, running}     -> OldNodeState#pushy_job_node{status = aborted};
-            {_, terminal}    -> OldNodeState
-        end,
-        pushy_sql:update_job_node(NewPushyJobNode),
-        pushy_node_state:rehab({NewPushyJobNode#pushy_job_node.org_id,
-                                NewPushyJobNode#pushy_job_node.node_name}),
-        NewPushyJobNode
-    end, JobNodes),
+send_to_rehab(NodeRef, State) ->
+    case get_node_state(NodeRef, State) of
+        terminal -> pushy_node_state:rehab(NodeRef);
+        _ -> error("Attempt to send node ~p to rehab even though it is in non-terminal state ~p")
+    end,
+    State.
+
+send_matching_to_rehab(OldNodeState, NewNodeState, #state{job_nodes = JobNodes} = State) ->
+    JobNodes2 = dict:map(
+        fun(_, OldPushyJobNode) ->
+            case OldPushyJobNode#pushy_job_node.status of
+                OldNodeState ->
+                    NewPushyJobNode = OldPushyJobNode#pushy_job_node{status = NewNodeState},
+                    pushy_sql:update_job_node(NewPushyJobNode),
+                    pushy_node_state:rehab({NewPushyJobNode#pushy_job_node.org_id,
+                                            NewPushyJobNode#pushy_job_node.node_name}),
+                    NewPushyJobNode;
+               _ -> OldPushyJobNode
+            end
+        end, JobNodes),
     State#state{job_nodes = JobNodes2}.
 
 maybe_finished_voting(#state{job_nodes = JobNodes} = State) ->
@@ -247,7 +270,9 @@ maybe_finished_voting(#state{job_nodes = JobNodes} = State) ->
             NumNodes = dict:size(JobNodes),
             case count_nodes_in_state([ready], State) of
                 NumNodes -> start_running(State);
-                _ -> finish_job(quorum_failed, State)
+                _ ->
+                    State2 = send_matching_to_rehab(ready, was_ready, State),
+                    finish_job(quorum_failed, State2)
             end;
         _ -> {next_state, voting, State}
     end.
@@ -258,29 +283,30 @@ maybe_finished_running(State) ->
         _ -> {next_state, running, State}
     end.
 
-start_voting(#state{job = Job} = State) ->
+start_voting(#state{job = Job, voting_timeout = VotingTimeout} = State) ->
     lager:info("Job ~p -> voting", [Job#pushy_job.id]),
     Job2 = Job#pushy_job{status = voting},
     State2 = State#state{job = Job2},
     pushy_object:update_object(update_job, Job2, Job2#pushy_job.id),
     send_command_to_all(<<"commit">>, State2),
+    {ok, _} = timer:send_after(VotingTimeout, voting_timeout),
     maybe_finished_voting(State2).
 
-start_running(#state{job = Job} = State) ->
+start_running(#state{job = Job, running_timeout = RunningTimeout} = State) ->
     lager:info("Job ~p -> running", [Job#pushy_job.id]),
     Job2 = Job#pushy_job{status = running},
     State2 = State#state{job = Job2},
     pushy_object:update_object(update_job, Job2, Job2#pushy_job.id),
     send_command_to_all(<<"run">>, State2),
+    {ok, _} = timer:send_after(RunningTimeout, running_timeout),
     maybe_finished_running(State2).
 
 finish_job(Reason, #state{job = Job} = State) ->
     lager:info("Job ~p -> ~p", [Job#pushy_job.id, Reason]),
-    State2 = finish_all_nodes(State),
     Job2 = Job#pushy_job{status = Reason},
-    State3 = State2#state{job = Job2},
+    State2 = State#state{job = Job2},
     pushy_object:update_object(update_job, Job2, Job2#pushy_job.id),
-    {stop, {shutdown, Reason}, State3}.
+    {stop, {shutdown, Reason}, State2}.
 
 count_nodes_in_state(NodeStates, #state{job_nodes = JobNodes}) ->
     dict:fold(
@@ -329,4 +355,7 @@ terminalize(unavailable) -> terminal;
 terminalize(nacked) -> terminal;
 terminalize(crashed) -> terminal;
 terminalize(was_ready) -> terminal;
-terminalize(NodeState) -> NodeState.
+terminalize(timed_out) -> terminal;
+terminalize(new) -> new;
+terminalize(ready) -> ready;
+terminalize(running) -> running.

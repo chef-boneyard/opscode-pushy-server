@@ -12,9 +12,19 @@
                       running |
                       complete |
                       quorum_failed |
-                      aborted.
+                      aborted |
+                      timed_out.
 
--type job_node_status() :: new | ready | running | complete | aborted | unavailable | nacked | crashed | was_ready.
+-type job_node_status() :: new |
+                           ready |
+                           running |
+                           complete |
+                           aborted |
+                           unavailable |
+                           nacked |
+                           crashed |
+                           was_ready |
+                           timed_out.
 
 %% random PoC hard-codings
 -define(POC_ORG_ID, <<"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa">>).
