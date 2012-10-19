@@ -19,6 +19,8 @@
 
 -include("pushy_sql.hrl").
 
+-define(DEFAULT_CONFIG_LIFETIME, 3600).
+
 -record(config_state, {
           orgname :: string(),
           organization_guid :: string(),
@@ -54,6 +56,7 @@ content_types_provided(Req, State) ->
 to_json(Req, #config_state{orgname = OrgName, organization_guid = OrgGuid, nodename = NodeName} = State) ->
 
     Host = envy:get(pushy, server_name, string),
+    ConfigLifetime = envy:get(pushy, config_lifetime, ?DEFAULT_CONFIG_LIFETIME, integer),
     HeartbeatAddress = iolist_to_binary(
         pushy_util:make_zmq_socket_addr(Host, server_heartbeat_port, tcp)),
     CommandAddress = iolist_to_binary(
@@ -91,7 +94,7 @@ to_json(Req, #config_state{orgname = OrgName, organization_guid = OrgGuid, noden
           {<<"organization">>, OrgName},
           {<<"public_key">>, PublicKey},
           {<<"session_key">>, KeyStruct},
-          {<<"lifetime">> ,3600}
+          {<<"lifetime">> ,ConfigLifetime}
          ]},
     ?debugVal(ConfigurationStruct),
     ConfigurationJson = jiffy:encode(ConfigurationStruct),
