@@ -41,6 +41,7 @@
 -record(pushy_job, {'id'::object_id(),                  % guid for object (unique)
                     'org_id'::object_id(),              % organization guid
                     'command'::binary(),                % command to execute
+                    'quorum'::non_neg_integer(),        % quorum count
                     'status'::job_status(),             % job status
                     'duration' = 10::non_neg_integer(),      % max duration (in minutes) to allow execution
                     'job_nodes' ::[#pushy_job_node{}],

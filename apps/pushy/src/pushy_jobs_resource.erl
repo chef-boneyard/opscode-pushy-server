@@ -61,8 +61,8 @@ post_is_create(Req, State) ->
 
 % This creates the job record
 create_path(Req, #config_state{organization_guid = OrgId} = State) ->
-    [ Command, NodeNames ] = parse_post_body(Req),
-    Job = pushy_object:new_record(pushy_job, OrgId, NodeNames, Command),
+    { Command, NodeNames, Quorum } = parse_post_body(Req),
+    Job = pushy_object:new_record(pushy_job, OrgId, NodeNames, Command, Quorum),
     State2 = State#config_state{job = Job},
     {binary_to_list(Job#pushy_job.id), Req, State2}.
 
@@ -75,7 +75,7 @@ from_json(Req, State) ->
 %% GET /pushy/jobs
 to_json(Req, #config_state{organization_guid = OrgId} = State) ->
     {ok, Jobs} = pushy_sql:fetch_jobs(OrgId),
-    {jiffy:encode([{Jobs}]), Req, State}.
+    {jiffy:encode(Jobs), Req, State}.
 
 % Private stuff
 
@@ -84,4 +84,5 @@ parse_post_body(Req) ->
     JobJson = jiffy:decode(Body),
     Command = ej:get({<<"command">>}, JobJson),
     NodeNames = ej:get({<<"nodes">>}, JobJson),
-    [ Command, NodeNames ].
+    Quorum = ej:get({<<"quorum">>}, JobJson, 100),
+    { Command, NodeNames, Quorum }.
