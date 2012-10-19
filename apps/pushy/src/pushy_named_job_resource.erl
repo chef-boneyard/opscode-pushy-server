@@ -59,7 +59,7 @@ to_json(Req, #state{job = Job} = State) ->
 %  id: 2001,
 %  command: "chef-client",
 %  status: "complete",
-%  duration: 1304914, # Seconds.  Could be null
+%  run_timeout: 1304914, # Seconds.  Could be null
 %  nodes: {
 %    "complete": [ "DERPY", "RAINBOWDASH" ]
 %  }
@@ -71,7 +71,7 @@ job_to_json(#pushy_job{
     id = Id,
     command = Command,
     status = Status,
-%    duration = Duration,
+%    run_timeout = RunTimeout,
 %    created_at = CreatedAt,
 %    updated_at = UpdatedAt,
     job_nodes = Nodes
@@ -82,7 +82,7 @@ job_to_json(#pushy_job{
     {[ {<<"id">>, iolist_to_binary(Id)},
        {<<"command">>, iolist_to_binary(Command)},
        {<<"status">>, atom_to_binary(Status, utf8)},
-       {<<"duration">>, 300},
+       {<<"run_timeout">>, 300},
        {<<"nodes">>, NodesJson}
 %       {<<"created_at">>, CreatedAtDate},
 %       {<<"updated_at">>, UpdatedAtDate}
