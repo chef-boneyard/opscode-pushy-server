@@ -71,7 +71,7 @@ job_to_json(#pushy_job{
     id = Id,
     command = Command,
     status = Status,
-%    run_timeout = RunTimeout,
+    run_timeout = RunTimeout,
 %    created_at = CreatedAt,
 %    updated_at = UpdatedAt,
     job_nodes = Nodes
@@ -82,7 +82,7 @@ job_to_json(#pushy_job{
     {[ {<<"id">>, iolist_to_binary(Id)},
        {<<"command">>, iolist_to_binary(Command)},
        {<<"status">>, atom_to_binary(Status, utf8)},
-       {<<"run_timeout">>, 300},
+       {<<"run_timeout">>, RunTimeout},
        {<<"nodes">>, NodesJson}
 %       {<<"created_at">>, CreatedAtDate},
 %       {<<"updated_at">>, UpdatedAtDate}
