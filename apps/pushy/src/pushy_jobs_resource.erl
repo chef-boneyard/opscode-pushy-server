@@ -89,5 +89,5 @@ parse_post_body(Req) ->
     Command = ej:get({<<"command">>}, JobJson),
     NodeNames = ej:get({<<"nodes">>}, JobJson),
     RunTimeout = ej:get({<<"run_timeout">>}, JobJson),
-    Quorum = ej:get({<<"quorum">>}, JobJson, 100),
+    Quorum = ej:get({<<"quorum">>}, JobJson, length(NodeNames)),
     { Command, NodeNames, RunTimeout, Quorum }.
