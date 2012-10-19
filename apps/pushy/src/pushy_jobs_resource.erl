@@ -61,12 +61,12 @@ post_is_create(Req, State) ->
 
 % This creates the job record
 create_path(Req, #config_state{organization_guid = OrgId} = State) ->
-    {Command, NodeNames, RunTimeout} = parse_post_body(Req),
+    {Command, NodeNames, RunTimeout, Quorum} = parse_post_body(Req),
     RunTimeout2 = case RunTimeout of
         undefined -> envy:get(pushy, default_running_timeout, 3600, integer);
         Value -> Value
     end,
-    Job = pushy_object:new_record(pushy_job, OrgId, NodeNames, Command, RunTimeout2),
+    Job = pushy_object:new_record(pushy_job, OrgId, NodeNames, Command, RunTimeout2, Quorum),
     State2 = State#config_state{job = Job},
     {binary_to_list(Job#pushy_job.id), Req, State2}.
 
@@ -79,7 +79,7 @@ from_json(Req, State) ->
 %% GET /pushy/jobs
 to_json(Req, #config_state{organization_guid = OrgId} = State) ->
     {ok, Jobs} = pushy_sql:fetch_jobs(OrgId),
-    {jiffy:encode([{Jobs}]), Req, State}.
+    {jiffy:encode(Jobs), Req, State}.
 
 % Private stuff
 
@@ -89,4 +89,5 @@ parse_post_body(Req) ->
     Command = ej:get({<<"command">>}, JobJson),
     NodeNames = ej:get({<<"nodes">>}, JobJson),
     RunTimeout = ej:get({<<"run_timeout">>}, JobJson),
-    {Command, NodeNames, RunTimeout}.
+    Quorum = ej:get({<<"quorum">>}, JobJson, 100),
+    { Command, NodeNames, RunTimeout, Quorum }.

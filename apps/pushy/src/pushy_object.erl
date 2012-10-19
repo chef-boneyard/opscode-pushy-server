@@ -34,13 +34,14 @@ new_record(pushy_node_status, OrgId, NodeStatusData) ->
                        status = Status
                       }.
 
-new_record(pushy_job, OrgId, NodeNames, Command, RunTimeout) ->
+new_record(pushy_job, OrgId, NodeNames, Command, RunTimeout, Quorum) ->
     Id = make_org_prefix_id(OrgId),
     #pushy_job{id = Id,
                 org_id = OrgId,
                 status = new,
                 command = Command,
                 run_timeout = RunTimeout,
+                quorum = Quorum,
                 created_at = sql_date(now),
                 updated_at = sql_date(now),
                 job_nodes = [
