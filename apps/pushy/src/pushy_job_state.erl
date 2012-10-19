@@ -262,12 +262,12 @@ send_matching_to_rehab(OldNodeState, NewNodeState, #state{job_nodes = JobNodes} 
         end, JobNodes),
     State#state{job_nodes = JobNodes2}.
 
-maybe_finished_voting(#state{job_nodes = JobNodes} = State) ->
+maybe_finished_voting(#state{job = Job} = State) ->
     case count_nodes_in_state([new], State) of
         0 ->
-            NumNodes = dict:size(JobNodes),
-            case count_nodes_in_state([ready], State) of
-                NumNodes -> start_running(State);
+            QuorumMinimum = Job#pushy_job.quorum,
+            case count_nodes_in_state([ready], State) >= QuorumMinimum of
+                true -> start_running(State);
                 _ ->
                     State2 = send_matching_to_rehab(ready, was_ready, State),
                     finish_job(quorum_failed, State2)
