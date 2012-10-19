@@ -218,7 +218,7 @@ job_join_rows_to_record([LastRow|[]], JobNodes) ->
                   org_id = safe_get(<<"org_id">>, LastRow),
                   command = safe_get(<<"command">>, LastRow),
                   status = job_status(safe_get(<<"status">>, LastRow)),
-                  duration = safe_get(<<"duration">>, LastRow),
+                  run_timeout = safe_get(<<"run_timeout">>, LastRow),
                   last_updated_by = safe_get(<<"last_updated_by">>, LastRow),
                   created_at = trunc_date_time_to_second(safe_get(<<"created_at">>, LastRow)),
                   updated_at = trunc_date_time_to_second(safe_get(<<"updated_at">>, LastRow)),

@@ -29,7 +29,7 @@ SET default_tablespace = '';
 SET default_with_oids = false;
 
 --
--- Name: job_nodes; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+-- Name: job_nodes; Type: TABLE; Schema: public; Owner: -; Tablespace:
 --
 
 CREATE TABLE job_nodes (
@@ -43,7 +43,7 @@ CREATE TABLE job_nodes (
 
 
 --
--- Name: jobs; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+-- Name: jobs; Type: TABLE; Schema: public; Owner: -; Tablespace:
 --
 
 CREATE TABLE jobs (
@@ -51,7 +51,7 @@ CREATE TABLE jobs (
     org_id character(32) NOT NULL,
     command text NOT NULL,
     status integer NOT NULL,
-    duration integer,
+    run_timeout integer,
     last_updated_by character(32) NOT NULL,
     created_at timestamp without time zone NOT NULL,
     updated_at timestamp without time zone NOT NULL
@@ -59,7 +59,7 @@ CREATE TABLE jobs (
 
 
 --
--- Name: node_status; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+-- Name: node_status; Type: TABLE; Schema: public; Owner: -; Tablespace:
 --
 
 CREATE TABLE node_status (
@@ -73,7 +73,7 @@ CREATE TABLE node_status (
 
 
 --
--- Name: schema_info; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+-- Name: schema_info; Type: TABLE; Schema: public; Owner: -; Tablespace:
 --
 
 CREATE TABLE schema_info (
@@ -82,7 +82,7 @@ CREATE TABLE schema_info (
 
 
 --
--- Name: job_nodes_job_id_org_id_node_name_key; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+-- Name: job_nodes_job_id_org_id_node_name_key; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY job_nodes
@@ -90,7 +90,7 @@ ALTER TABLE ONLY job_nodes
 
 
 --
--- Name: jobs_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+-- Name: jobs_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY jobs
@@ -98,7 +98,7 @@ ALTER TABLE ONLY jobs
 
 
 --
--- Name: node_status_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+-- Name: node_status_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY node_status
