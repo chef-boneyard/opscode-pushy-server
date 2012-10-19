@@ -251,12 +251,12 @@ finish_all_nodes(#state{job = Job, job_nodes = JobNodes} = State) ->
     end, JobNodes),
     State#state{job_nodes = JobNodes2}.
 
-maybe_finished_voting(#state{job_nodes = JobNodes} = State) ->
+maybe_finished_voting(#state{job = Job} = State) ->
     case count_nodes_in_state([new], State) of
         0 ->
-            NumNodes = dict:size(JobNodes),
-            case count_nodes_in_state([ready], State) of
-                NumNodes -> start_running(State);
+            QuorumMinimum = Job#pushy_job.quorum,
+            case count_nodes_in_state([ready], State) >= QuorumMinimum of
+                true -> start_running(State);
                 _ -> finish_job(quorum_failed, State)
             end;
         _ -> {next_state, voting, State}
