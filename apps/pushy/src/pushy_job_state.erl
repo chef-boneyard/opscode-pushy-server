@@ -200,8 +200,8 @@ handle_info(voting_timeout, running, State) ->
 handle_info(running_timeout, running,
         #state{job = Job} = State) ->
     lager:info("Timeout occurred while running job ~p after ~ps", [Job#pushy_job.id, Job#pushy_job.run_timeout]),
-    State2 = send_matching_to_rehab(ready, aborted, State),
-    State3 = send_matching_to_rehab(running, aborted, State2),
+    State2 = send_matching_to_rehab(ready, timed_out, State),
+    State3 = send_matching_to_rehab(running, timed_out, State2),
     finish_job(timed_out, State3);
 handle_info(Info, StateName, State) ->
     lager:error("Unknown message handle_info(~p)", [Info]),
