@@ -61,8 +61,12 @@ post_is_create(Req, State) ->
 
 % This creates the job record
 create_path(Req, #config_state{organization_guid = OrgId} = State) ->
-    [ Command, NodeNames ] = parse_post_body(Req),
-    Job = pushy_object:new_record(pushy_job, OrgId, NodeNames, Command),
+    {Command, NodeNames, RunTimeout} = parse_post_body(Req),
+    RunTimeout2 = case RunTimeout of
+        undefined -> envy:get(pushy, default_running_timeout, 3600, integer);
+        Value -> Value
+    end,
+    Job = pushy_object:new_record(pushy_job, OrgId, NodeNames, Command, RunTimeout2),
     State2 = State#config_state{job = Job},
     {binary_to_list(Job#pushy_job.id), Req, State2}.
 
@@ -84,4 +88,5 @@ parse_post_body(Req) ->
     JobJson = jiffy:decode(Body),
     Command = ej:get({<<"command">>}, JobJson),
     NodeNames = ej:get({<<"nodes">>}, JobJson),
-    [ Command, NodeNames ].
+    RunTimeout = ej:get({<<"run_timeout">>}, JobJson),
+    {Command, NodeNames, RunTimeout}.
