@@ -40,8 +40,7 @@
 -record(state, {job_host        :: string(),
                 job             :: #pushy_job{},
                 job_nodes       :: dict(),
-                voting_timeout  :: integer(),
-                running_timeout :: integer()}).
+                voting_timeout  :: integer()}).
 
 %%%
 %%% External API
@@ -97,12 +96,11 @@ init(#pushy_job{id = JobId, job_nodes = JobNodeList} = Job) ->
             State = #state{job = Job#pushy_job{job_nodes = undefined},
                            job_nodes = JobNodes,
                            job_host = Host,
-                           voting_timeout = envy:get(pushy, voting_timeout, 5000, integer),
-                           running_timeout = envy:get(pushy, default_running_timeout, 36000000, integer)},
+                           voting_timeout = envy:get(pushy, voting_timeout, 5, integer)},
             listen_for_down_nodes(dict:fetch_keys(JobNodes)),
 
-            lager:info("Job ~p starting '~p' on ~p nodes, with timeout ~p",
-                [JobId, Job#pushy_job.command, length(JobNodeList), State#state.running_timeout]),
+            lager:info("Job ~p starting '~p' on ~p nodes, with timeout ~ps",
+                [JobId, Job#pushy_job.command, length(JobNodeList), Job#pushy_job.run_timeout]),
 
             % Start voting--if there are no nodes, the job finishes immediately.
             case start_voting(State) of
@@ -191,7 +189,7 @@ handle_info({down, NodeRef}, StateName, State) ->
     pushy_job_state:StateName({down,NodeRef}, State);
 handle_info(voting_timeout, voting,
         #state{job = Job, voting_timeout = VotingTimeout} = State) ->
-    lager:info("Timeout occurred during voting on job ~p after ~p milliseconds", [Job#pushy_job.id, VotingTimeout]),
+    lager:info("Timeout occurred during voting on job ~p after ~ps", [Job#pushy_job.id, VotingTimeout]),
     % Set all nodes that have not responded to the vote, to new, forcing voting to finish
     State2 = send_matching_to_rehab(new, unavailable, State),
     maybe_finished_voting(State2);
@@ -200,10 +198,10 @@ handle_info(voting_timeout, voting,
 handle_info(voting_timeout, running, State) ->
     {next_state, running, State};
 handle_info(running_timeout, running,
-        #state{job = Job, running_timeout = RunningTimeout} = State) ->
-    lager:info("Timeout occurred while running job ~p after ~p milliseconds", [Job#pushy_job.id, RunningTimeout]),
-    State2 = send_matching_to_rehab(ready, aborted, State),
-    State3 = send_matching_to_rehab(running, aborted, State2),
+        #state{job = Job} = State) ->
+    lager:info("Timeout occurred while running job ~p after ~ps", [Job#pushy_job.id, Job#pushy_job.run_timeout]),
+    State2 = send_matching_to_rehab(ready, timed_out, State),
+    State3 = send_matching_to_rehab(running, timed_out, State2),
     finish_job(timed_out, State3);
 handle_info(Info, StateName, State) ->
     lager:error("Unknown message handle_info(~p)", [Info]),
@@ -289,16 +287,16 @@ start_voting(#state{job = Job, voting_timeout = VotingTimeout} = State) ->
     State2 = State#state{job = Job2},
     pushy_object:update_object(update_job, Job2, Job2#pushy_job.id),
     send_command_to_all(<<"commit">>, State2),
-    {ok, _} = timer:send_after(VotingTimeout, voting_timeout),
+    {ok, _} = timer:send_after(VotingTimeout*1000, voting_timeout),
     maybe_finished_voting(State2).
 
-start_running(#state{job = Job, running_timeout = RunningTimeout} = State) ->
+start_running(#state{job = Job} = State) ->
     lager:info("Job ~p -> running", [Job#pushy_job.id]),
     Job2 = Job#pushy_job{status = running},
     State2 = State#state{job = Job2},
     pushy_object:update_object(update_job, Job2, Job2#pushy_job.id),
     send_command_to_all(<<"run">>, State2),
-    {ok, _} = timer:send_after(RunningTimeout, running_timeout),
+    {ok, _} = timer:send_after(Job2#pushy_job.run_timeout*1000, running_timeout),
     maybe_finished_running(State2).
 
 finish_job(Reason, #state{job = Job} = State) ->
