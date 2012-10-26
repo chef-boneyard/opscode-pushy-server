@@ -4,7 +4,7 @@ Sequel.migration do
   change do
 
     alter_table(:jobs) do
-      add_column(:quorum, Integer, {})
+      add_column(:quorum, Integer, {:null => false})
     end
 
   end
