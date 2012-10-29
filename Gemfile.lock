@@ -1,6 +1,6 @@
 GIT
   remote: git@github.com:opscode/chef-pedant-core.git
-  revision: eb3865c5294e9ea53db24f2864729f351f2f4ac2
+  revision: 4d30c13758624e4f626597925cc30afcc4e3755c
   specs:
     chef-pedant-core (0.0.1)
       activesupport (~> 3.2.8)
@@ -16,19 +16,19 @@ GIT
 
 GIT
   remote: git@github.com:opscode/oc-chef-pedant-core.git
-  revision: b8cca93dc68edc57e499a756814020713080322a
+  revision: 5ba386e6190ad7b8dd8af38644ee00e4cc7574ec
   specs:
     oc-chef-pedant-core (0.0.1)
 
 GIT
   remote: git@github.com:opscode/oc-pushy-pedant-tests.git
-  revision: fed932fe379d7031ae890cb8767ba701548e9c99
+  revision: 11dfee5c4540e6eb680a55007098f75073527ae4
   specs:
     oc-pushy-pedant-tests (0.0.1)
 
 GIT
   remote: git@github.com:opscode/opscode-pushy-client.git
-  revision: 5f79110090fd380024c9b86a662cac6f306501b0
+  revision: 303c99373a6fff294d9669672f1882cee77e23d4
   specs:
     opscode-pushy-client (0.0.1)
 
