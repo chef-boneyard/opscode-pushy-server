@@ -22,6 +22,7 @@ install_path    "/opt/opscode-push-jobs-server"
 build_version   Omnibus::BuildVersion.full
 build_iteration "1"
 
+runtime_dependencies [ "private-chef" ]
 deps = []
 
 # global
