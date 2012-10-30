@@ -15,7 +15,7 @@
           update_object/2,
           update_object/3,
           new_record/3,
-          new_record/5,
+          new_record/6,
 
           make_org_prefix_id/1,
           make_org_prefix_id/2
