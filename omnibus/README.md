@@ -4,6 +4,10 @@ This repository contains the skeleton for building Omnibus Push Jobs packages.
 
 # Building opscode-push-jobs-server
 
+    ./omnibus-build ubuntu-10.04
+
+OR
+
     git clone git@github.com:opscode/omnibus-pushy.git
     git clone git@github.com:opscode/omnibus-software.git
     cd omnibus-pushy
