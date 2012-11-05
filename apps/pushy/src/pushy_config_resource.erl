@@ -96,7 +96,6 @@ to_json(Req, #config_state{orgname = OrgName, organization_guid = OrgGuid, noden
           {<<"session_key">>, KeyStruct},
           {<<"lifetime">> ,ConfigLifetime}
          ]},
-    ?debugVal(ConfigurationStruct),
     ConfigurationJson = jiffy:encode(ConfigurationStruct),
 
     % ?debugVal(ConfigurationJson),
