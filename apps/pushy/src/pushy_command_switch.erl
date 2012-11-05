@@ -48,7 +48,7 @@
 
 -record(state,
         {command_sock,
-         addr_node_map :: {dict(), dict()},
+         node_to_addr :: dict(),
          private_key
         }).
 
@@ -89,7 +89,7 @@ init([#pushy_state{ctx=Ctx}]) ->
     ok = erlzmq:setsockopt(CommandSock, linger, 0),
     ok = erlzmq:bind(CommandSock, CommandAddress),
     State = #state{command_sock = CommandSock,
-                   addr_node_map = addr_node_map_new(),
+                   node_to_addr = node_to_addr_new(),
                    private_key = PrivateKey
                   },
     {ok, State}.
@@ -157,11 +157,10 @@ do_receive(CommandSock, Frame, State) ->
 %%% Send a message to a single node
 %%%
 -spec do_send(#state{}, pushy_signing_method(), node_ref(), ejson()) -> #state{}.
-do_send(#state{addr_node_map = AddrNodeMap,
-               command_sock = CommandSocket}=State,
+do_send(#state{command_sock = CommandSocket}=State,
         Method, NodeRef, Message) ->
         {ok, Key} = get_key_for_method(Method, State, NodeRef),
-    Address = addr_node_map_lookup_by_node(AddrNodeMap, NodeRef),
+    Address = node_to_addr_lookup(NodeRef, State),
     Packets = ?TIME_IT(pushy_messaging, make_message, (proto_v2, Method, Key, Message)),
     ok = pushy_messaging:send_message(CommandSocket, [Address | Packets]),
     State.
@@ -188,11 +187,10 @@ get_key_for_method(hmac_sha256, _State, EJson) ->
 %% Send multiple messages
 %%
 -spec do_send_multi(#state{}, pushy_signing_method(), [node_ref()], ejson()) -> #state{}.
-do_send_multi(#state{addr_node_map = AddrNodeMap,
-                     command_sock = Socket} = State,
+do_send_multi(#state{command_sock = Socket} = State,
               hmac_sha256 = Method, NodeRefs, Message) ->
     N2Addr = fun(NodeRef) ->
-                     addr_node_map_lookup_by_node(AddrNodeMap, NodeRef)
+                     node_to_addr_lookup(NodeRef, State)
              end,
     N2Key = fun(hmac_sha256, NodeRef) ->
                     {hmac_sha256, Key} = pushy_key_manager:get_key(NodeRef),
@@ -201,12 +199,11 @@ do_send_multi(#state{addr_node_map = AddrNodeMap,
     pushy_messaging:make_send_message_multi(Socket, proto_v2, Method,
                                             NodeRefs, Message, N2Addr, N2Key),
     State;
-do_send_multi(#state{addr_node_map = AddrNodeMap,
-                     command_sock = Socket,
+do_send_multi(#state{command_sock = Socket,
                      private_key = PrivateKey}=State,
               rsa2048_sha1 = Method, NodeRefs, Message) ->
     N2Addr = fun(NodeRef) ->
-                     addr_node_map_lookup_by_node(AddrNodeMap, NodeRef)
+                     node_to_addr_lookup(NodeRef, State)
              end,
     N2Key = fun(rsa2048_sha1, _) ->
                     PrivateKey
@@ -218,6 +215,7 @@ do_send_multi(#state{addr_node_map = AddrNodeMap,
 %% FIX: Take advantage of multiple function heads to make code easier to read
 process_message(State, #pushy_message{address=Address, body=Data}) ->
     {State2, NodeRef} = get_node_ref(State, Address, Data),
+    lager:debug("Recevived message for Node ~p (address ~p)", [NodeRef, Address]),
     JobId = ej:get({<<"job_id">>}, Data),
     Type = ej:get({<<"type">>}, Data),
     send_node_event(JobId, NodeRef, Type),
@@ -266,39 +264,19 @@ get_node_ref(Data) ->
 get_node_ref(State, Address, Data) ->
     NodeRef = get_node_ref(Data),
     %% Every time we get a message from a node, we update it's Addr->Name mapping entry
-    State2 = addr_node_map_update(State, Address, NodeRef),
+    State2 = node_to_addr_update(NodeRef, Address, State),
     {State2, NodeRef}.
 
 %%
 %% Utility functions; we should generalize these and move elsewhere.
 %%
 
-addr_node_map_new() ->
-    { dict:new(), dict:new() }.
+node_to_addr_new() ->
+    dict:new().
 
-kill_crossref(Forward, Backward, Key) ->
-    case dict:find(Key, Forward) of
-        {ok, OldValue} ->
-            dict:erase(OldValue, Backward);
-        error ->
-            Backward
-    end.
+node_to_addr_update(Node, Addr, #state{node_to_addr = NodeMap} = State) ->
+    NodeMap1 = dict:store(Node, Addr, NodeMap),
+    State#state{node_to_addr = NodeMap1}.
 
-addr_node_map_update(#state{addr_node_map = AddrNodeMap} = State, Addr, Node) ->
-    State#state{addr_node_map = addr_node_map_update(AddrNodeMap, Addr, Node)};
-addr_node_map_update({AddrToNode, NodeToAddr}, Addr, Node) ->
-    %% purge any old references
-    NodeToAddr1 = kill_crossref(AddrToNode, NodeToAddr, Addr),
-    AddrToNode1 = kill_crossref(NodeToAddr, AddrToNode, Node),
-    { dict:store(Addr, Node, AddrToNode1),
-      dict:store(Node, Addr, NodeToAddr1) }.
-
-addr_node_map_lookup_by_addr(#state{addr_node_map = AddrNodeMap}, Addr) ->
-    addr_node_map_lookup_by_addr(AddrNodeMap, Addr);
-addr_node_map_lookup_by_addr({AddrToNode, _}, Addr) ->
-    dict:fetch(Addr, AddrToNode).
-
-addr_node_map_lookup_by_node(#state{addr_node_map = AddrNodeMap}, Node) ->
-    addr_node_map_lookup_by_addr(AddrNodeMap, Node);
-addr_node_map_lookup_by_node({_, NodeToAddr}, Node) ->
-    dict:fetch(Node, NodeToAddr).
+node_to_addr_lookup(Node, #state{node_to_addr = NodeMap}) ->
+    dict:fetch(Node, NodeMap).
