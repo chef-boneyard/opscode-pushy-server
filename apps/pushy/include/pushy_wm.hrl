@@ -6,7 +6,11 @@
 -record(config_state, {
           orgname :: string(),
           organization_guid :: string(),
-          nodename :: string() }).
+          % TODO: probably want to split this into specific states, instead of this
+          % catch-all, but right now authentication requires the above two things,
+          % and config + job endpoints (respectively) need the following:
+          nodename :: string(),
+          job :: tuple() }).
 
 -define(AUTH_SKEW, 900).
 -define(MAX_SIZE, 1000000).

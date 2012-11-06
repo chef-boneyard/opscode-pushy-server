@@ -12,21 +12,18 @@
          content_types_accepted/2,
          content_types_provided/2,
          is_authorized/2,
+         malformed_request/2,
          from_json/2,
          to_json/2,
          post_is_create/2,
          create_path/2]).
 
 -include("pushy_sql.hrl").
+-include("pushy_wm.hrl").
 
 -include_lib("webmachine/include/webmachine.hrl").
 
 -include_lib("eunit/include/eunit.hrl").
-
--record(config_state, {
-          organization_guid :: string(),
-          job :: #pushy_job{}
-        }).
 
 init(_Config) ->
     % ?debugVal(_Config),
@@ -36,11 +33,11 @@ init(_Config) ->
 %% then in console: wmtrace_resource:add_dispatch_rule("wmtrace", "/tmp/traces").
 %% then go to localhost:WXYZ/wmtrace
 
+malformed_request(Req, State) ->
+    pushy_wm_base:malformed_request(Req, State).
+
 is_authorized(Req, State) ->
-    OrgName =  wrq:path_info(organization_id, Req),
-    %?debugVal(OrgName),
-    State2 = State#config_state{organization_guid = pushy_object:fetch_org_id(OrgName) },
-    {true, Req, State2}.
+    pushy_wm_base:is_authorized(Req, State).
 
 allowed_methods(Req, State) ->
     {['POST', 'GET'], Req, State}.
