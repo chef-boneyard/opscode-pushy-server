@@ -5,7 +5,8 @@
 
 -record(config_state, {
           orgname :: string(),
-          organization_guid :: string() }).
+          organization_guid :: string(),
+          nodename :: string() }).
 
 -define(AUTH_SKEW, 900).
 -define(MAX_SIZE, 1000000).
