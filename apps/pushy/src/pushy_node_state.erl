@@ -4,9 +4,6 @@
 
 -include("pushy.hrl").
 
--type logging_level() :: 'verbose' | 'normal'.
-
-
 %% API
 -export([start_link/1,
          heartbeat/1,
@@ -25,7 +22,6 @@
 -define(DEFAULT_DOWN_THRESHOLD, 0.4).
 
 -record(state, {node_ref              :: node_ref(),
-                logging = verbose     :: logging_level(),
                 heartbeats = 1        :: pos_integer(),
                 job                   :: any(),
                 watchers = [],
@@ -107,10 +103,7 @@ rehab(Message, #state{node_ref=NodeRef}=State) ->
     {next_state, rehab, State}.
 
 idle({job, Job}, State) ->
-    {next_state, state_transition(idle, running, State), State#state{job=Job}};
-idle(Event, State) ->
-    lager:info("IDLE EVENT: ~p~n", [Event]),
-    {next_state, idle, State}.
+    {next_state, state_transition(idle, running, State), State#state{job=Job}}.
 
 running(aborted, #state{node_ref=NodeRef}=State) ->
     lager:info("~p aborted during job.~n", [NodeRef]),
@@ -139,7 +132,6 @@ handle_sync_event(current_state, _From, StateName, #state{job=Job}=State) ->
     {reply, {StateName, Job}, StateName, State}.
 
 handle_info(heartbeat, booting, #state{heartbeats=HBeats}=State) ->
-    lager:info("BOOTING SELF: ~p~n", [self()]),
     HBeats1 = HBeats + 1,
     State1 = State#state{heartbeats=HBeats1},
     case HBeats1 > 3 of
@@ -150,7 +142,6 @@ handle_info(heartbeat, booting, #state{heartbeats=HBeats}=State) ->
             {next_state, booting, State1}
     end;
 handle_info(heartbeat, CurrentState, #state{heartbeats=HBeats}=State) ->
-    lager:info("~p SELF: ~p~n", [CurrentState, self()]),
     HBeats1 = HBeats + 1,
     State1 = if
                  HBeats1 < 5 ->
@@ -158,7 +149,7 @@ handle_info(heartbeat, CurrentState, #state{heartbeats=HBeats}=State) ->
                  true ->
                      State#state{heartbeats=5}
              end,
-    {next_state, CurrentState, State1, heartbeat_interval()};
+    {next_state, CurrentState, State1};
 handle_info(timeout, CurrentState, #state{heartbeats=HBeats}=State) ->
     HBeats1 = HBeats - 1,
     State1 = State#state{heartbeats=HBeats1},
@@ -226,7 +217,7 @@ force_abort(#state{node_ref=NodeRef}=State) ->
     State#state{state_timer=TRef}.
 
 state_transition(Current, New, #state{node_ref=NodeRef, watchers=Watchers}) ->
-    lager:info("~p transitioning from ~p to ~p~n", [NodeRef, Current, New]),
+    lager:debug("~p transitioning from ~p to ~p~n", [NodeRef, Current, New]),
     notify_watchers(Watchers, NodeRef, Current, New),
     New.
 
