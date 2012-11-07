@@ -252,11 +252,15 @@ proplist_to_job_node(Proplist) ->
 
 %% Heartbeat Status translators
 hb_status_as_int(X) when is_integer(X) -> X;
-hb_status_as_int(down) -> 0;
-hb_status_as_int(up) -> 1.
+hb_status_as_int(shutdown) -> 0;
+hb_status_as_int(rehab) -> 1;
+hb_status_as_int(idle) -> 2;
+hb_status_as_int(running) -> 3.
 hb_status_as_atom(X) when is_atom(X) -> X;
-hb_status_as_atom(0) -> down;
-hb_status_as_atom(1) -> up.
+hb_status_as_atom(0) -> shutdown;
+hb_status_as_atom(1) -> rehab;
+hb_status_as_atom(2) -> idle;
+hb_status_as_atom(3) -> running.
 
 %% Job Status translators
 job_status(voting) -> 0;
