@@ -10,7 +10,8 @@
          heartbeat/1,
          status/1,
          watch/1,
-         aborted/1]).
+         aborted/1,
+         rehab/1]).
 
 %% States
 -export([idle/2,
@@ -56,9 +57,17 @@ watch(NodeRef) ->
     end.
 
 aborted(NodeRef) ->
-    case pushy_node_state_sup:get_process(NodeRef) of
-        Pid when is_pid(Pid) ->
-            gen_fsm:send_event(Pid, aborted);
+    case cast(NodeRef, aborted) of
+        ok ->
+            ok;
+        Error ->
+            Error
+    end.
+
+rehab(NodeRef) ->
+    case cast(NodeRef, rehab) of
+        ok ->
+            ok;
         Error ->
             Error
     end.
@@ -95,6 +104,9 @@ rehab(Message, #state{node_ref=NodeRef}=State) ->
     lager:info("~p in rehab. Ignoring message: ~p~n", [NodeRef, Message]),
     {next_state, rehab, State}.
 
+idle(rehab, State) ->
+    force_abort(State),
+    {next_state, state_transition(idle, rehab, State), State};
 idle({job, Job}, State) ->
     {next_state, state_transition(idle, running, State), State#state{job=Job}}.
 
@@ -166,6 +178,14 @@ call(NodeRef, Message) ->
     case pushy_node_state_sup:get_process(NodeRef) of
         Pid when is_pid(Pid) ->
             gen_fsm:sync_send_all_state_event(Pid, Message, infinity);
+        Error ->
+            Error
+    end.
+
+cast(NodeRef, Message) ->
+    case pushy_node_state_sup:get_process(NodeRef) of
+        Pid when is_pid(Pid) ->
+            gen_fsm:send_event(Pid, Message);
         Error ->
             Error
     end.
