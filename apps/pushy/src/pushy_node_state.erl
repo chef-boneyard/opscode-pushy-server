@@ -17,10 +17,6 @@
          running/2,
          rehab/2]).
 
--define(DEFAULT_DECAY_INTERVAL, 4).
--define(DEFAULT_UP_THRESHOLD, 0.5).
--define(DEFAULT_DOWN_THRESHOLD, 0.4).
-
 -record(state, {node_ref              :: node_ref(),
                 heartbeats = 1        :: pos_integer(),
                 job                   :: any(),
