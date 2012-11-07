@@ -295,7 +295,7 @@ start_running(#state{job = Job} = State) ->
     Job2 = Job#pushy_job{status = running},
     State2 = State#state{job = Job2},
     pushy_object:update_object(update_job, Job2, Job2#pushy_job.id),
-    send_command_to_all(<<"run">>, State2),
+    send_command_to_ready(<<"run">>, State2),
     {ok, _} = timer:send_after(Job2#pushy_job.run_timeout*1000, running_timeout),
     maybe_finished_running(State2).
 
@@ -315,6 +315,17 @@ count_nodes_in_state(NodeStates, #state{job_nodes = JobNodes}) ->
             end
         end, 0, JobNodes).
 
+%% @doc Return the set of NodeRefs for nodes which are in a given set
+%% of states.
+nodes_in_state(NodeStates, #state{job_nodes = JobNodes}) ->
+    dict:fold(
+        fun(NodeRef, NodeState, Acc) ->
+            case lists:member(NodeState#pushy_job_node.status, NodeStates) of
+                true -> [NodeRef | Acc];
+                _ -> Acc
+            end
+        end, [], JobNodes).
+
 listen_for_down_nodes([]) -> ok;
 listen_for_down_nodes([NodeRef|JobNodes]) ->
     pushy_node_state:start_watching(NodeRef),
@@ -324,14 +335,24 @@ listen_for_down_nodes([NodeRef|JobNodes]) ->
     end,
     listen_for_down_nodes(JobNodes).
 
+-spec send_command_to_ready(binary(), #state{}) -> 'ok'.
+send_command_to_ready(Type, #state{job_host = Host,
+                                   job = Job} = State) ->
+    lager:info("Sending ~p to nodes in ready state", [Type]),
+    ReadyNodeRefs = nodes_in_state([ready], State),
+    send_command_to_nodes(Type, Host, Job, ReadyNodeRefs).
+
 -spec send_command_to_all(binary(), #state{}) -> 'ok'.
 send_command_to_all(Type, #state{job_host=Host, job = Job, job_nodes = JobNodes}) ->
     lager:info("Sending ~p to all nodes", [Type]),
+    NodeRefs = dict:fetch_keys(JobNodes),
+    send_command_to_nodes(Type, Host, Job, NodeRefs).
+
+send_command_to_nodes(Type, Host, Job, NodeRefs) ->
     Message = [{type, Type},
                {job_id, Job#pushy_job.id},
                {server, list_to_binary(Host)},
                {command, Job#pushy_job.command}],
-    NodeRefs = dict:fetch_keys(JobNodes),
     pushy_command_switch:send_command(NodeRefs, {Message}).
 
 -spec send_node_event(object_id(), node_ref(), job_event()) -> ok | not_found.
