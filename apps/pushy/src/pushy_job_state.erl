@@ -328,7 +328,7 @@ nodes_in_state(NodeStates, #state{job_nodes = JobNodes}) ->
 
 listen_for_down_nodes([]) -> ok;
 listen_for_down_nodes([NodeRef|JobNodes]) ->
-    pushy_node_state:start_watching(NodeRef),
+    pushy_node_state:watch(NodeRef),
     case pushy_node_state:current_state(NodeRef) of
         down -> gen_fsm:send_event(self(), {down, NodeRef});
         _ -> ok
