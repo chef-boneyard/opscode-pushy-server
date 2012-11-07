@@ -12,10 +12,6 @@
 %% Supervisor callbacks
 -export([init/1]).
 
-%-ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
-%-endif.
-
 -include("pushy.hrl").
 
 %% Helper macro for declaring children of supervisor
@@ -55,15 +51,16 @@ init([#pushy_state{ctx=_Ctx} = PushyState]) ->
                         {log_dir, LogDir},
                         {dispatch, Dispatch},
                         {enable_perf_logger, true}],
-    ?debugVal(WebMachineConfig),
-    Workers = [?SUP(pushy_node_state_sup, []),
-                ?SUP(pushy_job_state_sup, []),
-                ?WORKER(chef_keyring, []),
-                ?WORKER(pushy_node_status_updater, []),
-                ?WORKER(pushy_heartbeat_generator, [PushyState]),
-                ?WORKER(pushy_command_switch, [PushyState]),
-                ?WORKERNL(webmachine_mochiweb, [WebMachineConfig])  %% FIXME start or start_link here?
+    Workers = [?WORKER(pushy_node_stats_scanner, []),
+               ?SUP(pushy_node_state_sup, []),
+               ?SUP(pushy_job_state_sup, []),
+               ?WORKER(chef_keyring, []),
+               ?WORKER(pushy_node_status_updater, []),
+               ?WORKER(pushy_heartbeat_generator, [PushyState]),
+               ?WORKER(pushy_command_switch, [PushyState]),
+               ?WORKERNL(webmachine_mochiweb, [WebMachineConfig])  %% FIXME start or start_link here?
                ],
+    pushy_node_stats:init(),
     {ok, {{one_for_one, 60, 120},
          maybe_run_graphite(EnableGraphite, Workers)}}.
 
