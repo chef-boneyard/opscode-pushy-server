@@ -80,21 +80,32 @@ reset(Node) ->
 hb(#metric{heartbeats=Heartbeats}=Node) ->
     Node#metric{heartbeats=Heartbeats + 1, last=os:timestamp()}.
 
-evaluate_node_health(#metric{avg=Avg, heartbeats=Heartbeats}=Node) ->
+evaluate_node_health(#metric{heartbeats=Heartbeats, node_pid=Pid}=Node) ->
     case elapsed_intervals(Node) of
         0 ->
-            {ok, Node};
-        X ->
-            Window = (decay_window() - 1) * X,
-            WindowAvg = Heartbeats / Window,
-            NAvg = (Avg * ?HISTORY_WEIGHT) + (WindowAvg * ?NOW_WEIGHT),
-            Node1 = Node#metric{avg=NAvg},
-            case NAvg < down_threshold() of
+            if
+                Heartbeats > 4 ->
+                    evaluate_node_health(1, Node);
                 true ->
-                    {should_die, Node1};
-                false ->
-                    {reset, Node1}
-            end
+                    lager:debug("Skipping Node: ~p~n", [Pid]),
+                    {ok, Node}
+            end;
+        X ->
+            evaluate_node_health(X, Node)
+    end.
+evaluate_node_health(IntervalCount, #metric{avg=Avg, heartbeats=Heartbeats, node_pid=Pid}=Node) -> 
+    Window = (decay_window() - 1) * IntervalCount,
+    WindowAvg = Heartbeats / Window,
+    NAvg = floor((Avg * ?HISTORY_WEIGHT) + (WindowAvg * ?NOW_WEIGHT), 1.0),
+    lager:debug("~p avg:~p old_avg:~p~n", [Pid, NAvg, Avg]),
+    Node1 = Node#metric{avg=NAvg},
+    case NAvg < down_threshold() of
+        true ->
+            lager:debug("Killing Node: ~p~n", [Pid]),
+            {should_die, Node1};
+        false ->
+            lager:debug("Resetting Node: ~p~n", [Pid]),
+            {reset, Node1}
     end.
 
 elapsed_intervals(#metric{last=TS}) ->
@@ -109,3 +120,9 @@ down_threshold() ->
 
 decay_window() ->
     envy:get(pushy, decay_window, integer).
+
+floor(X, Y) when X =< Y ->
+    X;
+floor(_X, Y) ->
+    Y.
+    

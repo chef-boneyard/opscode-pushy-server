@@ -12,8 +12,7 @@
          aborted/1]).
 
 %% States
--export([booting/2,
-         idle/2,
+-export([idle/2,
          running/2,
          rehab/2]).
 
@@ -72,8 +71,8 @@ init([NodeRef]) ->
         %% assigned before anyone else tries to start things up gproc:reg can only return
         %% true or throw
         true = gproc:reg({n, l, GprocName}),
-        State = #state{node_ref = NodeRef},
-        {ok, state_transition(init, booting, State), State}
+        State1 = force_abort(State),
+        {ok, state_transition(init, rehab, State1), State1}
     catch
         error:badarg ->
             %% When we start up from a previous run, we have two ways that the FSM might be started;
@@ -87,10 +86,6 @@ init([NodeRef]) ->
             {stop, state_transition(init, shutdown, State), State}
     end.
 
-booting(Message, #state{node_ref=NodeRef}=State) ->
-    lager:info("~p is booting. Ignoring message: ~p~n", [NodeRef, Message]),
-    {next_state, booting, State, 60000}.
-
 rehab(aborted, #state{state_timer=TRef}=State) ->
     timer:cancel(TRef),
     {next_state, state_transition(rehab, idle, State), State};
@@ -103,7 +98,8 @@ idle({job, Job}, State) ->
 
 running(aborted, #state{node_ref=NodeRef}=State) ->
     lager:info("~p aborted during job.~n", [NodeRef]),
-    {next_state, state_transition(running, idle, State), State};
+    State1 = State#state{job=undefined},
+    {next_state, state_transition(running, idle, State1), State1};
 running({complete, Job}, #state{job=Job, node_ref=NodeRef}=State) ->
     lager:info("~p completed job.~n", [NodeRef]),
     State1 = State#state{job=undefined},
@@ -127,34 +123,13 @@ handle_sync_event({unwatch, WatcherPid}, _From, StateName, #state{watchers=Watch
 handle_sync_event(current_state, _From, StateName, #state{job=Job}=State) ->
     {reply, {StateName, Job}, StateName, State}.
 
-handle_info(heartbeat, booting, #state{heartbeats=HBeats}=State) ->
-    HBeats1 = HBeats + 1,
-    State1 = State#state{heartbeats=HBeats1},
-    case HBeats1 > 3 of
-        true ->
-            State2 = force_abort(State1),
-            {next_state, state_transition(booting, rehab, State2), State2};
-        false ->
-            {next_state, booting, State1}
+handle_info(heartbeat, CurrentState, State) ->
+    case pushy_node_stats:heartbeat(self()) of
+        ok -> {next_state, CurrentState, State};
+        should_die -> {stop, state_transition(CurrentState, shutdown, State), State}
     end;
-handle_info(heartbeat, CurrentState, #state{heartbeats=HBeats}=State) ->
-    HBeats1 = HBeats + 1,
-    State1 = if
-                 HBeats1 < 5 ->
-                     State#state{heartbeats=HBeats1};
-                 true ->
-                     State#state{heartbeats=5}
-             end,
-    {next_state, CurrentState, State1};
-handle_info(timeout, CurrentState, #state{heartbeats=HBeats}=State) ->
-    HBeats1 = HBeats - 1,
-    State1 = State#state{heartbeats=HBeats1},
-    case HBeats1 of
-        0 ->
-            {stop, state_transition(CurrentState, shutdown, State1), State1};
-        _ ->
-            {next_state, CurrentState, State, heartbeat_interval()}
-    end;
+handle_info(should_die, CurrentState, State) ->
+    {stop, state_transition(CurrentState, shutdown, State), State};
 handle_info(rehab_again, rehab, State) ->
     State1 = force_abort(State),
     {next_state, rehab, State1};
@@ -175,8 +150,6 @@ code_change(_OldVsn, StateName, State, _Extra) ->
     {ok, StateName, State}.
 
 %% Internal functions
-eval_state({booting, undefined}) ->
-    {online, {unvailable, none}};
 eval_state({idle, undefined}) ->
     {online, {available, none}};
 eval_state({rehab, undefined}) ->
@@ -186,9 +159,6 @@ eval_state({running, Job}) ->
 
 rehab_interval() ->
     envy:get(pushy, rehab_timer, 1000, integer).
-
-heartbeat_interval() ->
-    envy:get(pushy, heartbeat_interval, integer).
 
 call(NodeRef, Message) ->
     case pushy_node_state_sup:get_process(NodeRef) of
