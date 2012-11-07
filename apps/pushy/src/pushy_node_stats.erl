@@ -22,7 +22,7 @@
 
 -spec init() -> atom() | ets:tid().
 init() ->
-    ets:new(?MODULE, [ordered_set, public, named_table, {keypos, 2},
+    ets:new(?MODULE, [set, public, named_table, {keypos, 2},
                       {write_concurrency, true}, {read_concurrency, true}]).
 
 -spec heartbeat(pid()) -> ok | should_die.
@@ -88,7 +88,7 @@ evaluate_node_health(#metric{avg=Avg, heartbeats=Heartbeats}=Node) ->
             Window = (decay_window() - 1) * X,
             WindowAvg = Heartbeats / Window,
             NAvg = (Avg * ?HISTORY_WEIGHT) + (WindowAvg * ?NOW_WEIGHT),
-            Node1 = Node#metric{avg=NAvg, heartbeats=0},
+            Node1 = Node#metric{avg=NAvg},
             case NAvg < down_threshold() of
                 true ->
                     {should_die, Node1};
