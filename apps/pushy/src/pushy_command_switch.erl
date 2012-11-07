@@ -161,9 +161,12 @@ do_send(#state{addr_node_map = AddrNodeMap,
                command_sock = CommandSocket}=State,
         Method, NodeRef, Message) ->
         {ok, Key} = get_key_for_method(Method, State, NodeRef),
-    Address = addr_node_map_lookup_by_node(AddrNodeMap, NodeRef),
-    Packets = ?TIME_IT(pushy_messaging, make_message, (proto_v2, Method, Key, Message)),
-    ok = pushy_messaging:send_message(CommandSocket, [Address | Packets]),
+    case addr_node_map_lookup_by_node(AddrNodeMap, NodeRef) of
+        error -> ok;
+        Address ->
+            Packets = ?TIME_IT(pushy_messaging, make_message, (proto_v2, Method, Key, Message)),
+            ok = pushy_messaging:send_message(CommandSocket, [Address | Packets])
+    end,
     State.
 
 %%%
@@ -301,4 +304,7 @@ addr_node_map_lookup_by_addr({AddrToNode, _}, Addr) ->
 addr_node_map_lookup_by_node(#state{addr_node_map = AddrNodeMap}, Node) ->
     addr_node_map_lookup_by_addr(AddrNodeMap, Node);
 addr_node_map_lookup_by_node({_, NodeToAddr}, Node) ->
-    dict:fetch(Node, NodeToAddr).
+    case dict:find(Node, NodeToAddr) of
+        error -> error;
+        {ok, Value} -> Value
+    end.
