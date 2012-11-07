@@ -26,7 +26,6 @@
 start_link() ->
     case supervisor:start_link({local, ?SERVER}, ?MODULE, []) of
         {ok, Pid} ->
-            load_from_db(),
             {ok, Pid};
         Error ->
             Error
@@ -62,18 +61,18 @@ init([]) ->
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
 
-load_from_db() ->
-    case pushy_sql:fetch_node_statuses() of
-        {ok, none} ->
-            lager:info("No existing node status records found in database, FSM proceses will not be pre-created.");
-        {ok, NodeStatuses} ->
-            create_processes(NodeStatuses);
-        {error, Reason} ->
-            lager:error("Error loading existing node status records from the database: ~p", [Reason])
-    end.
+%load_from_db() ->
+    %case pushy_sql:fetch_node_statuses(?POC_ORG_ID) of
+        %{ok, none} ->
+            %lager:info("No existing node status records found in database, FSM proceses will not be pre-created.");
+        %{ok, NodeStatuses} ->
+            %create_processes(NodeStatuses);
+        %{error, Reason} ->
+            %lager:error("Error loading existing node status records from the database: ~p", [Reason])
+    %end.
 
-create_processes([]) ->
-    {ok, done};
-create_processes([#pushy_node_status{org_id=OrgId,node_name=NodeName} | Rest]) ->
-    get_process({OrgId, NodeName}),
-    create_processes(Rest).
+%create_processes([]) ->
+    %{ok, done};
+%create_processes([#pushy_node_status{org_id=OrgId,node_name=NodeName} | Rest]) ->
+    %get_process({OrgId, NodeName}),
+    %create_processes(Rest).
