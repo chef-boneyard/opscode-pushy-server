@@ -62,7 +62,7 @@ test: eunit
 tags:
 	@find src deps -name "*.[he]rl" -print | etags -
 
-rel: compile rel/opscode-pushy-server
+rel: compile test rel/opscode-pushy-server
 rel/opscode-pushy-server:
 	@cd rel;$(REBAR) generate overlay_vars=db_vars.config
 
