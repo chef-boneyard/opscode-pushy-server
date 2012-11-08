@@ -11,8 +11,6 @@
          allowed_methods/2,
          service_available/2,
          content_types_provided/2,
-         is_authorized/2,
-         malformed_request/2,
          to_json/2]).
 
 -include_lib("webmachine/include/webmachine.hrl").
@@ -33,14 +31,25 @@ init(_Config) ->
 
 service_available(Req, State) ->
     NodeName = wrq:path_info(node_name, Req),
-    State1 = State#config_state{nodename = NodeName},
+    OrgName = wrq:path_info(organization_id, Req),
+    OrgGuid = ?POC_ORG_ID,
+    State1 = State#config_state{orgname = OrgName, organization_guid = OrgGuid,
+                                nodename = NodeName},
     {true, Req, State1}.
 
-malformed_request(Req, State) ->
-    pushy_wm_base:malformed_request(Req, State).
+% TODO: Whenever the client/tests handle authentication correctly (per OC-4790),
+% uncomment these, as well as removing the above service_available function:
 
-is_authorized(Req, State) ->
-    pushy_wm_base:is_authorized(Req, State).
+%service_available(Req, State) ->
+%    NodeName = wrq:path_info(node_name, Req),
+%    State1 = State#config_state{nodename = NodeName},
+%    {true, Req, State1}.
+
+%malformed_request(Req, State) ->
+%    pushy_wm_base:malformed_request(Req, State).
+
+%is_authorized(Req, State) ->
+%    pushy_wm_base:is_authorized(Req, State).
 
 allowed_methods(Req, State) ->
     {['GET'], Req, State}.
