@@ -33,7 +33,8 @@ service_available(Req, State) ->
     NodeName = wrq:path_info(node_name, Req),
     OrgName = wrq:path_info(organization_id, Req),
     OrgGuid = pushy_object:fetch_org_id(OrgName),
-    State1 = State#config_state{orgname = OrgName, organization_guid = OrgGuid,
+    State1 = State#config_state{organization_name = OrgName,
+                                organization_guid = OrgGuid,
                                 node_name = NodeName},
     {true, Req, State1}.
 
@@ -57,8 +58,7 @@ allowed_methods(Req, State) ->
 content_types_provided(Req, State) ->
     {[{"application/json", to_json}], Req, State}.
 
-to_json(Req, #config_state{orgname = OrgName, organization_guid = OrgGuid, node_name = NodeName} = State) ->
-
+to_json(Req, #config_state{organization_name = OrgName, organization_guid = OrgGuid, node_name = NodeName} = State) ->
     Host = envy:get(pushy, server_name, string),
     ConfigLifetime = envy:get(pushy, config_lifetime, ?DEFAULT_CONFIG_LIFETIME, integer),
     HeartbeatAddress = iolist_to_binary(
