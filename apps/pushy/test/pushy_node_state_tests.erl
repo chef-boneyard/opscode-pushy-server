@@ -63,11 +63,15 @@ heartbeat_test_() ->
     {foreach,
      fun() ->
              test_util:start_apps(),
+             meck:new(pushy_command_switch, []),
+             meck:expect(pushy_command_switch, send_command,
+                         fun(_NodeRef,  _Message) -> ok end),
              application:set_env(pushy, heartbeat_interval, ?HB_INTERVAL),
              {ok, Pid} = ?NS:start_link(?NODE),
              {Pid}
      end,
      fun({Pid}) ->
+             meck:unload(pushy_command_switch),
              erlang:unlink(Pid),
              erlang:exit(Pid, kill),
              ok
@@ -143,11 +147,15 @@ watcher_test_() ->
     {foreach,
      fun() ->
              test_util:start_apps(),
+             meck:new(pushy_command_switch, []),
+             meck:expect(pushy_command_switch, send_command,
+                         fun(_NodeRef,  _Message) -> ok end),
              application:set_env(pushy, heartbeat_interval, ?HB_INTERVAL),
              {ok, Pid} = ?NS:start_link(?NODE),
              {Pid}
      end,
      fun({Pid}) ->
+             meck:unload(pushy_command_switch),
              erlang:unlink(Pid),
              erlang:exit(Pid, kill),
              ok
@@ -192,14 +200,7 @@ watcher_test_() ->
 
                        heartbeat_step(?NODE, ?HB_INTERVAL, 6),
                        V2 = ?NS:current_state(?NODE),
-                       ?assertMatch(up, V2),
-                       Msg = receive
-                                 X -> X
-                             after
-                                 100 -> none
-                             end,
-                       ?assertEqual({node_state_change, ?NODE, up}, Msg)
-
+                       ?assertMatch(up, V2)
                end}
       end,
       fun(_) ->
@@ -219,20 +220,7 @@ watcher_test_() ->
                        V3 = ?NS:current_state(?NODE),
                        ?assertMatch(down, V3),
 
-                       Msg1 = receive
-                                 X1 -> X1
-                             after
-                                 100 -> none
-                             end,
-                       ?assertEqual({node_state_change, ?NODE, up}, Msg1),
-
-                       Msg2 = receive
-                                 X2 -> X2
-                             after
-                                 100 -> none
-                             end,
-                       ?assertEqual({node_state_change, ?NODE, down}, Msg2)
-
+                       assertReceive({down, ?NODE})
                end}
       end
      ]}.
@@ -275,3 +263,13 @@ heartbeat_step(Node, SleepTime) ->
     ?NS:heartbeat(Node),
     _V = ?NS:current_state(Node),
     timer:sleep(SleepTime).
+
+assertReceive(Expected) ->
+    Got = receive
+        X1 -> X1
+    after
+        100 -> none
+    end,
+    ?assertEqual(Expected, Got).
+
+
