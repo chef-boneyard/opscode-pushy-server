@@ -125,6 +125,7 @@ voting({ack_commit, NodeRef}, State) ->
     end,
     maybe_finished_voting(State2);
 voting({nack_commit, NodeRef}, State) ->
+    lager:info("~p Nacking", [NodeRef]),
     % Node from new -> nacked.
     State2 = case get_node_state(NodeRef, State) of
         new      -> set_node_state(NodeRef, nacked, State);
@@ -185,7 +186,7 @@ handle_sync_event(Event, From, StateName, State) ->
 
 -spec handle_info(any(), job_status(), #state{}) ->
         {'next_state', job_status(), #state{}}.
-handle_info({down, NodeRef}, StateName, State) ->
+handle_info({state_change, NodeRef, _Current, shutdown}, StateName, State) ->
     pushy_job_state:StateName({down,NodeRef}, State);
 handle_info(voting_timeout, voting,
         #state{job = Job, voting_timeout = VotingTimeout} = State) ->
@@ -299,11 +300,21 @@ start_running(#state{job = Job} = State) ->
     {ok, _} = timer:send_after(Job2#pushy_job.run_timeout*1000, running_timeout),
     maybe_finished_running(State2).
 
-finish_job(Reason, #state{job = Job} = State) ->
+%% TODO this needs refactoring. We don't want to send nodes to rehab if we get
+%% a quorum_failed message because that stops jobs that are already running on
+%% nodes, even if they are valid.
+finish_job(quorum_failed, #state{job = Job} = State) ->
+    lager:info("Job ~p -> ~p", [Job#pushy_job.id, quorum_failed]),
+    Job2 = Job#pushy_job{status = quorum_failed},
+    State2 = State#state{job = Job2},
+    pushy_object:update_object(update_job, Job2, Job2#pushy_job.id),
+    {stop, {shutdown, quorum_failed}, State2};
+finish_job(Reason, #state{job = Job, job_nodes = JobNodes} = State) ->
     lager:info("Job ~p -> ~p", [Job#pushy_job.id, Reason]),
     Job2 = Job#pushy_job{status = Reason},
     State2 = State#state{job = Job2},
     pushy_object:update_object(update_job, Job2, Job2#pushy_job.id),
+    [ pushy_node_state:rehab(NodeRef) || NodeRef <- dict:fetch_keys(JobNodes) ],
     {stop, {shutdown, Reason}, State2}.
 
 count_nodes_in_state(NodeStates, #state{job_nodes = JobNodes}) ->
@@ -329,8 +340,9 @@ nodes_in_state(NodeStates, #state{job_nodes = JobNodes}) ->
 listen_for_down_nodes([]) -> ok;
 listen_for_down_nodes([NodeRef|JobNodes]) ->
     pushy_node_state:watch(NodeRef),
-    case pushy_node_state:current_state(NodeRef) of
-        down -> gen_fsm:send_event(self(), {down, NodeRef});
+    case pushy_node_state:status(NodeRef) of
+        {_, {unavailable, _}} ->
+            gen_fsm:send_event(self(), {down, NodeRef});
         _ -> ok
     end,
     listen_for_down_nodes(JobNodes).
