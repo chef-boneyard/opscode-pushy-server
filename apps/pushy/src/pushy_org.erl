@@ -7,7 +7,7 @@
 %% opscode-account
 -module(pushy_org).
 
--include("pushy_sql.hrl").
+-define(POC_ORG_ID, <<"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa">>).
 
 -export([
           fetch_org_id/1
