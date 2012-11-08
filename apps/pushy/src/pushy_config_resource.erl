@@ -32,7 +32,7 @@ init(_Config) ->
 service_available(Req, State) ->
     NodeName = wrq:path_info(node_name, Req),
     OrgName = wrq:path_info(organization_id, Req),
-    OrgGuid = ?POC_ORG_ID,
+    OrgGuid = pushy_object:fetch_org_id(OrgName),
     State1 = State#config_state{orgname = OrgName, organization_guid = OrgGuid,
                                 node_name = NodeName},
     {true, Req, State1}.
