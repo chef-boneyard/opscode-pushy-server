@@ -43,7 +43,7 @@ heartbeat(NodeRef) ->
 status(NodeRef) ->
     case call(NodeRef, current_state) of
         undefined ->
-            {offline, unavailable};
+            {offline, {unavailable, none}};
         CurrentState ->
             eval_state(CurrentState)
     end.
@@ -148,7 +148,7 @@ handle_info(rehab_again, rehab, State) ->
     State1 = force_abort(State),
     {next_state, rehab, State1};
 handle_info({'DOWN', _MRef, _Type, Pid, _Reason}, StateName, #state{watchers=Watchers}=State) ->
-    case lists:keytake(Pid, Watchers) of
+    case lists:keytake(Pid, 1, Watchers) of
         false ->
             {next_state, StateName, State};
         {value, _, Watchers1} ->
@@ -191,7 +191,7 @@ cast(NodeRef, Message) ->
     end.
 
 send_info(NodeRef, Message) ->
-    case pushy_node_state_sup:get_process(NodeRef) of
+    case pushy_node_state_sup:get_or_create_process(NodeRef) of
         Pid when is_pid(Pid) ->
             Pid ! Message;
         Error ->
