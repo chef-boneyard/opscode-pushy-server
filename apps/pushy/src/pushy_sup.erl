@@ -55,7 +55,6 @@ init([#pushy_state{ctx=_Ctx} = PushyState]) ->
                         {log_dir, LogDir},
                         {dispatch, Dispatch},
                         {enable_perf_logger, true}],
-    ?debugVal(WebMachineConfig),
     Workers = [?SUP(pushy_node_state_sup, []),
                 ?SUP(pushy_job_state_sup, []),
                 ?WORKER(chef_keyring, []),
