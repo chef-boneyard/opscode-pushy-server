@@ -14,7 +14,7 @@
         ]).
 
 %% Stub it out for now
--spec fetch_org_id(OrgName :: string()) -> binary().
+-spec fetch_org_id(OrgName :: string()) -> binary() | not_found.
 fetch_org_id(_OrgName) ->
   ?POC_ORG_ID.
 
