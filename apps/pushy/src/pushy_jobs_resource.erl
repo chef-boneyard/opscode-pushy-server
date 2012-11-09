@@ -64,12 +64,12 @@ create_path(Req, #config_state{organization_guid = OrgId} = State) ->
         Value -> Value
     end,
     Job = pushy_object:new_record(pushy_job, OrgId, NodeNames, Command, RunTimeout2, Quorum),
-    State2 = State#config_state{job = Job},
+    State2 = State#config_state{pushy_job = Job},
     {binary_to_list(Job#pushy_job.id), Req, State2}.
 
 % This processes POST /pushy/jobs
 from_json(Req, State) ->
-    pushy_job_state_sup:start(State#config_state.job),
+    pushy_job_state_sup:start(State#config_state.pushy_job),
     Req2 = ripped_from_chef_rest:set_uri_of_created_resource(Req),
     {true, Req2, State}.
 

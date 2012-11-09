@@ -46,10 +46,10 @@ resource_exists(Req, State) ->
     JobId = iolist_to_binary(wrq:path_info(job_id, Req)),
     case pushy_sql:fetch_job(JobId) of
         {ok, not_found} -> {false, Req, State};
-        {ok, Job} -> {true, Req, State#config_state{job = Job}}
+        {ok, Job} -> {true, Req, State#config_state{pushy_job = Job}}
     end.
 
-to_json(Req, #config_state{job = Job} = State) ->
+to_json(Req, #config_state{pushy_job = Job} = State) ->
     {jiffy:encode(job_to_json(Job)), Req, State}.
 
 %{

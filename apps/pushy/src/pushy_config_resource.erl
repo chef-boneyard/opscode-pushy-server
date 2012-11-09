@@ -34,7 +34,7 @@ service_available(Req, State) ->
     OrgName = wrq:path_info(organization_id, Req),
     OrgGuid = ?POC_ORG_ID,
     State1 = State#config_state{orgname = OrgName, organization_guid = OrgGuid,
-                                nodename = NodeName},
+                                node_name = NodeName},
     {true, Req, State1}.
 
 % TODO: Whenever the client/tests handle authentication correctly (per OC-4790),
@@ -42,7 +42,7 @@ service_available(Req, State) ->
 
 %service_available(Req, State) ->
 %    NodeName = wrq:path_info(node_name, Req),
-%    State1 = State#config_state{nodename = NodeName},
+%    State1 = State#config_state{node_name = NodeName},
 %    {true, Req, State1}.
 
 %malformed_request(Req, State) ->
@@ -57,7 +57,7 @@ allowed_methods(Req, State) ->
 content_types_provided(Req, State) ->
     {[{"application/json", to_json}], Req, State}.
 
-to_json(Req, #config_state{orgname = OrgName, organization_guid = OrgGuid, nodename = NodeName} = State) ->
+to_json(Req, #config_state{orgname = OrgName, organization_guid = OrgGuid, node_name = NodeName} = State) ->
 
     Host = envy:get(pushy, server_name, string),
     ConfigLifetime = envy:get(pushy, config_lifetime, ?DEFAULT_CONFIG_LIFETIME, integer),
