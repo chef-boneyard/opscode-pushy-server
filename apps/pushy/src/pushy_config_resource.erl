@@ -8,8 +8,8 @@
 -module(pushy_config_resource).
 
 -export([init/1,
-         service_available/2,
          allowed_methods/2,
+         service_available/2,
          content_types_provided/2,
          to_json/2]).
 
@@ -18,13 +18,9 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -include("pushy_sql.hrl").
+-include("pushy_wm.hrl").
 
 -define(DEFAULT_CONFIG_LIFETIME, 3600).
-
--record(config_state, {
-          orgname :: string(),
-          organization_guid :: string(),
-          nodename :: string() }).
 
 init(_Config) ->
     State = #config_state{},
@@ -33,19 +29,27 @@ init(_Config) ->
 %% then in console: wmtrace_resource:add_dispatch_rule("wmtrace", "/tmp/traces").
 %% then go to localhost:WXYZ/wmtrace
 
-%is_authorized(Req, State) ->
-%    OrgName =  wrq:path_info(Req, organization),
-%    ?debugVal(OrgName),
-%    State2 = State#config_state{orgname = OrgName},
-%    {{true, foo}, Req, State2}.
-
 service_available(Req, State) ->
     NodeName = wrq:path_info(node_name, Req),
     OrgName = wrq:path_info(organization_id, Req),
-    %% TODO find organization guid properly
     OrgGuid = ?POC_ORG_ID,
-    State1 = State#config_state{orgname = OrgName, organization_guid = OrgGuid, nodename = NodeName},
+    State1 = State#config_state{orgname = OrgName, organization_guid = OrgGuid,
+                                node_name = NodeName},
     {true, Req, State1}.
+
+% TODO: Whenever the client/tests handle authentication correctly (per OC-4790),
+% uncomment these, as well as removing the above service_available function:
+
+%service_available(Req, State) ->
+%    NodeName = wrq:path_info(node_name, Req),
+%    State1 = State#config_state{node_name = NodeName},
+%    {true, Req, State1}.
+
+%malformed_request(Req, State) ->
+%    pushy_wm_base:malformed_request(Req, State).
+
+%is_authorized(Req, State) ->
+%    pushy_wm_base:is_authorized(Req, State).
 
 allowed_methods(Req, State) ->
     {['GET'], Req, State}.
@@ -53,7 +57,7 @@ allowed_methods(Req, State) ->
 content_types_provided(Req, State) ->
     {[{"application/json", to_json}], Req, State}.
 
-to_json(Req, #config_state{orgname = OrgName, organization_guid = OrgGuid, nodename = NodeName} = State) ->
+to_json(Req, #config_state{orgname = OrgName, organization_guid = OrgGuid, node_name = NodeName} = State) ->
 
     Host = envy:get(pushy, server_name, string),
     ConfigLifetime = envy:get(pushy, config_lifetime, ?DEFAULT_CONFIG_LIFETIME, integer),

@@ -127,7 +127,8 @@ is_authorized(Req, State) ->
 verify_request_signature(Req, State) ->
     UserName = wrq:get_req_header("x-ops-userid", Req),
     OrgName = list_to_binary(wrq:path_info(organization_id, Req)),
-    State1 = State#config_state{organization_guid = pushy_object:fetch_org_id(OrgName)},
+    State1 = State#config_state{organization_guid = pushy_object:fetch_org_id(OrgName),
+                                orgname = OrgName},
     case get_public_key(OrgName, UserName) of
         {not_found, What} ->
             NotFoundMsg = verify_request_message({not_found, What},
