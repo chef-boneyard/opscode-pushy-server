@@ -64,7 +64,7 @@ init([]) ->
 %% ------------------------------------------------------------------
 
 load_from_db() ->
-    case pushy_sql:fetch_node_statuses(?POC_ORG_ID) of
+    case pushy_sql:fetch_node_statuses() of
         {ok, none} ->
             lager:info("No existing node status records found in database, FSM proceses will not be pre-created.");
         {ok, NodeStatuses} ->

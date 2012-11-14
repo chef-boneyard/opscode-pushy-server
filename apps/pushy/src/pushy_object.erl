@@ -21,10 +21,19 @@
           make_org_prefix_id/2
         ]).
 
-
-%%% TODO: Make this actually work: (OC-4352)
-fetch_org_id(_OrgName) ->
-  ?POC_ORG_ID.
+fetch_org_id(OrgName) ->
+    case pushy_cache:get(org_guid, OrgName) of
+        Error when Error =:= not_found orelse Error =:= no_cache ->
+            case pushy_org:fetch_org_id(OrgName) of
+                not_found ->
+                    not_found;
+                Guid ->
+                    pushy_cache:put(org_guid, OrgName, Guid),
+                    Guid
+            end;
+        {ok, Guid} ->
+            Guid
+    end.
 
 new_record(pushy_node_status, OrgId, NodeStatusData) ->
     Name = proplists:get_value(<<"node">>, NodeStatusData),

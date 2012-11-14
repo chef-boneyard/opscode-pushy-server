@@ -6,6 +6,7 @@
 
 -export([
          %% node status ops
+         fetch_node_statuses/0,
          fetch_node_statuses/1,
          fetch_node_status/2,
          create_node_status/1,
@@ -25,16 +26,27 @@ sql_now() -> calendar:now_to_universal_time(os:timestamp()).
 
 %% node status ops
 
--spec fetch_node_statuses(binary() | string()) -> {ok, list()} | {error, term()}.
+-spec fetch_node_statuses() -> {ok, list()} | {error, term()}.
+fetch_node_statuses() ->
+    case sqerl:select(list_node_statuses, []) of
+        {ok, none} ->
+            {ok, []};
+        {ok, Response} ->
+            {ok, [node_status_row_to_record(Row) || Row <- Response]};
+        {error, Reason} ->
+            {error, Reason}
+    end.
+
+-spec fetch_node_statuses(binary() | string())-> {ok, list()} | {error, term()}.
 fetch_node_statuses(OrgId) ->
     case sqerl:select(list_node_statuses_for_org, [OrgId]) of
         {ok, none} ->
             {ok, []};
         {ok, Response} ->
-          {ok, [node_status_row_to_record(Row) || Row <- Response]};
+            {ok, [node_status_row_to_record(Row) || Row <- Response]};
         {error, Reason} ->
-          {error, Reason}
-      end.
+            {error, Reason}
+    end.
 
 %% TODO Figure out correct spec
 -spec fetch_node_status(binary() | string(), binary() | string() ) -> {ok, list()} | {error, term()}.
