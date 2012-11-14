@@ -125,7 +125,6 @@ voting({ack_commit, NodeRef}, State) ->
     end,
     maybe_finished_voting(State2);
 voting({nack_commit, NodeRef}, State) ->
-    lager:info("~p Nacking", [NodeRef]),
     % Node from new -> nacked.
     State2 = case get_node_state(NodeRef, State) of
         new      -> set_node_state(NodeRef, nacked, State);
