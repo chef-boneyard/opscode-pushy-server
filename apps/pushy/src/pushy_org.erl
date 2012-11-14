@@ -9,31 +9,34 @@
 
 -define(POC_ORG_ID, <<"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa">>).
 
+-define(X_OPS_REQUESTER_ID, "X-Ops-Requesting-Actor-Id").
 -define(X_OPS_REQUEST_ID, "X-Ops-Request-Id").
 
+-include_lib("eunit/include/eunit.hrl").
+-include_lib("chef_req/include/chef_rest_client.hrl").
 
 -export([
           fetch_org_id/1,
           fetch_org_id/2
         ]).
 
--spec fetch_org_id(OrgName :: string()) -> binary() | not_found.
-fetch_org_id(OrgName) ->
-    fetch_org_id(OrgName, <<"pushyfoobar">>).
-
 %% @doc Fetch an org_id by querying opscode-account organizations endpoint
 %% We map common error cases to specific error messages to help with debugging
 %%
 %%
--spec fetch_org_id(OrgName :: string(),
-                   RequestId :: binary() ) -> binary() | not_found.
-fetch_org_id(OrgName, RequestId) ->
-    FullHeaders = [{?X_OPS_REQUEST_ID, binary_to_list(RequestId)},
-                   {"Accept", "application/json"}
-                  ],
-    {ok, RootUrl} = application:get_env(pushy, erchef_root_url),
-    Url = construct_url(RootUrl, OrgName),
-    case ibrowse:send_req(Url, FullHeaders, get) of
+-spec fetch_org_id(OrgName :: string()) -> binary() | not_found.
+fetch_org_id(OrgName) ->
+    {ok, Key} = chef_keyring:get_key(pivotal),
+    User = #chef_rest_client{user_name = "pivotal",
+                             private_key = Key,
+                             request_source = user},
+    Headers =  chef_rest_client:generate_signed_headers(User, <<"get">>,
+                                                        path(OrgName), <<"">>),
+    fetch_org_id(OrgName, Headers).
+
+fetch_org_id(OrgName, Headers) ->
+    Url = path(OrgName),
+    case ibrowse:send_req(Url, Headers, get) of
         {ok, "404", _ResponseHeaders, _ResponseBody} ->
             not_found;
         {ok, Code, ResponseHeaders, ResponseBody} ->
@@ -43,20 +46,25 @@ fetch_org_id(OrgName, RequestId) ->
             throw({error, Reason})
     end.
 
+path(OrgName) ->
+    {ok, ErchefHost} = application:get_env(pushy, erchef_root_url),
+    list_to_binary(ErchefHost ++ "/organizations/" ++ OrgName).
+
 %%
 %% Internal functions
 %%
 
--spec construct_url(RootUrl :: binary(),
-                    OrgName :: binary()) -> binary().
-construct_url(RootUrl, OrgName) ->
-  <<RootUrl/binary, "/organizations/", OrgName/binary>>.
-
 %% @doc extract the orgid from the json structure.
 %%
 parse_json_response(Body) ->
-    EJson = decode(Body),
-    ej:get({<<"guid">>}, EJson).
+    try
+        EJson = jiffy:decode(Body),
+        ej:get({<<"guid">>}, EJson)
+    catch
+        throw:{error, _} ->
+            throw({error, invalid_json})
+    end.
+
 
 
 %% @doc Check the code of the HTTP response and throw error if non-2XX
@@ -71,13 +79,5 @@ check_http_response(Code, Headers, Body) ->
             throw({error, {client_error, {Code, Headers, Body}}});
         "5" ++ _Digits ->
             throw({error, {server_error, {Code, Headers, Body}}})
-    end.
-
-decode(Bin) ->
-    try
-        jiffy:decode(Bin)
-    catch
-        throw:{error, _} ->
-            throw({error, invalid_json})
     end.
 
