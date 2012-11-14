@@ -4,7 +4,7 @@
 %% @copyright Copyright 2012 Opscode Inc.
 
 -record(config_state, {
-          orgname :: string(),
+          organization_name :: string(),
           organization_guid :: string(),
           % TODO: probably want to split this into specific states, instead of this
           % catch-all, but right now authentication requires the above two things,
