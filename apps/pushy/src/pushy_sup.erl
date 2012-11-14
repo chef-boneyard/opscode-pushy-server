@@ -38,6 +38,11 @@ init([#pushy_state{ctx=_Ctx} = PushyState]) ->
     %% This attaches the ownership of the ETS table for keys to this process.
     pushy_key_manager:init(),
 
+    %% This attaches the ownership of the ETS table for keys to this process.
+    pushy_cache:init([{name, org_guid},
+                      {max_size, 10000},
+                      {ttl, 100000000}]),
+
     Ip = case os:getenv("WEBMACHINE_IP") of false -> "0.0.0.0"; Any -> Any end,
     {ok, Dispatch} = file:consult(filename:join(
                                     [code:priv_dir(pushy), "dispatch.conf"])),

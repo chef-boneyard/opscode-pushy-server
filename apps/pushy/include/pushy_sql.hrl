@@ -27,8 +27,6 @@
                            timed_out.
 
 %% random PoC hard-codings
--define(POC_ORG_ID, <<"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa">>).
--define(POC_ORG_NAME, <<"pushy">>).
 -define(POC_ACTOR_ID, <<"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb">>).
 -define(POC_HB_THRESHOLD, 3).
 
