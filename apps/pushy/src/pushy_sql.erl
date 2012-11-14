@@ -28,22 +28,25 @@ sql_now() -> calendar:now_to_universal_time(os:timestamp()).
 
 -spec fetch_node_statuses() -> {ok, list()} | {error, term()}.
 fetch_node_statuses() ->
-    fetch_node_statuses_for_org(list_node_statuses, []).
-
--spec fetch_node_statuses(binary() | string())-> {ok, list()} | {error, term()}.
-fetch_node_statuses(OrgId) ->
-    fetch_node_statuses_for_org(list_node_statuses_for_org, [OrgId]).
-
--spec fetch_node_statuses_for_org(atom(), binary() | string())-> {ok, list()} | {error, term()}.
-fetch_node_statuses_for_org(Query, Org) ->
-    case sqerl:select(Query, Org) of
+    case sqerl:select(list_node_statuses, []) of
         {ok, none} ->
             {ok, []};
         {ok, Response} ->
-          {ok, [node_status_row_to_record(Row) || Row <- Response]};
+            {ok, [node_status_row_to_record(Row) || Row <- Response]};
         {error, Reason} ->
-          {error, Reason}
-      end.
+            {error, Reason}
+    end.
+
+-spec fetch_node_statuses(binary() | string())-> {ok, list()} | {error, term()}.
+fetch_node_statuses(OrgId) ->
+    case sqerl:select(list_node_statuses_for_org, [OrgId]) of
+        {ok, none} ->
+            {ok, []};
+        {ok, Response} ->
+            {ok, [node_status_row_to_record(Row) || Row <- Response]};
+        {error, Reason} ->
+            {error, Reason}
+    end.
 
 %% TODO Figure out correct spec
 -spec fetch_node_status(binary() | string(), binary() | string() ) -> {ok, list()} | {error, term()}.
