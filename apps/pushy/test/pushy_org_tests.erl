@@ -22,7 +22,7 @@
 -module(pushy_org_tests).
 
 
--define(ROOT_URL, <<"https://localhost">>).
+-define(ROOT_URL, "https://localhost").
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -39,14 +39,19 @@ make_response_body(OrgId) ->
 
 simple_test_() ->
     %% request data
-    RequestId = <<"1234567890123">>,
     OrgName = <<"test_org">>,
     %% response data
     OrgId = <<"test_org_id">>,
     {foreach,
      fun() ->
              setup_env(),
-             meck:new([ibrowse], [])
+             meck:new([ibrowse], []),
+             application:set_env(chef_authn, keyring,
+                                 [{pivotal, "../test/testkey.pem"}]),
+             application:set_env(chef_authn, keyring_dir, "../test"),
+             chef_keyring:start_link()
+             %%meck:expect(chef_keyring, get_key,
+             %%            fun(_) -> {ok, <<"FOO">>} end)
      end,
      fun(_) ->
               meck:unload()
@@ -56,7 +61,7 @@ simple_test_() ->
                            fun(_Url, _Headers, get) ->
                                     {ok, "200", [], make_response_body(OrgId)}
                             end),
-               GotOrgId = pushy_org:fetch_org_id(OrgName, RequestId),
+               GotOrgId = pushy_org:fetch_org_id(OrgName),
                ?assertEqual(OrgId, GotOrgId)
                end},
      {"404 test",
@@ -65,20 +70,20 @@ simple_test_() ->
                                {ok, "404", [], []}
                            end),
 
-               ?assertEqual(not_found, pushy_org:fetch_org_id(OrgName, RequestId))
+               ?assertEqual(not_found, pushy_org:fetch_org_id(OrgName))
       end},
      {"500 test",
       fun() -> meck:expect(ibrowse, send_req,
                            fun(_Url, _Headers, get) ->
                                {ok, "500", [], []}
                            end),
-               ?assertThrow({error, {server_error, {"500", [], []}}}, pushy_org:fetch_org_id(OrgName, RequestId))
+               ?assertThrow({error, {server_error, {"500", [], []}}}, pushy_org:fetch_org_id(OrgName))
       end},
      {"403 test",
       fun() -> meck:expect(ibrowse, send_req,
                            fun(_Url, _Headers, get) ->
                                {ok, "403", [], []}
                            end),
-               ?assertThrow({error, {client_error, {"403",[], []}}}, pushy_org:fetch_org_id(OrgName, RequestId))
+               ?assertThrow({error, {client_error, {"403",[], []}}}, pushy_org:fetch_org_id(OrgName))
       end}
     ]}.
