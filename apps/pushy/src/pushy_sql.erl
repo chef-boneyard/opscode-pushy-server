@@ -7,6 +7,7 @@
 -export([
          %% node status ops
          fetch_node_statuses/0,
+         fetch_node_statuses/1,
          fetch_node_status/2,
          create_node_status/1,
          update_node_status/1,
@@ -27,7 +28,15 @@ sql_now() -> calendar:now_to_universal_time(os:timestamp()).
 
 -spec fetch_node_statuses() -> {ok, list()} | {error, term()}.
 fetch_node_statuses() ->
-    case sqerl:select(list_node_statuses, []) of
+    fetch_node_statuses_for_org(list_node_statuses, []).
+
+-spec fetch_node_statuses(binary() | string())-> {ok, list()} | {error, term()}.
+fetch_node_statuses(OrgId) ->
+    fetch_node_statuses_for_org(list_node_statuses_for_org, [OrgId]).
+
+-spec fetch_node_statuses_for_org(atom(), binary() | string())-> {ok, list()} | {error, term()}.
+fetch_node_statuses_for_org(Query, Org) ->
+    case sqerl:select(Query, Org) of
         {ok, none} ->
             {ok, []};
         {ok, Response} ->
