@@ -12,9 +12,8 @@
                  last=os:timestamp() :: {pos_integer(), pos_integer(), pos_integer()},
                  heartbeats=1 :: pos_integer()}).
 
-%% These two weights must total to 1.0
--define(HISTORY_WEIGHT, 0.85).
 -define(NOW_WEIGHT, 0.15).
+-define(HISTORY_WEIGHT, 1.0-?NOW_WEIGHT).
 
 -export([init/0,
          heartbeat/1,
@@ -96,7 +95,7 @@ evaluate_node_health(#metric{heartbeats=Heartbeats, node_pid=Pid}=Node) ->
 evaluate_node_health(IntervalCount, #metric{avg=Avg, heartbeats=Heartbeats, node_pid=Pid}=Node) -> 
     Window = (decay_window() - 1) * IntervalCount,
     WindowAvg = Heartbeats / Window,
-    NAvg = floor((Avg * ?HISTORY_WEIGHT) + (WindowAvg * ?NOW_WEIGHT), 1.0),
+    NAvg = min((Avg * ?HISTORY_WEIGHT) + (WindowAvg * ?NOW_WEIGHT), 1.0),
     lager:debug("~p avg:~p old_avg:~p~n", [Pid, NAvg, Avg]),
     Node1 = Node#metric{avg=NAvg},
     case NAvg < down_threshold() of
@@ -113,7 +112,7 @@ elapsed_intervals(#metric{last=TS}) ->
     ET div heartbeat_interval().
 
 heartbeat_interval() ->
-    envy:get(pushy, heartbeat_interval, number).
+    envy:get(pushy, heartbeat_interval, integer).
 
 down_threshold() ->
     envy:get(pushy, down_threshold, number).
@@ -121,8 +120,3 @@ down_threshold() ->
 decay_window() ->
     envy:get(pushy, decay_window, integer).
 
-floor(X, Y) when X =< Y ->
-    X;
-floor(_X, Y) ->
-    Y.
-    
