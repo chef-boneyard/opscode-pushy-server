@@ -160,9 +160,12 @@ do_receive(CommandSock, Frame, State) ->
 do_send(#state{command_sock = CommandSocket}=State,
         Method, NodeRef, Message) ->
         {ok, Key} = get_key_for_method(Method, State, NodeRef),
-    Address = node_to_addr_lookup(NodeRef, State),
-    Packets = ?TIME_IT(pushy_messaging, make_message, (proto_v2, Method, Key, Message)),
-    ok = pushy_messaging:send_message(CommandSocket, [Address | Packets]),
+    case node_to_addr_lookup(NodeRef, State) of
+        error -> ok;
+        Address ->
+            Packets = ?TIME_IT(pushy_messaging, make_message, (proto_v2, Method, Key, Message)),
+            ok = pushy_messaging:send_message(CommandSocket, [Address | Packets])
+    end,
     State.
 
 %%%
@@ -242,9 +245,9 @@ send_node_event(JobId, NodeRef, <<"nack_run">>) ->
 send_node_event(JobId, NodeRef, <<"complete">>)->
     pushy_job_state:node_complete(JobId, NodeRef);
 send_node_event(null, NodeRef, <<"aborted">>) ->
-    pushy_node_state:node_aborted(NodeRef);
+    pushy_node_state:aborted(NodeRef);
 send_node_event(JobId, NodeRef, <<"aborted">>) ->
-    pushy_node_state:node_aborted(NodeRef),
+    pushy_node_state:aborted(NodeRef),
     pushy_job_state:node_aborted(JobId, NodeRef);
 send_node_event(JobId, NodeRef, undefined) ->
     lager:error("Status message for job ~p and node ~p was missing type field!~n", [JobId, NodeRef]);
@@ -279,4 +282,7 @@ node_to_addr_update(Node, Addr, #state{node_to_addr = NodeMap} = State) ->
     State#state{node_to_addr = NodeMap1}.
 
 node_to_addr_lookup(Node, #state{node_to_addr = NodeMap}) ->
-    dict:fetch(Node, NodeMap).
+    case dict:find(Node, NodeMap) of
+        error -> error;
+        {ok, Value} -> Value
+    end.

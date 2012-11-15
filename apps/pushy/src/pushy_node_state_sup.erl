@@ -11,6 +11,7 @@
 
 %% API
 -export([start_link/0,
+         get_or_create_process/1,
          get_process/1,
          mk_gproc_name/1]).
 
@@ -26,23 +27,29 @@
 start_link() ->
     case supervisor:start_link({local, ?SERVER}, ?MODULE, []) of
         {ok, Pid} ->
-            load_from_db(),
             {ok, Pid};
         Error ->
             Error
     end.
 
--spec get_process(node_ref()) -> pid().
-get_process(NodeRef) ->
-    StartState = down,
+-spec get_or_create_process(node_ref()) -> pid().
+get_or_create_process(NodeRef) ->
     GprocName = mk_gproc_name(NodeRef),
     case catch gproc:lookup_pid({n,l,GprocName}) of
         {'EXIT', _} ->
             % Run start_child asynchronously; we only need to wait until the
             % process registers itself before we can send it messages.
-            spawn(supervisor, start_child, [?SERVER, [NodeRef, StartState]]),
+            spawn(supervisor, start_child, [?SERVER, [NodeRef]]),
             {Pid, _Value} = gproc:await({n,l,GprocName},1000),
             Pid;
+        Pid -> Pid
+    end.
+
+get_process(NodeRef) ->
+    GprocName = mk_gproc_name(NodeRef),
+    case catch gproc:lookup_pid({n,l,GprocName}) of
+        {'EXIT', _} ->
+            undefined;
         Pid -> Pid
     end.
 
@@ -63,18 +70,3 @@ init([]) ->
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
 
-load_from_db() ->
-    case pushy_sql:fetch_node_statuses() of
-        {ok, none} ->
-            lager:info("No existing node status records found in database, FSM proceses will not be pre-created.");
-        {ok, NodeStatuses} ->
-            create_processes(NodeStatuses);
-        {error, Reason} ->
-            lager:error("Error loading existing node status records from the database: ~p", [Reason])
-    end.
-
-create_processes([]) ->
-    {ok, done};
-create_processes([#pushy_node_status{org_id=OrgId,node_name=NodeName} | Rest]) ->
-    get_process({OrgId, NodeName}),
-    create_processes(Rest).
