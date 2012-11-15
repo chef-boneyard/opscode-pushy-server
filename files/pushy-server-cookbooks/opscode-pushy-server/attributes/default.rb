@@ -52,8 +52,9 @@ default['pushy']['opscode-pushy-server']['zmq_io_processes'] = '1'
 default['pushy']['opscode-pushy-server']['server_heartbeat_port'] = '10000'
 default['pushy']['opscode-pushy-server']['command_port'] = '10002'
 default['pushy']['opscode-pushy-server']['api_port'] = '10003'
-default['pushy']['opscode-pushy-server']['down_threshold'] = '0.9'
+default['pushy']['opscode-pushy-server']['down_threshold'] = '0.6'
 default['pushy']['opscode-pushy-server']['decay_window'] = '4'
+default['pushy']['opscode-pushy-server']['detect_offline_nodes_interval'] = '1000'
 default['pushy']['opscode-pushy-server']['keyring_dir'] = '/etc/opscode-push-jobs-server'
 
 ###
