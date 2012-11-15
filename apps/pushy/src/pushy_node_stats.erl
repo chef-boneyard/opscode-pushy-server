@@ -16,6 +16,8 @@
 -define(NOW_WEIGHT, 0.15).
 -define(HISTORY_WEIGHT, 1.0-?NOW_WEIGHT).
 
+-define(MEGA, 1000000). %% because I can't count zeros reliably
+
 -export([init/0,
          heartbeat/1,
          scan/0]).
@@ -119,7 +121,6 @@ hb_step(#metric{avg=Avg, interval_start=StartI, heartbeats=Hb} = M, Now, Interva
     NAvg = (Avg * ?HISTORY_WEIGHT) + (Hb * ?NOW_WEIGHT),
     hb_step(M#metric{avg=NAvg, interval_start=NextI, heartbeats=0}, Now, Interval).
 
--define(MEGA, 1000000).
 now_as_int() ->
     {M, S, U} = os:timestamp(),
     ((M*?MEGA) + S) * ?MEGA + U.
