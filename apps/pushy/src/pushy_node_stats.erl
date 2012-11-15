@@ -12,9 +12,8 @@
                  last=os:timestamp() :: {pos_integer(), pos_integer(), pos_integer()},
                  heartbeats=1 :: pos_integer()}).
 
-%% These two weights must total to 1.0
--define(HISTORY_WEIGHT, 0.85).
 -define(NOW_WEIGHT, 0.15).
+-define(HISTORY_WEIGHT, 1.0-?NOW_WEIGHT).
 
 -export([init/0,
          heartbeat/1,
