@@ -13,7 +13,7 @@
                  heartbeats=1 :: pos_integer()}).
 
 %% These two weights must total to 1.0
--define(NOW_WEIGHT, 0.15).
+-define(NOW_WEIGHT, (1.0/decay_window())).
 -define(HISTORY_WEIGHT, 1.0-?NOW_WEIGHT).
 
 -define(MEGA, 1000000). %% because I can't count zeros reliably
@@ -101,6 +101,9 @@ heartbeat_interval() ->
 
 down_threshold() ->
     envy:get(pushy, down_threshold, number).
+
+decay_window() ->
+    envy:get(pushy, decay_window, integer).
 
 %% Advance the heartbeat interval to include the current time.
 %%
