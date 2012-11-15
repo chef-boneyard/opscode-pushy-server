@@ -95,7 +95,7 @@ evaluate_node_health(#metric{heartbeats=Heartbeats, node_pid=Pid}=Node) ->
 evaluate_node_health(IntervalCount, #metric{avg=Avg, heartbeats=Heartbeats, node_pid=Pid}=Node) -> 
     Window = (decay_window() - 1) * IntervalCount,
     WindowAvg = Heartbeats / Window,
-    NAvg = floor((Avg * ?HISTORY_WEIGHT) + (WindowAvg * ?NOW_WEIGHT), 1.0),
+    NAvg = min((Avg * ?HISTORY_WEIGHT) + (WindowAvg * ?NOW_WEIGHT), 1.0),
     lager:debug("~p avg:~p old_avg:~p~n", [Pid, NAvg, Avg]),
     Node1 = Node#metric{avg=NAvg},
     case NAvg < down_threshold() of
@@ -120,8 +120,3 @@ down_threshold() ->
 decay_window() ->
     envy:get(pushy, decay_window, integer).
 
-floor(X, Y) when X =< Y ->
-    X;
-floor(_X, Y) ->
-    Y.
-    
