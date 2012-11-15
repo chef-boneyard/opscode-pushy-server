@@ -112,7 +112,7 @@ elapsed_intervals(#metric{last=TS}) ->
     ET div heartbeat_interval().
 
 heartbeat_interval() ->
-    envy:get(pushy, heartbeat_interval, number).
+    envy:get(pushy, heartbeat_interval, integer).
 
 down_threshold() ->
     envy:get(pushy, down_threshold, number).
