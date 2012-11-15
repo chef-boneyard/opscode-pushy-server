@@ -50,5 +50,4 @@ code_change(_OldVsn, State, _Extra) ->
 
 %%% Internal functions
 wait_interval() ->
-    HeartbeatInterval = envy:get(pushy, heartbeat_interval, number),
-    (HeartbeatInterval * 4) + random:uniform(HeartbeatInterval).
+    envy:get(pushy, detect_offline_nodes_interval, number).
