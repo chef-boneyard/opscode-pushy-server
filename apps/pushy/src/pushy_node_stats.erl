@@ -9,9 +9,10 @@
 
 -record(metric, {node_pid :: pid(),
                  avg=down_threshold() * 2 :: float(),
-                 last=os:timestamp() :: {pos_integer(), pos_integer(), pos_integer()},
+                 interval_start :: pos_integer(),
                  heartbeats=1 :: pos_integer()}).
 
+%% These two weights must total to 1.0
 -define(NOW_WEIGHT, 0.15).
 -define(HISTORY_WEIGHT, 1.0-?NOW_WEIGHT).
 
@@ -76,28 +77,14 @@ scan(NodePid) ->
 reset(Node) ->
     Node#metric{heartbeats=0}.
 
-hb(#metric{heartbeats=Heartbeats}=Node) ->
-    Node#metric{heartbeats=Heartbeats + 1, last=os:timestamp()}.
+hb(#metric{}=Node) ->
+    Node1 = hb_step(Node, now_as_int(), heartbeat_interval()),
+    Node1#metric{heartbeats=Node1#metric.heartbeats + 1}.
 
-evaluate_node_health(#metric{heartbeats=Heartbeats, node_pid=Pid}=Node) ->
-    case elapsed_intervals(Node) of
-        0 ->
-            if
-                Heartbeats > 4 ->
-                    evaluate_node_health(1, Node);
-                true ->
-                    lager:debug("Skipping Node: ~p~n", [Pid]),
-                    {ok, Node}
-            end;
-        X ->
-            evaluate_node_health(X, Node)
-    end.
-evaluate_node_health(IntervalCount, #metric{avg=Avg, heartbeats=Heartbeats, node_pid=Pid}=Node) -> 
-    Window = (decay_window() - 1) * IntervalCount,
-    WindowAvg = Heartbeats / Window,
-    NAvg = min((Avg * ?HISTORY_WEIGHT) + (WindowAvg * ?NOW_WEIGHT), 1.0),
-    lager:debug("~p avg:~p old_avg:~p~n", [Pid, NAvg, Avg]),
-    Node1 = Node#metric{avg=NAvg},
+
+evaluate_node_health(Node) ->
+    Node1 = hb_step(Node, now_as_int(), heartbeat_interval()),
+    #metric{node_pid=Pid, avg=NAvg} = Node1,
     case NAvg < down_threshold() of
         true ->
             lager:debug("Killing Node: ~p~n", [Pid]),
@@ -107,16 +94,33 @@ evaluate_node_health(IntervalCount, #metric{avg=Avg, heartbeats=Heartbeats, node
             {reset, Node1}
     end.
 
-elapsed_intervals(#metric{last=TS}) ->
-    ET = timer:now_diff(os:timestamp(), TS) div 1000,
-    ET div heartbeat_interval().
-
 heartbeat_interval() ->
     envy:get(pushy, heartbeat_interval, integer).
 
 down_threshold() ->
     envy:get(pushy, down_threshold, number).
 
-decay_window() ->
-    envy:get(pushy, decay_window, integer).
+%% Advance the heartbeat interval to include the current time.
+%%
+%% If it has been a while since we updated (as when we haven't received a heartbeat in a
+%% while), there may be several empty intervals between the last updated interval and the one we
+%% are in now.
+%%
+hb_step(#metric{interval_start=StartI} = M, Now, Interval)
+  when Now < StartI + Interval ->
+    %% If the current interval contains our current time, we do nothing
+    M;
+hb_step(#metric{avg=Avg, interval_start=StartI, heartbeats=Hb} = M, Now, Interval) ->
+    NextI = StartI + Interval,
+    %% If we are in a new interval we fold the old hb counter into the moving
+    %% average and advance the window marker.
+    %% NOTE: This could computed directly without iteration, but I think this is
+    %% clearer expressed this way.
+    NAvg = (Avg * ?HISTORY_WEIGHT) + (Hb * ?NOW_WEIGHT),
+    hb_step(M#metric{avg=NAvg, interval_start=NextI, heartbeats=0}, Now, Interval).
+
+-define(MEGA, 1000000).
+now_as_int() ->
+    {M, S, U} = os:timestamp(),
+    ((M*?MEGA) + S) * ?MEGA + U.
 
