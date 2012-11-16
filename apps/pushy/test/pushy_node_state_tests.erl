@@ -84,11 +84,11 @@ heartbeat_test_() ->
      fun() ->
              basic_setup(),
              {ok, Pid} = ?NS:start_link(?NODE),
+             erlang:unlink(Pid),
              {Pid}
      end,
      fun({Pid}) ->
              basic_cleanup(),
-             erlang:unlink(Pid),
              erlang:exit(Pid, kill),
              ok
      end,
