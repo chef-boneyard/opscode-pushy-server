@@ -21,9 +21,9 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--define(ASSERT_UP(Node), ?assertMatch({online, {available, _}}, ?NS:status(Node)) ).
--define(ASSERT_IDLE(Node), ?assertMatch({online, {unavailable, _}}, ?NS:status(Node)) ).
--define(ASSERT_DOWN(Node), ?assertMatch({offline, {unavailable, _}}, ?NS:status(Node)) ).
+-define(ASSERT_AVAILABLE(Node), ?assertMatch({online, {available, _}}, ?NS:status(Node)) ).
+-define(ASSERT_UNAVAILABLE(Node), ?assertMatch({online, {unavailable, _}}, ?NS:status(Node)) ).
+-define(ASSERT_OFFLINE(Node), ?assertMatch({offline, {unavailable, _}}, ?NS:status(Node)) ).
 
 basic_setup() ->
     test_util:start_apps(),
@@ -132,32 +132,32 @@ heartbeat_test_() ->
               {"Start it up, send hb, sleep, check state until we drive it into 'up'",
                fun() ->
                        ?NS:heartbeat(?NODE),
-                       ?ASSERT_IDLE(?NODE),
+                       ?ASSERT_UNAVAILABLE(?NODE),
                        timer:sleep(?HB_INTERVAL),
 
                        %% Drive it up
                        heartbeat_step(?NODE, ?HB_INTERVAL, 3),
                        ?NS:aborted(?NODE),
-                       ?ASSERT_UP(?NODE)
+                       ?ASSERT_AVAILABLE(?NODE)
                end}
       end,
       fun(_) ->
               {"Start it up, send hb, sleep, check state until we drive it into 'up', then wait until it goes down",
                fun() ->
                        ?NS:heartbeat(?NODE),
-                       ?ASSERT_IDLE(?NODE),
+                       ?ASSERT_UNAVAILABLE(?NODE),
                        timer:sleep(?HB_INTERVAL),
 
                        %% Drive it up
                        heartbeat_step(?NODE, ?HB_INTERVAL, 3),
                        ?NS:aborted(?NODE),
-                       ?ASSERT_UP(?NODE),
+                       ?ASSERT_AVAILABLE(?NODE),
 
                        %% Drive it down, scan, then wait a moment and check
                        timer:sleep(?HB_INTERVAL*7),
                        pushy_node_stats:scan(),
                        timer:sleep(?HB_INTERVAL),
-                       ?ASSERT_DOWN(?NODE)
+                       ?ASSERT_OFFLINE(?NODE)
                end}
       end
      ]}.
@@ -205,7 +205,7 @@ watcher_test_() ->
                        ?NS:heartbeat(?NODE),
                        heartbeat_step(?NODE, ?HB_INTERVAL, 3),
                        ?NS:aborted(?NODE),
-                       ?ASSERT_UP(?NODE)
+                       ?ASSERT_AVAILABLE(?NODE)
                end}
       end,
       fun(_) ->
@@ -214,12 +214,12 @@ watcher_test_() ->
                        ?NS:watch(?NODE),
                        heartbeat_step(?NODE, ?HB_INTERVAL, 3),
                        ?NS:aborted(?NODE),
-                       ?ASSERT_UP(?NODE),
+                       ?ASSERT_AVAILABLE(?NODE),
 
                        timer:sleep(?HB_INTERVAL*7),
                        pushy_node_stats:scan(),
                        timer:sleep(?HB_INTERVAL),
-                       ?ASSERT_DOWN(?NODE)
+                       ?ASSERT_OFFLINE(?NODE)
 
                        %assertReceive({down, ?NODE})
                end}
