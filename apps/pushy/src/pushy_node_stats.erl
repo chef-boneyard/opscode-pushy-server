@@ -101,7 +101,8 @@ evaluate_node_health(Node) ->
     end.
 
 heartbeat_interval() ->
-    envy:get(pushy, heartbeat_interval, integer).
+    %% Heartbeat interval is specified in milliseconds, but we keep time in microseconds.
+    envy:get(pushy, heartbeat_interval, integer) * 1000.
 
 down_threshold() ->
     envy:get(pushy, down_threshold, number).
