@@ -7,11 +7,6 @@
 %% opscode-account
 -module(pushy_org).
 
--define(POC_ORG_ID, <<"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa">>).
-
--define(X_OPS_REQUESTER_ID, "X-Ops-Requesting-Actor-Id").
--define(X_OPS_REQUEST_ID, "X-Ops-Request-Id").
-
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("chef_req/include/chef_rest_client.hrl").
 
