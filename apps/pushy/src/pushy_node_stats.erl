@@ -7,14 +7,18 @@
 
 -module(pushy_node_stats).
 
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
+
 -record(metric, {node_pid :: pid(),
                  avg=down_threshold() * 2 :: float(),
-                 interval_start :: pos_integer(),
+                 interval_start=now_as_int() :: pos_integer(),
                  heartbeats=1 :: pos_integer()}).
 
 %% These two weights must total to 1.0
 -define(NOW_WEIGHT, (1.0/decay_window())).
--define(HISTORY_WEIGHT, 1.0-?NOW_WEIGHT).
+-define(HISTORY_WEIGHT, (1.0-?NOW_WEIGHT)).
 
 -define(MEGA, 1000000). %% because I can't count zeros reliably
 
