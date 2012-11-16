@@ -219,9 +219,9 @@ watcher_test_() ->
                        timer:sleep(?HB_INTERVAL*7),
                        pushy_node_stats:scan(),
                        timer:sleep(?HB_INTERVAL),
-                       ?ASSERT_OFFLINE(?NODE)
+                       ?ASSERT_OFFLINE(?NODE),
 
-                       %assertReceive({down, ?NODE})
+                       assertShutdown(?NODE)
                end}
       end
      ]}.
@@ -237,10 +237,9 @@ heartbeat_step(Node, SleepTime) ->
     _V = ?NS:status(Node),
     timer:sleep(SleepTime).
 
-%assertReceive(Expected) ->
-    %Got = receive
-        %X1 -> X1
-    %after
-        %100 -> none
-    %end,
-    %?assertEqual(Expected, Got).
+assertShutdown(Node) ->
+    receive
+        {state_change, Node, _CurrentState, shutdown} -> ok
+    after
+        100 -> throw("Node FSM did not shutdown")
+    end.
