@@ -41,7 +41,7 @@ heartbeat(NodePid) ->
             Node1 = hb(Node),
             case evaluate_node_health(Node1) of
                 {reset, Node2} ->
-                    ets:insert(?MODULE, reset(Node2)),
+                    ets:insert(?MODULE, Node2),
                     ok;
                 {ok, Node2} ->
                     ets:insert(?MODULE, Node2),
@@ -80,16 +80,13 @@ scan(NodePid) ->
     end,
     scan(ets:next(?MODULE, NodePid)).
 
-reset(Node) ->
-    Node#metric{heartbeats=0}.
-
 hb(#metric{}=Node) ->
-    Node1 = hb_step(Node, now_as_int(), heartbeat_interval()),
+    Node1 = maybe_advance_interval(Node),
     Node1#metric{heartbeats=Node1#metric.heartbeats + 1}.
 
 
 evaluate_node_health(Node) ->
-    Node1 = hb_step(Node, now_as_int(), heartbeat_interval()),
+    Node1 = maybe_advance_interval(Node),
     #metric{node_pid=Pid, avg=NAvg} = Node1,
     case NAvg < down_threshold() of
         true ->
