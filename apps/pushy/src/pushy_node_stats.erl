@@ -109,24 +109,25 @@ decay_window() ->
 
 %% Advance the heartbeat interval to include the current time.
 %%
-%% If it has been a while since we updated (as when we haven't received a heartbeat in a
-%% while), there may be several empty intervals between the last updated interval and the one we
-%% are in now.
+%% If it has been a while since we updated (as when we haven't received a heartbeat), there
+%% may be several empty intervals between the last updated interval and the one we are in
+%% now.
 %%
-hb_step(#metric{interval_start=StartI} = M, Now, Interval)
-  when Now < StartI + Interval ->
-    %% If the current interval contains our current time, we do nothing
+maybe_advance_interval(#metric{interval_start=StartI} = M) ->
+    ICount = (now_as_int() - StartI) div heartbeat_interval(),
+    advance_interval(M, ICount).
+
+advance_interval(M, 0) ->
     M;
-hb_step(#metric{avg=Avg, interval_start=StartI, heartbeats=Hb} = M, Now, Interval) ->
-    NextI = StartI + Interval,
-    %% If we are in a new interval we fold the old hb counter into the moving
-    %% average and advance the window marker.
-    %% NOTE: This could computed directly without iteration, but I think this is
-    %% clearer expressed this way.
-    NAvg = (Avg * ?HISTORY_WEIGHT) + (Hb * ?NOW_WEIGHT),
-    hb_step(M#metric{avg=NAvg, interval_start=NextI, heartbeats=0}, Now, Interval).
+advance_interval(#metric{avg=Avg, interval_start=StartI, heartbeats=Hb} = M, ICount) ->
+    NextI = StartI + heartbeat_interval() * ICount,
+    %% The first interval may have accumulated heartbeats. Later intervals will not and can be
+    %% aggregated into one step using pow.
+    NAvg = ((Avg * ?HISTORY_WEIGHT) + (Hb * ?NOW_WEIGHT)) * math:pow(?HISTORY_WEIGHT, ICount-1),
+    M#metric{avg=NAvg, interval_start=NextI, heartbeats=0}.
 
 now_as_int() ->
     {M, S, U} = os:timestamp(),
     ((M*?MEGA) + S) * ?MEGA + U.
+
 
