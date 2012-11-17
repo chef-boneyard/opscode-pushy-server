@@ -136,7 +136,7 @@ heartbeat_test_() ->
                        timer:sleep(?HB_INTERVAL),
 
                        %% Drive it up
-                       heartbeat_step(?NODE, ?HB_INTERVAL, 3),
+                       heartbeat_step(?NODE, ?HB_INTERVAL, 6),
                        ?NS:aborted(?NODE),
                        ?ASSERT_AVAILABLE(?NODE)
                end}
@@ -149,7 +149,7 @@ heartbeat_test_() ->
                        timer:sleep(?HB_INTERVAL),
 
                        %% Drive it up
-                       heartbeat_step(?NODE, ?HB_INTERVAL, 3),
+                       heartbeat_step(?NODE, ?HB_INTERVAL, 6),
                        ?NS:aborted(?NODE),
                        ?ASSERT_AVAILABLE(?NODE),
 
@@ -203,7 +203,7 @@ watcher_test_() ->
                fun() ->
                        ?NS:watch(?NODE),
                        ?NS:heartbeat(?NODE),
-                       heartbeat_step(?NODE, ?HB_INTERVAL, 3),
+                       heartbeat_step(?NODE, ?HB_INTERVAL, 6),
                        ?NS:aborted(?NODE),
                        ?ASSERT_AVAILABLE(?NODE)
                end}
@@ -212,7 +212,7 @@ watcher_test_() ->
               {"Start it up, send hb, check state until we drive it into 'up', then wait until it goes down",
                fun() ->
                        ?NS:watch(?NODE),
-                       heartbeat_step(?NODE, ?HB_INTERVAL, 3),
+                       heartbeat_step(?NODE, ?HB_INTERVAL, 6),
                        ?NS:aborted(?NODE),
                        ?ASSERT_AVAILABLE(?NODE),
 
