@@ -8,7 +8,6 @@
 -module(pushy_org).
 
 -include_lib("eunit/include/eunit.hrl").
--include_lib("chef_req/include/chef_rest_client.hrl").
 
 -export([
           fetch_org_id/1,
@@ -22,11 +21,9 @@
 -spec fetch_org_id(OrgName :: string()) -> binary() | not_found.
 fetch_org_id(OrgName) ->
     {ok, Key} = chef_keyring:get_key(pivotal),
-    User = #chef_rest_client{user_name = "pivotal",
-                             private_key = Key,
-                             request_source = user},
-    Headers =  chef_rest_client:generate_signed_headers(User, <<"get">>,
-                                                        path(OrgName), <<"">>),
+    Headers =  chef_authn:sign_request(Key, <<"pivotal">>,
+                                       <<"get">>, now,
+                                       path(OrgName)),
     fetch_org_id(OrgName, Headers).
 
 fetch_org_id(OrgName, Headers) ->
