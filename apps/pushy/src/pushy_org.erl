@@ -28,7 +28,8 @@ fetch_org_id(OrgName) ->
 
 fetch_org_id(OrgName, Headers) ->
     Url = path(OrgName),
-    case ibrowse:send_req(Url, Headers, get) of
+    FullHeaders = [{"Accept", "application/json"}|Headers],
+    case ibrowse:send_req(Url, FullHeaders, get) of
         {ok, "404", _ResponseHeaders, _ResponseBody} ->
             not_found;
         {ok, Code, ResponseHeaders, ResponseBody} ->
@@ -40,7 +41,7 @@ fetch_org_id(OrgName, Headers) ->
 
 path(OrgName) ->
     {ok, ErchefHost} = application:get_env(pushy, erchef_root_url),
-    list_to_binary(ErchefHost ++ "/organizations/" ++ OrgName).
+    ErchefHost ++ "/organizations/" ++ OrgName.
 
 %%
 %% Internal functions
