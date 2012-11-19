@@ -299,21 +299,11 @@ start_running(#state{job = Job} = State) ->
     {ok, _} = timer:send_after(Job2#pushy_job.run_timeout*1000, running_timeout),
     maybe_finished_running(State2).
 
-%% TODO this needs refactoring. We don't want to send nodes to rehab if we get
-%% a quorum_failed message because that stops jobs that are already running on
-%% nodes, even if they are valid.
-finish_job(quorum_failed, #state{job = Job} = State) ->
-    lager:info("Job ~p -> ~p", [Job#pushy_job.id, quorum_failed]),
-    Job2 = Job#pushy_job{status = quorum_failed},
-    State2 = State#state{job = Job2},
-    pushy_object:update_object(update_job, Job2, Job2#pushy_job.id),
-    {stop, {shutdown, quorum_failed}, State2};
-finish_job(Reason, #state{job = Job, job_nodes = JobNodes} = State) ->
+finish_job(Reason, #state{job = Job} = State) ->
     lager:info("Job ~p -> ~p", [Job#pushy_job.id, Reason]),
     Job2 = Job#pushy_job{status = Reason},
     State2 = State#state{job = Job2},
     pushy_object:update_object(update_job, Job2, Job2#pushy_job.id),
-    [ pushy_node_state:rehab(NodeRef) || NodeRef <- dict:fetch_keys(JobNodes) ],
     {stop, {shutdown, Reason}, State2}.
 
 count_nodes_in_state(NodeStates, #state{job_nodes = JobNodes}) ->
