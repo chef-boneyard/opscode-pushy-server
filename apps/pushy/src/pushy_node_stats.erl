@@ -7,13 +7,20 @@
 
 -module(pushy_node_stats).
 
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
+
 -record(metric, {node_pid :: pid(),
                  avg=down_threshold() * 2 :: float(),
-                 last=os:timestamp() :: {pos_integer(), pos_integer(), pos_integer()},
+                 interval_start=now_as_int() :: pos_integer(),
                  heartbeats=1 :: pos_integer()}).
 
--define(NOW_WEIGHT, 0.15).
--define(HISTORY_WEIGHT, 1.0-?NOW_WEIGHT).
+%% These two weights must total to 1.0
+-define(NOW_WEIGHT, (1.0/decay_window())).
+-define(HISTORY_WEIGHT, (1.0-?NOW_WEIGHT)).
+
+-define(MEGA, 1000000). %% because I can't count zeros reliably
 
 -export([init/0,
          heartbeat/1,
@@ -34,7 +41,7 @@ heartbeat(NodePid) ->
             Node1 = hb(Node),
             case evaluate_node_health(Node1) of
                 {reset, Node2} ->
-                    ets:insert(?MODULE, reset(Node2)),
+                    ets:insert(?MODULE, Node2),
                     ok;
                 {ok, Node2} ->
                     ets:insert(?MODULE, Node2),
@@ -73,31 +80,14 @@ scan(NodePid) ->
     end,
     scan(ets:next(?MODULE, NodePid)).
 
-reset(Node) ->
-    Node#metric{heartbeats=0}.
+hb(#metric{}=Node) ->
+    Node1 = maybe_advance_interval(Node),
+    Node1#metric{heartbeats=Node1#metric.heartbeats + 1}.
 
-hb(#metric{heartbeats=Heartbeats}=Node) ->
-    Node#metric{heartbeats=Heartbeats + 1, last=os:timestamp()}.
 
-evaluate_node_health(#metric{heartbeats=Heartbeats, node_pid=Pid}=Node) ->
-    case elapsed_intervals(Node) of
-        0 ->
-            if
-                Heartbeats > 4 ->
-                    evaluate_node_health(1, Node);
-                true ->
-                    lager:debug("Skipping Node: ~p~n", [Pid]),
-                    {ok, Node}
-            end;
-        X ->
-            evaluate_node_health(X, Node)
-    end.
-evaluate_node_health(IntervalCount, #metric{avg=Avg, heartbeats=Heartbeats, node_pid=Pid}=Node) -> 
-    Window = (decay_window() - 1) * IntervalCount,
-    WindowAvg = Heartbeats / Window,
-    NAvg = min((Avg * ?HISTORY_WEIGHT) + (WindowAvg * ?NOW_WEIGHT), 1.0),
-    lager:debug("~p avg:~p old_avg:~p~n", [Pid, NAvg, Avg]),
-    Node1 = Node#metric{avg=NAvg},
+evaluate_node_health(Node) ->
+    Node1 = maybe_advance_interval(Node),
+    #metric{node_pid=Pid, avg=NAvg} = Node1,
     case NAvg < down_threshold() of
         true ->
             lager:debug("Killing Node: ~p~n", [Pid]),
@@ -107,16 +97,37 @@ evaluate_node_health(IntervalCount, #metric{avg=Avg, heartbeats=Heartbeats, node
             {reset, Node1}
     end.
 
-elapsed_intervals(#metric{last=TS}) ->
-    ET = timer:now_diff(os:timestamp(), TS) div 1000,
-    ET div heartbeat_interval().
-
 heartbeat_interval() ->
-    envy:get(pushy, heartbeat_interval, integer).
+    %% Heartbeat interval is specified in milliseconds, but we keep time in microseconds.
+    envy:get(pushy, heartbeat_interval, integer) * 1000.
 
 down_threshold() ->
     envy:get(pushy, down_threshold, number).
 
 decay_window() ->
     envy:get(pushy, decay_window, integer).
+
+%% Advance the heartbeat interval to include the current time.
+%%
+%% If it has been a while since we updated (as when we haven't received a heartbeat), there
+%% may be several empty intervals between the last updated interval and the one we are in
+%% now.
+%%
+maybe_advance_interval(#metric{interval_start=StartI} = M) ->
+    ICount = (now_as_int() - StartI) div heartbeat_interval(),
+    advance_interval(M, ICount).
+
+advance_interval(M, 0) ->
+    M;
+advance_interval(#metric{avg=Avg, interval_start=StartI, heartbeats=Hb} = M, ICount) ->
+    NextI = StartI + heartbeat_interval() * ICount,
+    %% The first interval may have accumulated heartbeats. Later intervals will not and can be
+    %% aggregated into one step using pow.
+    NAvg = ((Avg * ?HISTORY_WEIGHT) + (Hb * ?NOW_WEIGHT)) * math:pow(?HISTORY_WEIGHT, ICount-1),
+    M#metric{avg=NAvg, interval_start=NextI, heartbeats=0}.
+
+now_as_int() ->
+    {M, S, U} = os:timestamp(),
+    ((M*?MEGA) + S) * ?MEGA + U.
+
 
