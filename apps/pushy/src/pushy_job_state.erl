@@ -300,6 +300,8 @@ start_running(#state{job = Job} = State) ->
     maybe_finished_running(State2).
 
 finish_job(Reason, #state{job = Job} = State) ->
+    % All nodes are guaranteed to be in terminal state by this point, so no
+    % nodes need to be sent to rehab.
     lager:info("Job ~p -> ~p", [Job#pushy_job.id, Reason]),
     Job2 = Job#pushy_job{status = Reason},
     State2 = State#state{job = Job2},
