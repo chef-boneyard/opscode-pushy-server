@@ -10,6 +10,7 @@
                   kernel,
                   stdlib,
                   erlzmq,
+                  ibrowse,
                   jiffy,
                   gproc,
                   sqerl,
