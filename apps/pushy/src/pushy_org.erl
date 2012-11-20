@@ -10,8 +10,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -export([
-          fetch_org_id/1,
-          fetch_org_id/2
+          fetch_org_id/1
         ]).
 
 %% @doc Fetch an org_id by querying opscode-account organizations endpoint
@@ -21,15 +20,16 @@
 -spec fetch_org_id(OrgName :: string()) -> binary() | not_found.
 fetch_org_id(OrgName) ->
     {ok, Key} = chef_keyring:get_key(pivotal),
-    Headers =  chef_authn:sign_request(Key, <<"pivotal">>,
-                                       <<"get">>, now,
-                                       path(OrgName)),
-    fetch_org_id(OrgName, Headers).
+    Path = path(OrgName),
+    Headers =  chef_authn:sign_request(Key, <<"">>, "pivotal",
+                                       <<"GET">>, now,
+                                       list_to_binary(Path)),
+    FullHeaders = [{"Accept", "application/json"}|Headers],
+    fetch_org_id(OrgName, FullHeaders).
 
 fetch_org_id(OrgName, Headers) ->
-    Url = path(OrgName),
-    FullHeaders = [{"Accept", "application/json"}|Headers],
-    case ibrowse:send_req(Url, FullHeaders, get) of
+    Url = url(OrgName),
+    case ibrowse:send_req(Url, Headers, get) of
         {ok, "404", _ResponseHeaders, _ResponseBody} ->
             not_found;
         {ok, Code, ResponseHeaders, ResponseBody} ->
@@ -39,9 +39,12 @@ fetch_org_id(OrgName, Headers) ->
             throw({error, Reason})
     end.
 
-path(OrgName) ->
+url(OrgName) ->
     {ok, ErchefHost} = application:get_env(pushy, erchef_root_url),
-    ErchefHost ++ "/organizations/" ++ OrgName.
+    ErchefHost ++ path(OrgName).
+
+path(OrgName) ->
+    "/organizations/" ++ OrgName.
 
 %%
 %% Internal functions
