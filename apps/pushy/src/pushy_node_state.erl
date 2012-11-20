@@ -1,3 +1,13 @@
+%% -*- erlang-indent-level: 4;indent-tabs-mode: nil; fill-column: 92 -*-
+%% ex: ts=4 sw=4 et
+%%
+%% @copyright 2012 Opscode Inc.
+%% @end
+
+%%
+%% @doc simple FSM for tracking node heartbeats and thus up/down status
+%%
+
 -module(pushy_node_state).
 
 -behaviour(gen_fsm).
@@ -169,7 +179,7 @@ eval_state({idle, undefined}) ->
 eval_state({rehab, undefined}) ->
     {online, {unavailable, none}};
 eval_state({running, Job}) ->
-    {online, {unvailable, Job}}.
+    {online, {unavailable, Job}}.
 
 rehab_interval() ->
     envy:get(pushy, rehab_timer, 1000, integer).
