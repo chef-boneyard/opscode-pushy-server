@@ -95,5 +95,7 @@
                         {enable_graphite, false}
                        ]},
  {folsom_graphite,[ {application, "pushy"}]},
- {chef_authn,  [{keyring_dir, "<%= @keyring_dir %>"}]}
+   {chef_authn,  [{keyring_dir, "<%= @keyring_dir %>"},
+                {keyring, [{pivotal, "/etc/opscode/pivotal.pem"}]}
+               ]}
 ].
