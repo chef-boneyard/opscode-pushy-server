@@ -98,8 +98,9 @@ node in the job, organized by its status.
   "updated_at": "Tue, 04 Sep 2012 23:17:56 GMT",
   "nodes": {
     "running": ["NODE1", "NODE5"],
-    "complete": ["NODE2", "NODE3", "NODE4"],
-    "crashed": ["NODE6"]
+    "succeeded": ["NODE2", "NODE3", "NODE4"],
+    "failed": ["NODE6"],
+    "crashed": ["NODE7"]
   }
 }
 #+end_example
@@ -115,10 +116,10 @@ The job status represents the progress of the overall job.  complete,
 quorum_failed, timed_out and aborted are terminal states: job and node states
 will not change after that.
 
-- voting   :: Waiting for nodes to commit or refuse to run the command.
-- running  :: Running the command on the nodes.
-- complete :: Ran the command.  Check individual node statuses to see
-              if they completed or had issues.
+- voting        :: Waiting for nodes to commit or refuse to run the command.
+- running       :: Running the command on the nodes.
+- complete      :: Ran the command.  Check individual node statuses to see
+                   if they completed or had issues.
 - quorum_failed :: Did not run the command on any nodes.
 - timed_out     :: Timed out while running the job.
 - aborted       :: Job aborted by user.
@@ -132,7 +133,8 @@ change after that.
 + new         :: Node has neither committed nor refused to run the command.
 + ready       :: Node has committed to run the command but has not yet run it.
 + running     :: Node is presently running the command.
-+ complete    :: Node ran the command to completion.
++ succeeded   :: Node successfully ran the command (an exit code of 0 was returned).
++ failed      :: Node failed to run the command (an exit code of nonzero was returned).
 + aborted     :: Node ran the command but stopped before completion.
 + crashed     :: Node went down after it started running
 + nacked      :: Node was busy when asked to be part of the job.
