@@ -1,6 +1,6 @@
 source :rubygems
 
-gem "em-zeromq"
+gem "em-zeromq", "~> 0.3.0"
 gem "chef"
 
 gem 'chef-pedant-core', :git => "git@github.com:opscode/chef-pedant-core.git"
