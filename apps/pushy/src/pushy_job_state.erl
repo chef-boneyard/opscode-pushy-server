@@ -61,7 +61,7 @@ node_ack_run(JobId, NodeRef) -> send_node_event(JobId, NodeRef, ack_run).
 -spec node_nack_run(object_id(), node_ref()) -> ok | not_found.
 node_nack_run(JobId, NodeRef) -> send_node_event(JobId, NodeRef, nack_run).
 
--spec node_complete(object_id(), node_ref(), atom()) -> ok | not_found.
+-spec node_complete(object_id(), node_ref(), succeeded | failed) -> ok | not_found.
 node_complete(JobId, NodeRef, Status) -> send_node_event(JobId, NodeRef, Status).
 
 -spec node_aborted(object_id(), node_ref()) -> ok | not_found.
