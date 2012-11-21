@@ -363,7 +363,7 @@ send_command_to_nodes(Type, Host, Job, NodeRefs) ->
                {job_id, Job#pushy_job.id},
                {server, list_to_binary(Host)},
                {command, Job#pushy_job.command}],
-    pushy_command_switch:send_command(NodeRefs, {Message}).
+    pushy_node_state:send_msg(NodeRefs, {Message}).
 
 -spec send_node_event(object_id(), node_ref(), job_event()) -> ok | not_found.
 send_node_event(JobId, NodeRef, Event) ->
