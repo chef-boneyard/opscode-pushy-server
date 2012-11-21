@@ -1,4 +1,4 @@
-#!/usr/bin/env ruby
+#!/opt/opscode-push-jobs-server/embedded/bin/ruby
 
 require 'bundler/setup' # so we don't need to type 'bundle exec' to run it
 
