@@ -18,7 +18,8 @@
 -type job_node_status() :: new |
                            ready |
                            running |
-                           complete |
+                           succeeded |
+                           failed |
                            aborted |
                            unavailable |
                            nacked |

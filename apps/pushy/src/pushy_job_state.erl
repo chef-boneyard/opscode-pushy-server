@@ -12,7 +12,7 @@
          node_nack_commit/2,
          node_ack_run/2,
          node_nack_run/2,
-         node_complete/2,
+         node_complete/3,
          node_aborted/2,
          stop_job/1,
          get_job_state/1]).
@@ -61,8 +61,8 @@ node_ack_run(JobId, NodeRef) -> send_node_event(JobId, NodeRef, ack_run).
 -spec node_nack_run(object_id(), node_ref()) -> ok | not_found.
 node_nack_run(JobId, NodeRef) -> send_node_event(JobId, NodeRef, nack_run).
 
--spec node_complete(object_id(), node_ref()) -> ok | not_found.
-node_complete(JobId, NodeRef) -> send_node_event(JobId, NodeRef, complete).
+-spec node_complete(object_id(), node_ref(), succeeded | failed) -> ok | not_found.
+node_complete(JobId, NodeRef, Status) -> send_node_event(JobId, NodeRef, Status).
 
 -spec node_aborted(object_id(), node_ref()) -> ok | not_found.
 node_aborted(JobId, NodeRef) -> send_node_event(JobId, NodeRef, aborted).
@@ -149,10 +149,17 @@ running({ack_run, NodeRef}, State) ->
         terminal -> send_to_rehab(NodeRef, State)
     end,
     maybe_finished_running(State2);
-running({complete, NodeRef}, State) ->
+running({succeeded, NodeRef}, State) ->
     State2 = case get_node_state(NodeRef, State) of
         ready    -> send_to_rehab(NodeRef, crashed, State);
-        running  -> set_node_state(NodeRef, complete, State);
+        running  -> set_node_state(NodeRef, succeeded, State);
+        terminal -> send_to_rehab(NodeRef, State)
+    end,
+    maybe_finished_running(State2);
+running({failed, NodeRef}, State) ->
+    State2 = case get_node_state(NodeRef, State) of
+        ready    -> send_to_rehab(NodeRef, crashed, State);
+        running  -> set_node_state(NodeRef, failed, State);
         terminal -> send_to_rehab(NodeRef, State)
     end,
     maybe_finished_running(State2);
@@ -371,7 +378,8 @@ send_node_event(JobId, NodeRef, Event) ->
 
 % Used to collapse terminal states (which we always treat the same way) to a
 % more matchable form.
-terminalize(complete) -> terminal;
+terminalize(succeeded) -> terminal;
+terminalize(failed) -> terminal;
 terminalize(aborted) -> terminal;
 terminalize(unavailable) -> terminal;
 terminalize(nacked) -> terminal;

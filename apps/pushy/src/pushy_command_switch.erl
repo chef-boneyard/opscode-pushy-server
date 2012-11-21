@@ -242,8 +242,10 @@ send_node_event(JobId, NodeRef, <<"ack_run">>) ->
     pushy_job_state:node_ack_run(JobId, NodeRef);
 send_node_event(JobId, NodeRef, <<"nack_run">>) ->
     pushy_job_state:node_nack_run(JobId, NodeRef);
-send_node_event(JobId, NodeRef, <<"complete">>)->
-    pushy_job_state:node_complete(JobId, NodeRef);
+send_node_event(JobId, NodeRef, <<"succeeded">>)->
+    pushy_job_state:node_complete(JobId, NodeRef, succeeded);
+send_node_event(JobId, NodeRef, <<"failed">>)->
+    pushy_job_state:node_complete(JobId, NodeRef, failed);
 send_node_event(null, NodeRef, <<"aborted">>) ->
     pushy_node_state:aborted(NodeRef);
 send_node_event(JobId, NodeRef, <<"aborted">>) ->
