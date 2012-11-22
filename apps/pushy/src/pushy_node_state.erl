@@ -221,11 +221,11 @@ send_info(NodeRef, Message) ->
             Error
     end.
 
-force_abort(#state{node_ref=NodeRef}=State) ->
+force_abort(State) ->
     Message = {[{type, abort}]},
-    ok = pushy_command_switch:send_command(NodeRef, Message),
+    State1 = do_send(State, Message),
     TRef = timer:send_after(rehab_interval(), rehab_again),
-    State#state{state_timer=TRef}.
+    State1#state{state_timer=TRef}.
 
 state_transition(Current, New, #state{node_ref=NodeRef, watchers=Watchers}) ->
     lager:debug("~p transitioning from ~p to ~p~n", [NodeRef, Current, New]),
