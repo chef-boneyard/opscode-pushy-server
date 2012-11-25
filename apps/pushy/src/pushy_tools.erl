@@ -12,15 +12,16 @@
 -include("pushy_sql.hrl").
 
 -export([
-         send_job/2
+         send_job/3
         ]).
 
 %% @doc helper function to generate a job and send it to a set of clients listening
 %% on a simulator.  It assumes the node names are of the form:  HOSTNAME-000ID
 %% where HOSTNAME is the server where the simulated clients are running
-send_job(Host, Num) ->
+send_job(Host, OrgName, Num) ->
     Names = [ construct_name(Host, N) || N <- lists:seq(1, Num)],
-    Job = pushy_object:new_record(pushy_job, ?PUSHY_ORG, Names, <<"chef-client">>),
+    Job = pushy_object:new_record(pushy_job, OrgName, Names, <<"chef-client">>,
+                                  10000, Num),
     pushy_job_state_sup:start(Job).
 
 %%
