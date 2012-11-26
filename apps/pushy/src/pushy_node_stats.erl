@@ -24,12 +24,19 @@
 
 -export([init/0,
          heartbeat/1,
+         stop/0,
          scan/0]).
 
 -spec init() -> atom() | ets:tid().
 init() ->
     ets:new(?MODULE, [set, public, named_table, {keypos, 2},
                       {write_concurrency, true}, {read_concurrency, true}]).
+
+%% This exists to make eunit tests less painful to write.
+-spec stop() -> ok.
+stop() ->
+    ets:delete(?MODULE).
+
 
 -spec heartbeat(pid()) -> ok | should_die.
 heartbeat(NodePid) ->

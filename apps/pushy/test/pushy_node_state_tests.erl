@@ -40,10 +40,8 @@ basic_setup() ->
 
 
 basic_cleanup() ->
-    ets:delete(pushy_node_stats),
+    pushy_node_stats:stop(),
     meck:unload(pushy_command_switch).
-
-
 
 init_test_() ->
     {foreach,
