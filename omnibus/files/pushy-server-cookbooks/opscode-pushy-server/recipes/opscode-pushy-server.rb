@@ -58,10 +58,6 @@ link "#{node['pushy']['install_path']}/embedded/service/opscode-pushy-server/etc
   to pushy_config
 end
 
-link "/etc/opscode-push-jobs-server/client_public.pem" do
- to "#{node['pushy']['install_path']}/embedded/service/opscode-pushy-server/etc/client_public.pem"
-end
-
 runit_service "opscode-pushy-server" do
   options({
     :log_directory => pushy_log_dir,
