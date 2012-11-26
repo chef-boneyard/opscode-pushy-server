@@ -28,7 +28,7 @@
 
 basic_setup() ->
     test_util:start_apps(),
-    pushy_node_stats:init(),
+
     meck:new(pushy_command_switch, []),
     meck:expect(pushy_command_switch, send,
                 fun(_NodeRef,  _Message) -> ok end),
@@ -37,10 +37,14 @@ basic_setup() ->
     application:set_env(pushy, heartbeat_interval, ?HB_INTERVAL),
     application:set_env(pushy, decay_window, ?DECAY_WINDOW),
     application:set_env(pushy, down_threshold, ?DOWN_THRESHOLD),
+
+    pushy_key_manager:init(),
+    pushy_node_stats:init(),
     ok.
 
 
 basic_cleanup() ->
+    pushy_key_manager:stop(),
     pushy_node_stats:stop(),
     meck:unload(pushy_command_switch).
 
