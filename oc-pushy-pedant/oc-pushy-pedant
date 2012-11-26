@@ -10,6 +10,7 @@ require 'pedant/organization'
 require 'pedant/pushy_command_line'
 
 Pedant.config.platform_class = Pedant::MultiTenantPlatform
+Pedant.config.suite = "pushy"
 Pedant.setup(ARGV, ["core_options", "pushy_options"])
 puts Pedant::UI.new.info_banner
 
