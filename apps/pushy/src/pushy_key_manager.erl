@@ -21,7 +21,8 @@
 
 %% API
 -export([init/0,
-         get_key/1
+         get_key/1,
+         stop/0
         ]).
 
 -define(TABLE, pushy_key_manager).
@@ -33,6 +34,11 @@
 init() ->
     ets:new(?TABLE, [set,public,named_table, {read_concurrency, true}]),
     ok.
+
+%% This exists to make eunit tests less painful to write.
+-spec stop() -> ok.
+stop() ->
+    ets:delete(?TABLE).
 
 %%%
 %%% Key descriptor: {algorithm:atom, key:binary}
