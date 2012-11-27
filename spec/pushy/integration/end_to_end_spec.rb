@@ -44,14 +44,15 @@ describe "end-to-end-test" do
     end
 
     context 'when running a failing job' do
+      let(:command) {'ruby -e "exit 1"'}
       before(:each) do
-        @job1 = start_job('ruby -e "exit 1"', %w{DONKEY})
+        @job1 = start_job(command, %w{DONKEY})
       end
 
       it 'should be marked as failed' do
         wait_for_job_complete(@job1['uri'])
         get_job(@job1['uri']).should == {
-          'command' => echo_yahoo,
+          'command' => command,
           'run_timeout' => 3600,
           'nodes' => { 'failed' => [ 'DONKEY' ] },
           'status' => 'complete'
