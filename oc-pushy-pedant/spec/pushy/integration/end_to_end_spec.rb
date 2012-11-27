@@ -51,7 +51,7 @@ describe "end-to-end-test" do
       it 'should be marked as failed' do
         wait_for_job_complete(@job1['uri'])
         get_job(@job1['uri']).should == {
-          'command' => command,
+          'command' => echo_yahoo,
           'run_timeout' => 3600,
           'nodes' => { 'failed' => [ 'DONKEY' ] },
           'status' => 'complete'

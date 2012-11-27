@@ -43,8 +43,16 @@ describe "Node_States API Endpoint", :node_states do
         end
       end
 
-      it 'returns a 200 ("OK") for client' do
-        get(api_url("/pushy/node_states/"), client) do |response|
+      it 'returns a 200 ("OK") for admin client' do
+        get(api_url("/pushy/node_states/"), platform.admin_client) do |response|
+          response.should look_like({
+                                      :status => 200
+                                    })
+        end
+      end
+
+      it 'returns a 200 ("OK") for non-admin client', :pending do
+        get(api_url("/pushy/node_states/"), platform.non_admin_client) do |response|
           response.should look_like({
                                       :status => 200
                                     })
@@ -96,8 +104,19 @@ describe "Node_States API Endpoint", :node_states do
         end
       end
 
-      it 'returns a 200 ("OK") for client' do
-        get(api_url("/pushy/node_states/#{node_name}"), client) do |response|
+      it 'returns a 200 ("OK") for non-admin client', :pending do
+        get(api_url("/pushy/node_states/#{node_name}"),
+            platform.non_admin_client) do |response|
+          response.should look_like({
+                                      :status => 200,
+                                      :body_exact => payload
+                                    })
+        end
+      end
+
+      it 'returns a 200 ("OK") for admin client' do
+        get(api_url("/pushy/node_states/#{node_name}"),
+            platform.admin_client) do |response|
           response.should look_like({
                                       :status => 200,
                                       :body_exact => payload
