@@ -6,7 +6,7 @@
 # Copyright:: Copyright (c) 2012 Opscode, Inc.
 #
 
-require 'spec_helper'
+require 'pushy/spec_helper'
 
 describe "end-to-end-test" do
   include_context "end_to_end_util"
