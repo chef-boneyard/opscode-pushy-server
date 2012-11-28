@@ -11,6 +11,7 @@ apps/pushy/.eunit
 .DS_STORE
 *.beam
 rel/opscode-pushy-server
+rel/pushy
 deps
 .eunit
 .pushy.plt
