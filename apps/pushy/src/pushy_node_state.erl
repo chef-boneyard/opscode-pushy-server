@@ -118,7 +118,9 @@ idle(rehab, State) ->
     force_abort(State),
     {next_state, state_transition(idle, rehab, State), State};
 idle({job, Job}, State) ->
-    {next_state, state_transition(idle, running, State), State#state{job=Job}}.
+    {next_state, state_transition(idle, running, State), State#state{job=Job}};
+idle(aborted, State) ->
+    {next_state, idle, State}.
 
 running(aborted, #state{node_ref=NodeRef}=State) ->
     lager:info("~p aborted during job.~n", [NodeRef]),
