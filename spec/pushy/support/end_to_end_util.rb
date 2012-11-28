@@ -1,4 +1,4 @@
-require '../opscode-pushy-client/lib/pushy-client'
+require 'pushy-client'
 require 'timeout'
 
 shared_context "end_to_end_util" do
