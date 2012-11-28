@@ -114,6 +114,9 @@ rehab(Message, #state{node_ref=NodeRef}=State) ->
     lager:info("~p in rehab. Ignoring message: ~p~n", [NodeRef, Message]),
     {next_state, rehab, State}.
 
+idle(aborted, #state{state_timer=TRef}=State) ->
+    timer:cancel(TRef),
+    {next_state, idle, State};
 idle(rehab, State) ->
     force_abort(State),
     {next_state, state_transition(idle, rehab, State), State};
