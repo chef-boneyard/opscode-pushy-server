@@ -15,7 +15,8 @@
 %% ------------------------------------------------------------------
 
 -export([start_link/1,
-         send_command/2]).
+         send_command/2,
+         send_command_after/3]).
 
 %% ------------------------------------------------------------------
 %% Private Exports - only exported for instrumentation
@@ -73,6 +74,10 @@ send_command(NodeRefs, Message) when is_list(NodeRefs)
     gen_server:call(?MODULE, {send_multi, hmac_sha256, NodeRefs, Message});
 send_command(NodeRefs, Message) when is_list(NodeRefs)  ->
     gen_server:call(?MODULE, {send_multi, rsa2048_sha1, NodeRefs, Message}).
+
+-spec send_command_after(node_ref(), ejson(), pos_integer()) -> pid().
+send_command_after(NodeRefs, Message, Interval) ->
+    erlang:spawn_link(fun() -> send_after(NodeRefs, Message, Interval) end).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
@@ -287,3 +292,7 @@ node_to_addr_lookup(Node, #state{node_to_addr = NodeMap}) ->
         error -> error;
         {ok, Value} -> Value
     end.
+
+send_after(NodeRefs, Message, Interval) ->
+    timer:sleep(Interval),
+    send_command(NodeRefs, Message).
