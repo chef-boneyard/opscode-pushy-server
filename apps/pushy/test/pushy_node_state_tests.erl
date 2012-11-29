@@ -32,6 +32,9 @@ basic_setup() ->
     meck:new(pushy_command_switch, []),
     meck:expect(pushy_command_switch, send_raw,
                 fun(_Message) -> ok end),
+    meck:new(pushy_object, []),
+    meck:expect(pushy_object, fetch_org_id,
+                fun(X) -> X end),
     application:set_env(pushy, heartbeat_interval, ?HB_INTERVAL),
     application:set_env(pushy, decay_window, ?DECAY_WINDOW),
     application:set_env(pushy, down_threshold, ?DOWN_THRESHOLD),
@@ -44,7 +47,71 @@ basic_setup() ->
 basic_cleanup() ->
     pushy_key_manager:stop(),
     pushy_node_stats:stop(),
+    meck:unload(pushy_object),
     meck:unload(pushy_command_switch).
+
+mk_message_body({Org,Node}, Type) ->
+    EJson =
+        {[{<<"node">>, Node},
+          {<<"client">>, <<"private-chef.opscode.piab">>},
+          {<<"org">>, Org},
+          {<<"type">>,  atom_to_binary(Type, utf8)},
+          {<<"timestamp">>, <<"Thu, 29 Nov 2012 00:26:17 GMT">>},
+          {<<"incarnation_id">>, <<"5b8061c8-cb44-4ad9-a85f-82e87b8c87fb">>},
+          {<<"job_state">>, <<"idle">>},
+          {<<"job_id">>, <<"null">>},
+          {<<"sequence">>, 2} ]},
+    jiffy:encode(EJson).
+
+send_message(Node, Type) ->
+    {hmac_sha256, Key} = pushy_key_manager:get_key(Node),
+    Body = mk_message_body(Node, Type),
+    Header = pushy_messaging:make_header(proto_v2, hmac_sha256, Key, Body),
+    Message = [?ADDR, Header, Body],
+    pushy_node_state:recv_msg(Message).
+
+message_test_() ->
+    {foreach,
+     fun() ->
+             basic_setup(),
+             {ok, Pid} = ?NS:start_link(?NODE, ?ADDR),
+             erlang:unlink(Pid),
+             {Pid}
+     end,
+     fun({Pid}) ->
+             basic_cleanup(),
+             erlang:exit(Pid, kill),
+             ok
+     end,
+     [fun(_) ->
+              {"Send heartbeats to a node",
+               fun() ->
+                       send_message(?NODE, heartbeat),
+                       timer:sleep(?HB_INTERVAL),
+                       send_message(?NODE, heartbeat),
+                       timer:sleep(?HB_INTERVAL),
+                       send_message(?NODE, heartbeat),
+                       timer:sleep(?HB_INTERVAL),
+                       send_message(?NODE, heartbeat),
+                       timer:sleep(?HB_INTERVAL),
+                       send_message(?NODE, heartbeat),
+                       timer:sleep(?HB_INTERVAL),
+                       send_message(?NODE, heartbeat),
+                       timer:sleep(?HB_INTERVAL),
+                       send_message(?NODE, heartbeat),
+                       timer:sleep(?HB_INTERVAL),
+                       send_message(?NODE, heartbeat),
+                       timer:sleep(?HB_INTERVAL),
+                       send_message(?NODE, heartbeat),
+                       timer:sleep(?HB_INTERVAL),
+                       send_message(?NODE, aborted),
+                       timer:sleep(?HB_INTERVAL),
+                       ?ASSERT_AVAILABLE(?NODE)
+               end
+              }
+      end
+     ]}.
+
 
 init_test_() ->
     {foreach,
