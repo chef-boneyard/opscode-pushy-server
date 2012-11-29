@@ -355,11 +355,12 @@ send_node_event(State, JobId, NodeRef, <<"succeeded">>)->
 send_node_event(State, JobId, NodeRef, <<"failed">>)->
     pushy_job_state:node_complete(JobId, NodeRef, failed),
     State;
-send_node_event(State, null, NodeRef, <<"aborted">>) ->
-    pushy_node_state:aborted(NodeRef),
+send_node_event(State, JobId, _NodeRef, <<"aborted">>)
+  when JobId =:= null orelse JobId =:= <<"null">> ->
+    gen_fsm:send_event(self(), aborted),
     State;
 send_node_event(State, JobId, NodeRef, <<"aborted">>) ->
-    pushy_node_state:aborted(NodeRef),
+    gen_fsm:send_event(self(), aborted),
     pushy_job_state:node_aborted(JobId, NodeRef),
     State;
 send_node_event(State, JobId, NodeRef, undefined) ->
