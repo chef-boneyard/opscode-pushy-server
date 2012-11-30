@@ -92,7 +92,6 @@ init([NodeRef]) ->
         %% true or throw
         true = gproc:reg({n, l, GprocName}),
         State1 = force_abort(State),
-        pushy_node_status_updater:create(NodeRef, ?POC_ACTOR_ID, shutdown),
         {ok, state_transition(init, rehab, State1), State1}
     catch
         error:badarg ->
@@ -218,7 +217,6 @@ force_abort(#state{node_ref=NodeRef}=State) ->
 
 state_transition(Current, New, #state{node_ref=NodeRef, watchers=Watchers}) ->
     lager:debug("~p transitioning from ~p to ~p~n", [NodeRef, Current, New]),
-    pushy_node_status_updater:update(NodeRef, ?POC_ACTOR_ID, New),
     notify_watchers(Watchers, NodeRef, Current, New),
     New.
 
