@@ -16,7 +16,7 @@
 -include("pushy_sql.hrl").
 
 %% API
--export([start_link/1,
+-export([start_link/2,
          heartbeat/1,
          status/1,
          watch/1,
@@ -29,6 +29,7 @@
          rehab/2]).
 
 -record(state, {node_ref              :: node_ref(),
+                node_addr             :: node_addr(),
                 heartbeats = 1        :: pos_integer(),
                 job                   :: any(),
                 watchers = [],
@@ -43,8 +44,8 @@
          terminate/3,
          code_change/4]).
 
-start_link(NodeRef) ->
-    gen_fsm:start_link(?MODULE, [NodeRef], []).
+start_link(NodeRef, NodeAddr) ->
+    gen_fsm:start_link(?MODULE, [NodeRef, NodeAddr], []).
 
 heartbeat(NodeRef) ->
     send_info(NodeRef, heartbeat),
@@ -83,14 +84,16 @@ rehab(NodeRef) ->
     end.
 
 
-init([NodeRef]) ->
+init([NodeRef, NodeAddr]) ->
+    State = #state{node_ref = NodeRef, node_addr = NodeAddr},
     GprocName = pushy_node_state_sup:mk_gproc_name(NodeRef),
-    State = #state{node_ref = NodeRef},
+    GprocAddr = pushy_node_state_sup:mk_gproc_addr(NodeAddr),
     try
         %% The most important thing to have happen is this registration; we need to get this
         %% assigned before anyone else tries to start things up gproc:reg can only return
         %% true or throw
         true = gproc:reg({n, l, GprocName}),
+        true = gproc:reg({n, l, GprocAddr}),
         State1 = force_abort(State),
         pushy_node_status_updater:create(NodeRef, ?POC_ACTOR_ID, shutdown),
         {ok, state_transition(init, rehab, State1), State1}
