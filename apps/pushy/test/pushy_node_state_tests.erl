@@ -12,6 +12,7 @@
 -module(pushy_node_state_tests).
 
 -define(NODE, {<<"org">>, <<"thenode">>}).
+-define(ADDR, <<"AAAAAAA">>).
 -define(NS, pushy_node_state).
 -define(GPROC_NAME, {heartbeat,<<"org">>,<<"thenode">>}).
 
@@ -54,7 +55,7 @@ init_test_() ->
               %% Resource creation
               {"Start things up, check that we can find it, shut it down",
                fun() ->
-                       Result = (catch ?NS:start_link(?NODE)),
+                       Result = (catch ?NS:start_link(?NODE, ?ADDR)),
                        ?assertMatch({ok, _}, Result),
                        {ok, Pid} = Result,
                        ?assert(is_pid(Pid)),
@@ -70,7 +71,7 @@ init_test_() ->
       fun(_) ->
               {"Start it up, check that we can get state",
                fun() ->
-                       {ok, Pid} = ?NS:start_link(?NODE),
+                       {ok, Pid} = ?NS:start_link(?NODE, ?ADDR),
 
                        erlang:unlink(Pid),
                        erlang:exit(Pid, kill)
@@ -82,7 +83,7 @@ heartbeat_test_() ->
     {foreach,
      fun() ->
              basic_setup(),
-             {ok, Pid} = ?NS:start_link(?NODE),
+             {ok, Pid} = ?NS:start_link(?NODE, ?ADDR),
              erlang:unlink(Pid),
              {Pid}
      end,
@@ -110,7 +111,7 @@ heartbeat_test_() ->
       fun(_) ->
               {"Start it up, send hb",
                fun() ->
-                       ?NS:heartbeat(?NODE),
+                       ?NS:heartbeat(?ADDR),
                        V = ?NS:status(?NODE),
                        ?assertMatch({online,{unavailable, none}}, V)
                end}
@@ -118,7 +119,7 @@ heartbeat_test_() ->
       fun(_) ->
               {"Start it up, send hb, sleep, check state",
                fun() ->
-                       ?NS:heartbeat(?NODE),
+                       ?NS:heartbeat(?ADDR),
                        V1= ?NS:status(?NODE),
                        ?assertEqual({online, {unavailable, none}}, V1),
                        timer:sleep(?HB_INTERVAL),
@@ -129,12 +130,12 @@ heartbeat_test_() ->
       fun(_) ->
               {"Start it up, send hb, sleep, check state until we drive it into 'up'",
                fun() ->
-                       ?NS:heartbeat(?NODE),
+                       ?NS:heartbeat(?ADDR),
                        ?ASSERT_UNAVAILABLE(?NODE),
                        timer:sleep(?HB_INTERVAL),
 
                        %% Drive it up
-                       heartbeat_step(?NODE, ?HB_INTERVAL, 6),
+                       heartbeat_step(?ADDR, ?HB_INTERVAL, 6),
                        ?NS:aborted(?NODE),
                        ?ASSERT_AVAILABLE(?NODE)
                end}
@@ -142,12 +143,12 @@ heartbeat_test_() ->
       fun(_) ->
               {"Start it up, send hb, sleep, check state until we drive it into 'up', then wait until it goes down",
                fun() ->
-                       ?NS:heartbeat(?NODE),
+                       ?NS:heartbeat(?ADDR),
                        ?ASSERT_UNAVAILABLE(?NODE),
                        timer:sleep(?HB_INTERVAL),
 
                        %% Drive it up
-                       heartbeat_step(?NODE, ?HB_INTERVAL, 6),
+                       heartbeat_step(?ADDR, ?HB_INTERVAL, 6),
                        ?NS:aborted(?NODE),
                        ?ASSERT_AVAILABLE(?NODE),
 
@@ -164,7 +165,7 @@ watcher_test_() ->
     {foreach,
      fun() ->
              basic_setup(),
-             {ok, Pid} = ?NS:start_link(?NODE),
+             {ok, Pid} = ?NS:start_link(?NODE, ?ADDR),
              erlang:unlink(Pid),
              {Pid}
      end,
@@ -182,7 +183,7 @@ watcher_test_() ->
       fun(_) ->
               {"Start it up, start watch, do hb, check that we don't get a message w/o state change",
                fun() ->
-                       ?NS:heartbeat(?NODE),
+                       ?NS:heartbeat(?ADDR),
                        V1= ?NS:status(?NODE),
                        ?assertEqual({online, {unavailable, none}}, V1),
                        timer:sleep(?HB_INTERVAL),
@@ -200,8 +201,8 @@ watcher_test_() ->
               {"Start it up, send hb, check state until we drive it into 'up'",
                fun() ->
                        ?NS:watch(?NODE),
-                       ?NS:heartbeat(?NODE),
-                       heartbeat_step(?NODE, ?HB_INTERVAL, 6),
+                       ?NS:heartbeat(?ADDR),
+                       heartbeat_step(?ADDR, ?HB_INTERVAL, 6),
                        ?NS:aborted(?NODE),
                        ?ASSERT_AVAILABLE(?NODE)
                end}
@@ -210,7 +211,7 @@ watcher_test_() ->
               {"Start it up, send hb, check state until we drive it into 'up', then wait until it goes down",
                fun() ->
                        ?NS:watch(?NODE),
-                       heartbeat_step(?NODE, ?HB_INTERVAL, 6),
+                       heartbeat_step(?ADDR, ?HB_INTERVAL, 6),
                        ?NS:aborted(?NODE),
                        ?ASSERT_AVAILABLE(?NODE),
 
