@@ -91,7 +91,8 @@ init([NodeRef]) ->
         %% assigned before anyone else tries to start things up gproc:reg can only return
         %% true or throw
         true = gproc:reg({n, l, GprocName}),
-        State1 = force_abort(State),
+        send_abort(NodeRef, 10),
+        State1 = arm_rehab_timer(State),
         pushy_node_status_updater:create(NodeRef, ?POC_ACTOR_ID, shutdown),
         {ok, state_transition(init, rehab, State1), State1}
     catch
@@ -211,10 +212,22 @@ send_info(NodeRef, Message) ->
     end.
 
 force_abort(#state{node_ref=NodeRef}=State) ->
-    Message = {[{type, abort}]},
-    ok = pushy_command_switch:send_command(NodeRef, Message),
+    ok = send_abort(NodeRef),
+    arm_rehab_timer(State).
+
+arm_rehab_timer(State) ->
     TRef = timer:send_after(rehab_interval(), rehab_again),
     State#state{state_timer=TRef}.
+
+send_abort(NodeRef) ->
+    send_abort(NodeRef, 0).
+
+send_abort(NodeRef, 0) ->
+    Message = {[{type, abort}]},
+    pushy_command_switch:send_command(NodeRef, Message);
+send_abort(NodeRef, Interval) ->
+    Message = {[{type, abort}]},
+    pushy_command_switch:send_command_after(NodeRef, Message, Interval).
 
 state_transition(Current, New, #state{node_ref=NodeRef, watchers=Watchers}) ->
     lager:debug("~p transitioning from ~p to ~p~n", [NodeRef, Current, New]),
