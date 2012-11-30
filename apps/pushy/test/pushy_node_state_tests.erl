@@ -62,7 +62,7 @@ init_test_() ->
                        {ok, Pid} = Result,
                        ?assert(is_pid(Pid)),
 
-                       NPid = gproc:lookup_pid({n,l,?GPROC_NAME}),
+                       NPid = pushy_node_state_sup:get_process(?NODE),
                        ?assertEqual(NPid, Pid),
 
                        % cleanup code
