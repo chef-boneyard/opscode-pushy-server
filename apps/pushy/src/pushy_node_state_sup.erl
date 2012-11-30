@@ -11,7 +11,7 @@
 
 %% API
 -export([start_link/0,
-         get_or_create_process/1,
+         get_or_create_process/2,
          get_process/1,
          get_heartbeating_nodes/1,
          mk_gproc_name/1,
@@ -34,14 +34,14 @@ start_link() ->
             Error
     end.
 
--spec get_or_create_process(node_ref()) -> pid().
-get_or_create_process(NodeRef) ->
+-spec get_or_create_process(node_ref(), node_addr()) -> pid().
+get_or_create_process(NodeRef, NodeAddr) ->
     GprocName = mk_gproc_name(NodeRef),
     case catch gproc:lookup_pid({n,l,GprocName}) of
         {'EXIT', _} ->
             % Run start_child asynchronously; we only need to wait until the
             % process registers itself before we can send it messages.
-            spawn(supervisor, start_child, [?SERVER, [NodeRef]]),
+            spawn(supervisor, start_child, [?SERVER, [NodeRef, NodeAddr]]),
             {Pid, _Value} = gproc:await({n,l,GprocName},1000),
             Pid;
         Pid -> Pid
