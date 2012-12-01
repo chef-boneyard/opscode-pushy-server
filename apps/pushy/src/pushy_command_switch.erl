@@ -46,10 +46,7 @@
 -define(PUSHY_MULTI_SEND_CROSSOVER, 100).
 
 -record(state,
-        {command_sock,
-         node_to_addr :: dict(),
-         private_key
-        }).
+        {command_sock}).
 
 -type addressed_message() :: [binary()]. % TODO Improve; it might be worth turning this into a tuple for better specificity.
 
@@ -71,17 +68,12 @@ send_raw(Message) ->
 init([#pushy_state{ctx=Ctx}]) ->
     CommandAddress = pushy_util:make_zmq_socket_addr(command_port),
 
-    {ok, PrivateKey} = chef_keyring:get_key(pushy_priv),
-
     lager:info("Starting command mux listening on ~s.", [CommandAddress]),
 
     {ok, CommandSock} = erlzmq:socket(Ctx, [router, {active, true}]),
     ok = erlzmq:setsockopt(CommandSock, linger, 0),
     ok = erlzmq:bind(CommandSock, CommandAddress),
-    State = #state{command_sock = CommandSock,
-                   node_to_addr = node_to_addr_new(),
-                   private_key = PrivateKey
-                  },
+    State = #state{command_sock = CommandSock},
     {ok, State}.
 
 handle_call({send_raw, Message}, _From, #state{}=State) ->
