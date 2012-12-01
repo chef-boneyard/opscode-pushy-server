@@ -310,7 +310,15 @@ process_and_dispatch_message([Address, Header, Body], State) ->
     State1.
 
 
-process_message(#state{node_ref=NodeRef} = State, #pushy_message{address=Address, body=Data}) ->
+process_message(#state{node_ref=NodeRef, node_addr=CurAddr} = State, #pushy_message{address=NewAddr} = Message)
+  when CurAddr =/= NewAddr ->
+    %% Our address has changed. By this point we've validated the message, so we can trust the address
+    GprocNewAddr = pushy_node_state_sup:mk_gproc_addr(NewAddr),
+    gproc:reg({n, l, GprocNewAddr}),
+    GprocCurAddr = pushy_node_state_sup:mk_gproc_addr(CurAddr),
+    gproc:unreg({n, l, GprocCurAddr}),
+    process_message(State#state{node_addr=NewAddr}, Message);
+process_message(#state{node_ref=NodeRef, node_addr=Address} = State, #pushy_message{address=Address, body=Data}) ->
     lager:debug("Received message for Node ~p (address ~p)", [NodeRef, Address]),
     JobId = ej:get({<<"job_id">>}, Data),
     Type = ej:get({<<"type">>}, Data),
