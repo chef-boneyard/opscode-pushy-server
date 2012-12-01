@@ -293,6 +293,7 @@ dispatch_raw_message([Addr, _Header, Body] = Message) ->
                   %% parse and extract (bypassing json perhaps?)
                   EJSon = jiffy:decode(Body),
                   NodeRef = get_node_ref(EJSon),
+                  lager:info("No addr ~s for msg: ~p~n", [pushy_tools:bin_to_hex(Addr), NodeRef]),
                   pushy_node_state_sup:get_or_create_process(NodeRef, Addr)
           end,
     Pid ! {raw_message, Message }.
@@ -317,11 +318,11 @@ process_and_dispatch_message([Address, Header, Body], State) ->
              catch
                  error:Error ->
                      Stack = erlang:get_stacktrace(),
-                     lager:error("Command message parser failed horribly: header=~w~nstack~s", [Error, Stack]),
+                     lager:error("Command message parser failed horribly: header=~p~nstack~p~s", [Error, Stack]),
                      {ok, State};
                  Error ->
                      Stack = erlang:get_stacktrace(),
-                     lager:error("Command message parser failed horribly: header=~w~nstack~s", [Error, Stack]),
+                     lager:error("Command message parser failed horribly: header=~p~nstack~p~s", [Error, Stack]),
                      {ok, State}
              end,
     State1.
@@ -330,15 +331,19 @@ process_and_dispatch_message([Address, Header, Body], State) ->
 process_message(#state{node_ref=NodeRef, node_addr=CurAddr} = State, #pushy_message{address=NewAddr} = Message)
   when CurAddr =/= NewAddr ->
     %% Our address has changed. By this point we've validated the message, so we can trust the address
+    lager:info("Address change for ~p '~s' to '~s'~n",
+               [NodeRef, pushy_tools:bin_to_hex(CurAddr),
+                pushy_tools:bin_to_hex(NewAddr)]),
     GprocNewAddr = pushy_node_state_sup:mk_gproc_addr(NewAddr),
     gproc:reg({n, l, GprocNewAddr}),
     GprocCurAddr = pushy_node_state_sup:mk_gproc_addr(CurAddr),
     gproc:unreg({n, l, GprocCurAddr}),
     process_message(State#state{node_addr=NewAddr}, Message);
 process_message(#state{node_ref=NodeRef, node_addr=Address} = State, #pushy_message{address=Address, body=Data}) ->
-    lager:debug("Received message for Node ~p (address ~p)", [NodeRef, Address]),
     JobId = ej:get({<<"job_id">>}, Data),
     Type = ej:get({<<"type">>}, Data),
+    lager:debug("Received message for Node ~p Type ~p (address ~p)",
+                [NodeRef, Type, pushy_tools:bin_to_hex(Address)]),
     send_node_event(State, JobId, NodeRef, Type).
 
 -spec send_node_event(#state{}, any(), any(), binary()) -> #state{}.
@@ -384,7 +389,7 @@ send_node_event(State, JobId, NodeRef, undefined) ->
     lager:error("Status message for job ~p and node ~p was missing type field!~n", [JobId, NodeRef]),
     State;
 send_node_event(State, JobId, NodeRef, UnknownType) ->
-    lager:error("Status message for job ~p and node ~p had unknown type",
+    lager:error("Status message for job ~p and node ~p had unknown type ~p~n",
                 [JobId, NodeRef, UnknownType]),
     State.
 

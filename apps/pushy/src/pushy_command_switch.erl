@@ -106,6 +106,8 @@ do_receive(CommandSock, Frame, State) ->
     %% abstract out some more generalized routines to handle the message receipt process.
     case pushy_messaging:receive_message_async(CommandSock, Frame) of
         [_Address, _Header, _Body] = Message->
+            lager:debug("RECV: ~s~nRECV: ~s~nRECV: ~s~n",
+                       [pushy_tools:bin_to_hex(_Address), _Header, _Body]),
             pushy_node_state:recv_msg(Message),
             State;
         _Packets ->
@@ -118,5 +120,8 @@ do_receive(CommandSock, Frame, State) ->
 %%%
 -spec do_send_raw(#state{}, addressed_message()) -> #state{}.
 do_send_raw(#state{command_sock = CommandSocket}=State, RawMessage) ->
+    [_Address, _Header, _Body] = RawMessage,
+    lager:debug("SEND: ~s~nSEND: ~s~nSEND: ~s~n",
+               [pushy_tools:bin_to_hex(_Address), _Header, _Body]),
     ok = pushy_messaging:send_message(CommandSocket, RawMessage),
     State.
