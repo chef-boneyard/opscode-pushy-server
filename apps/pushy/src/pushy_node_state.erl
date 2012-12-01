@@ -14,6 +14,8 @@
 
 -include("pushy.hrl").
 -include("pushy_sql.hrl").
+-include_lib("pushy_common/include/pushy_metrics.hrl").
+-include_lib("pushy_common/include/pushy_messaging.hrl").
 
 %% API
 -export([start_link/2,
