@@ -20,6 +20,8 @@
 %% API
 -export([start_link/2,
          recv_msg/1,
+         send_msg/2,
+         send_msg/3,
          heartbeat/1,
          status/1,
          watch/1,
@@ -56,6 +58,13 @@ heartbeat(NodeRef) ->
 recv_msg(Message) ->
     dispatch_raw_message(Message).
 
+send_msg(NodeRef, Message) ->
+    send_msg(NodeRef, hmac_sha256, Message).
+
+send_msg(NodeRef, Method, Message) when is_tuple(NodeRef) ->
+    send_info(NodeRef, {send_message, Method, Message});
+send_msg(NodeRefs, Method, Message) ->
+    [ {NodeRef, send_msg(NodeRef, Method, Message) } || NodeRef <- NodeRefs].
 
 status(NodeRef) ->
     case call(NodeRef, current_state) of
@@ -168,6 +177,9 @@ handle_info(should_die, CurrentState, State) ->
 handle_info(rehab_again, rehab, State) ->
     State1 = force_abort(State),
     {next_state, rehab, State1};
+handle_info({send_message, Method, Message}, CurrentState, State) ->
+    State1 = do_send(State, Method, Message),
+    {next_state, CurrentState, State1};
 handle_info({raw_message, Message}, CurrentState, State) ->
     maybe_process_and_dispatch_message(CurrentState, State, Message);
 handle_info({'DOWN', _MRef, _Type, Pid, _Reason}, StateName, #state{watchers=Watchers}=State) ->
@@ -214,7 +226,7 @@ cast(NodeRef, Message) ->
     end.
 
 send_info(NodeRef, Message) ->
-    case pushy_node_state_sup:get_or_create_process(NodeRef) of
+    case pushy_node_state_sup:get_process(NodeRef) of
         Pid when is_pid(Pid) ->
             Pid ! Message;
         Error ->
@@ -390,3 +402,14 @@ get_key_for_method(rsa2048_sha1, _) ->
 key_fetch(Method, EJson) ->
     NodeRef = get_node_ref(EJson),
     get_key_for_method(Method, NodeRef).
+
+-spec do_send(#state{}, json_term()) -> #state{}.
+do_send(State, Message) ->
+    do_send(State, hmac_sha256, Message).
+
+-spec do_send(#state{}, atom(), json_term()) -> #state{}.
+do_send(#state{node_addr=NodeAddr, node_ref=NodeRef} = State, Method, Message) ->
+    {ok, Key} = get_key_for_method(Method, NodeRef),
+    Packets = ?TIME_IT(pushy_messaging, make_message, (proto_v2, Method, Key, Message)),
+    ok = pushy_command_switch:send_raw([NodeAddr | Packets]),
+    State.
