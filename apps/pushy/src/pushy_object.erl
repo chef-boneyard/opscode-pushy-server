@@ -100,7 +100,6 @@ update_object(Fun, Object) ->
         set_updated(#Rec{}=Object) ->
             Object#Rec{updated_at = sql_date(now)}).
 
-?MAKE_SET_UPDATED_WITH_ACTOR(pushy_node_status);
 ?MAKE_SET_UPDATED_WITH_ACTOR(pushy_job).
 
 ?MAKE_SET_UPDATED(pushy_job_node).
@@ -113,7 +112,6 @@ update_object(Fun, Object) ->
                Object#Rec{created_at = Now,
                           updated_at = Now, last_updated_by = ActorId}).
 
-?MAKE_SET_CREATED(pushy_node_status);
 ?MAKE_SET_CREATED(pushy_job).
 
 %% CHEF_COMMON CARGO_CULT
