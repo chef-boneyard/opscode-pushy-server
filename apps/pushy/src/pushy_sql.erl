@@ -5,12 +5,6 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -export([
-         %% node status ops
-         fetch_node_statuses/0,
-         fetch_node_statuses/1,
-         fetch_node_status/2,
-         create_node_status/1,
-         update_node_status/1,
          %% job ops
          fetch_job/1,
          fetch_jobs/1,
@@ -23,55 +17,6 @@
         ]).
 
 sql_now() -> calendar:now_to_universal_time(os:timestamp()).
-
-%% node status ops
-
--spec fetch_node_statuses() -> {ok, list()} | {error, term()}.
-fetch_node_statuses() ->
-    case sqerl:select(list_node_statuses, []) of
-        {ok, none} ->
-            {ok, []};
-        {ok, Response} ->
-            {ok, [node_status_row_to_record(Row) || Row <- Response]};
-        {error, Reason} ->
-            {error, Reason}
-    end.
-
--spec fetch_node_statuses(binary() | string())-> {ok, list()} | {error, term()}.
-fetch_node_statuses(OrgId) ->
-    case sqerl:select(list_node_statuses_for_org, [OrgId]) of
-        {ok, none} ->
-            {ok, []};
-        {ok, Response} ->
-            {ok, [node_status_row_to_record(Row) || Row <- Response]};
-        {error, Reason} ->
-            {error, Reason}
-    end.
-
-%% TODO Figure out correct spec
--spec fetch_node_status(binary() | string(), binary() | string() ) -> {ok, list()} | {error, term()}.
-fetch_node_status(OrgId, Node) ->
-    case sqerl:select(list_node_status_for_org_and_node, [OrgId, Node]) of
-        {ok, none} ->
-            {ok, []};
-        {ok, Response} ->
-            {ok, [node_status_row_to_record(Row) || Row <-Response] };
-        {error, Reason} ->
-            {error, Reason}
-      end.
-
--spec create_node_status(#pushy_node_status{}) -> {ok, 1} | {error, term()}.
-create_node_status(#pushy_node_status{}=NodeStatus) ->
-    create_object(NodeStatus).
-
--spec update_node_status(#pushy_node_status{}) -> {ok, 1 | not_found} | {error, term()}.
-update_node_status(#pushy_node_status{status = Status,
-                                      last_updated_by = LastUpdatedBy,
-                                      updated_at = UpdatedAt,
-                                      node_name = NodeName,
-                                      org_id = OrgId}) ->
-    UpdateFields = [hb_status_as_int(Status), LastUpdatedBy, UpdatedAt, OrgId, NodeName],
-    do_update(update_node_status_by_orgid_name, UpdateFields).
 
 %% job ops
 
@@ -145,13 +90,6 @@ update_job_node(#pushy_job_node{job_id = JobId,
     UpdateFields = [job_node_status(Status), UpdatedAt, OrgId, NodeName, JobId],
     do_update(update_job_node_by_orgid_nodename_jobid, UpdateFields).
 
--spec create_object(Object :: pushy_object()) -> {ok, non_neg_integer()} |
-                                                           {error, term()}.
-%% @doc create an object given a pushy object record
-create_object(#pushy_node_status{status=Status}=NodeStatus) ->
-    NodeStatus1 = NodeStatus#pushy_node_status{status=hb_status_as_int(Status)},
-    create_object(insert_node_status, NodeStatus1).
-
 -spec create_object(atom(), tuple() | list()) -> {ok, non_neg_integer()} | {error, term()}.
 create_object(QueryName, Args) when is_atom(QueryName), is_list(Args) ->
     case sqerl:statement(QueryName, Args, count) of
@@ -206,16 +144,6 @@ insert_job_nodes([#pushy_job_node{job_id=JobId,
 trunc_date_time_to_second({{YY,MM,DD},{H,M,S}}) ->
     {{YY,MM,DD},{H,M, erlang:trunc(S)}}.
 
-%% @doc Transforms the proplist representing a node_status query row into a record
-%%
-node_status_row_to_record(Row) ->
-    #pushy_node_status{org_id = safe_get(<<"org_id">>, Row),
-                       node_name = safe_get(<<"node_name">>, Row),
-                       status = hb_status_as_atom(safe_get(<<"status">>, Row)),
-                       last_updated_by = safe_get(<<"last_updated_by">>, Row),
-                       created_at = trunc_date_time_to_second(safe_get(<<"created_at">>, Row)),
-                       updated_at = trunc_date_time_to_second(safe_get(<<"updated_at">>, Row))}.
-
 %% @doc Transforms a collection of proplists representing a job / job_nodes join query
 %% result and collapses them all into a single job record. There is a row for each
 %% job_node. A job_node tuple is extracted from each row; job information is extracted
@@ -261,18 +189,6 @@ proplist_to_job_node(Proplist) ->
                 created_at = trunc_date_time_to_second(safe_get(<<"created_at">>, Proplist)),
                 updated_at = trunc_date_time_to_second(safe_get(<<"updated_at">>, Proplist))}
     end.
-
-%% Heartbeat Status translators
-hb_status_as_int(X) when is_integer(X) -> X;
-hb_status_as_int(shutdown) -> 0;
-hb_status_as_int(rehab) -> 1;
-hb_status_as_int(idle) -> 2;
-hb_status_as_int(running) -> 3.
-hb_status_as_atom(X) when is_atom(X) -> X;
-hb_status_as_atom(0) -> shutdown;
-hb_status_as_atom(1) -> rehab;
-hb_status_as_atom(2) -> idle;
-hb_status_as_atom(3) -> running.
 
 %% Job Status translators
 job_status(voting) -> 0;

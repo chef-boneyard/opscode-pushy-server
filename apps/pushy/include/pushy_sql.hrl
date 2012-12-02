@@ -4,8 +4,12 @@
 -type object_id() :: <<_:256>>.
 
 % node status
--type node_status() :: up |
-                       down.
+-type node_status() :: online |
+                       offline.
+
+% node availablity
+-type node_availability() :: available |
+                            unavailable.
 
 %% job status
 -type job_status() :: voting |
@@ -34,9 +38,7 @@
 -record(pushy_node_status, {'org_id'::object_id(),              % organization guid
                             'node_name'::binary(),              % node name
                             'status'::node_status(),            % node status
-                            'last_updated_by'::object_id(),     % authz guid of last actor to update
-                            'created_at'::calendar:datetime(),  % time created at
-                            'updated_at'::calendar:datetime()   % time updated at
+                            'availability'::node_availability() % Is the node available
                             }).
 
 -record(pushy_job_node, {'job_id'::object_id(),              % guid for object (unique)
