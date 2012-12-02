@@ -13,6 +13,7 @@
 -export([start_link/0,
          get_or_create_process/1,
          get_process/1,
+         get_heartbeating_nodes/1,
          mk_gproc_name/1]).
 
 %% Supervisor callbacks
@@ -53,6 +54,19 @@ get_process(NodeRef) ->
         Pid -> Pid
     end.
 
+get_heartbeating_nodes(OrgId) ->
+    GProcName = {heartbeat, OrgId, '$1'},
+    Guard = [],
+    Result = ['$1'],
+    GProcKey = {n, l, GProcName},
+    Pid = '_',
+    Value = '_',
+    MatchHead = {GProcKey, Pid, Value},
+    MatchSpec = [{MatchHead, Guard, Result}],
+
+    NodeNames = gproc:select(MatchSpec),
+    [{OrgId, NodeName} || NodeName <- NodeNames].
+
 -spec mk_gproc_name(node_ref()) -> {'heartbeat', org_id(), node_name()}.
 mk_gproc_name({OrgId, NodeName}) when is_binary(OrgId) andalso is_binary(NodeName) ->
     {heartbeat, OrgId, NodeName}.
@@ -62,6 +76,8 @@ mk_gproc_name({OrgId, NodeName}) when is_binary(OrgId) andalso is_binary(NodeNam
 %% ------------------------------------------------------------------
 
 init([]) ->
+    lager:trace_console([{module, pushy_node_state}], debug),
+    lager:trace_console([{module, ?MODULE}], debug),
     {ok, {{simple_one_for_one, 60, 120},
           [{pushy_node_state, {pushy_node_state, start_link, []},
             transient, brutal_kill, worker, [pushy_node_state]}]}}.
