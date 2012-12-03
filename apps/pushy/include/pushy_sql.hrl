@@ -3,14 +3,6 @@
 %% length, might be able to constrain further for range of elements.
 -type object_id() :: <<_:256>>.
 
-% node status
--type node_status() :: online |
-                       offline.
-
-% node availablity
--type node_availability() :: available |
-                            unavailable.
-
 %% job status
 -type job_status() :: voting |
                       running |
