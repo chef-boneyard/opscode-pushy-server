@@ -13,7 +13,7 @@
 
 -record(metric, {node_pid :: pid(),
                  avg=down_threshold() * 2 :: float(),
-                 interval_start=now_as_int() :: pos_integer(),
+                 interval_start=pushy_time:timestamp() :: pos_integer(),
                  heartbeats=1 :: pos_integer()}).
 
 %% These two weights must total to 1.0
@@ -114,7 +114,7 @@ decay_window() ->
 %% now.
 %%
 maybe_advance_interval(#metric{interval_start=StartI} = M) ->
-    ICount = (now_as_int() - StartI) div heartbeat_interval(),
+    ICount = (pushy_time:timestamp() - StartI) div heartbeat_interval(),
     advance_interval(M, ICount).
 
 advance_interval(M, 0) ->
@@ -125,9 +125,3 @@ advance_interval(#metric{avg=Avg, interval_start=StartI, heartbeats=Hb} = M, ICo
     %% aggregated into one step using pow.
     NAvg = ((Avg * ?HISTORY_WEIGHT) + (Hb * ?NOW_WEIGHT)) * math:pow(?HISTORY_WEIGHT, ICount-1),
     M#metric{avg=NAvg, interval_start=NextI, heartbeats=0}.
-
-now_as_int() ->
-    {M, S, U} = os:timestamp(),
-    ((M*?MEGA) + S) * ?MEGA + U.
-
-
