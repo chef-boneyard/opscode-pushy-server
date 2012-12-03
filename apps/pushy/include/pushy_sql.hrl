@@ -32,14 +32,7 @@
                            timed_out.
 
 %% random PoC hard-codings
--define(POC_ACTOR_ID, <<"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb">>).
 -define(POC_HB_THRESHOLD, 3).
-
--record(pushy_node_status, {'org_id'::object_id(),              % organization guid
-                            'node_name'::binary(),              % node name
-                            'status'::node_status(),            % node status
-                            'availability'::node_availability() % Is the node available
-                            }).
 
 -record(pushy_job_node, {'job_id'::object_id(),              % guid for object (unique)
                          'org_id'::object_id(),              % organization guid
@@ -61,4 +54,4 @@
                     'updated_at'::calendar:datetime()  % time updated at
                     }).
 
--type pushy_object() :: #pushy_node_status{} | #pushy_job{}.
+-type pushy_object() :: #pushy_job{}.
