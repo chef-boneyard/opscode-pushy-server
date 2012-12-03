@@ -11,9 +11,10 @@
 
 %% API
 -export([start_link/0,
-         get_or_create_process/1,
+         get_or_create_process/2,
          get_process/1,
-         mk_gproc_name/1]).
+         mk_gproc_name/1,
+         mk_gproc_addr/1]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -32,21 +33,27 @@ start_link() ->
             Error
     end.
 
--spec get_or_create_process(node_ref()) -> pid().
-get_or_create_process(NodeRef) ->
+-spec get_or_create_process(node_ref(), node_addr()) -> pid().
+get_or_create_process(NodeRef, NodeAddr) ->
     GprocName = mk_gproc_name(NodeRef),
     case catch gproc:lookup_pid({n,l,GprocName}) of
         {'EXIT', _} ->
             % Run start_child asynchronously; we only need to wait until the
             % process registers itself before we can send it messages.
-            spawn(supervisor, start_child, [?SERVER, [NodeRef]]),
+            spawn(supervisor, start_child, [?SERVER, [NodeRef, NodeAddr]]),
             {Pid, _Value} = gproc:await({n,l,GprocName},1000),
             Pid;
         Pid -> Pid
     end.
 
-get_process(NodeRef) ->
+get_process({_,_} =NodeRef) ->
     GprocName = mk_gproc_name(NodeRef),
+    get_process_int(GprocName);
+get_process(Addr) when is_binary(Addr) ->
+    GprocName = mk_gproc_addr(Addr),
+    get_process_int(GprocName).
+
+get_process_int(GprocName) ->
     case catch gproc:lookup_pid({n,l,GprocName}) of
         {'EXIT', _} ->
             undefined;
@@ -56,6 +63,10 @@ get_process(NodeRef) ->
 -spec mk_gproc_name(node_ref()) -> {'heartbeat', org_id(), node_name()}.
 mk_gproc_name({OrgId, NodeName}) when is_binary(OrgId) andalso is_binary(NodeName) ->
     {heartbeat, OrgId, NodeName}.
+
+-spec mk_gproc_addr(binary()) -> {'addr', binary()}.
+mk_gproc_addr(Addr) when is_binary(Addr) ->
+    {addr, Addr}.
 
 %% ------------------------------------------------------------------
 %% supervisor Function Definitions
