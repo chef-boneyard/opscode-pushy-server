@@ -42,14 +42,12 @@ content_types_provided(Req, State) ->
     {[{"application/json", to_json}], Req, State}.
 
 to_json(Req, #config_state{organization_guid=OrgId}=State) ->
-    NodeRefs = pushy_node_state_sup:get_heartbeating_nodes(OrgId),
-    NodeStatuses = [node_to_json(NodeName, pushy_node_state:status({Org,NodeName})) ||
-        {Org, NodeName} <- NodeRefs],
+    Nodes = pushy_node_state_sup:get_heartbeating_nodes(OrgId),
+    NodeStatuses = [node_to_json(NodeState) || NodeState <- Nodes],
 
     {jiffy:encode(NodeStatuses), Req, State}.
 
-node_to_json(Name, {Status, {Availability, _Job}}) ->
+node_to_json({{_Org, Name}, Availability}) ->
     {[ {<<"node_name">>, Name},
-       {<<"status">>, Status},
        {<<"availability">>, Availability}
      ]}.
