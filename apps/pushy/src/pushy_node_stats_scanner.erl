@@ -23,12 +23,18 @@
 
 -define(SERVER, ?MODULE).
 
+-record(state,
+        {interval :: non_neg_integer()
+        }).
+
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 init([]) ->
     random:seed(erlang:now()),
-    {ok, none, wait_interval()}.
+    Interval = wait_interval(),
+    lager:info("Starting pushy node cleanup (every ~p ms)", [Interval]),
+    {ok, #state{interval=Interval}, Interval}.
 
 handle_call(_Request, _From, State) ->
     {reply, ignored, State}.
@@ -36,9 +42,9 @@ handle_call(_Request, _From, State) ->
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
-handle_info(timeout, State) ->
+handle_info(timeout, #state{interval = Interval} = State) ->
     pushy_node_stats:scan(),
-    {noreply, State, wait_interval()};
+    {noreply, State, Interval};
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -49,5 +55,11 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 %%% Internal functions
+
+
+%% @doc The wait interval between scans, expressed as number
+%% of heartbeat intervals
 wait_interval() ->
-    envy:get(pushy, detect_offline_nodes_interval, number).
+    HeartbeatInterval = envy:get(pushy, heartbeat_interval, number),
+    NumHeartbeats = envy:get(pushy, detect_offline_nodes_interval, number),
+    HeartbeatInterval * NumHeartbeats.
