@@ -77,7 +77,6 @@
  {pushy, [
           {server_name, "<%= node['fqdn'] %>" },
           {heartbeat_interval, <%= @heartbeat_interval %> },
-          {dead_interval, <%= @dead_interval %> },
           {zeromq_listen_address, "<%= @zeromq_listen_address %>" },
           {server_heartbeat_port, <%= @server_heartbeat_port %> },
           {command_port, <%= @command_port %> },
@@ -96,7 +95,7 @@
          ]},
          {pushy_common,[
                         {metrics_module, folsom_metrics},
-                        {enable_graphite, false}
+                        {enable_graphite, <%= @enable_graphite %> }
                        ]},
  {folsom_graphite,[ {application, "pushy"}]},
    {chef_authn,  [{keyring_dir, "<%= @keyring_dir %>"},
