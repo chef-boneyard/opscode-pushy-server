@@ -8,7 +8,7 @@
 
 require 'pedant/rspec/common'
 
-describe "Node_States API Endpoint", :node_states do
+describe "Node_States API Endpoint", :focus, :node_states do
   let(:node_name) { 'some_node' }
   let(:non_existent_node_name) { 'not_a_number' }
 
@@ -25,7 +25,7 @@ describe "Node_States API Endpoint", :node_states do
       "status" => "offline"
     } }
 
-  describe 'access control' do
+  describe 'access control with no pushy_job_readers' do
     context 'GET /node_states' do
       it 'returns a 200 ("OK") for admin' do
         get(api_url("/pushy/node_states/"), admin_user) do |response|
@@ -83,7 +83,7 @@ describe "Node_States API Endpoint", :node_states do
                                     })
         end
       end
-    end
+    end # context 'GET /node_states'
 
     context 'GET /node_states/<name>' do
       it 'returns a 200 ("OK") for admin' do
@@ -172,6 +172,102 @@ describe "Node_States API Endpoint", :node_states do
                                     })
         end
       end
+    end # context 'GET /node_states/<name>'
+  end # describe 'access control with no pushy_job_readers'
+
+  describe 'access control with pushy_job_readers' do
+    # Doing these in reverse for extra fun; this will guarantee it doesn't
+    # "accidentally" work if the groups are missing
+    let(:member) { normal_user }
+    let(:non_member) { admin_user }
+    let(:member_client) { platform.non_admin_client }
+    let(:non_member_client) { platform.admin_client }
+
+    let(:readers) { "pushy_job_readers" }
+    let(:readers_group) { {"groupname" => readers} }
+
+    before(:all) do
+      post(api_url("/groups/"), admin_user, :payload => readers_group)
+
+      # TODO: this is going to fail until we add users to the groups
     end
-  end
+
+    after(:all) do
+      delete(api_url("/groups/#{readers}"), admin_user)
+    end
+
+    context 'GET /node_states' do
+      it 'returns a 200 ("OK") for member' do
+        get(api_url("/pushy/node_states/"), member) do |response|
+          response.should look_like({
+                                      :status => 200
+                                    })
+        end
+      end
+
+      it 'returns a 403 ("Forbidden") for non-member' do
+        get(api_url("/pushy/node_states/"), non_member) do |response|
+          response.should look_like({
+                                      :status => 403
+                                    })
+        end
+      end
+
+      it 'returns a 200 ("OK") for member client' do
+        get(api_url("/pushy/node_states/"), member_client) do |response|
+          response.should look_like({
+                                      :status => 200
+                                    })
+        end
+      end
+
+      it 'returns a 403 ("Forbidden") for non-member client' do
+        get(api_url("/pushy/node_states/"), non_member_client) do |response|
+          response.should look_like({
+                                      :status => 403
+                                    })
+        end
+      end
+    end # context 'GET /node_states'
+
+    context 'GET /node_states/<name>' do
+      it 'returns a 200 ("OK") for member' do
+        get(api_url("/pushy/node_states/#{node_name}"), member) do |response|
+          response.should look_like({
+                                      :status => 200,
+                                      :body_exact => payload
+                                    })
+        end
+      end
+
+      it 'returns a 403 ("Forbidden") for non-member' do
+        get(api_url("/pushy/node_states/#{node_name}"), non_member) do |response|
+          response.should look_like({
+                                      :status => 403,
+                                      :body_exact => payload
+                                    })
+        end
+      end
+
+      it 'returns a 200 ("OK") for member client' do
+        get(api_url("/pushy/node_states/#{node_name}"),
+            member_client) do |response|
+          response.should look_like({
+                                      :status => 200,
+                                      :body_exact => payload
+                                    })
+        end
+      end
+
+      it 'returns a 403 ("Forbidden") for non-member client' do
+        get(api_url("/pushy/node_states/#{node_name}"),
+            non_member_client) do |response|
+          response.should look_like({
+                                      :status => 403,
+                                      :body_exact => payload
+                                    })
+        end
+      end
+    end # context 'GET /node_states/<name>'
+  end # describe 'access control with pushy_job_readers'
 end
