@@ -421,5 +421,5 @@ do_send(State, Message) ->
 do_send(#state{node_addr=NodeAddr, node_ref=NodeRef} = State, Method, Message) ->
     {ok, Key} = get_key_for_method(Method, NodeRef),
     Packets = ?TIME_IT(pushy_messaging, make_message, (proto_v2, Method, Key, Message)),
-    ok = pushy_command_switch:send_raw([NodeAddr | Packets]),
+    ok = pushy_command_switch:send([NodeAddr | Packets]),
     State.
