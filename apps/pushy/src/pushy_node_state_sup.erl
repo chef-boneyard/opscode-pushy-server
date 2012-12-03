@@ -56,13 +56,10 @@ get_process(NodeRef) ->
 
 get_heartbeating_nodes(OrgId) ->
     GProcName = {heartbeat, OrgId, '_'},
-    Guard = [],
-    Result = ['$$'],
     GProcKey = {n, l, GProcName},
     Pid = '_',
     Value = '_',
-    MatchHead = {GProcKey, Pid, Value},
-    MatchSpec = [{MatchHead, Guard, Result}],
+    MatchSpec = [{{GProcKey, Pid, Value}, [], ['$$']}],
 
     Nodes = gproc:select(MatchSpec),
     [{{Org, NodeName}, Val} || [{_,_,{_, Org, NodeName}},_,Val] <- Nodes].
