@@ -222,7 +222,6 @@ force_abort(#state{node_ref=NodeRef}=State) ->
 state_transition(Current, New,
         #state{node_ref=NodeRef, watchers=Watchers, availability=Availability}) ->
     lager:debug("~p transitioning from ~p to ~p~n", [NodeRef, Current, New]),
-    lager:info("Availability: ~p~n", [Availability]),
     GprocName = pushy_node_state_sup:mk_gproc_name(NodeRef),
     gproc:set_value({n, l, GprocName}, Availability),
     notify_watchers(Watchers, NodeRef, Current, New),

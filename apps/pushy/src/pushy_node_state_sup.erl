@@ -65,7 +65,6 @@ get_heartbeating_nodes(OrgId) ->
     MatchSpec = [{MatchHead, Guard, Result}],
 
     Nodes = gproc:select(MatchSpec),
-    lager:info("NODES: ~p~n", [Nodes]),
     [{{Org, NodeName}, Val} || [{_,_,{_, Org, NodeName}},_,Val] <- Nodes].
 
 -spec mk_gproc_name(node_ref()) -> {'heartbeat', org_id(), node_name()}.
