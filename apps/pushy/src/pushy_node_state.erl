@@ -31,6 +31,7 @@
 -record(state, {node_ref              :: node_ref(),
                 heartbeats = 1        :: pos_integer(),
                 job                   :: any(),
+                availability          :: node_availability(),
                 watchers = [],
                 state_timer
                }).
@@ -85,14 +86,13 @@ rehab(NodeRef) ->
 
 init([NodeRef]) ->
     GprocName = pushy_node_state_sup:mk_gproc_name(NodeRef),
-    State = #state{node_ref = NodeRef},
+    State = #state{node_ref = NodeRef, availability=unavailable},
     try
         %% The most important thing to have happen is this registration; we need to get this
         %% assigned before anyone else tries to start things up gproc:reg can only return
         %% true or throw
         true = gproc:reg({n, l, GprocName}),
         State1 = force_abort(State),
-        pushy_node_status_updater:create(NodeRef, ?POC_ACTOR_ID, shutdown),
         {ok, state_transition(init, rehab, State1), State1}
     catch
         error:badarg ->
@@ -109,26 +109,29 @@ init([NodeRef]) ->
 
 rehab(aborted, #state{state_timer=TRef}=State) ->
     timer:cancel(TRef),
-    {next_state, state_transition(rehab, idle, State), State};
+    State1 = State#state{availability=available},
+    {next_state, state_transition(rehab, idle, State1), State1};
 rehab(Message, #state{node_ref=NodeRef}=State) ->
     lager:info("~p in rehab. Ignoring message: ~p~n", [NodeRef, Message]),
     {next_state, rehab, State}.
 
 idle(rehab, State) ->
     force_abort(State),
-    {next_state, state_transition(idle, rehab, State), State};
+    State1 = State#state{availability=unavailable},
+    {next_state, state_transition(idle, rehab, State1), State1};
 idle({job, Job}, State) ->
-    {next_state, state_transition(idle, running, State), State#state{job=Job}};
+    State1 = State#state{job=Job, availability=unavailable},
+    {next_state, state_transition(idle, running, State1), State1};
 idle(aborted, State) ->
     {next_state, idle, State}.
 
 running(aborted, #state{node_ref=NodeRef}=State) ->
     lager:info("~p aborted during job.~n", [NodeRef]),
-    State1 = State#state{job=undefined},
+    State1 = State#state{job=undefined, availability=available},
     {next_state, state_transition(running, idle, State1), State1};
 running({complete, Job}, #state{job=Job, node_ref=NodeRef}=State) ->
     lager:info("~p completed job.~n", [NodeRef]),
-    State1 = State#state{job=undefined},
+    State1 = State#state{job=undefined, availability=available},
     {next_state, state_transition(running, idle, State1), State1}.
 
 handle_event(_Event, StateName, State) ->
@@ -216,9 +219,11 @@ force_abort(#state{node_ref=NodeRef}=State) ->
     TRef = timer:send_after(rehab_interval(), rehab_again),
     State#state{state_timer=TRef}.
 
-state_transition(Current, New, #state{node_ref=NodeRef, watchers=Watchers}) ->
+state_transition(Current, New,
+        #state{node_ref=NodeRef, watchers=Watchers, availability=Availability}) ->
     lager:debug("~p transitioning from ~p to ~p~n", [NodeRef, Current, New]),
-    pushy_node_status_updater:update(NodeRef, ?POC_ACTOR_ID, New),
+    GprocName = pushy_node_state_sup:mk_gproc_name(NodeRef),
+    gproc:set_value({n, l, GprocName}, Availability),
     notify_watchers(Watchers, NodeRef, Current, New),
     New.
 

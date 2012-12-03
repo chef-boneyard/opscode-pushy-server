@@ -42,16 +42,12 @@ content_types_provided(Req, State) ->
     {[{"application/json", to_json}], Req, State}.
 
 to_json(Req, #config_state{organization_guid=OrgId}=State) ->
-    {ok, StatusList} = pushy_sql:fetch_node_statuses(OrgId),
+    Nodes = pushy_node_state_sup:get_heartbeating_nodes(OrgId),
+    NodeStatuses = [node_to_json(NodeState) || NodeState <- Nodes],
 
-    ConfigurationStruct = [node_to_json_struct(E) || E <- StatusList],
-    %% ?debugVal(ConfigurationStruct),
-    ConfigurationJson = jiffy:encode(ConfigurationStruct),
-    {ConfigurationJson, Req, State}.
+    {jiffy:encode(NodeStatuses), Req, State}.
 
-node_to_json_struct(#pushy_node_status{node_name=Name, status=Status, updated_at=UpdatedAt}) ->
-    UpdatedAtDate =  iolist_to_binary(httpd_util:rfc1123_date(UpdatedAt)),
+node_to_json({{_Org, Name}, Availability}) ->
     {[ {<<"node_name">>, Name},
-       {<<"status">>, Status},
-       {<<"updated_at">>, UpdatedAtDate}
+       {<<"availability">>, Availability}
      ]}.

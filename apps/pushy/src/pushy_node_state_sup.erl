@@ -13,6 +13,7 @@
 -export([start_link/0,
          get_or_create_process/1,
          get_process/1,
+         get_heartbeating_nodes/1,
          mk_gproc_name/1]).
 
 %% Supervisor callbacks
@@ -52,6 +53,16 @@ get_process(NodeRef) ->
             undefined;
         Pid -> Pid
     end.
+
+get_heartbeating_nodes(OrgId) ->
+    GProcName = {heartbeat, OrgId, '_'},
+    GProcKey = {n, l, GProcName},
+    Pid = '_',
+    Value = '_',
+    MatchSpec = [{{GProcKey, Pid, Value}, [], ['$$']}],
+
+    Nodes = gproc:select(MatchSpec),
+    [{{Org, NodeName}, Val} || [{_,_,{_, Org, NodeName}},_,Val] <- Nodes].
 
 -spec mk_gproc_name(node_ref()) -> {'heartbeat', org_id(), node_name()}.
 mk_gproc_name({OrgId, NodeName}) when is_binary(OrgId) andalso is_binary(NodeName) ->

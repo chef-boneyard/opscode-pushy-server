@@ -62,7 +62,6 @@ init([#pushy_state{ctx=_Ctx} = PushyState]) ->
                ?WORKER(pushy_command_switch, [PushyState]),
                ?SUP(pushy_node_state_sup, []),
                ?SUP(pushy_job_state_sup, []),
-               ?WORKER(pushy_node_status_updater, []),
                ?WORKERNL(webmachine_mochiweb, [WebMachineConfig])  %% FIXME start or start_link here?
                ],
     pushy_node_stats:init(),

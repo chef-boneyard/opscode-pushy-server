@@ -3,10 +3,6 @@
 %% length, might be able to constrain further for range of elements.
 -type object_id() :: <<_:256>>.
 
-% node status
--type node_status() :: up |
-                       down.
-
 %% job status
 -type job_status() :: voting |
                       running |
@@ -28,16 +24,7 @@
                            timed_out.
 
 %% random PoC hard-codings
--define(POC_ACTOR_ID, <<"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb">>).
 -define(POC_HB_THRESHOLD, 3).
-
--record(pushy_node_status, {'org_id'::object_id(),              % organization guid
-                            'node_name'::binary(),              % node name
-                            'status'::node_status(),            % node status
-                            'last_updated_by'::object_id(),     % authz guid of last actor to update
-                            'created_at'::calendar:datetime(),  % time created at
-                            'updated_at'::calendar:datetime()   % time updated at
-                            }).
 
 -record(pushy_job_node, {'job_id'::object_id(),              % guid for object (unique)
                          'org_id'::object_id(),              % organization guid
@@ -59,4 +46,4 @@
                     'updated_at'::calendar:datetime()  % time updated at
                     }).
 
--type pushy_object() :: #pushy_node_status{} | #pushy_job{}.
+-type pushy_object() :: #pushy_job{}.

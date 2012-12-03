@@ -14,7 +14,6 @@
           create_object/3,
           update_object/2,
           update_object/3,
-          new_record/3,
           new_record/6,
 
           make_org_prefix_id/1,
@@ -34,14 +33,6 @@ fetch_org_id(OrgName) ->
         {ok, Guid} ->
             Guid
     end.
-
-new_record(pushy_node_status, OrgId, NodeStatusData) ->
-    Name = proplists:get_value(<<"node">>, NodeStatusData),
-    Status = proplists:get_value(<<"type">>, NodeStatusData),
-    #pushy_node_status{org_id = OrgId,
-                       node_name = Name,
-                       status = Status
-                      }.
 
 new_record(pushy_job, OrgId, NodeNames, Command, RunTimeout, Quorum) ->
     Id = make_org_prefix_id(OrgId),
@@ -100,7 +91,6 @@ update_object(Fun, Object) ->
         set_updated(#Rec{}=Object) ->
             Object#Rec{updated_at = sql_date(now)}).
 
-?MAKE_SET_UPDATED_WITH_ACTOR(pushy_node_status);
 ?MAKE_SET_UPDATED_WITH_ACTOR(pushy_job).
 
 ?MAKE_SET_UPDATED(pushy_job_node).
@@ -113,7 +103,6 @@ update_object(Fun, Object) ->
                Object#Rec{created_at = Now,
                           updated_at = Now, last_updated_by = ActorId}).
 
-?MAKE_SET_CREATED(pushy_node_status);
 ?MAKE_SET_CREATED(pushy_job).
 
 %% CHEF_COMMON CARGO_CULT
