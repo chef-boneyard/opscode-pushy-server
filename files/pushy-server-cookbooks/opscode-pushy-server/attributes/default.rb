@@ -44,7 +44,6 @@ default['pushy']['opscode-pushy-server']['listen'] = '127.0.0.1'
 default['pushy']['opscode-pushy-server']['db_pool_size'] = '20'
 
 default['pushy']['opscode-pushy-server']['heartbeat_interval'] = '1000'
-default['pushy']['opscode-pushy-server']['dead_interval'] = '3'
 
 default['pushy']['opscode-pushy-server']['zeromq_listen_address'] = 'tcp://*'
 default['pushy']['opscode-pushy-server']['zmq_io_processes'] = '1'
@@ -54,7 +53,8 @@ default['pushy']['opscode-pushy-server']['command_port'] = '10002'
 default['pushy']['opscode-pushy-server']['api_port'] = '10003'
 default['pushy']['opscode-pushy-server']['down_threshold'] = '0.6'
 default['pushy']['opscode-pushy-server']['decay_window'] = '4'
-default['pushy']['opscode-pushy-server']['detect_offline_nodes_interval'] = '1000'
+default['pushy']['opscode-pushy-server']['detect_offline_nodes_interval'] = '4'
+default['pushy']['opscode-pushy-server']['enable_graphite'] = false
 default['pushy']['opscode-pushy-server']['keyring_dir'] = '/etc/opscode-push-jobs-server'
 
 ###
