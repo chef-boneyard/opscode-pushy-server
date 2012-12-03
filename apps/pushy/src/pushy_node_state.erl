@@ -50,7 +50,8 @@
          terminate/3,
          code_change/4]).
 
-start_link({_,_} = NodeRef, NodeAddr) ->
+-spec start_link(node_ref(), node_addr()) -> ok.
+start_link(NodeRef, NodeAddr) ->
     gen_fsm:start_link(?MODULE, [NodeRef, NodeAddr], []).
 
 heartbeat(NodeRef) ->
