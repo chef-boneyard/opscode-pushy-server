@@ -31,7 +31,7 @@
 -record(state, {node_ref              :: node_ref(),
                 heartbeats = 1        :: pos_integer(),
                 job                   :: any(),
-                availability,
+                availability          :: node_availability(),
                 watchers = [],
                 state_timer
                }).
