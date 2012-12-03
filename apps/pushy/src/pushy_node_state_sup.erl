@@ -55,17 +55,18 @@ get_process(NodeRef) ->
     end.
 
 get_heartbeating_nodes(OrgId) ->
-    GProcName = {heartbeat, OrgId, '$1'},
+    GProcName = {heartbeat, OrgId, '_'},
     Guard = [],
-    Result = ['$1'],
+    Result = ['$$'],
     GProcKey = {n, l, GProcName},
     Pid = '_',
     Value = '_',
     MatchHead = {GProcKey, Pid, Value},
     MatchSpec = [{MatchHead, Guard, Result}],
 
-    NodeNames = gproc:select(MatchSpec),
-    [{OrgId, NodeName} || NodeName <- NodeNames].
+    Nodes = gproc:select(MatchSpec),
+    lager:info("NODES: ~p~n", [Nodes]),
+    [{{Org, NodeName}, Val} || [{_,_,{_, Org, NodeName}},_,Val] <- Nodes].
 
 -spec mk_gproc_name(node_ref()) -> {'heartbeat', org_id(), node_name()}.
 mk_gproc_name({OrgId, NodeName}) when is_binary(OrgId) andalso is_binary(NodeName) ->
@@ -76,8 +77,6 @@ mk_gproc_name({OrgId, NodeName}) when is_binary(OrgId) andalso is_binary(NodeNam
 %% ------------------------------------------------------------------
 
 init([]) ->
-    lager:trace_console([{module, pushy_node_state}], debug),
-    lager:trace_console([{module, ?MODULE}], debug),
     {ok, {{simple_one_for_one, 60, 120},
           [{pushy_node_state, {pushy_node_state, start_link, []},
             transient, brutal_kill, worker, [pushy_node_state]}]}}.
