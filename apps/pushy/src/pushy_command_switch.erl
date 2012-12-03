@@ -15,14 +15,14 @@
 %% ------------------------------------------------------------------
 
 -export([start_link/1,
-         send_raw/1]).
+         send/1]).
 
 %% ------------------------------------------------------------------
 %% Private Exports - only exported for instrumentation
 %% ------------------------------------------------------------------
 
 -export([do_receive/3,
-         do_send_raw/2]).
+         do_send/2]).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Exports
@@ -57,9 +57,9 @@
 start_link(PushyState) ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [PushyState], []).
 
--spec send_raw([binary()]) -> ok.
-send_raw(Message) ->
-    gen_server:call(?MODULE, {send_raw, Message}).
+-spec send([binary()]) -> ok.
+send(Message) ->
+    gen_server:call(?MODULE, {send, Message}).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
@@ -76,8 +76,8 @@ init([#pushy_state{ctx=Ctx}]) ->
     State = #state{command_sock = CommandSock},
     {ok, State}.
 
-handle_call({send_raw, Message}, _From, #state{}=State) ->
-    NState = ?TIME_IT(?MODULE, do_send_raw, (State, Message)),
+handle_call({send, Message}, _From, #state{}=State) ->
+    NState = ?TIME_IT(?MODULE, do_send, (State, Message)),
     {reply, ok, NState};
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
@@ -118,8 +118,8 @@ do_receive(CommandSock, Frame, State) ->
 %%%
 %%% Send a message to a single node
 %%%
--spec do_send_raw(#state{}, addressed_message()) -> #state{}.
-do_send_raw(#state{command_sock = CommandSocket}=State, RawMessage) ->
+-spec do_send(#state{}, addressed_message()) -> #state{}.
+do_send(#state{command_sock = CommandSocket}=State, RawMessage) ->
     [_Address, _Header, _Body] = RawMessage,
     lager:debug("SEND: ~s~nSEND: ~s~nSEND: ~s~n",
                [pushy_tools:bin_to_hex(_Address), _Header, _Body]),

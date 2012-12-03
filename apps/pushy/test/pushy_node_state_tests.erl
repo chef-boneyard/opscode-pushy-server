@@ -30,7 +30,7 @@ basic_setup() ->
     test_util:start_apps(),
 
     meck:new(pushy_command_switch, []),
-    meck:expect(pushy_command_switch, send_raw,
+    meck:expect(pushy_command_switch, send,
                 fun(_Message) -> ok end),
     meck:new(pushy_object, []),
     meck:expect(pushy_object, fetch_org_id,
