@@ -342,13 +342,13 @@ process_message(#state{node_ref=NodeRef, node_addr=CurAddr} = State, #pushy_mess
     process_message(State#state{node_addr=NewAddr}, Message);
 process_message(#state{node_ref=NodeRef, node_addr=Address} = State, #pushy_message{address=Address, body=Data}) ->
     JobId = ej:get({<<"job_id">>}, Data),
-    Type = ej:get({<<"type">>}, Data),
+    Type = message_type_to_atom(ej:get({<<"type">>}, Data)),
     lager:debug("Received message for Node ~p Type ~p (address ~p)",
                 [NodeRef, Type, pushy_tools:bin_to_hex(Address)]),
     send_node_event(State, JobId, NodeRef, Type).
 
 -spec send_node_event(#state{}, any(), any(), binary()) -> #state{}.
-send_node_event(State, JobId, NodeRef, <<"heartbeat">>) ->
+send_node_event(State, JobId, NodeRef, heartbeat) ->
     lager:debug("Received heartbeat for node ~p with job id ~p", [NodeRef, JobId]),
     case JobId /= null andalso pushy_job_state_sup:get_process(JobId) == not_found of
         true ->
@@ -358,7 +358,7 @@ send_node_event(State, JobId, NodeRef, <<"heartbeat">>) ->
     end,
     self() ! heartbeat,
     State;
-send_node_event(State, JobId, NodeRef, <<"aborted">> = Msg) ->
+send_node_event(State, JobId, NodeRef, aborted = Msg) ->
     gen_fsm:send_event(self(), aborted),
     interpret_node_event(JobId, NodeRef, Msg),
     State;
@@ -366,19 +366,19 @@ send_node_event(State, JobId, NodeRef, Msg) ->
     interpret_node_event(JobId, NodeRef, Msg),
     State.
 
-interpret_node_event(JobId, NodeRef, <<"ack_commit">>) ->
+interpret_node_event(JobId, NodeRef, ack_commit) ->
     pushy_job_state:node_ack_commit(JobId, NodeRef);
-interpret_node_event(JobId, NodeRef, <<"nack_commit">>) ->
+interpret_node_event(JobId, NodeRef, nack_commit) ->
     pushy_job_state:node_nack_commit(JobId, NodeRef);
-interpret_node_event(JobId, NodeRef, <<"ack_run">>) ->
+interpret_node_event(JobId, NodeRef, ack_run) ->
     pushy_job_state:node_ack_run(JobId, NodeRef);
-interpret_node_event(JobId, NodeRef, <<"nack_run">>) ->
+interpret_node_event(JobId, NodeRef, nack_run) ->
     pushy_job_state:node_nack_run(JobId, NodeRef);
-interpret_node_event(JobId, NodeRef, <<"succeeded">>)->
+interpret_node_event(JobId, NodeRef, succeeded)->
     pushy_job_state:node_complete(JobId, NodeRef, succeeded);
-interpret_node_event(JobId, NodeRef, <<"failed">>)->
+interpret_node_event(JobId, NodeRef, failed)->
     pushy_job_state:node_complete(JobId, NodeRef, failed);
-interpret_node_event(JobId, NodeRef, <<"aborted">>) when JobId /= null ->
+interpret_node_event(JobId, NodeRef, aborted) when JobId /= null ->
     pushy_job_state:node_aborted(JobId, NodeRef);
 interpret_node_event(JobId, NodeRef, undefined) ->
     lager:error("Status message for job ~p and node ~p was missing type field!~n", [JobId, NodeRef]);
@@ -416,3 +416,14 @@ do_send(#state{node_addr=NodeAddr, node_ref=NodeRef} = State, Method, Message) -
     Packets = ?TIME_IT(pushy_messaging, make_message, (proto_v2, Method, Key, Message)),
     ok = pushy_command_switch:send([NodeAddr | Packets]),
     State.
+
+message_type_to_atom(<<"aborted">>) -> aborted;
+message_type_to_atom(<<"ack_commit">>) -> ack_commit;
+message_type_to_atom(<<"ack_run">>) -> ack_run;
+message_type_to_atom(<<"failed">>) -> failed;
+message_type_to_atom(<<"heartbeat">>) -> heartbeat;
+message_type_to_atom(<<"nack_commit">>) -> nack_commit;
+message_type_to_atom(<<"nack_run">>) -> nack_run;
+message_type_to_atom(<<"succeeded">>) -> succeeded;
+message_type_to_atom(_) -> unknown.
+
