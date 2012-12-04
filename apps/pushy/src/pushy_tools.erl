@@ -11,9 +11,8 @@
 -define(PUSHY_ORG,<<"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa">> ).
 -include("pushy_sql.hrl").
 
--export([
-         send_job/3
-        ]).
+-export([send_job/3,
+         bin_to_hex/1]).
 
 %% @doc helper function to generate a job and send it to a set of clients listening
 %% on a simulator.  It assumes the node names are of the form:  HOSTNAME-000ID
@@ -30,3 +29,9 @@ send_job(Host, OrgName, Num) ->
 
 construct_name(Hostname, Id) ->
     list_to_binary(io_lib:format("~s-~4..0B", [Hostname, Id])).
+
+%%
+%% Generate a pretty hexadecimal output for a binary. 
+bin_to_hex(Bin) when is_binary(Bin) ->
+    lists:flatten([ [ erlang:integer_to_list(Nibble1, 16), erlang:integer_to_list(Nibble2, 16) ]
+                    || << Nibble1:4, Nibble2:4 >> <= Bin ]).

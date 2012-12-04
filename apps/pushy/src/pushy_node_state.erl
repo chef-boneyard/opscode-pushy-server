@@ -14,9 +14,14 @@
 
 -include("pushy.hrl").
 -include("pushy_sql.hrl").
+-include_lib("pushy_common/include/pushy_metrics.hrl").
+-include_lib("pushy_common/include/pushy_messaging.hrl").
 
 %% API
--export([start_link/1,
+-export([start_link/2,
+         recv_msg/1,
+         send_msg/2,
+         send_msg/3,
          heartbeat/1,
          status/1,
          watch/1,
@@ -29,6 +34,7 @@
          rehab/2]).
 
 -record(state, {node_ref              :: node_ref(),
+                node_addr             :: node_addr(),
                 heartbeats = 1        :: pos_integer(),
                 job                   :: any(),
                 availability          :: node_availability(),
@@ -44,12 +50,23 @@
          terminate/3,
          code_change/4]).
 
-start_link(NodeRef) ->
-    gen_fsm:start_link(?MODULE, [NodeRef], []).
+-spec start_link(node_ref(), node_addr()) -> ok.
+start_link(NodeRef, NodeAddr) ->
+    gen_fsm:start_link(?MODULE, [NodeRef, NodeAddr], []).
 
 heartbeat(NodeRef) ->
     send_info(NodeRef, heartbeat),
     ok.
+recv_msg(Message) ->
+    dispatch_raw_message(Message).
+
+send_msg(NodeRef, Message) ->
+    send_msg(NodeRef, hmac_sha256, Message).
+
+send_msg(NodeRef, Method, Message) when is_tuple(NodeRef) ->
+    send_info(NodeRef, {send_message, Method, Message});
+send_msg(NodeRefs, Method, Message) ->
+    [ {NodeRef, send_msg(NodeRef, Method, Message) } || NodeRef <- NodeRefs].
 
 status(NodeRef) ->
     case call(NodeRef, current_state) of
@@ -84,14 +101,16 @@ rehab(NodeRef) ->
     end.
 
 
-init([NodeRef]) ->
+init([NodeRef, NodeAddr]) ->
+    State = #state{node_ref = NodeRef, node_addr = NodeAddr, availability=unavailable},
     GprocName = pushy_node_state_sup:mk_gproc_name(NodeRef),
-    State = #state{node_ref = NodeRef, availability=unavailable},
+    GprocAddr = pushy_node_state_sup:mk_gproc_addr(NodeAddr),
     try
         %% The most important thing to have happen is this registration; we need to get this
         %% assigned before anyone else tries to start things up gproc:reg can only return
         %% true or throw
         true = gproc:reg({n, l, GprocName}),
+        true = gproc:reg({n, l, GprocAddr}),
         State1 = force_abort(State),
         {ok, state_transition(init, rehab, State1), State1}
     catch
@@ -162,6 +181,11 @@ handle_info(should_die, CurrentState, State) ->
 handle_info(rehab_again, rehab, State) ->
     State1 = force_abort(State),
     {next_state, rehab, State1};
+handle_info({send_message, Method, Message}, CurrentState, State) ->
+    State1 = do_send(State, Method, Message),
+    {next_state, CurrentState, State1};
+handle_info({raw_message, Message}, CurrentState, State) ->
+    maybe_process_and_dispatch_message(CurrentState, State, Message);
 handle_info({'DOWN', _MRef, _Type, Pid, _Reason}, StateName, #state{watchers=Watchers}=State) ->
     case lists:keytake(Pid, 1, Watchers) of
         false ->
@@ -206,18 +230,18 @@ cast(NodeRef, Message) ->
     end.
 
 send_info(NodeRef, Message) ->
-    case pushy_node_state_sup:get_or_create_process(NodeRef) of
+    case pushy_node_state_sup:get_process(NodeRef) of
         Pid when is_pid(Pid) ->
             Pid ! Message;
         Error ->
             Error
     end.
 
-force_abort(#state{node_ref=NodeRef}=State) ->
+force_abort(State) ->
     Message = {[{type, abort}]},
-    ok = pushy_command_switch:send_command(NodeRef, Message),
+    State1 = do_send(State, Message),
     TRef = timer:send_after(rehab_interval(), rehab_again),
-    State#state{state_timer=TRef}.
+    State1#state{state_timer=TRef}.
 
 state_transition(Current, New,
         #state{node_ref=NodeRef, watchers=Watchers, availability=Availability}) ->
@@ -232,3 +256,154 @@ notify_watchers([], _NodeRef, _Current, _New) ->
 notify_watchers(Watchers, NodeRef, Current, New) ->
     F = fun(Watcher) -> Watcher ! {state_change, NodeRef, Current, New} end,
     [F(Watcher) || {Watcher, _Monitor} <- Watchers].
+
+
+%%
+%% Message processing and parsing code; this executes in the caller's context
+%%
+dispatch_raw_message([Addr, _Header, Body] = Message) ->
+    Pid = case pushy_node_state_sup:get_process(Addr) of
+              P when is_pid(P) ->
+                  P;
+              _Error ->
+                  %% Nothing with that address found; we need to parse the body of the
+                  %% message to figure out where to route it...
+                  %%
+                  %% NOTE: We need to use some care when creating FSMs. Ideally we would
+                  %% verify the message before we create the FSM. However, this adds some
+                  %% delay to the node startup path, and serializes things in an unpleasant
+                  %% way. Instead we speculatively create a new FSM for the node_ref/addr
+                  %% pair if there aren't any FSMs registered for either.
+                  %%
+                  %% So this is only an issue if there is no registered FSM for this
+                  %% node_ref or address.
+                  %%
+                  %% If we get spoofed into creating an FSM, it will simply parse and drop
+                  %% spoofed packets, and eventually go down because it hasn't received a
+                  %% valid heartbeat. If the real node attempts to connect, it will cause
+                  %% the FSM to change its registered address, and the spoofed packets
+                  %% will continue to be rejected.
+                  %%
+                  %% The main threat is some DOS attack where we get tricked into creating
+                  %% large numbers of FSMs, which would consume resources.
+                  %%
+                  %% One defense would be to require that we have a hmac key assigned for
+                  %% this node: that would restrict the number of spoofable FSM's to the set
+                  %% of nodes that have already made a validated call to the configuration
+                  %% endpoint. A further refinement would be to make the node ref cheaper to
+                  %% parse and extract (bypassing json perhaps?)
+                  EJSon = jiffy:decode(Body),
+                  NodeRef = get_node_ref(EJSon),
+                  lager:info("No addr ~s for msg: ~p~n", [pushy_tools:bin_to_hex(Addr), NodeRef]),
+                  pushy_node_state_sup:get_or_create_process(NodeRef, Addr)
+          end,
+    Pid ! {raw_message, Message }.
+
+%%
+%% This occurs in the fsm context
+%%
+maybe_process_and_dispatch_message(CurrentState, State, Message) ->
+    case process_and_dispatch_message(Message, State) of
+        {ok, State1} -> {next_state, CurrentState, State1};
+        {should_die, State1} -> {stop, state_transition(CurrentState, shutdown, State1), State1}
+    end.
+
+process_and_dispatch_message([Address, Header, Body], State) ->
+    KeyFetch = fun key_fetch/2,
+    State1 = try ?TIME_IT(pushy_messaging, parse_message, (Address, Header, Body, KeyFetch)) of
+                 {ok, #pushy_message{} = Msg} ->
+                     {ok, process_message(State, Msg)};
+                 {error, #pushy_message{validated=bad_sig}} ->
+                     lager:error("Command message failed verification: header=~s", [Header]),
+                     {ok, State}
+             catch
+                 error:Error ->
+                     Stack = erlang:get_stacktrace(),
+                     lager:error("Command message parser failed horribly: header=~p~nstack~p~s", [Error, Stack]),
+                     {ok, State};
+                 Error ->
+                     Stack = erlang:get_stacktrace(),
+                     lager:error("Command message parser failed horribly: header=~p~nstack~p~s", [Error, Stack]),
+                     {ok, State}
+             end,
+    State1.
+
+
+process_message(#state{node_ref=NodeRef, node_addr=CurAddr} = State, #pushy_message{address=NewAddr} = Message)
+  when CurAddr =/= NewAddr ->
+    %% Our address has changed. By this point we've validated the message, so we can trust the address
+    lager:info("Address change for ~p '~s' to '~s'~n",
+               [NodeRef, pushy_tools:bin_to_hex(CurAddr),
+                pushy_tools:bin_to_hex(NewAddr)]),
+    GprocNewAddr = pushy_node_state_sup:mk_gproc_addr(NewAddr),
+    gproc:reg({n, l, GprocNewAddr}),
+    GprocCurAddr = pushy_node_state_sup:mk_gproc_addr(CurAddr),
+    gproc:unreg({n, l, GprocCurAddr}),
+    process_message(State#state{node_addr=NewAddr}, Message);
+process_message(#state{node_ref=NodeRef, node_addr=Address} = State, #pushy_message{address=Address, body=Data}) ->
+    JobId = ej:get({<<"job_id">>}, Data),
+    Type = message_type_to_atom(ej:get({<<"type">>}, Data)),
+    lager:debug("Received message for Node ~p Type ~p (address ~p)",
+                [NodeRef, Type, pushy_tools:bin_to_hex(Address)]),
+    send_node_event(State, JobId, NodeRef, Type).
+
+-spec send_node_event(#state{}, any(), any(), binary()) -> #state{}.
+send_node_event(State, JobId, NodeRef, heartbeat) ->
+    lager:debug("Received heartbeat for node ~p with job id ~p", [NodeRef, JobId]),
+    case JobId /= null andalso pushy_job_state_sup:get_process(JobId) == not_found of
+        true ->
+            gen_fsm:send_event(self(), rehab);
+        _ ->
+            ok
+    end,
+    self() ! heartbeat,
+    State;
+send_node_event(State, JobId, NodeRef, aborted = Msg) ->
+    gen_fsm:send_event(self(), aborted),
+    pushy_job_state:interpret_node_event(JobId, NodeRef, Msg),
+    State;
+send_node_event(State, JobId, NodeRef, Msg) ->
+    pushy_job_state:interpret_node_event(JobId, NodeRef, Msg),
+    State.
+
+get_node_ref(Data) ->
+    %% This essentially debug code.
+    _ClientName = ej:get({<<"client">>}, Data),
+    OrgName  = ej:get({<<"org">>}, Data),
+    NodeName = ej:get({<<"node">>}, Data),
+    %% TODO: Clean up usage and propagation of org name vs org guid (OC-4351)
+    OrgId = pushy_object:fetch_org_id(OrgName),
+    {OrgId, NodeName}.
+
+
+get_key_for_method(hmac_sha256, {_,_} = NodeRef) ->
+    {hmac_sha256, Key} = pushy_key_manager:get_key(NodeRef),
+    {ok, Key};
+get_key_for_method(rsa2048_sha1, _) ->
+    chef_keyring:get_key(pushy_priv).
+
+key_fetch(Method, EJson) ->
+    NodeRef = get_node_ref(EJson),
+    get_key_for_method(Method, NodeRef).
+
+-spec do_send(#state{}, json_term()) -> #state{}.
+do_send(State, Message) ->
+    do_send(State, hmac_sha256, Message).
+
+-spec do_send(#state{}, atom(), json_term()) -> #state{}.
+do_send(#state{node_addr=NodeAddr, node_ref=NodeRef} = State, Method, Message) ->
+    {ok, Key} = get_key_for_method(Method, NodeRef),
+    Packets = ?TIME_IT(pushy_messaging, make_message, (proto_v2, Method, Key, Message)),
+    ok = pushy_command_switch:send([NodeAddr | Packets]),
+    State.
+
+message_type_to_atom(<<"aborted">>) -> aborted;
+message_type_to_atom(<<"ack_commit">>) -> ack_commit;
+message_type_to_atom(<<"ack_run">>) -> ack_run;
+message_type_to_atom(<<"failed">>) -> failed;
+message_type_to_atom(<<"heartbeat">>) -> heartbeat;
+message_type_to_atom(<<"nack_commit">>) -> nack_commit;
+message_type_to_atom(<<"nack_run">>) -> nack_run;
+message_type_to_atom(<<"succeeded">>) -> succeeded;
+message_type_to_atom(_) -> unknown.
+
