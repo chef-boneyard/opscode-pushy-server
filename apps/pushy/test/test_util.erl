@@ -19,4 +19,5 @@
 -include_lib("eunit/include/eunit.hrl").
 
 start_apps() ->
-    application:start(gproc).
+    application:start(gproc),
+    application:start(folsom).
