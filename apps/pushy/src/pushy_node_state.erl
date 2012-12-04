@@ -355,31 +355,11 @@ send_node_event(State, JobId, NodeRef, heartbeat) ->
     State;
 send_node_event(State, JobId, NodeRef, aborted = Msg) ->
     gen_fsm:send_event(self(), aborted),
-    interpret_node_event(JobId, NodeRef, Msg),
+    pushy_job_state:interpret_node_event(JobId, NodeRef, Msg),
     State;
 send_node_event(State, JobId, NodeRef, Msg) ->
-    interpret_node_event(JobId, NodeRef, Msg),
+    pushy_job_state:interpret_node_event(JobId, NodeRef, Msg),
     State.
-
-interpret_node_event(JobId, NodeRef, ack_commit) ->
-    pushy_job_state:node_ack_commit(JobId, NodeRef);
-interpret_node_event(JobId, NodeRef, nack_commit) ->
-    pushy_job_state:node_nack_commit(JobId, NodeRef);
-interpret_node_event(JobId, NodeRef, ack_run) ->
-    pushy_job_state:node_ack_run(JobId, NodeRef);
-interpret_node_event(JobId, NodeRef, nack_run) ->
-    pushy_job_state:node_nack_run(JobId, NodeRef);
-interpret_node_event(JobId, NodeRef, succeeded)->
-    pushy_job_state:node_complete(JobId, NodeRef, succeeded);
-interpret_node_event(JobId, NodeRef, failed)->
-    pushy_job_state:node_complete(JobId, NodeRef, failed);
-interpret_node_event(JobId, NodeRef, aborted) when JobId /= null ->
-    pushy_job_state:node_aborted(JobId, NodeRef);
-interpret_node_event(JobId, NodeRef, undefined) ->
-    lager:error("Status message for job ~p and node ~p was missing type field!~n", [JobId, NodeRef]);
-interpret_node_event(JobId, NodeRef, UnknownType) ->
-    lager:error("Status message for job ~p and node ~p had unknown type ~p~n",
-                [JobId, NodeRef, UnknownType]).
 
 get_node_ref(Data) ->
     %% This essentially debug code.
