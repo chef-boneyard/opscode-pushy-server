@@ -348,51 +348,43 @@ process_message(#state{node_ref=NodeRef, node_addr=Address} = State, #pushy_mess
     send_node_event(State, JobId, NodeRef, Type).
 
 -spec send_node_event(#state{}, any(), any(), binary()) -> #state{}.
-send_node_event(State, null, NodeRef, <<"heartbeat">>) ->
-    lager:debug("Received heartbeat for node ~p with NULL job id", [NodeRef]),
-    self() ! heartbeat,
-    State;
 send_node_event(State, JobId, NodeRef, <<"heartbeat">>) ->
     lager:debug("Received heartbeat for node ~p with job id ~p", [NodeRef, JobId]),
-    case pushy_job_state_sup:get_process(JobId) of
-        not_found -> pushy_node_state:rehab(NodeRef);
-        _ -> noop
+    case JobId /= null andalso pushy_job_state_sup:get_process(JobId) == not_found of
+        true ->
+            gen_fsm:send_event(self(), rehab);
+        _ ->
+            ok
     end,
     self() ! heartbeat,
     State;
-send_node_event(State, JobId, NodeRef, <<"ack_commit">>) ->
-    pushy_job_state:node_ack_commit(JobId, NodeRef),
-    State;
-send_node_event(State, JobId, NodeRef, <<"nack_commit">>) ->
-    pushy_job_state:node_nack_commit(JobId, NodeRef),
-    State;
-send_node_event(State, JobId, NodeRef, <<"ack_run">>) ->
-    pushy_job_state:node_ack_run(JobId, NodeRef),
-    State;
-send_node_event(State, JobId, NodeRef, <<"nack_run">>) ->
-    pushy_job_state:node_nack_run(JobId, NodeRef),
-    State;
-send_node_event(State, JobId, NodeRef, <<"succeeded">>)->
-    pushy_job_state:node_complete(JobId, NodeRef, succeeded),
-    State;
-send_node_event(State, JobId, NodeRef, <<"failed">>)->
-    pushy_job_state:node_complete(JobId, NodeRef, failed),
-    State;
-send_node_event(State, JobId, _NodeRef, <<"aborted">>)
-  when JobId =:= null orelse JobId =:= <<"null">> ->
+send_node_event(State, JobId, NodeRef, <<"aborted">> = Msg) ->
     gen_fsm:send_event(self(), aborted),
+    interpret_node_event(JobId, NodeRef, Msg),
     State;
-send_node_event(State, JobId, NodeRef, <<"aborted">>) ->
-    gen_fsm:send_event(self(), aborted),
-    pushy_job_state:node_aborted(JobId, NodeRef),
-    State;
-send_node_event(State, JobId, NodeRef, undefined) ->
-    lager:error("Status message for job ~p and node ~p was missing type field!~n", [JobId, NodeRef]),
-    State;
-send_node_event(State, JobId, NodeRef, UnknownType) ->
-    lager:error("Status message for job ~p and node ~p had unknown type ~p~n",
-                [JobId, NodeRef, UnknownType]),
+send_node_event(State, JobId, NodeRef, Msg) ->
+    interpret_node_event(JobId, NodeRef, Msg),
     State.
+
+interpret_node_event(JobId, NodeRef, <<"ack_commit">>) ->
+    pushy_job_state:node_ack_commit(JobId, NodeRef);
+interpret_node_event(JobId, NodeRef, <<"nack_commit">>) ->
+    pushy_job_state:node_nack_commit(JobId, NodeRef);
+interpret_node_event(JobId, NodeRef, <<"ack_run">>) ->
+    pushy_job_state:node_ack_run(JobId, NodeRef);
+interpret_node_event(JobId, NodeRef, <<"nack_run">>) ->
+    pushy_job_state:node_nack_run(JobId, NodeRef);
+interpret_node_event(JobId, NodeRef, <<"succeeded">>)->
+    pushy_job_state:node_complete(JobId, NodeRef, succeeded);
+interpret_node_event(JobId, NodeRef, <<"failed">>)->
+    pushy_job_state:node_complete(JobId, NodeRef, failed);
+interpret_node_event(JobId, NodeRef, <<"aborted">>) when JobId /= null ->
+    pushy_job_state:node_aborted(JobId, NodeRef);
+interpret_node_event(JobId, NodeRef, undefined) ->
+    lager:error("Status message for job ~p and node ~p was missing type field!~n", [JobId, NodeRef]);
+interpret_node_event(JobId, NodeRef, UnknownType) ->
+    lager:error("Status message for job ~p and node ~p had unknown type ~p~n",
+                [JobId, NodeRef, UnknownType]).
 
 get_node_ref(Data) ->
     %% This essentially debug code.
