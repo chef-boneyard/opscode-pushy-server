@@ -32,6 +32,7 @@
 
 %% States
 -export([idle/2,
+         post_init/2,
          running/2,
          rehab/2]).
 
@@ -113,8 +114,9 @@ init([NodeRef, NodeAddr]) ->
         %% true or throw
         true = gproc:reg({n, l, GprocName}),
         true = gproc:reg({n, l, GprocAddr}),
-        State1 = force_abort(State),
-        {ok, state_transition(init, rehab, State1), State1}
+        %% We then move to a post_init state that handles the rest of the setup process 
+        lager:debug("Init completed for ~s", [NodeRef]), %% TODO remove bf commit
+        {ok, post_init, State, 0}
     catch
         error:badarg ->
             %% When we start up from a previous run, we have two ways that the FSM might be started;
@@ -128,12 +130,20 @@ init([NodeRef, NodeAddr]) ->
             {stop, state_transition(init, shutdown, State), State}
     end.
 
+post_init(timeout, State) ->
+    State1 = post_init_body(State),
+    {next_state, state_transition(init, rehab, State1), State1};
+post_init(Message, #state{node_ref=NodeRef}=State) ->
+    lager:debug("~p in in post_rehab. Ignoring message: ~p~n", [NodeRef, Message]),
+    State1 = post_init_body(State),
+    {next_state, state_transition(init, rehab, State1), State1}.
+
 rehab(aborted, #state{state_timer=TRef}=State) ->
     timer:cancel(TRef),
     State1 = State#state{availability=available},
     {next_state, state_transition(rehab, idle, State1), State1};
 rehab(Message, #state{node_ref=NodeRef}=State) ->
-    lager:info("~p in rehab. Ignoring message: ~p~n", [NodeRef, Message]),
+    lager:debug("~p in rehab. Ignoring message: ~p~n", [NodeRef, Message]), %% TODO convert to info
     {next_state, rehab, State}.
 
 idle(do_rehab, State) ->
@@ -173,6 +183,10 @@ handle_sync_event({unwatch, WatcherPid}, _From, StateName, #state{watchers=Watch
 handle_sync_event(current_state, _From, StateName, #state{job=Job}=State) ->
     {reply, {StateName, Job}, StateName, State}.
 
+handle_info(X, post_init, State) ->
+    State1 = post_init_body(State),
+    self() ! X,
+    {next_state, rehab, State1};
 handle_info(heartbeat, CurrentState, State) ->
     case pushy_node_stats:heartbeat(self()) of
         ok -> {next_state, CurrentState, State};
@@ -207,6 +221,8 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 %% Internal functions
 eval_state({idle, undefined}) ->
     {online, {available, none}};
+eval_state({post_init, undefined}) ->
+    {online, {unavailable, none}};
 eval_state({rehab, undefined}) ->
     {online, {unavailable, none}};
 eval_state({running, Job}) ->
@@ -259,6 +275,10 @@ notify_watchers(Watchers, NodeRef, Current, New) ->
     F = fun(Watcher) -> Watcher ! {state_change, NodeRef, Current, New} end,
     [F(Watcher) || {Watcher, _Monitor} <- Watchers].
 
+post_init_body(#state{node_ref=NodeRef}=State) ->
+    lager:debug("Entering post_init_body for ~p", [NodeRef]),
+    State1 = force_abort(State),
+    State1.
 
 %%
 %% Message processing and parsing code; this executes in the caller's context
