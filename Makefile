@@ -54,7 +54,7 @@ $(DEPS):
 	$(REBAR) get-deps
 
 eunit: compile
-	$(REBAR) eunit apps=pushy
+	$(REBAR) eunit skip_deps=true
 
 eunit_app: compile_app
 	$(REBAR) eunit apps=pushy skip_deps=true
