@@ -530,6 +530,23 @@ describe "end-to-end-test" do
     end
   end
 
+  context 'when one client is running a long running job', :focus do
+    before :each do
+      start_new_clients('DONKEY')
+      @long_job = start_job('sleep 5', [ 'DONKEY' ])
+    end
+
+    context 'and the client reconfigures' do
+      before :each do
+        @clients['DONKEY'][:client].reconfigure
+      end
+
+      it 'the job still completes' do
+        job_should_complete('sleep 5', [ 'DONKEY' ], @long_job['uri'])
+      end
+    end
+  end
+
   # This was moved to the bottom because it seems to be adversely affecting other tests
   # TODO Figure out why this breaks other tests and fix it
   context 'when one client is running a long running job' do
