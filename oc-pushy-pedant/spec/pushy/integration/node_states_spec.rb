@@ -299,7 +299,7 @@ describe "Node_States API Endpoint", :node_states do
     end # context 'GET /node_states/<name>'
   end # describe 'access control with pushy_job_readers'
 
-  describe 'access control with pushy_job_readers and nested groups', :focus do
+  describe 'access control with pushy_job_readers and nested groups' do
     # Doing these in reverse for extra fun; this will guarantee it doesn't
     # "accidentally" work if the groups are missing
     let(:member) { normal_user }
@@ -345,6 +345,7 @@ describe "Node_States API Endpoint", :node_states do
 
     after(:all) do
       delete(api_url("/groups/#{readers}"), superuser)
+      delete(api_url("/groups/#{nested_readers}"), superuser)
     end
 
     context 'GET /node_states' do
