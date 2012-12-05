@@ -8,12 +8,11 @@
 
 require 'pushy/spec_helper'
 
-describe "end-to-end-test" do
+describe "end-to-end-test", :focus do
   include_context "end_to_end_util"
 
   before :all do
     if (Pedant::Config.pushy_client_debug)
-      PushyClient::Log.level = :debug
       Chef::Log.level = :debug
     end
   end
@@ -67,9 +66,9 @@ describe "end-to-end-test" do
 
       context 'when the client sends an unexpected message with a valid job_id' do
         before :each do
-          worker = @clients['DONKEY'][:client].worker
+          client = @clients['DONKEY'][:client]
           job_id = @response["uri"].split("/").last
-          worker.send_command(:nack_commit, job_id)
+          client.send_command(:nack_commit, job_id)
         end
 
         it 'aborts the node and we can run another job on the node afterwards successfully' do
@@ -85,8 +84,8 @@ describe "end-to-end-test" do
 
       context 'when the client sends an unexpected message with an invalid job_id' do
         before :each do
-          worker = @clients['DONKEY'][:client].worker
-          worker.send_command(:nack_commit, 'a')
+          client = @clients['DONKEY'][:client]
+          client.send_command(:nack_commit, 'a')
         end
 
         it 'aborts the node and we can run another job on the node afterwards successfully' do
@@ -141,11 +140,8 @@ describe "end-to-end-test" do
 
     context 'that forgets to send the ack_commit message', :slow do
       before :each do
-        class << @clients['DONKEY'][:client].worker
-          alias :old_send_command :send_command
-          def send_command(message, job_id)
-            old_send_command(message, job_id) unless message == :ack_commit
-          end
+        override_send_command('DONKEY') do |real_send_command, message, job_id|
+          real_send_command.call(message, job_id) unless message == :ack_commit
         end
       end
 
@@ -210,9 +206,12 @@ describe "end-to-end-test" do
 
     context 'when the client crashes after reporting "ready" but before running the command' do
       before :each do
-        # Set it up so the client will crash as soon as it changes to "voting"
-        worker = @clients['DONKEY'][:client].worker
-        worker.on_state_change = Proc.new { |job| kill_client('DONKEY') if job.ready? }
+        override_send_command('DONKEY') do |real_send_command, message, job_id|
+          real_send_command.call(message, job_id)
+          if message == :ack_commit
+            kill_client('DONKEY')
+          end
+        end
       end
 
       it 'job marks node as crashed when down is detected' do
@@ -234,8 +233,8 @@ describe "end-to-end-test" do
     context 'when the client crashes after running but before completing the command' do
       before :each do
         # Set it up so the client will crash as soon as it changes to "voting"
-        worker = @clients['DONKEY'][:client].worker
-        worker.on_state_change = Proc.new { |job| kill_client('DONKEY') if job.running? }
+        client = @clients['DONKEY'][:client]
+        client.on_job_state_change { |state| kill_client('DONKEY') if state[:state] == :running }
       end
 
       it 'job marks node as crashed when down is detected' do
