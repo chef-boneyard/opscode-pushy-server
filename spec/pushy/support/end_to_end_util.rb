@@ -37,11 +37,11 @@ shared_context "end_to_end_util" do
       response = post(api_url("/clients"), superuser, :payload => {"name" => name})
       key = parse(response)["private_key"]
 
-      file = Tempfile.new([name, '.pem'])
+      @clients[name][:key_file] = file = Tempfile.new([name, '.pem'])
       key_path = file.path
 
       file.write(key)
-      file.close
+      file.flush
 
       # Create pushy client
       new_client = PushyClient.new(
@@ -130,6 +130,8 @@ shared_context "end_to_end_util" do
     # from a callback (on_job_state_change or send_command) on a client thread
     thread = Thread.new { client.stop }
     thread.join
+
+    @clients[name][:key_file].close
   end
 
   def kill_client(name)
