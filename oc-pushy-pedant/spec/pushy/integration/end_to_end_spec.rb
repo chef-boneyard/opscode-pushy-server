@@ -8,7 +8,7 @@
 
 require 'pushy/spec_helper'
 
-describe "end-to-end-test", :focus do
+describe "end-to-end-test" do
   include_context "end_to_end_util"
 
   before :all do
