@@ -37,7 +37,14 @@ request_pubkey(OrgName, Requestor) ->
 
 parse_json_response(Body) ->
     EJson = jiffy:decode(Body),
-    ej:get({"public_key"}, EJson).
+    {ej:get({"public_key"}, EJson), requestor_type(ej:get({"type"}, EJson))}.
+
+requestor_type(<<"user">>) ->
+    user;
+requestor_type(<<"client">>) ->
+    client;
+requestor_type(_) ->
+    undefined.
 
 api_url(OrgName, Requestor) ->
     Hostname = pushy_util:get_env(erchef, hostname, "localhost", fun is_list/1),
