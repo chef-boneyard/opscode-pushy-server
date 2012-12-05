@@ -360,7 +360,12 @@ send_node_event(State, JobId, NodeRef, heartbeat) ->
     State;
 send_node_event(State, JobId, NodeRef, aborted = Msg) ->
     gen_fsm:send_event(self(), aborted),
-    pushy_job_state:interpret_node_event(JobId, NodeRef, Msg),
+    if
+        JobId /= null ->
+            pushy_job_state:interpret_node_event(JobId, NodeRef, Msg);
+        true ->
+            ok
+    end,
     State;
 send_node_event(State, JobId, NodeRef, Msg) ->
     pushy_job_state:interpret_node_event(JobId, NodeRef, Msg),
