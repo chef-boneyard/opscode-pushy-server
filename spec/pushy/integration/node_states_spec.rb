@@ -8,12 +8,16 @@
 
 require 'pedant/rspec/common'
 
-describe "Node_States API Endpoint", :focus, :node_states do
+describe "Node_States API Endpoint", :node_states do
   let(:node_name) { 'some_node' }
   let(:non_existent_node_name) { 'not_a_number' }
 
   let(:failed_to_authenticate_as_invalid_msg) {
     ["Failed to authenticate as 'invalid'. Ensure that your node_name and client key are correct."] }
+  let(:non_member_authorization_failed_msg) {
+    ["User or client 'pedant_admin_user' does not have access to that action on this server."] }
+  let(:non_member_client_authorization_failed_msg) {
+    ["User or client 'pedant_admin_client' does not have access to that action on this server."] }
   let(:outside_user_not_associated_msg) {
     ["'pedant-nobody' not associated with organization '#{org}'"] }
   let(:cannot_load_nonexistent_msg) { 
@@ -184,16 +188,26 @@ describe "Node_States API Endpoint", :focus, :node_states do
     let(:non_member_client) { platform.admin_client }
 
     let(:readers) { "pushy_job_readers" }
-    let(:readers_group) { {"groupname" => readers} }
 
     before(:all) do
-      post(api_url("/groups/"), admin_user, :payload => readers_group)
+      post(api_url("/groups/"), superuser,
+           :payload => { "groupname" => readers }) do |response|
+        response.should look_like({
+                                    :status => 201
+                                  })
+      end
 
-      # TODO: this is going to fail until we add users to the groups
+      put(api_url("/groups/#{readers}"), superuser,
+          :payload => { "groupname" => readers, "actors" => { "users" => [member.name],
+            "clients" => [member_client.name] } } ) do |response|
+        response.should look_like({
+                                    :status => 200
+                                  })
+      end
     end
 
     after(:all) do
-      delete(api_url("/groups/#{readers}"), admin_user)
+      delete(api_url("/groups/#{readers}"), superuser)
     end
 
     context 'GET /node_states' do
@@ -208,12 +222,16 @@ describe "Node_States API Endpoint", :focus, :node_states do
       it 'returns a 403 ("Forbidden") for non-member' do
         get(api_url("/pushy/node_states/"), non_member) do |response|
           response.should look_like({
-                                      :status => 403
+                                      :status => 403,
+                                      :body_exact => {
+                                        "error" => non_member_authorization_failed_msg
+                                      }
                                     })
         end
       end
 
-      it 'returns a 200 ("OK") for member client' do
+      it 'returns a 200 ("OK") for member client', :pending do
+        # TODO: same authn problem as above
         get(api_url("/pushy/node_states/"), member_client) do |response|
           response.should look_like({
                                       :status => 200
@@ -223,9 +241,13 @@ describe "Node_States API Endpoint", :focus, :node_states do
 
       it 'returns a 403 ("Forbidden") for non-member client' do
         get(api_url("/pushy/node_states/"), non_member_client) do |response|
-          response.should look_like({
-                                      :status => 403
-                                    })
+          response.
+            should look_like({
+                               :status => 403,
+                               :body_exact => {
+                                 "error" => non_member_client_authorization_failed_msg
+                               }
+                             })
         end
       end
     end # context 'GET /node_states'
@@ -244,12 +266,14 @@ describe "Node_States API Endpoint", :focus, :node_states do
         get(api_url("/pushy/node_states/#{node_name}"), non_member) do |response|
           response.should look_like({
                                       :status => 403,
-                                      :body_exact => payload
+                                      :body_exact => {
+                                        "error" => non_member_authorization_failed_msg
+                                      }
                                     })
         end
       end
 
-      it 'returns a 200 ("OK") for member client' do
+      it 'returns a 200 ("OK") for member client', :pending do
         get(api_url("/pushy/node_states/#{node_name}"),
             member_client) do |response|
           response.should look_like({
@@ -260,12 +284,16 @@ describe "Node_States API Endpoint", :focus, :node_states do
       end
 
       it 'returns a 403 ("Forbidden") for non-member client' do
+        puts payload
         get(api_url("/pushy/node_states/#{node_name}"),
             non_member_client) do |response|
-          response.should look_like({
-                                      :status => 403,
-                                      :body_exact => payload
-                                    })
+          response.
+            should look_like({
+                               :status => 403,
+                               :body_exact => {
+                                 "error" => non_member_client_authorization_failed_msg
+                               }
+                             })
         end
       end
     end # context 'GET /node_states/<name>'
