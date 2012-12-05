@@ -93,7 +93,7 @@ aborted(NodeRef) ->
     end.
 
 rehab(NodeRef) ->
-    case cast(NodeRef, rehab) of
+    case cast(NodeRef, do_rehab) of
         ok ->
             ok;
         Error ->
@@ -134,7 +134,7 @@ rehab(Message, #state{node_ref=NodeRef}=State) ->
     lager:info("~p in rehab. Ignoring message: ~p~n", [NodeRef, Message]),
     {next_state, rehab, State}.
 
-idle(rehab, State) ->
+idle(do_rehab, State) ->
     force_abort(State),
     State1 = State#state{availability=unavailable},
     {next_state, state_transition(idle, rehab, State1), State1};
@@ -352,7 +352,7 @@ send_node_event(State, JobId, NodeRef, heartbeat) ->
     lager:debug("Received heartbeat for node ~p with job id ~p", [NodeRef, JobId]),
     case JobId /= null andalso pushy_job_state_sup:get_process(JobId) == not_found of
         true ->
-            gen_fsm:send_event(self(), rehab);
+            gen_fsm:send_event(self(), do_rehab);
         _ ->
             ok
     end,
