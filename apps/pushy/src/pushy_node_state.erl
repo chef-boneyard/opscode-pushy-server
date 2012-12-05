@@ -17,6 +17,8 @@
 -include_lib("pushy_common/include/pushy_metrics.hrl").
 -include_lib("pushy_common/include/pushy_messaging.hrl").
 
+-define(MAX_JOB_ID_LENGTH, 64).
+
 %% API
 -export([start_link/2,
          recv_msg/1,
@@ -93,7 +95,7 @@ aborted(NodeRef) ->
     end.
 
 rehab(NodeRef) ->
-    case cast(NodeRef, rehab) of
+    case cast(NodeRef, do_rehab) of
         ok ->
             ok;
         Error ->
@@ -134,7 +136,7 @@ rehab(Message, #state{node_ref=NodeRef}=State) ->
     lager:info("~p in rehab. Ignoring message: ~p~n", [NodeRef, Message]),
     {next_state, rehab, State}.
 
-idle(rehab, State) ->
+idle(do_rehab, State) ->
     force_abort(State),
     State1 = State#state{availability=unavailable},
     {next_state, state_transition(idle, rehab, State1), State1};
@@ -341,7 +343,7 @@ process_message(#state{node_ref=NodeRef, node_addr=CurAddr} = State, #pushy_mess
     gproc:unreg({n, l, GprocCurAddr}),
     process_message(State#state{node_addr=NewAddr}, Message);
 process_message(#state{node_ref=NodeRef, node_addr=Address} = State, #pushy_message{address=Address, body=Data}) ->
-    JobId = ej:get({<<"job_id">>}, Data),
+    JobId = extract_job_id(Data),
     Type = message_type_to_atom(ej:get({<<"type">>}, Data)),
     lager:debug("Received message for Node ~p Type ~p (address ~p)",
                 [NodeRef, Type, pushy_tools:bin_to_hex(Address)]),
@@ -352,7 +354,7 @@ send_node_event(State, JobId, NodeRef, heartbeat) ->
     lager:debug("Received heartbeat for node ~p with job id ~p", [NodeRef, JobId]),
     case JobId /= null andalso pushy_job_state_sup:get_process(JobId) == not_found of
         true ->
-            gen_fsm:send_event(self(), rehab);
+            gen_fsm:send_event(self(), do_rehab);
         _ ->
             ok
     end,
@@ -407,3 +409,17 @@ message_type_to_atom(<<"nack_run">>) -> nack_run;
 message_type_to_atom(<<"succeeded">>) -> succeeded;
 message_type_to_atom(_) -> unknown.
 
+%%
+%% TODO: This should be revisited when we tackle OC-5328 (handle ill formed packets set to pushy)
+%%
+extract_job_id(Data) ->
+    case ej:get({<<"job_id">>}, Data) of
+        <<"null">> ->
+            null;
+        null ->
+            null;
+        X when is_binary(X) andalso size(X) < ?MAX_JOB_ID_LENGTH ->
+            X;
+        _ ->
+            invalid_job_id
+    end.
