@@ -25,11 +25,16 @@ content_types_provided(Req, State) ->
 
 to_json(Req, State) ->
     Json = {[{<<"status">>, <<"it's alive">>},
+             {<<"node_fsm_count">>, get_node_fsm_count()},
              {<<"job_processes">>, get_job_ids()}]},
 
-    {jiffy:encode(Json), Req, State}. 
+    {jiffy:encode(Json), Req, State}.
 
 %% Private
 
 get_job_ids() ->
     [JobId || {JobId, _} <- pushy_job_state_sup:get_job_processes()].
+
+get_node_fsm_count() ->
+    Nodes = pushy_node_state_sup:get_heartbeating_nodes(),
+    length(Nodes).
