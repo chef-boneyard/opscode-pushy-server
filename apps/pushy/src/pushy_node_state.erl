@@ -114,8 +114,7 @@ init([NodeRef, NodeAddr]) ->
         %% true or throw
         true = gproc:reg({n, l, GprocName}),
         true = gproc:reg({n, l, GprocAddr}),
-        %% We then move to a post_init state that handles the rest of the setup process 
-        lager:debug("Init completed for ~s", [NodeRef]), %% TODO remove bf commit
+        %% We then move to a post_init state that handles the rest of the setup process
         {ok, post_init, State, 0}
     catch
         error:badarg ->
@@ -134,7 +133,7 @@ post_init(timeout, State) ->
     State1 = force_abort(State),
     {next_state, state_transition(init, rehab, State1), State1};
 post_init(Message, #state{node_ref=NodeRef}=State) ->
-    lager:debug("~p in post_init. Ignoring message: ~p~n", [NodeRef, Message]), %% TODO convert to info
+    lager:info("~p in post_init. Ignoring message: ~p~n", [NodeRef, Message]),
     State1 = force_abort(State),
     {next_state, state_transition(init, rehab, State1), State1}.
 
@@ -143,7 +142,7 @@ rehab(aborted, #state{state_timer=TRef}=State) ->
     State1 = State#state{availability=available},
     {next_state, state_transition(rehab, idle, State1), State1};
 rehab(Message, #state{node_ref=NodeRef}=State) ->
-    lager:debug("~p in rehab. Ignoring message: ~p~n", [NodeRef, Message]), %% TODO convert to info
+    lager:info("~p in rehab. Ignoring message: ~p~n", [NodeRef, Message]),
     {next_state, rehab, State}.
 
 idle(do_rehab, State) ->
