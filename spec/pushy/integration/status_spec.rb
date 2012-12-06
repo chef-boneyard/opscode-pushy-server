@@ -10,12 +10,9 @@ describe "pushy status" do
   describe 'access control' do
     context 'GET /_status' do
 
-      # TODO: currently all tests are pending, because the _status endpoint can't
-      # be reached at all with the current combination of pushy and nginx routing
-
       let(:path) { api_url("/_status").gsub(/organizations\/.*\//, '') }
 
-      it 'returns a 200 ("OK") for admin', :pending do
+      it 'returns a 200 ("OK") for admin' do
         puts path
         get(path, admin_user) do |response|
           response.should look_like({
@@ -24,7 +21,7 @@ describe "pushy status" do
         end
       end
 
-      it 'returns a 200 ("OK") for normal user', :pending do
+      it 'returns a 200 ("OK") for normal user' do
         get(path, normal_user) do |response|
           response.should look_like({
                                       :status => 200
@@ -32,15 +29,15 @@ describe "pushy status" do
         end
       end
 
-      it 'returns a 200 ("OK") for client', :pending do
-        get(path, client) do |response|
+      it 'returns a 200 ("OK") for client' do
+        get(path, platform.admin_client) do |response|
           response.should look_like({
                                       :status => 200
                                     })
         end
       end
 
-      it 'returns a 200 ("OK") for invalid user', :pending do
+      it 'returns a 200 ("OK") for invalid user' do
         get(path, invalid_user) do |response|
           response.should look_like({
                                       :status => 200
@@ -48,7 +45,7 @@ describe "pushy status" do
         end
       end
 
-      it 'returns a 200 ("OK") for outside user', :pending do
+      it 'returns a 200 ("OK") for outside user' do
         get(path, outside_user) do |response|
           response.should look_like({
                                       :status => 200
