@@ -1,4 +1,4 @@
-require 'pushy-client'
+require 'pushy_client'
 require 'timeout'
 
 shared_context "end_to_end_util" do
@@ -37,54 +37,40 @@ shared_context "end_to_end_util" do
       response = post(api_url("/clients"), superuser, :payload => {"name" => name})
       key = parse(response)["private_key"]
 
-      file = Tempfile.new([name, '.pem'])
+      @clients[name][:key_file] = file = Tempfile.new([name, '.pem'])
       key_path = file.path
 
       file.write(key)
-      file.close
+      file.flush
 
       # Create pushy client
-      new_client = PushyClient::App.new(
-        :service_url_base        => "#{Pedant.config[:chef_server]}/organizations/#{org}",
-        :client_private_key_path => key_path,
-        :node_name               => name,
-        :org_name                => org
+      new_client = PushyClient.new(
+        :chef_server_url => "#{Pedant.config[:chef_server]}/organizations/#{org}",
+        :client_key      => key_path,
+        :node_name       => name
       )
       @clients[name][:client] = new_client
-
-      @clients[name][:thread] = Thread.new do
-        new_client.start
-      end
-    end
-
-    # Wait until client is registered with the server
-    begin
-      Timeout::timeout(5) do
-        until names.all? { |name| @clients[name][:client].worker }
-          sleep SLEEP_TIME
-        end
-      end
-    rescue Timeout::Error
-      raise "Clients never started: #{names.select { |name| !@clients[name][:client].worker }}"
+      @clients[name][:client].start
     end
 
     names.each do |name|
       client =  @clients[name]
 
       # Register for state changes
-      worker = client[:client].worker
-      client[:states] << worker.job.state
-      worker.on_state_change = Proc.new { |job| client[:states] << job.state }
+      client[:states] << client[:client].job_state
+      client[:client].on_job_state_change { |job_state| client[:states] << job_state }
     end
 
     begin
       Timeout::timeout(5) do
-        until names.all? { |name| @clients[name][:client].worker.monitor.online? }
+        while true
+          offline_nodes = names.select { |name| !@clients[name][:client].online? }
+          break if offline_nodes.size == 0
           sleep SLEEP_TIME
         end
       end
     rescue Timeout::Error
-      raise "Clients never connected to the server: #{names.select { |name| !@clients[name][:client].worker.monitor.online? }}"
+      raise "Clients never connected to the server: #{offline_nodes}"
     end
 
     # Wait for client to come out of rehab
@@ -140,25 +126,16 @@ shared_context "end_to_end_util" do
 
     raise "Client #{name} already stopped" if !client
 
-    client.stop if client.worker
-    @clients[name][:thread].kill
-    @clients[name][:thread].join
+    # Trigger the stop in a different thread, since sometimes we're calling it
+    # from a callback (on_job_state_change or send_command) on a client thread
+    thread = Thread.new { client.stop }
+    thread.join
+
+    @clients[name][:key_file].close
   end
 
   def kill_client(name)
-    client = @clients[name][:client]
-    @clients[name][:client] = nil
-
-    raise "Client #{name} already stopped" if !client
-
-    # Do everything client.stop would do, without notifying anyone
-    if client.worker
-      client.worker.monitor.stop
-      client.worker.timer.cancel
-      client.worker.job.cancel
-    end
-    @clients[name][:thread].kill
-    @clients[name][:thread].join
+    stop_client(name)
   end
 
   def pushy_homedir
@@ -241,15 +218,22 @@ shared_context "end_to_end_util" do
 
   def start_and_wait_for_job(command, node_names, options = {})
     @response = start_job(command, node_names, options)
+    job_id = @response["uri"].split("/").last
     # Wait until all have started
     begin
       Timeout::timeout(5) do
-        until node_names.all? { |name| @clients[name][:states].include?(:ready) }
+        while true
+          uncommitted_nodes = node_names.select do |name|
+            !@clients[name][:states].any? do |state|
+              state[:state] == :committed && state[:job_id] == job_id
+            end
+          end
+          break if uncommitted_nodes.size == 0
           sleep(SLEEP_TIME)
         end
       end
     rescue Timeout::Error
-      raise "Clients never committed to job, or job never started: #{node_names.select { |name| !@clients[name][:states].include?(:ready) }.map { |name| "#{name}: #{@clients[name][:states][-1]}" }}"
+      raise "Clients never committed to job, or job never started: #{uncommitted_nodes.map { |name| "#{name}: #{@clients[name][:states][-1]}" }}"
     end
   end
 
@@ -284,6 +268,13 @@ shared_context "end_to_end_util" do
   def get_rest(uri)
     get(api_url(uri), admin_user) do |response|
       JSON.parse(response)
+    end
+  end
+
+  def override_send_command(node_name, &block)
+    old_send_command = @clients[node_name][:client].method(:send_command)
+    @clients[node_name][:client].define_singleton_method(:send_command) do |message, job_id|
+      block.call(old_send_command, message, job_id)
     end
   end
 end

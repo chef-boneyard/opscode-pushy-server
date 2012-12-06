@@ -1,10 +1,10 @@
 source :rubygems
 
-gem "em-zeromq", "~> 0.3.0"
 gem "chef"
+gem "zmq"
 
-gemspec 
+gemspec
 
-gem 'chef-pedant', :git => "git@github.com:opscode/chef-pedant.git"
-gem 'oc-chef-pedant', :git => "git@github.com:opscode/oc-chef-pedant.git"
-gem 'opscode-pushy-client', :git => "git@github.com:opscode/opscode-pushy-client.git"
+gem 'chef-pedant', :path => '/srv/piab/mounts/chef-pedant'
+gem 'oc-chef-pedant', :path => '/srv/piab/mounts/oc-chef-pedant'
+gem 'opscode-pushy-client', :path => '/srv/piab/mounts/opscode-pushy-client'
