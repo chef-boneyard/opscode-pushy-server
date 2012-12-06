@@ -11,6 +11,8 @@ require 'pushy/spec_helper'
 describe "end-to-end-test" do
   include_context "end_to_end_util"
 
+  let(:status_url) { api_url("/_status").gsub(/organizations\/.*\//, '') }
+
   before :all do
     if (Pedant::Config.pushy_client_debug)
       Chef::Log.level = :debug
@@ -29,6 +31,14 @@ describe "end-to-end-test" do
   context 'with one client' do
     before :each do
       start_new_clients('DONKEY')
+    end
+
+    it 'node count should be 1' do
+      get(status_url, admin_user) do |response|
+        response.should look_like({
+          :node_fsm_count => 1
+        })
+      end
     end
 
     context 'when running a job' do
@@ -56,6 +66,21 @@ describe "end-to-end-test" do
           'nodes' => { 'failed' => [ 'DONKEY' ] },
           'status' => 'complete'
         }
+      end
+    end
+
+    context 'when client shuts down' do
+      before(:each) do
+        stop_client('DONKEY')
+        wait_for_node_status('offline', 'DONKEY')
+      end
+
+      it 'node count should be 0' do
+        get(status_url, admin_user) do |response|
+          response.should look_like({
+            :node_fsm_count => 0
+          })
+        end
       end
     end
 
