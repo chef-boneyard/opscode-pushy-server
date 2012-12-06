@@ -131,11 +131,11 @@ init([NodeRef, NodeAddr]) ->
     end.
 
 post_init(timeout, State) ->
-    State1 = post_init_body(State),
+    State1 = force_abort(State),
     {next_state, state_transition(init, rehab, State1), State1};
 post_init(Message, #state{node_ref=NodeRef}=State) ->
-    lager:debug("~p in in post_rehab. Ignoring message: ~p~n", [NodeRef, Message]),
-    State1 = post_init_body(State),
+    lager:debug("~p in post_init. Ignoring message: ~p~n", [NodeRef, Message]), %% TODO convert to info
+    State1 = force_abort(State),
     {next_state, state_transition(init, rehab, State1), State1}.
 
 rehab(aborted, #state{state_timer=TRef}=State) ->
@@ -147,8 +147,7 @@ rehab(Message, #state{node_ref=NodeRef}=State) ->
     {next_state, rehab, State}.
 
 idle(do_rehab, State) ->
-    force_abort(State),
-    State1 = State#state{availability=unavailable},
+    State1 = force_abort(State),
     {next_state, state_transition(idle, rehab, State1), State1};
 idle({job, Job}, State) ->
     State1 = State#state{job=Job, availability=unavailable},
@@ -156,6 +155,9 @@ idle({job, Job}, State) ->
 idle(aborted, State) ->
     {next_state, idle, State}.
 
+running(do_rehab, State) ->
+    State1 = force_abort(State),
+    {next_state, state_transition(running, rehab, State1), State1};
 running(aborted, #state{node_ref=NodeRef}=State) ->
     lager:info("~p aborted during job.~n", [NodeRef]),
     State1 = State#state{job=undefined, availability=available},
@@ -184,7 +186,7 @@ handle_sync_event(current_state, _From, StateName, #state{job=Job}=State) ->
     {reply, {StateName, Job}, StateName, State}.
 
 handle_info(X, post_init, State) ->
-    State1 = post_init_body(State),
+    State1 = force_abort(State),
     self() ! X,
     {next_state, rehab, State1};
 handle_info(heartbeat, CurrentState, State) ->
@@ -274,11 +276,6 @@ notify_watchers([], _NodeRef, _Current, _New) ->
 notify_watchers(Watchers, NodeRef, Current, New) ->
     F = fun(Watcher) -> Watcher ! {state_change, NodeRef, Current, New} end,
     [F(Watcher) || {Watcher, _Monitor} <- Watchers].
-
-post_init_body(#state{node_ref=NodeRef}=State) ->
-    lager:debug("Entering post_init_body for ~p", [NodeRef]),
-    State1 = force_abort(State),
-    State1.
 
 %%
 %% Message processing and parsing code; this executes in the caller's context
