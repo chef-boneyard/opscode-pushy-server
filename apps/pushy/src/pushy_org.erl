@@ -22,7 +22,7 @@ fetch_org_id(OrgName) ->
     Path = path(OrgName),
     case pushy_http_common:fetch_authenticated(Path) of
         not_found ->
-            non_found;
+            not_found;
         ResponseBody ->
             parse_json_response(ResponseBody)
     end.
