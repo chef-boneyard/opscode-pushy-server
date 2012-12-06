@@ -101,6 +101,17 @@ describe "end-to-end-test" do
 
     end
 
+    context 'which sends aborted with a nonexistent job id' do
+      before(:each) do
+        @clients['DONKEY'][:client].should_not_receive(:abort)
+        @clients['DONKEY'][:client].send_command(:aborted, 'a')
+      end
+
+      it 'does not go into rehab (receives no abort)' do
+        sleep(1)
+      end
+    end
+
     context 'when running a job that completes before its timeout' do
       before(:each) do
         File.delete('/tmp/pushytest') if File.exist?('/tmp/pushytest')
@@ -530,7 +541,7 @@ describe "end-to-end-test" do
     end
   end
 
-  context 'when one client is running a long running job', :focus do
+  context 'when one client is running a long running job' do
     before :each do
       start_new_clients('DONKEY')
       @long_job = start_job('sleep 5', [ 'DONKEY' ])
