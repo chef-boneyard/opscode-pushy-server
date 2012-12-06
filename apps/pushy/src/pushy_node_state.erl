@@ -443,7 +443,7 @@ extract_job_id(Data) ->
             null;
         null ->
             null;
-        X when is_binary(X) andalso size(X) < ?MAX_JOB_ID_LENGTH ->
+        X when size(X) =< ?MAX_JOB_ID_LENGTH ->
             X;
         _ ->
             invalid_job_id
