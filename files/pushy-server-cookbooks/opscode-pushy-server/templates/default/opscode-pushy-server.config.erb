@@ -22,7 +22,8 @@
             %% and the rotation time to "", or instead specify a 2-tuple that only
             %% consists of {Logfile, Level}.
             {handlers, [
-                {lager_console_backend, [info, {lager_default_formatter, [time," [",severity,"] ", pid, " ",  message, "\n"]}]},
+                {lager_console_backend, [info, {lager_default_formatter,
+                                                [time," [",severity,"] (", module, ":", line, ") ", pid, " ",  message, "\n"]}]},
                 {lager_file_backend, [
                     {"<%= File.join(@log_directory, 'error.log') %>", error, 10485760, "$D0", 5},
                     {"<%= File.join(@log_directory, 'console.log') %>", info, 10485760, "$D0", 5}
@@ -76,7 +77,6 @@
  {pushy, [
           {server_name, "<%= node['fqdn'] %>" },
           {heartbeat_interval, <%= @heartbeat_interval %> },
-          {dead_interval, <%= @dead_interval %> },
           {zeromq_listen_address, "<%= @zeromq_listen_address %>" },
           {server_heartbeat_port, <%= @server_heartbeat_port %> },
           {command_port, <%= @command_port %> },
@@ -95,7 +95,7 @@
          ]},
          {pushy_common,[
                         {metrics_module, folsom_metrics},
-                        {enable_graphite, false}
+                        {enable_graphite, <%= @enable_graphite %> }
                        ]},
  {folsom_graphite,[ {application, "pushy"}]},
    {chef_authn,  [{keyring_dir, "<%= @keyring_dir %>"},
