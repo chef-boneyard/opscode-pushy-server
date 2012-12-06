@@ -8,7 +8,7 @@
 
 require 'pedant/rspec/common'
 
-describe "Jobs API Endpoint", :focus, :jobs do
+describe "Jobs API Endpoint", :jobs do
   # TODO: un-hard-code this:
   let(:node_name) { 'DONKEY' }
   let(:nodes) { %w{DONKEY} }
