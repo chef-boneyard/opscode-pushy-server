@@ -530,7 +530,7 @@ describe "end-to-end-test" do
     end
   end
 
-  context 'when one client is running a long running job', :focus do
+  context 'when one client is running a long running job' do
     before :each do
       start_new_clients('DONKEY')
       @long_job = start_job('sleep 5', [ 'DONKEY' ])
