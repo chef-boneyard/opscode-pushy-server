@@ -10,6 +10,7 @@
 -export([init/1,
          allowed_methods/2,
          content_types_provided/2,
+         forbidden/2,
          is_authorized/2,
          malformed_request/2,
          resource_exists/2,
@@ -35,6 +36,9 @@ malformed_request(Req, State) ->
 
 is_authorized(Req, State) ->
     pushy_wm_base:is_authorized(Req, State).
+
+forbidden(Req, State) ->
+    pushy_wm_base:read_forbidden(Req, State).
 
 allowed_methods(Req, State) ->
     {['GET'], Req, State}.
