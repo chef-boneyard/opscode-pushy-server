@@ -29,7 +29,8 @@ request_pubkey(OrgName, Requestor) ->
     Url = api_url(OrgName, Requestor),
     case ibrowse:send_req(Url, Headers, get) of
         {ok, Code, ResponseHeaders, ResponseBody} ->
-            ok = check_http_response(Code, ResponseHeaders, ResponseBody),
+            ok = pushy_http_common:check_http_response(Code, ResponseHeaders,
+                                                       ResponseBody),
             parse_json_response(ResponseBody);
         {error, Reason} ->
             throw({error, Reason})
@@ -51,19 +52,3 @@ api_url(OrgName, Requestor) ->
     Port = pushy_util:get_env(erchef, port, 8000, fun is_integer/1),
     lists:flatten(io_lib:format("http://~s:~w/organizations/~s/principals/~s",
                                 [Hostname, Port, OrgName, Requestor])).
-
-check_http_response(Code, Headers, Body) ->
-    case Code of
-        "200" ->
-            ok;
-        "2" ++ _Digits ->
-            throw({error, {unexpected, {Code, Headers, Body}}});
-        "3" ++ _Digits ->
-            throw({error, {redirection, {Code, Headers, Body}}});
-        "404" ->
-            throw({error, {not_found, {Code, Headers, Body}}});
-        "4" ++ _Digits ->
-            throw({error, {client_error, {Code, Headers, Body}}});
-        "5" ++ _Digits ->
-            throw({error, {server_error, {Code, Headers, Body}}})
-    end.
