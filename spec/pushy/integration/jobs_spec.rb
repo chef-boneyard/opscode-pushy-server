@@ -8,7 +8,7 @@
 
 require 'pedant/rspec/common'
 
-describe "Jobs API Endpoint", :jobs do
+describe "Jobs API Endpoint", :focus, :jobs do
   # TODO: un-hard-code this:
   let(:node_name) { 'DONKEY' }
   let(:nodes) { %w{DONKEY} }
@@ -35,14 +35,13 @@ describe "Jobs API Endpoint", :jobs do
     ["'pedant-nobody' not associated with organization '#{org}'"] }
 
   describe 'access control with no pushy_job groups' do
-    let(:job_name) {
+    let(:job_path) {
       # This is evaluated at runtime, so there's always a (short-lived) job to
       # detect during the test
 
-      post(api_url("/pushy/jobs"), admin_user, :payload => payload)
-      get(api_url("/pushy/jobs"), admin_user) do |response|
+      post(api_url("/pushy/jobs"), admin_user, :payload => payload) do |response|
         list = JSON.parse(response.body)
-        list[0]["id"]
+        list["uri"]
       end
     }
 
@@ -173,7 +172,7 @@ describe "Jobs API Endpoint", :jobs do
 
     context 'GET /jobs/<name>' do
       it 'returns a 200 ("OK") for admin' do
-        get(api_url("/pushy/jobs/#{job_name}"), admin_user) do |response|
+        get(job_path, admin_user) do |response|
           response.should look_like({
                                       :status => 200
                                     })
@@ -181,7 +180,7 @@ describe "Jobs API Endpoint", :jobs do
       end
 
       it 'returns a 200 ("OK") for normal user' do
-        get(api_url("/pushy/jobs/#{job_name}"), normal_user) do |response|
+        get(job_path, normal_user) do |response|
           response.should look_like({
                                       :status => 200
                                     })
@@ -189,7 +188,7 @@ describe "Jobs API Endpoint", :jobs do
       end
 
       it 'returns a 200 ("OK") for admin client' do
-        get(api_url("/pushy/jobs/#{job_name}"), platform.admin_client) do |response|
+        get(job_path, platform.admin_client) do |response|
           response.should look_like({
                                       :status => 200
                                     })
@@ -197,7 +196,7 @@ describe "Jobs API Endpoint", :jobs do
       end
 
       it 'returns a 200 ("OK") for non-admin client', :pending do
-        get(api_url("/pushy/jobs/#{job_name}"), platform.non_admin_client) do |response|
+        get(job_path, platform.non_admin_client) do |response|
           response.should look_like({
                                       :status => 200
                                     })
@@ -205,7 +204,7 @@ describe "Jobs API Endpoint", :jobs do
       end
 
       it 'returns a 401 ("Unauthorized") for invalid user' do
-        get(api_url("/pushy/jobs/#{job_name}"),
+        get(job_path,
             invalid_user) do |response|
           response.should look_like({
                                       :status => 401,
@@ -217,7 +216,7 @@ describe "Jobs API Endpoint", :jobs do
       end
 
       it 'returns a 403 ("Forbidden") for outside user', :pending do
-        get(api_url("/pushy/jobs/#{job_name}"),
+        get(job_path,
             outside_user) do |response|
           response.should look_like({
                                       :status => 403,
@@ -256,14 +255,13 @@ describe "Jobs API Endpoint", :jobs do
     let(:member_client) { platform.non_admin_client }
     let(:non_member_client) { platform.admin_client }
 
-    let(:job_name) {
+    let(:job_path) {
       # This is evaluated at runtime, so there's always a (short-lived) job to
       # detect during the test
 
-      post(api_url("/pushy/jobs"), member, :payload => payload)
-      get(api_url("/pushy/jobs"), member) do |response|
+      post(api_url("/pushy/jobs"), member, :payload => payload) do |response|
         list = JSON.parse(response.body)
-        list[0]["id"]
+        list["uri"]
       end
     }
 
@@ -393,7 +391,7 @@ describe "Jobs API Endpoint", :jobs do
 
     context 'GET /jobs/<name> with pushy_job_readers' do
       it 'returns a 200 ("OK") for member' do
-        get(api_url("/pushy/jobs/#{job_name}"), member) do |response|
+        get(job_path, member) do |response|
           response.should look_like({
                                       :status => 200
                                     })
@@ -401,7 +399,7 @@ describe "Jobs API Endpoint", :jobs do
       end
 
       it 'returns a 403 ("OK") for non-member' do
-        get(api_url("/pushy/jobs/#{job_name}"), non_member) do |response|
+        get(job_path, non_member) do |response|
           response.should look_like({
                                       :status => 403,
                                       :body_exact => {
@@ -412,7 +410,7 @@ describe "Jobs API Endpoint", :jobs do
       end
 
       it 'returns a 200 ("OK") for member client', :pending do
-        get(api_url("/pushy/jobs/#{job_name}"), member_client) do |response|
+        get(job_path, member_client) do |response|
           response.should look_like({
                                       :status => 200
                                     })
@@ -420,7 +418,7 @@ describe "Jobs API Endpoint", :jobs do
       end
 
       it 'returns a 403 ("OK") for non-member client' do
-        get(api_url("/pushy/jobs/#{job_name}"), non_member_client) do |response|
+        get(job_path, non_member_client) do |response|
           response.
             should look_like({
                                :status => 403,
@@ -441,14 +439,13 @@ describe "Jobs API Endpoint", :jobs do
     let(:member_client) { platform.non_admin_client }
     let(:non_member_client) { platform.admin_client }
 
-    let(:job_name) {
+    let(:job_path) {
       # This is evaluated at runtime, so there's always a (short-lived) job to
       # detect during the test
 
-      post(api_url("/pushy/jobs"), member, :payload => payload)
-      get(api_url("/pushy/jobs"), member) do |response|
+      post(api_url("/pushy/jobs"), member, :payload => payload) do |response|
         list = JSON.parse(response.body)
-        list[0]["id"]
+        list["uri"]
       end
     }
 
@@ -614,7 +611,7 @@ describe "Jobs API Endpoint", :jobs do
 
     context 'GET /jobs/<name> with nested pushy_job_readers' do
       it 'returns a 200 ("OK") for member' do
-        get(api_url("/pushy/jobs/#{job_name}"), member) do |response|
+        get(job_path, member) do |response|
           response.should look_like({
                                       :status => 200
                                     })
@@ -622,7 +619,7 @@ describe "Jobs API Endpoint", :jobs do
       end
 
       it 'returns a 403 ("OK") for non-member' do
-        get(api_url("/pushy/jobs/#{job_name}"), non_member) do |response|
+        get(job_path, non_member) do |response|
           response.should look_like({
                                       :status => 403,
                                       :body_exact => {
@@ -633,7 +630,7 @@ describe "Jobs API Endpoint", :jobs do
       end
 
       it 'returns a 200 ("OK") for member client', :pending do
-        get(api_url("/pushy/jobs/#{job_name}"), member_client) do |response|
+        get(job_path, member_client) do |response|
           response.should look_like({
                                       :status => 200
                                     })
@@ -641,7 +638,7 @@ describe "Jobs API Endpoint", :jobs do
       end
 
       it 'returns a 403 ("OK") for non-member client' do
-        get(api_url("/pushy/jobs/#{job_name}"), non_member_client) do |response|
+        get(job_path, non_member_client) do |response|
           response.
             should look_like({
                                :status => 403,
