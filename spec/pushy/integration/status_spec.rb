@@ -16,7 +16,6 @@ describe "pushy status" do
       let(:path) { api_url("/_status").gsub(/organizations\/.*\//, '') }
 
       it 'returns a 200 ("OK") for admin', :pending do
-        puts path
         get(path, admin_user) do |response|
           response.should look_like({
                                       :status => 200
