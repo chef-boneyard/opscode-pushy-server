@@ -5,10 +5,14 @@
 
 -module(pushy_wm_base).
 
--export([is_authorized/2,
+-export([init/1,
+         is_authorized/2,
          malformed_request/2]).
 
 -include("pushy_wm.hrl").
+
+init([{incarnation_id, IncarnationId}]) ->
+    {ok, #config_state{incarnation_id = IncarnationId}}.
 
 malformed_request(Req, State) ->
     GetHeader = get_header_fun(Req),
