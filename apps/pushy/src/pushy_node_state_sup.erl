@@ -13,6 +13,7 @@
 -export([start_link/0,
          get_or_create_process/2,
          get_process/1,
+         get_heartbeating_nodes/0,
          get_heartbeating_nodes/1,
          mk_gproc_name/1,
          mk_gproc_addr/1]).
@@ -61,15 +62,13 @@ get_process_int(GprocName) ->
         Pid -> Pid
     end.
 
-get_heartbeating_nodes(OrgId) ->
-    GProcName = {heartbeat, OrgId, '_'},
-    GProcKey = {n, l, GProcName},
-    Pid = '_',
-    Value = '_',
-    MatchSpec = [{{GProcKey, Pid, Value}, [], ['$$']}],
+-spec get_heartbeating_nodes() -> list().
+get_heartbeating_nodes() ->
+    do_get_heartbeating_nodes({heartbeat, '_', '_'}).
 
-    Nodes = gproc:select(MatchSpec),
-    [{{Org, NodeName}, Val} || [{_,_,{_, Org, NodeName}},_,Val] <- Nodes].
+-spec get_heartbeating_nodes(binary()) -> list().
+get_heartbeating_nodes(OrgId) when is_binary(OrgId) ->
+    do_get_heartbeating_nodes({heartbeat, OrgId, '_'}).
 
 -spec mk_gproc_name(node_ref()) -> {'heartbeat', org_id(), node_name()}.
 mk_gproc_name({OrgId, NodeName}) when is_binary(OrgId) andalso is_binary(NodeName) ->
@@ -91,4 +90,13 @@ init([]) ->
 %% ------------------------------------------------------------------
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
+
+do_get_heartbeating_nodes(GProcName) ->
+    GProcKey = {n, l, GProcName},
+    Pid = '_',
+    Value = '_',
+    MatchSpec = [{{GProcKey, Pid, Value}, [], ['$$']}],
+
+    Nodes = gproc:select(MatchSpec),
+    [{{Org, NodeName}, Val} || [{_,_,{_, Org, NodeName}},_,Val] <- Nodes].
 
