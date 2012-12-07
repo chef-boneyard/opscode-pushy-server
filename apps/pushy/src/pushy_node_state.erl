@@ -370,7 +370,10 @@ send_node_event(State, JobId, NodeRef, aborted = Msg) ->
     end,
     State;
 send_node_event(State, JobId, NodeRef, Msg) ->
-    pushy_job_state:interpret_node_event(JobId, NodeRef, Msg),
+    case pushy_job_state:interpret_node_event(JobId, NodeRef, Msg) of
+        not_found -> gen_fsm:send_event(self(), do_rehab);
+        _ -> ok
+    end,
     State.
 
 get_node_ref(Data) ->
