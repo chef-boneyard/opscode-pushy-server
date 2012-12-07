@@ -19,29 +19,13 @@
 %%
 -spec fetch_org_id(OrgName :: string()) -> binary() | not_found.
 fetch_org_id(OrgName) ->
-    {ok, Key} = chef_keyring:get_key(pivotal),
     Path = path(OrgName),
-    Headers =  chef_authn:sign_request(Key, <<"">>, "pivotal",
-                                       <<"GET">>, now,
-                                       list_to_binary(Path)),
-    FullHeaders = [{"Accept", "application/json"}|Headers],
-    fetch_org_id(OrgName, FullHeaders).
-
-fetch_org_id(OrgName, Headers) ->
-    Url = url(OrgName),
-    case ibrowse:send_req(Url, Headers, get) of
-        {ok, "404", _ResponseHeaders, _ResponseBody} ->
+    case pushy_http_common:fetch_authenticated(Path) of
+        not_found ->
             not_found;
-        {ok, Code, ResponseHeaders, ResponseBody} ->
-            ok = check_http_response(Code, ResponseHeaders, ResponseBody),
-            parse_json_response(ResponseBody);
-        {error, Reason} ->
-            throw({error, Reason})
+        ResponseBody ->
+            parse_json_response(ResponseBody)
     end.
-
-url(OrgName) ->
-    {ok, ErchefHost} = application:get_env(pushy, erchef_root_url),
-    ErchefHost ++ path(OrgName).
 
 path(OrgName) ->
     "/organizations/" ++ OrgName.
@@ -60,20 +44,3 @@ parse_json_response(Body) ->
         throw:{error, _} ->
             throw({error, invalid_json})
     end.
-
-
-
-%% @doc Check the code of the HTTP response and throw error if non-2XX
-%%
-check_http_response(Code, Headers, Body) ->
-    case Code of
-        "2" ++ _Digits ->
-            ok;
-        "3" ++ _Digits ->
-            throw({error, {redirection, {Code, Headers, Body}}});
-        "4" ++ _Digits ->
-            throw({error, {client_error, {Code, Headers, Body}}});
-        "5" ++ _Digits ->
-            throw({error, {server_error, {Code, Headers, Body}}})
-    end.
-

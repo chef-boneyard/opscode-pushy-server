@@ -11,12 +11,13 @@
          allowed_methods/2,
          content_types_accepted/2,
          content_types_provided/2,
+         create_path/2,
+         forbidden/2,
+         from_json/2,
          is_authorized/2,
          malformed_request/2,
-         from_json/2,
-         to_json/2,
          post_is_create/2,
-         create_path/2]).
+         to_json/2]).
 
 -include("pushy_sql.hrl").
 -include("pushy_wm.hrl").
@@ -37,6 +38,13 @@ malformed_request(Req, State) ->
 
 is_authorized(Req, State) ->
     pushy_wm_base:is_authorized(Req, State).
+
+forbidden(Req, State) ->
+    forbidden(wrq:method(Req), Req, State).
+forbidden('POST', Req, State) ->
+    pushy_wm_base:write_forbidden(Req, State);
+forbidden('GET', Req, State) ->
+    pushy_wm_base:read_forbidden(Req, State).
 
 allowed_methods(Req, State) ->
     {['POST', 'GET'], Req, State}.

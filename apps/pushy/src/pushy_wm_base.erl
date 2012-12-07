@@ -7,7 +7,9 @@
 
 -export([init/1,
          is_authorized/2,
-         malformed_request/2]).
+         malformed_request/2,
+         read_forbidden/2,
+         write_forbidden/2]).
 
 -include("pushy_wm.hrl").
 
@@ -138,7 +140,7 @@ verify_request_signature(Req, State) ->
             NotFoundMsg = verify_request_message({not_found, What},
                                                  UserName, OrgName),
             {false, wrq:set_resp_body(jiffy:encode(NotFoundMsg), Req), State1};
-        PublicKey ->
+        {PublicKey, Type} ->
             Body = body_or_default(Req, <<>>),
             HTTPMethod = method_as_binary(Req),
             Path = iolist_to_binary(wrq:path(Req)),
@@ -147,7 +149,8 @@ verify_request_signature(Req, State) ->
                                                       Path, Body, PublicKey,
                                                       ?AUTH_SKEW) of
                 {name, _} ->
-                    {true, Req, State1};
+                    {true, Req, State1#config_state{requestor_id = UserName,
+                                                    requestor_type = Type}};
                 {no_authn, Reason} ->
                     Msg = verify_request_message(Reason, UserName, OrgName),
                     Json = jiffy:encode(Msg),
@@ -167,6 +170,32 @@ body_or_default(Req, Default) ->
 
 method_as_binary(Req) ->
     iolist_to_binary(atom_to_list(wrq:method(Req))).
+
+write_forbidden(Req, State) ->
+    case forbidden(Req, State, "pushy_job_writers", not_found) of
+        {not_found, Req1, State1} ->
+            forbidden(Req1, State1, "admins", true);
+        Result ->
+            Result
+    end.
+
+read_forbidden(Req, State) ->
+    forbidden(Req, State, "pushy_job_readers", false).
+
+forbidden(Req, #config_state{requestor_id = UserName, requestor_type = Type,
+                             organization_name = OrgName} = State, Group, NotFound) ->
+    case pushy_check_groups:group_membership(UserName, Type, binary_to_list(OrgName),
+                                             Group) of
+        group_not_found ->
+            {NotFound, Req, State};
+        true ->
+            {false, Req, State};
+        _ ->
+            Msg = iolist_to_binary([<<"User or client '">>, UserName, <<"' does not ">>,
+                                    <<"have access to that action on this server.">>]),
+            Req1 = wrq:set_resp_body(jiffy:encode({[{<<"error">>, [Msg]}]}), Req),
+            {true, Req1, State}
+    end.
 
 verify_request_message({not_found, org}, _User, Org) ->
     Msg = iolist_to_binary([<<"organization '">>, Org, <<"' does not exist.">>]),
