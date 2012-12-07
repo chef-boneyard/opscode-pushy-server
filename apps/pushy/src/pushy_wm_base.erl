@@ -170,7 +170,7 @@ method_as_binary(Req) ->
 write_forbidden(Req, State) ->
     case forbidden(Req, State, "pushy_job_writers", not_found) of
         {not_found, Req1, State1} ->
-            forbidden(Req1, State1, "admins", false);
+            forbidden(Req1, State1, "admins", true);
         Result ->
             Result
     end.
