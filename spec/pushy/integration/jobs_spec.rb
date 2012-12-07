@@ -13,9 +13,9 @@ describe "Jobs API Endpoint", :focus, :jobs do
   let(:node_name) { 'DONKEY' }
   let(:nodes) { %w{DONKEY} }
 
-  let(:payload) {
+  let(:job_to_run) {
     {
-      'command' => 'sleep 2',
+      'command' => 'sleep 1',
       'nodes' => nodes
     }
   }
@@ -39,7 +39,7 @@ describe "Jobs API Endpoint", :focus, :jobs do
       # This is evaluated at runtime, so there's always a (short-lived) job to
       # detect during the test
 
-      post(api_url("/pushy/jobs"), admin_user, :payload => payload) do |response|
+      post(api_url("/pushy/jobs"), admin_user, :payload => job_to_run) do |response|
         list = JSON.parse(response.body)
         list["uri"]
       end
@@ -106,7 +106,7 @@ describe "Jobs API Endpoint", :focus, :jobs do
 
     context 'POST /jobs' do
       it 'returns a 200 ("OK") for admin' do
-        post(api_url("/pushy/jobs/"), admin_user, :payload => payload) do |response|
+        post(api_url("/pushy/jobs/"), admin_user, :payload => job_to_run) do |response|
           response.should look_like({
                                       :status => 201
                                     })
@@ -114,7 +114,7 @@ describe "Jobs API Endpoint", :focus, :jobs do
       end
 
       it 'returns a 403 ("Forbidden") for normal user' do
-        post(api_url("/pushy/jobs/"), normal_user, :payload => payload) do |response|
+        post(api_url("/pushy/jobs/"), normal_user, :payload => job_to_run) do |response|
           response.should look_like({
                                       :status => 403,
                                       :body_exact => {
@@ -126,7 +126,7 @@ describe "Jobs API Endpoint", :focus, :jobs do
 
       it 'returns a 200 ("OK") for admin client', :pending do
         post(api_url("/pushy/jobs/"), platform.admin_client,
-             :payload => payload) do |response|
+             :payload => job_to_run) do |response|
           response.should look_like({
                                       :status => 201
                                     })
@@ -135,7 +135,7 @@ describe "Jobs API Endpoint", :focus, :jobs do
 
       it 'returns a 403 ("Forbidden") for non-admin client', :pending do
         post(api_url("/pushy/jobs/"), platform.non_admin_client,
-             :payload => payload) do |response|
+             :payload => job_to_run) do |response|
           response.
             should look_like({
                                :status => 403,
@@ -147,7 +147,7 @@ describe "Jobs API Endpoint", :focus, :jobs do
       end
 
       it 'returns a 401 ("Unauthorized") for invalid user' do
-        post(api_url("/pushy/jobs"), invalid_user, :payload => payload) do |response|
+        post(api_url("/pushy/jobs"), invalid_user, :payload => job_to_run) do |response|
           response.
             should look_like({
                                :status => 401,
@@ -159,7 +159,7 @@ describe "Jobs API Endpoint", :focus, :jobs do
       end
 
       it 'returns a 403 ("Forbidden") for outside user', :pending do
-        post(api_url("/pushy/jobs"), outside_user, :payload => payload) do |response|
+        post(api_url("/pushy/jobs"), outside_user, :payload => job_to_run) do |response|
           response.should look_like({
                                       :status => 403,
                                       :body_exact => {
@@ -259,7 +259,7 @@ describe "Jobs API Endpoint", :focus, :jobs do
       # This is evaluated at runtime, so there's always a (short-lived) job to
       # detect during the test
 
-      post(api_url("/pushy/jobs"), member, :payload => payload) do |response|
+      post(api_url("/pushy/jobs"), member, :payload => job_to_run) do |response|
         list = JSON.parse(response.body)
         list["uri"]
       end
@@ -348,7 +348,7 @@ describe "Jobs API Endpoint", :focus, :jobs do
 
     context 'POST /jobs with pushy_job_writers' do
       it 'returns a 200 ("OK") for member' do
-        post(api_url("/pushy/jobs/"), member, :payload => payload) do |response|
+        post(api_url("/pushy/jobs/"), member, :payload => job_to_run) do |response|
           response.should look_like({
                                       :status => 201
                                     })
@@ -356,7 +356,7 @@ describe "Jobs API Endpoint", :focus, :jobs do
       end
 
       it 'returns a 403 ("Forbidden") for non-member' do
-        post(api_url("/pushy/jobs/"), non_member, :payload => payload) do |response|
+        post(api_url("/pushy/jobs/"), non_member, :payload => job_to_run) do |response|
           response.should look_like({
                                       :status => 403,
                                       :body_exact => {
@@ -368,7 +368,7 @@ describe "Jobs API Endpoint", :focus, :jobs do
 
       it 'returns a 200 ("OK") for member client', :pending do
         post(api_url("/pushy/jobs/"), member_client,
-             :payload => payload) do |response|
+             :payload => job_to_run) do |response|
           response.should look_like({
                                       :status => 201
                                     })
@@ -377,7 +377,7 @@ describe "Jobs API Endpoint", :focus, :jobs do
 
       it 'returns a 403 ("Forbidden") for non-member client' do
         post(api_url("/pushy/jobs/"), non_member_client,
-             :payload => payload) do |response|
+             :payload => job_to_run) do |response|
           response.
             should look_like({
                                :status => 403,
@@ -443,7 +443,7 @@ describe "Jobs API Endpoint", :focus, :jobs do
       # This is evaluated at runtime, so there's always a (short-lived) job to
       # detect during the test
 
-      post(api_url("/pushy/jobs"), member, :payload => payload) do |response|
+      post(api_url("/pushy/jobs"), member, :payload => job_to_run) do |response|
         list = JSON.parse(response.body)
         list["uri"]
       end
@@ -568,7 +568,7 @@ describe "Jobs API Endpoint", :focus, :jobs do
 
     context 'POST /jobs with nested pushy_job_writers' do
       it 'returns a 200 ("OK") for member' do
-        post(api_url("/pushy/jobs/"), member, :payload => payload) do |response|
+        post(api_url("/pushy/jobs/"), member, :payload => job_to_run) do |response|
           response.should look_like({
                                       :status => 201
                                     })
@@ -576,7 +576,7 @@ describe "Jobs API Endpoint", :focus, :jobs do
       end
 
       it 'returns a 403 ("Forbidden") for non-member' do
-        post(api_url("/pushy/jobs/"), non_member, :payload => payload) do |response|
+        post(api_url("/pushy/jobs/"), non_member, :payload => job_to_run) do |response|
           response.should look_like({
                                       :status => 403,
                                       :body_exact => {
@@ -588,7 +588,7 @@ describe "Jobs API Endpoint", :focus, :jobs do
 
       it 'returns a 200 ("OK") for member client', :pending do
         post(api_url("/pushy/jobs/"), member_client,
-             :payload => payload) do |response|
+             :payload => job_to_run) do |response|
           response.should look_like({
                                       :status => 201
                                     })
@@ -597,7 +597,7 @@ describe "Jobs API Endpoint", :focus, :jobs do
 
       it 'returns a 403 ("Forbidden") for non-member client' do
         post(api_url("/pushy/jobs/"), non_member_client,
-             :payload => payload) do |response|
+             :payload => job_to_run) do |response|
           response.
             should look_like({
                                :status => 403,
