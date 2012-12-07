@@ -184,12 +184,12 @@ handle_sync_event({unwatch, WatcherPid}, _From, StateName, #state{watchers=Watch
 handle_sync_event(current_state, _From, StateName, #state{job=Job}=State) ->
     {reply, {StateName, Job}, StateName, State}.
 
-handle_info(X, post_init, State) ->
+handle_info(Msg, post_init, State) ->
     %% Startup of a node_fsm creates the FSM and immediately in the same process sends a
     %% message. The node FSM never gets the chance to timeout in post_init, since by the time the do loop runs
     %% there's a message waiting. So we do the post_init work here, and resend the message to our selves.
     State1 = force_abort(State),
-    self() ! X,
+    send_info(self(), Msg),
     {next_state, rehab, State1};
 handle_info(heartbeat, CurrentState, State) ->
     case pushy_node_stats:heartbeat(self()) of
@@ -251,6 +251,8 @@ cast(NodeRef, Message) ->
             Error
     end.
 
+send_info(NodePid, Message) when is_pid(NodePid) ->
+    NodePid ! Message;
 send_info(NodeRef, Message) ->
     case pushy_node_state_sup:get_process(NodeRef) of
         Pid when is_pid(Pid) ->
@@ -318,7 +320,7 @@ dispatch_raw_message([Addr, _Header, Body] = Message) ->
                   lager:info("No addr ~s for msg: ~p~n", [pushy_tools:bin_to_hex(Addr), NodeRef]),
                   pushy_node_state_sup:get_or_create_process(NodeRef, Addr)
           end,
-    Pid ! {raw_message, Message }.
+    send_info(Pid, {raw_message, Message}).
 
 %%
 %% This occurs in the fsm context
@@ -377,7 +379,7 @@ send_node_event(State, JobId, NodeRef, heartbeat) ->
         _ ->
             ok
     end,
-    self() ! heartbeat,
+    send_info(self(), heartbeat),
     State;
 send_node_event(State, JobId, NodeRef, aborted = Msg) ->
     gen_fsm:send_event(self(), aborted),
