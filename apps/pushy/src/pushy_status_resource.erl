@@ -14,8 +14,10 @@
 
 -include_lib("webmachine/include/webmachine.hrl").
 
-init(_Any) ->
-    {ok, <<"{}">>}.
+-include("pushy_wm.hrl").
+
+init(Config) ->
+    pushy_wm_base:init(Config).
 
 allowed_methods(Req, State) ->
     {['GET'], Req, State}.
@@ -23,8 +25,9 @@ allowed_methods(Req, State) ->
 content_types_provided(Req, State) ->
     {[{"application/json", to_json}], Req, State}.
 
-to_json(Req, State) ->
+to_json(Req, #config_state{incarnation_id = IncarnationId} = State) ->
     Json = {[{<<"status">>, <<"it's alive">>},
+             {<<"incarnation_id">>, IncarnationId},
              {<<"node_fsm_count">>, get_node_fsm_count()},
              {<<"job_processes">>, get_job_ids()}]},
 

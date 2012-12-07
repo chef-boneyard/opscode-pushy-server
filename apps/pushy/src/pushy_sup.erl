@@ -42,6 +42,8 @@ init([#pushy_state{ctx=_Ctx} = PushyState]) ->
     Ip = case os:getenv("WEBMACHINE_IP") of false -> "0.0.0.0"; Any -> Any end,
     {ok, Dispatch} = file:consult(filename:join(
                                     [code:priv_dir(pushy), "dispatch.conf"])),
+    %% Tell webmachine to pass [IncarnationId] to all resources on init()
+    Dispatch2 = [ add_init_params(DispatchLine, PushyState) || DispatchLine <- Dispatch ],
 
 %%% Set up trace dir specific stuff
 %%%    {_,_,[{trace_dir, TraceDir}]} = lists:keyfind(["dev", "wmtrace", '*'], 1, Dispatch),
@@ -54,7 +56,7 @@ init([#pushy_state{ctx=_Ctx} = PushyState]) ->
                         {ip, Ip},
                         {port, Port},
                         {log_dir, LogDir},
-                        {dispatch, Dispatch},
+                        {dispatch, Dispatch2},
                         {enable_perf_logger, true}],
     Workers = [?WORKER(pushy_node_stats_scanner, []),
                ?WORKER(chef_keyring, []),
@@ -74,3 +76,12 @@ maybe_run_graphite(true, Workers) ->
     [?SUP(folsom_graphite_sup, []) | Workers];
 maybe_run_graphite(false, Workers) ->
     Workers.
+
+add_init_params({["organizations"|_Tail]=Route, Resource, []},
+                #pushy_state{incarnation_id = IncarnationId}) ->
+    {Route, Resource, [{incarnation_id, IncarnationId}]};
+add_init_params({["_status"|_Tail]=Route, Resource, []},
+                #pushy_state{incarnation_id = IncarnationId}) ->
+    {Route, Resource, [{incarnation_id, IncarnationId}]};
+add_init_params(Other, _PushyState) ->
+    Other.

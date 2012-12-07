@@ -21,10 +21,8 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
-init(_Config) ->
-    % ?debugVal(_Config),
-    State = #config_state{},
-    {ok, State}.
+init(Config) ->
+    pushy_wm_base:init(Config).
 %%    {{trace, "/tmp/traces"}, State}.
 %% then in console: wmtrace_resource:add_dispatch_rule("wmtrace", "/tmp/traces").
 %% then go to localhost:WXYZ/wmtrace
