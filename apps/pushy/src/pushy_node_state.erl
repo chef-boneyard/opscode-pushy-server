@@ -184,12 +184,12 @@ handle_sync_event({unwatch, WatcherPid}, _From, StateName, #state{watchers=Watch
 handle_sync_event(current_state, _From, StateName, #state{job=Job}=State) ->
     {reply, {StateName, Job}, StateName, State}.
 
-handle_info(Msg, post_init, State) ->
+handle_info(Message, post_init, State) ->
     %% Startup of a node_fsm creates the FSM and immediately in the same process sends a
     %% message. The node FSM never gets the chance to timeout in post_init, since by the time the do loop runs
     %% there's a message waiting. So we do the post_init work here, and resend the message to our selves.
     State1 = force_abort(State),
-    send_info(self(), Msg),
+    send_info(self(), Message),
     {next_state, rehab, State1};
 handle_info(heartbeat, CurrentState, State) ->
     case pushy_node_stats:heartbeat(self()) of
