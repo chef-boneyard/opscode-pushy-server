@@ -25,7 +25,7 @@ describe "Node_States API Endpoint", :node_states do
     ["'pedant-nobody' not associated with organization '#{org}'"] }
   let(:cannot_load_nonexistent_msg) { 
     ["Cannot load client #{non_existent_node_name}"] }
-  let(:payload) {
+  let(:node_state_status) {
     {
       "availability" => "unavailable",
       "node_name" => node_name,
@@ -97,7 +97,7 @@ describe "Node_States API Endpoint", :node_states do
         get(api_url("/pushy/node_states/#{node_name}"), admin_user) do |response|
           response.should look_like({
                                       :status => 200,
-                                      :body_exact => payload
+                                      :body_exact => node_state_status
                                     })
         end
       end
@@ -106,7 +106,7 @@ describe "Node_States API Endpoint", :node_states do
         get(api_url("/pushy/node_states/#{node_name}"), normal_user) do |response|
           response.should look_like({
                                       :status => 200,
-                                      :body_exact => payload
+                                      :body_exact => node_state_status
                                     })
         end
       end
@@ -116,7 +116,7 @@ describe "Node_States API Endpoint", :node_states do
             platform.non_admin_client) do |response|
           response.should look_like({
                                       :status => 200,
-                                      :body_exact => payload
+                                      :body_exact => node_state_status
                                     })
         end
       end
@@ -126,7 +126,7 @@ describe "Node_States API Endpoint", :node_states do
             platform.admin_client) do |response|
           response.should look_like({
                                       :status => 200,
-                                      :body_exact => payload
+                                      :body_exact => node_state_status
                                     })
         end
       end
@@ -245,7 +245,7 @@ describe "Node_States API Endpoint", :node_states do
         get(api_url("/pushy/node_states/#{node_name}"), member) do |response|
           response.should look_like({
                                       :status => 200,
-                                      :body_exact => payload
+                                      :body_exact => node_state_status
                                     })
         end
       end
@@ -266,13 +266,12 @@ describe "Node_States API Endpoint", :node_states do
             member_client) do |response|
           response.should look_like({
                                       :status => 200,
-                                      :body_exact => payload
+                                      :body_exact => node_state_status
                                     })
         end
       end
 
       it 'returns a 403 ("Forbidden") for non-member client' do
-        puts payload
         get(api_url("/pushy/node_states/#{node_name}"),
             non_member_client) do |response|
           response.
@@ -352,7 +351,7 @@ describe "Node_States API Endpoint", :node_states do
         get(api_url("/pushy/node_states/#{node_name}"), member) do |response|
           response.should look_like({
                                       :status => 200,
-                                      :body_exact => payload
+                                      :body_exact => node_state_status
                                     })
         end
       end
@@ -373,13 +372,12 @@ describe "Node_States API Endpoint", :node_states do
             member_client) do |response|
           response.should look_like({
                                       :status => 200,
-                                      :body_exact => payload
+                                      :body_exact => node_state_status
                                     })
         end
       end
 
       it 'returns a 403 ("Forbidden") for non-member client' do
-        puts payload
         get(api_url("/pushy/node_states/#{node_name}"),
             non_member_client) do |response|
           response.
