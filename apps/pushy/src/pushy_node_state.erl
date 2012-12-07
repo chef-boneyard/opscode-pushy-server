@@ -343,7 +343,7 @@ process_message(#state{node_ref=NodeRef, node_addr=CurAddr} = State, #pushy_mess
     gproc:unreg({n, l, GprocCurAddr}),
     process_message(State#state{node_addr=NewAddr}, Message);
 process_message(#state{node_ref=NodeRef, node_addr=Address} = State, #pushy_message{address=Address, body=Data}) ->
-    JobId = extract_job_id(Data),
+    JobId = validate_job_id(Data),
     Type = message_type_to_atom(ej:get({<<"type">>}, Data)),
     lager:debug("Received message for Node ~p Type ~p (address ~p)",
                 [NodeRef, Type, pushy_tools:bin_to_hex(Address)]),
@@ -352,8 +352,8 @@ process_message(#state{node_ref=NodeRef, node_addr=Address} = State, #pushy_mess
 -spec send_node_event(#state{}, any(), any(), binary()) -> #state{}.
 send_node_event(State, JobId, NodeRef, heartbeat) ->
     lager:debug("Received heartbeat for node ~p with job id ~p", [NodeRef, JobId]),
-    case JobId /= null andalso pushy_job_state_sup:get_process(JobId) == not_found of
-        true ->
+    case JobId of
+        not_found ->
             gen_fsm:send_event(self(), do_rehab);
         _ ->
             ok
@@ -362,11 +362,10 @@ send_node_event(State, JobId, NodeRef, heartbeat) ->
     State;
 send_node_event(State, JobId, NodeRef, aborted = Msg) ->
     gen_fsm:send_event(self(), aborted),
-    if
-        JobId /= null ->
-            pushy_job_state:interpret_node_event(JobId, NodeRef, Msg);
-        true ->
-            ok
+    case JobId of
+        null -> ok;
+        not_found -> ok;
+        _ -> pushy_job_state:interpret_node_event(JobId, NodeRef, Msg)
     end,
     State;
 send_node_event(State, JobId, NodeRef, Msg) ->
@@ -417,14 +416,18 @@ message_type_to_atom(_) -> unknown.
 %%
 %% TODO: This should be revisited when we tackle OC-5328 (handle ill formed packets set to pushy)
 %%
-extract_job_id(Data) ->
+validate_job_id(Data) ->
+    ?debugVal(Data),
     case ej:get({<<"job_id">>}, Data) of
         <<"null">> ->
             null;
         null ->
             null;
-        X when is_binary(X) andalso size(X) < ?MAX_JOB_ID_LENGTH ->
-            X;
+        JobId when is_binary(JobId) andalso size(JobId) < ?MAX_JOB_ID_LENGTH ->
+            case pushy_job_state_sup:get_process(JobId) of
+                not_found -> not_found;
+                _ -> JobId
+            end;
         _ ->
             invalid_job_id
     end.
