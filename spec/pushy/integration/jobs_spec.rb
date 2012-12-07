@@ -7,9 +7,13 @@
 #
 
 require 'pedant/rspec/common'
+require 'pushy/support/authorization_groups_util'
 
-describe "Jobs API Endpoint", :focus, :jobs do
-  # TODO: un-hard-code this:
+describe "Jobs API Endpoint", :jobs do
+  include_context "authorization_groups_util"
+
+  # TODO: turns out this doesn't really matter; will we need to create it
+  # at some point?
   let(:node_name) { 'DONKEY' }
   let(:nodes) { %w{DONKEY} }
 
@@ -265,44 +269,14 @@ describe "Jobs API Endpoint", :focus, :jobs do
       end
     }
 
-    let(:readers) { "pushy_job_readers" }
-    let(:writers) { "pushy_job_writers" }
-
     before(:all) do
-      post(api_url("/groups/"), superuser,
-           :payload => { "groupname" => readers }) do |response|
-        response.should look_like({
-                                    :status => 201
-                                  })
-      end
-
-      put(api_url("/groups/#{readers}"), superuser,
-          :payload => { "groupname" => readers, "actors" => { "users" => [member.name],
-            "clients" => [member_client.name] } } ) do |response|
-        response.should look_like({
-                                    :status => 200
-                                  })
-      end
-
-      post(api_url("/groups/"), superuser,
-           :payload => { "groupname" => writers }) do |response|
-        response.should look_like({
-                                    :status => 201
-                                  })
-      end
-
-      put(api_url("/groups/#{writers}"), superuser,
-          :payload => { "groupname" => writers, "actors" => { "users" => [member.name],
-            "clients" => [member_client.name] } } ) do |response|
-        response.should look_like({
-                                    :status => 200
-                                  })
-      end
+      setup_group("pushy_job_readers", [member.name], [member_client.name], [])
+      setup_group("pushy_job_writers", [member.name], [member_client.name], [])
     end
 
     after(:all) do
-      delete(api_url("/groups/#{readers}"), superuser)
-      delete(api_url("/groups/#{writers}"), superuser)
+      delete(api_url("/groups/pushy_job_readers"), superuser)
+      delete(api_url("/groups/pushy_job_writers"), superuser)
     end
       
     context 'GET /jobs with pushy_job_readers' do
@@ -449,80 +423,18 @@ describe "Jobs API Endpoint", :focus, :jobs do
       end
     }
 
-    let(:readers) { "pushy_job_readers" }
-    let(:writers) { "pushy_job_writers" }
-    let(:nested_readers) { "nested_pushy_job_readers" }
-    let(:nested_writers) { "nested_pushy_job_writers" }
-
     before(:all) do
-      post(api_url("/groups/"), superuser,
-           :payload => { "groupname" => readers }) do |response|
-        response.should look_like({
-                                    :status => 201
-                                  })
-      end
-
-      post(api_url("/groups/"), superuser,
-           :payload => { "groupname" => nested_readers }) do |response|
-        response.should look_like({
-                                    :status => 201
-                                  })
-      end
-
-      put(api_url("/groups/#{readers}"), superuser,
-          :payload => { "groupname" => readers,
-            "actors" => { "groups" => [nested_readers] } } ) do |response|
-        response.should look_like({
-                                    :status => 200
-                                  })
-      end
-
-      put(api_url("/groups/#{nested_readers}"), superuser,
-          :payload => { "groupname" => nested_readers,
-            "actors" => { "users" => [member.name],
-              "clients" => [member_client.name] } } ) do |response|
-        response.should look_like({
-                                    :status => 200
-                                  })
-      end
-
-      post(api_url("/groups/"), superuser,
-           :payload => { "groupname" => writers }) do |response|
-        response.should look_like({
-                                    :status => 201
-                                  })
-      end
-
-      post(api_url("/groups/"), superuser,
-           :payload => { "groupname" => nested_writers }) do |response|
-        response.should look_like({
-                                    :status => 201
-                                  })
-      end
-
-      put(api_url("/groups/#{writers}"), superuser,
-          :payload => { "groupname" => writers,
-            "actors" => { "groups" => [nested_writers] } } ) do |response|
-        response.should look_like({
-                                    :status => 200
-                                  })
-      end
-
-      put(api_url("/groups/#{nested_writers}"), superuser,
-          :payload => { "groupname" => nested_writers,
-            "actors" => { "users" => [member.name],
-              "clients" => [member_client.name] } } ) do |response|
-        response.should look_like({
-                                    :status => 200
-                                  })
-      end
+      setup_group("nested_pushy_job_readers", [member.name], [member_client.name], [])
+      setup_group("nested_pushy_job_writers", [member.name], [member_client.name], [])
+      setup_group("pushy_job_readers", [], [], ["nested_pushy_job_readers"])
+      setup_group("pushy_job_writers", [], [], ["nested_pushy_job_writers"])
     end
 
     after(:all) do
-      delete(api_url("/groups/#{readers}"), superuser)
-      delete(api_url("/groups/#{writers}"), superuser)
-      delete(api_url("/groups/#{nested_readers}"), superuser)
-      delete(api_url("/groups/#{nested_writers}"), superuser)
+      delete(api_url("/groups/pushy_job_readers"), superuser)
+      delete(api_url("/groups/pushy_job_writers"), superuser)
+      delete(api_url("/groups/nested_pushy_job_readers"), superuser)
+      delete(api_url("/groups/nested_pushy_job_writers"), superuser)
     end
       
     context 'GET /jobs with nested pushy_job_readers' do
