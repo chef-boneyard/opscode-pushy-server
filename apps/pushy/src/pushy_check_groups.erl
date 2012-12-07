@@ -22,7 +22,7 @@ group_membership(Name, Type, OrgName, Group) ->
         not_found ->
             group_not_found;
         ResponseBody ->
-            parse_json_response(Name, Type, OrgName, ResponseBody)
+            check_for_membership(Name, Type, OrgName, ResponseBody)
     end.
 
 path(OrgName, Group) ->
@@ -34,7 +34,7 @@ path(OrgName, Group) ->
 
 %% @doc determine if a member of the group, or recurse if necessary
 %%
-parse_json_response(Name, Type, OrgName, Body) ->
+check_for_membership(Name, Type, OrgName, Body) ->
     EJson = jiffy:decode(Body),
     Reqs = case Type of
                user ->
