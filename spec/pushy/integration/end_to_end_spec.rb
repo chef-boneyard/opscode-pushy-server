@@ -379,6 +379,46 @@ describe "end-to-end-test" do
       start_new_clients('DONKEY', 'FARQUAD', 'FIONA')
     end
 
+    it 'node count should be 3' do
+      get(status_url, admin_user) do |response|
+        response.should look_like({
+          :node_fsm_count => 3
+        })
+      end
+    end
+
+    context 'when a client shuts down' do
+      before(:each) do
+        stop_client('DONKEY')
+        wait_for_node_status('offline', 'DONKEY')
+      end
+
+      it 'node count should be 2' do
+        get(status_url, admin_user) do |response|
+          response.should look_like({
+            :node_fsm_count => 2
+          })
+        end
+      end
+    end
+
+    context 'when all clients shut down' do
+      before(:each) do
+        stop_client('DONKEY')
+        stop_client('FARQUAD')
+        stop_client('FIONA')
+        wait_for_node_status('offline', 'DONKEY', 'FARQUAD', 'FIONA')
+      end
+
+      it 'node count should be 0' do
+        get(status_url, admin_user) do |response|
+          response.should look_like({
+            :node_fsm_count => 0
+          })
+        end
+      end
+    end
+
     context 'when running a job' do
       before(:each) do
         start_echo_job_on_all_clients
