@@ -106,7 +106,8 @@ requestors({
                :admin => {
                  :name => "pedant_admin_user",
                  :create_me => true,
-                 :create_knife => true
+                 :create_knife => true,
+                 :admin => true
                },
 
                :non_admin => {
