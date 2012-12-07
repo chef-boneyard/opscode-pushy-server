@@ -10,7 +10,7 @@ describe "pushy status" do
   describe 'access control' do
     context 'GET /_status' do
 
-      let(:path) { api_url("/_status").gsub(/organizations\/.*\//, '') }
+      let(:path) { api_url("/_status").gsub(/organizations\/.*\//, '/pushy') }
 
       it 'returns a 200 ("OK") for admin' do
         get(path, admin_user) do |response|
