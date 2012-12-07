@@ -7,8 +7,11 @@
 #
 
 require 'pedant/rspec/common'
+require 'pushy/support/authorization_groups_util'
 
 describe "Node_States API Endpoint", :node_states do
+  include_context "authorization_groups_util"
+
   let(:node_name) { 'some_node' }
   let(:non_existent_node_name) { 'not_a_number' }
 
@@ -187,27 +190,12 @@ describe "Node_States API Endpoint", :node_states do
     let(:member_client) { platform.non_admin_client }
     let(:non_member_client) { platform.admin_client }
 
-    let(:readers) { "pushy_job_readers" }
-
     before(:all) do
-      post(api_url("/groups/"), superuser,
-           :payload => { "groupname" => readers }) do |response|
-        response.should look_like({
-                                    :status => 201
-                                  })
-      end
-
-      put(api_url("/groups/#{readers}"), superuser,
-          :payload => { "groupname" => readers, "actors" => { "users" => [member.name],
-            "clients" => [member_client.name] } } ) do |response|
-        response.should look_like({
-                                    :status => 200
-                                  })
-      end
+      setup_group("pushy_job_readers", [member.name], [member_client.name], [])
     end
 
     after(:all) do
-      delete(api_url("/groups/#{readers}"), superuser)
+      delete(api_url("/groups/pushy_job_readers"), superuser)
     end
 
     context 'GET /node_states' do
@@ -307,45 +295,14 @@ describe "Node_States API Endpoint", :node_states do
     let(:member_client) { platform.non_admin_client }
     let(:non_member_client) { platform.admin_client }
 
-    let(:readers) { "pushy_job_readers" }
-    let(:nested_readers) { "nested_pushy_job_readers" }
-
     before(:all) do
-      post(api_url("/groups/"), superuser,
-           :payload => { "groupname" => readers }) do |response|
-        response.should look_like({
-                                    :status => 201
-                                  })
-      end
-
-      post(api_url("/groups/"), superuser,
-           :payload => { "groupname" => nested_readers }) do |response|
-        response.should look_like({
-                                    :status => 201
-                                  })
-      end
-
-      put(api_url("/groups/#{readers}"), superuser,
-          :payload => { "groupname" => readers,
-            "actors" => { "groups" => [nested_readers] } } ) do |response|
-        response.should look_like({
-                                    :status => 200
-                                  })
-      end
-
-      put(api_url("/groups/#{nested_readers}"), superuser,
-          :payload => { "groupname" => nested_readers,
-            "actors" => { "users" => [member.name],
-              "clients" => [member_client.name] } } ) do |response|
-        response.should look_like({
-                                    :status => 200
-                                  })
-      end
+      setup_group("nested_pushy_job_readers", [member.name], [member_client.name], [])
+      setup_group("pushy_job_readers", [], [], ["nested_pushy_job_readers"])
     end
 
     after(:all) do
-      delete(api_url("/groups/#{readers}"), superuser)
-      delete(api_url("/groups/#{nested_readers}"), superuser)
+      delete(api_url("/groups/pushy_job_readers"), superuser)
+      delete(api_url("/groups/nested_pushy_job_readers"), superuser)
     end
 
     context 'GET /node_states' do
