@@ -24,9 +24,8 @@
 
 -define(DEFAULT_CONFIG_LIFETIME, 3600).
 
-init(_Config) ->
-    State = #config_state{},
-    {ok, State}.
+init(Config) ->
+    pushy_wm_base:init(Config).
 %%    {{trace, "/tmp/traces"}, State}.
 %% then in console: wmtrace_resource:add_dispatch_rule("wmtrace", "/tmp/traces").
 %% then go to localhost:WXYZ/wmtrace
@@ -50,7 +49,8 @@ content_types_provided(Req, State) ->
 
 to_json(Req, #config_state{organization_name = OrgName,
                            organization_guid = OrgGuid,
-                           node_name = NodeName} = State) ->
+                           node_name = NodeName,
+                           incarnation_id = IncarnationId} = State) ->
     Host = envy:get(pushy, server_name, string),
     ConfigLifetime = envy:get(pushy, config_lifetime, ?DEFAULT_CONFIG_LIFETIME, integer),
     HeartbeatAddress = iolist_to_binary(
@@ -90,7 +90,8 @@ to_json(Req, #config_state{organization_name = OrgName,
           {<<"organization">>, OrgName},
           {<<"public_key">>, PublicKey},
           {<<"session_key">>, KeyStruct},
-          {<<"lifetime">> ,ConfigLifetime}
+          {<<"lifetime">>, ConfigLifetime},
+          {<<"incarnation_id">>, IncarnationId}
          ]},
     ConfigurationJson = jiffy:encode(ConfigurationStruct),
 
