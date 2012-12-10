@@ -22,29 +22,37 @@ This repository currently requires a .deb build from the pushy branch of opscode
         make
         make install
 
-4. Load pushy server
+4. Install the pushy server deb. It's easiest to grab a copy from jenkins.
 
-        rake project:load[pushy]
+        Browse to
+        http://ci.opscode.us/job/opscode-push-jobs-server-build/build_os=ubuntu-10-04,machine_architecture=x64,role=opc-builder/
+        to discover the latest version of the deb, then grab it and
+        install it.
 
-5. Locally, clone the test repos (from above opscode-dev-vm):
+        wget http://ci.opscode.us/job/opscode-push-jobs-server-build/build_os=ubuntu-10-04,machine_architecture=x64,role=opc-builder/opscode-push-jobs-server_0.0.1-37-g40fc888-1.ubuntu.10.04_amd64.deb
+
+        sudo dpkg -i opscode-push-jobs-server_0.0.1-37-g40fc888-1.ubuntu.10.04_amd64.deb
+
+5. Load pushy server
+
+        rake project:load[opscode-pushy-server]
+
+6. Locally, clone the test repos (from above opscode-dev-vm):
 
         git clone git@github.com:opscode/oc-pushy-pedant.git
-        git clone git@github.com:opscode/oc-pushy-pedant-tests.git
-        git clone git@github.com:opscode/chef-pedant-core.git
-        git clone git@github.com:opscode/oc-chef-pedant-core.git
         git clone git@github.com:opscode/opscode-pushy-client.git
 
-6. Load pushy pedant (make sure you have the oc-pushy-pedant, oc-pushy-pedant-tests, chef-pedant-core, oc-chef-pedant-core and opscode-pushy-client repos checked out!!1!1!)
+7. Load pushy pedant (make sure you have the oc-pushy-pedant, oc-pushy-pedant-tests, chef-pedant-core, oc-chef-pedant-core and opscode-pushy-client repos checked out!!1!1!)
 
         rake project:load[oc-pushy-pedant]
 
-7. [OPTIONAL] Increase the heartbeat interval so the tests go faster
+8. [OPTIONAL] Increase the heartbeat interval so the tests go faster
 
         vim /etc/opscode/private-chef.rb
         Add the line opscode_pushy['heartbeat_interval'] = 200
         private-chef-ctl reconfigure
 
-7. In the VM, run the tests:
+9. In the VM, run the tests:
 
         cd /srv/piab/mounts/oc-pushy-pedant
         ./oc-pushy-pedant -c multitenant_config.rb
