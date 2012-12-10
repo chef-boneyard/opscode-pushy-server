@@ -8,15 +8,9 @@
 
 %% API
 -export([start_link/1,
-         node_ack_commit/2,
-         node_nack_commit/2,
-         node_ack_run/2,
-         node_nack_run/2,
-         node_complete/3,
-         node_aborted/2,
          stop_job/1,
          get_job_state/1,
-         interpret_node_event/3
+         send_node_event/3
         ]).
 
 %% gen_fsm callbacks
@@ -50,24 +44,6 @@
 -spec start_link(#pushy_job{}) -> 'ignore' | {'error',_} | {'ok',pid()}.
 start_link(Job) ->
     gen_fsm:start_link(?MODULE, Job, []).
-
--spec node_ack_commit(object_id(), node_ref()) -> ok | not_found.
-node_ack_commit(JobId, NodeRef) -> send_node_event(JobId, NodeRef, ack_commit).
-
--spec node_nack_commit(object_id(), node_ref()) -> ok | not_found.
-node_nack_commit(JobId, NodeRef) -> send_node_event(JobId, NodeRef, nack_commit).
-
--spec node_ack_run(object_id(), node_ref()) -> ok | not_found.
-node_ack_run(JobId, NodeRef) -> send_node_event(JobId, NodeRef, ack_run).
-
--spec node_nack_run(object_id(), node_ref()) -> ok | not_found.
-node_nack_run(JobId, NodeRef) -> send_node_event(JobId, NodeRef, nack_run).
-
--spec node_complete(object_id(), node_ref(), succeeded | failed) -> ok | not_found.
-node_complete(JobId, NodeRef, Status) -> send_node_event(JobId, NodeRef, Status).
-
--spec node_aborted(object_id(), node_ref()) -> ok | not_found.
-node_aborted(JobId, NodeRef) -> send_node_event(JobId, NodeRef, aborted).
 
 get_job_state(JobId) ->
     case pushy_job_state_sup:get_process(JobId) of
@@ -374,7 +350,6 @@ send_node_event(JobId, NodeRef, Event) ->
         Pid when is_pid(Pid) ->
             gen_fsm:send_event(Pid, {Event, NodeRef});
         not_found ->
-            pushy_node_state:rehab(NodeRef),
             not_found
     end.
 
@@ -391,24 +366,3 @@ terminalize(timed_out) -> terminal;
 terminalize(new) -> new;
 terminalize(ready) -> ready;
 terminalize(running) -> running.
-
-
-interpret_node_event(JobId, NodeRef, ack_commit) ->
-    pushy_job_state:node_ack_commit(JobId, NodeRef);
-interpret_node_event(JobId, NodeRef, nack_commit) ->
-    pushy_job_state:node_nack_commit(JobId, NodeRef);
-interpret_node_event(JobId, NodeRef, ack_run) ->
-    pushy_job_state:node_ack_run(JobId, NodeRef);
-interpret_node_event(JobId, NodeRef, nack_run) ->
-    pushy_job_state:node_nack_run(JobId, NodeRef);
-interpret_node_event(JobId, NodeRef, succeeded)->
-    pushy_job_state:node_complete(JobId, NodeRef, succeeded);
-interpret_node_event(JobId, NodeRef, failed)->
-    pushy_job_state:node_complete(JobId, NodeRef, failed);
-interpret_node_event(JobId, NodeRef, aborted) when JobId /= null ->
-    pushy_job_state:node_aborted(JobId, NodeRef);
-interpret_node_event(JobId, NodeRef, undefined) ->
-    lager:error("Status message for job ~p and node ~p was missing type field!~n", [JobId, NodeRef]);
-interpret_node_event(JobId, NodeRef, UnknownType) ->
-    lager:error("Status message for job ~p and node ~p had unknown type ~p~n",
-                [JobId, NodeRef, UnknownType]).

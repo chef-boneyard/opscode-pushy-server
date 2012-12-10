@@ -344,12 +344,20 @@ process_message(#state{node_ref=NodeRef, node_addr=CurAddr} = State, #pushy_mess
     process_message(State#state{node_addr=NewAddr}, Message);
 process_message(#state{node_ref=NodeRef, node_addr=Address} = State, #pushy_message{address=Address, body=Data}) ->
     JobId = extract_job_id(Data),
-    Type = message_type_to_atom(ej:get({<<"type">>}, Data)),
+    BinaryType = ej:get({<<"type">>}, Data),
+    Type = message_type_to_atom(BinaryType),
     lager:debug("Received message for Node ~p Type ~p (address ~p)",
-                [NodeRef, Type, pushy_tools:bin_to_hex(Address)]),
-    send_node_event(State, JobId, NodeRef, Type).
+                [NodeRef, BinaryType, pushy_tools:bin_to_hex(Address)]),
+    case Type of
+        unknown ->
+            lager:error("Status message for node ~p was missing type field!~n", [NodeRef]);
+        undefined ->
+            lager:error("Status message for node ~p had unknown type ~p~n", [NodeRef, BinaryType]);
+        _ ->
+            send_node_event(State, JobId, NodeRef, Type)
+    end.
 
--spec send_node_event(#state{}, any(), any(), binary()) -> #state{}.
+-spec send_node_event(#state{}, any(), any(), node_event()) -> #state{}.
 send_node_event(State, JobId, NodeRef, heartbeat) ->
     lager:debug("Received heartbeat for node ~p with job id ~p", [NodeRef, JobId]),
     case JobId /= null andalso pushy_job_state_sup:get_process(JobId) == not_found of
@@ -364,13 +372,16 @@ send_node_event(State, JobId, NodeRef, aborted = Msg) ->
     gen_fsm:send_event(self(), aborted),
     if
         JobId /= null ->
-            pushy_job_state:interpret_node_event(JobId, NodeRef, Msg);
+            pushy_job_state:send_node_event(JobId, NodeRef, Msg);
         true ->
             ok
     end,
     State;
 send_node_event(State, JobId, NodeRef, Msg) ->
-    pushy_job_state:interpret_node_event(JobId, NodeRef, Msg),
+    case pushy_job_state:send_node_event(JobId, NodeRef, Msg) of
+        not_found -> gen_fsm:send_event(self(), do_rehab);
+        _ -> ok
+    end,
     State.
 
 get_node_ref(Data) ->
@@ -412,6 +423,7 @@ message_type_to_atom(<<"heartbeat">>) -> heartbeat;
 message_type_to_atom(<<"nack_commit">>) -> nack_commit;
 message_type_to_atom(<<"nack_run">>) -> nack_run;
 message_type_to_atom(<<"succeeded">>) -> succeeded;
+message_type_to_atom(undefined) -> undefined;
 message_type_to_atom(_) -> unknown.
 
 %%
