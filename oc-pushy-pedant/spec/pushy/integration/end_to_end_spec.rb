@@ -11,7 +11,7 @@ require 'pushy/spec_helper'
 describe "end-to-end-test" do
   include_context "end_to_end_util"
 
-  let(:status_url) { api_url("/_status").gsub(/organizations\/[^\/]*.\//, '') }
+  let(:status_url) { api_url("/_status").gsub(/organizations\/[^\/]*.\//, '/pushy') }
 
   before :all do
     if (Pedant::Config.pushy_client_debug)
