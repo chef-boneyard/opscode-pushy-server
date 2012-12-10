@@ -10,7 +10,7 @@
 -export([start_link/1,
          stop_job/1,
          get_job_state/1,
-         interpret_node_event/3
+         send_node_event/3
         ]).
 
 %% gen_fsm callbacks
@@ -366,24 +366,3 @@ terminalize(timed_out) -> terminal;
 terminalize(new) -> new;
 terminalize(ready) -> ready;
 terminalize(running) -> running.
-
-
-interpret_node_event(JobId, NodeRef, ack_commit) ->
-    send_node_event(JobId, NodeRef, ack_commit);
-interpret_node_event(JobId, NodeRef, nack_commit) ->
-    send_node_event(JobId, NodeRef, nack_commit);
-interpret_node_event(JobId, NodeRef, ack_run) ->
-    send_node_event(JobId, NodeRef, ack_run);
-interpret_node_event(JobId, NodeRef, nack_run) ->
-    send_node_event(JobId, NodeRef, nack_run);
-interpret_node_event(JobId, NodeRef, succeeded)->
-    send_node_event(JobId, NodeRef, succeeded);
-interpret_node_event(JobId, NodeRef, failed)->
-    send_node_event(JobId, NodeRef, failed);
-interpret_node_event(JobId, NodeRef, aborted) ->
-    send_node_event(JobId, NodeRef, aborted);
-interpret_node_event(JobId, NodeRef, undefined) ->
-    lager:error("Status message for job ~p and node ~p was missing type field!~n", [JobId, NodeRef]);
-interpret_node_event(JobId, NodeRef, UnknownType) ->
-    lager:error("Status message for job ~p and node ~p had unknown type ~p~n",
-                [JobId, NodeRef, UnknownType]).

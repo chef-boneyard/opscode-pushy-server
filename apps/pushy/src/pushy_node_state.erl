@@ -349,7 +349,7 @@ process_message(#state{node_ref=NodeRef, node_addr=Address} = State, #pushy_mess
                 [NodeRef, Type, pushy_tools:bin_to_hex(Address)]),
     send_node_event(State, JobId, NodeRef, Type).
 
--spec send_node_event(#state{}, any(), any(), binary()) -> #state{}.
+-spec send_node_event(#state{}, any(), any(), node_event()) -> #state{}.
 send_node_event(State, JobId, NodeRef, heartbeat) ->
     lager:debug("Received heartbeat for node ~p with job id ~p", [NodeRef, JobId]),
     case JobId /= null andalso pushy_job_state_sup:get_process(JobId) == not_found of
@@ -364,13 +364,13 @@ send_node_event(State, JobId, NodeRef, aborted = Msg) ->
     gen_fsm:send_event(self(), aborted),
     if
         JobId /= null ->
-            pushy_job_state:interpret_node_event(JobId, NodeRef, Msg);
+            pushy_job_state:send_node_event(JobId, NodeRef, Msg);
         true ->
             ok
     end,
     State;
 send_node_event(State, JobId, NodeRef, Msg) ->
-    case pushy_job_state:interpret_node_event(JobId, NodeRef, Msg) of
+    case pushy_job_state:send_node_event(JobId, NodeRef, Msg) of
         not_found -> gen_fsm:send_event(self(), do_rehab);
         _ -> ok
     end,
