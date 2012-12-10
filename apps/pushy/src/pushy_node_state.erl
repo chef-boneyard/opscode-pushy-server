@@ -344,10 +344,18 @@ process_message(#state{node_ref=NodeRef, node_addr=CurAddr} = State, #pushy_mess
     process_message(State#state{node_addr=NewAddr}, Message);
 process_message(#state{node_ref=NodeRef, node_addr=Address} = State, #pushy_message{address=Address, body=Data}) ->
     JobId = extract_job_id(Data),
-    Type = message_type_to_atom(ej:get({<<"type">>}, Data)),
+    BinaryType = ej:get({<<"type">>}, Data),
+    Type = message_type_to_atom(BinaryType),
     lager:debug("Received message for Node ~p Type ~p (address ~p)",
-                [NodeRef, Type, pushy_tools:bin_to_hex(Address)]),
-    send_node_event(State, JobId, NodeRef, Type).
+                [NodeRef, BinaryType, pushy_tools:bin_to_hex(Address)]),
+    case Type of
+        unknown ->
+            lager:error("Status message for node ~p was missing type field!~n", [NodeRef]);
+        undefined ->
+            lager:error("Status message for node ~p had unknown type ~p~n", [NodeRef, BinaryType]);
+        _ ->
+            send_node_event(State, JobId, NodeRef, Type)
+    end.
 
 -spec send_node_event(#state{}, any(), any(), node_event()) -> #state{}.
 send_node_event(State, JobId, NodeRef, heartbeat) ->
@@ -415,6 +423,7 @@ message_type_to_atom(<<"heartbeat">>) -> heartbeat;
 message_type_to_atom(<<"nack_commit">>) -> nack_commit;
 message_type_to_atom(<<"nack_run">>) -> nack_run;
 message_type_to_atom(<<"succeeded">>) -> succeeded;
+message_type_to_atom(undefined) -> undefined;
 message_type_to_atom(_) -> unknown.
 
 %%
