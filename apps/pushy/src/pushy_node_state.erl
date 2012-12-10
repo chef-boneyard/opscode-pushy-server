@@ -134,7 +134,7 @@ init([NodeRef, NodeAddr]) ->
 %% heartbeat), so this timeout will often never fire because we get a message
 %% first. handle_info will get heartbeat messages and resend them, while any others should
 %% be ignored, as they aren't relevant in post_init.
-%% 
+%%
 post_init(timeout, State) ->
     State1 = force_abort(State),
     {next_state, state_transition(init, rehab, State1), State1};
