@@ -8,11 +8,12 @@
 
 describe "pushy status" do
   describe 'access control' do
-    context 'GET /_status' do
+    context 'GET /pushy/_status' do
 
-      let(:path) { api_url("/_status").gsub(/organizations\/.*\//, '/pushy') }
+      let(:path) { api_url("/_status").gsub(/organizations\/.*\//, '/pushy/') }
 
       it 'returns a 200 ("OK") for admin' do
+          pp path
         get(path, admin_user) do |response|
           response.should look_like({
                                       :status => 200
