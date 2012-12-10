@@ -25,9 +25,9 @@ if node['pushy']['bootstrap']['enable']
   # Create the database, migrate it, and create the users we need, and grant them
   # privileges.
   ###
-  database_exists = "/opt/pushy-server/embedded/bin/chpst -u #{node['pushy']['postgresql']['username']} #{psql_cmd} -d 'template1' -c 'select datname from pg_database' -x|grep opscode_pushy"
-  user_exists     = "/opt/pushy-server/embedded/bin/chpst -u #{node['pushy']['postgresql']['username']} #{psql_cmd} -d 'template1' -c 'select usename from pg_user' -x|grep #{node['pushy']['postgresql']['sql_user']}"
-  ro_user_exists  = "/opt/pushy-server/embedded/bin/chpst -u #{node['pushy']['postgresql']['username']} #{psql_cmd} -d 'template1' -c 'select usename from pg_user' -x|grep #{node['pushy']['postgresql']['sql_ro_user']}"
+  database_exists = "#{node['pushy']['install_path']}/embedded/bin/chpst -u #{node['pushy']['postgresql']['username']} #{psql_cmd} -d 'template1' -c 'select datname from pg_database' -x|grep opscode_pushy"
+  user_exists     = "#{node['pushy']['install_path']}/embedded/bin/chpst -u #{node['pushy']['postgresql']['username']} #{psql_cmd} -d 'template1' -c 'select usename from pg_user' -x|grep #{node['pushy']['postgresql']['sql_user']}"
+  ro_user_exists  = "#{node['pushy']['install_path']}/embedded/bin/chpst -u #{node['pushy']['postgresql']['username']} #{psql_cmd} -d 'template1' -c 'select usename from pg_user' -x|grep #{node['pushy']['postgresql']['sql_ro_user']}"
 
   execute "#{createdb_cmd} -T template0 -E UTF-8 opscode_pushy" do
     user node['pushy']['postgresql']['username']
