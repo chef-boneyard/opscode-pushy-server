@@ -80,7 +80,7 @@ maybe_run_graphite(false, Workers) ->
 add_init_params({["organizations"|_Tail]=Route, Resource, []},
                 #pushy_state{incarnation_id = IncarnationId}) ->
     {Route, Resource, [{incarnation_id, IncarnationId}]};
-add_init_params({["pushy", "_status"|_Tail]=Route, Resource, []},
+add_init_params({["pushy"|_Tail]=Route, Resource, []},
                 #pushy_state{incarnation_id = IncarnationId}) ->
     {Route, Resource, [{incarnation_id, IncarnationId}]};
 add_init_params(Other, _PushyState) ->
