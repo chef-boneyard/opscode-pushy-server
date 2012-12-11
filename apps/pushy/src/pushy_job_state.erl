@@ -74,7 +74,7 @@ init(#pushy_job{id = JobId, job_nodes = JobNodeList} = Job) ->
             State = #state{job = Job#pushy_job{job_nodes = undefined},
                            job_nodes = JobNodes,
                            job_host = Host,
-                           voting_timeout = envy:get(pushy, voting_timeout, 5, integer)},
+                           voting_timeout = envy:get(pushy, voting_timeout, 60, integer)},
             listen_for_down_nodes(dict:fetch_keys(JobNodes)),
 
             lager:info("Job ~p starting '~p' on ~p nodes, with timeout ~ps",
