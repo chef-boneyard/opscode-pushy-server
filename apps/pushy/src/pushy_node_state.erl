@@ -32,6 +32,7 @@
 
 %% States
 -export([idle/2,
+         post_init/2,
          running/2,
          rehab/2]).
 
@@ -113,8 +114,8 @@ init([NodeRef, NodeAddr]) ->
         %% true or throw
         true = gproc:reg({n, l, GprocName}),
         true = gproc:reg({n, l, GprocAddr}),
-        State1 = force_abort(State),
-        {ok, state_transition(init, rehab, State1), State1}
+        %% We then move to a post_init state that handles the rest of the setup process
+        {ok, post_init, State, 0}
     catch
         error:badarg ->
             %% When we start up from a previous run, we have two ways that the FSM might be started;
@@ -128,6 +129,20 @@ init([NodeRef, NodeAddr]) ->
             {stop, state_transition(init, shutdown, State), State}
     end.
 
+%%
+%% Our usage pattern is to create the FSM and immediately send a message (most likely a
+%% heartbeat), so this timeout will often never fire because we get a message
+%% first. handle_info will get heartbeat messages and resend them, while any others should
+%% be ignored, as they aren't relevant in post_init.
+%%
+post_init(timeout, State) ->
+    State1 = force_abort(State),
+    {next_state, state_transition(init, rehab, State1), State1};
+post_init(Message, #state{node_ref=NodeRef}=State) ->
+    lager:warning("~p in post_init. Ignoring message: ~p~n", [NodeRef, Message]),
+    State1 = force_abort(State),
+    {next_state, state_transition(init, rehab, State1), State1}.
+
 rehab(aborted, #state{state_timer=TRef}=State) ->
     timer:cancel(TRef),
     State1 = State#state{availability=available},
@@ -137,8 +152,7 @@ rehab(Message, #state{node_ref=NodeRef}=State) ->
     {next_state, rehab, State}.
 
 idle(do_rehab, State) ->
-    force_abort(State),
-    State1 = State#state{availability=unavailable},
+    State1 = force_abort(State),
     {next_state, state_transition(idle, rehab, State1), State1};
 idle({job, Job}, State) ->
     State1 = State#state{job=Job, availability=unavailable},
@@ -146,6 +160,9 @@ idle({job, Job}, State) ->
 idle(aborted, State) ->
     {next_state, idle, State}.
 
+running(do_rehab, State) ->
+    State1 = force_abort(State),
+    {next_state, state_transition(running, rehab, State1), State1};
 running(aborted, #state{node_ref=NodeRef}=State) ->
     lager:info("~p aborted during job.~n", [NodeRef]),
     State1 = State#state{job=undefined, availability=available},
@@ -173,6 +190,13 @@ handle_sync_event({unwatch, WatcherPid}, _From, StateName, #state{watchers=Watch
 handle_sync_event(current_state, _From, StateName, #state{job=Job}=State) ->
     {reply, {StateName, Job}, StateName, State}.
 
+handle_info(Message, post_init, State) ->
+    %% Startup of a node_fsm creates the FSM and immediately in the same process sends a
+    %% message. The node FSM never gets the chance to timeout in post_init, since by the time the do loop runs
+    %% there's a message waiting. So we do the post_init work here, and resend the message to our selves.
+    State1 = force_abort(State),
+    send_info(self(), Message),
+    {next_state, rehab, State1};
 handle_info(heartbeat, CurrentState, State) ->
     case pushy_node_stats:heartbeat(self()) of
         ok -> {next_state, CurrentState, State};
@@ -207,6 +231,8 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 %% Internal functions
 eval_state({idle, undefined}) ->
     {online, {available, none}};
+eval_state({post_init, undefined}) ->
+    {online, {unavailable, none}};
 eval_state({rehab, undefined}) ->
     {online, {unavailable, none}};
 eval_state({running, Job}) ->
@@ -231,6 +257,8 @@ cast(NodeRef, Message) ->
             Error
     end.
 
+send_info(NodePid, Message) when is_pid(NodePid) ->
+    NodePid ! Message;
 send_info(NodeRef, Message) ->
     case pushy_node_state_sup:get_process(NodeRef) of
         Pid when is_pid(Pid) ->
@@ -258,7 +286,6 @@ notify_watchers([], _NodeRef, _Current, _New) ->
 notify_watchers(Watchers, NodeRef, Current, New) ->
     F = fun(Watcher) -> Watcher ! {state_change, NodeRef, Current, New} end,
     [F(Watcher) || {Watcher, _Monitor} <- Watchers].
-
 
 %%
 %% Message processing and parsing code; this executes in the caller's context
@@ -299,7 +326,7 @@ dispatch_raw_message([Addr, _Header, Body] = Message) ->
                   lager:info("No addr ~s for msg: ~p~n", [pushy_tools:bin_to_hex(Addr), NodeRef]),
                   pushy_node_state_sup:get_or_create_process(NodeRef, Addr)
           end,
-    Pid ! {raw_message, Message }.
+    send_info(Pid, {raw_message, Message}).
 
 %%
 %% This occurs in the fsm context
@@ -366,7 +393,7 @@ send_node_event(State, JobId, NodeRef, heartbeat) ->
         _ ->
             ok
     end,
-    self() ! heartbeat,
+    send_info(self(), heartbeat),
     State;
 send_node_event(State, JobId, NodeRef, aborted = Msg) ->
     gen_fsm:send_event(self(), aborted),
@@ -435,7 +462,7 @@ extract_job_id(Data) ->
             null;
         null ->
             null;
-        X when is_binary(X) andalso size(X) < ?MAX_JOB_ID_LENGTH ->
+        X when size(X) =< ?MAX_JOB_ID_LENGTH ->
             X;
         _ ->
             invalid_job_id
