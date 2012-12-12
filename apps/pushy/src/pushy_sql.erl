@@ -1,3 +1,7 @@
+%% -*- erlang-indent-level: 4;indent-tabs-mode: nil; fill-column: 92 -*-
+%% ex: ts=4 sw=4 et
+%% @copyright 2011-2012 Opscode Inc.
+
 -module(pushy_sql).
 
 -include_lib("pushy_sql.hrl").
