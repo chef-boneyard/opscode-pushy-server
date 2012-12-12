@@ -190,7 +190,7 @@ describe "end-to-end-test" do
                                         'status' => 'online'
                                       }})
         end
-        job = wait_for_job_status(response['uri'], 'quorum_failed', :timeout => 20)
+        job = wait_for_job_status(response['uri'], 'quorum_failed', :timeout => 65)
         job['nodes'].should == { 'unavailable' => [ 'DONKEY' ] }
         # This verifies our assumption that this was caused by the TIMEOUT rather
         # than the node being detected as down
