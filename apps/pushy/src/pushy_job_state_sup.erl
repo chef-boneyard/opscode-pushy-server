@@ -63,10 +63,22 @@ register_process(JobId) ->
     end.
 
 %% ------------------------------------------------------------------
+%% Internal functions
+%% ------------------------------------------------------------------
+
+mark_incomplete_jobs_as_crashed() ->
+    Jobs = pushy_sql:fetch_incomplete_jobs(),
+    [pushy_object:update_object(update_job,
+                                Job#pushy_job{status=crashed},
+                                Job#pushy_job.id) || Job <- Jobs].
+
+
+%% ------------------------------------------------------------------
 %% supervisor Function Definitions
 %% ------------------------------------------------------------------
 
 init([]) ->
+    mark_incomplete_jobs_as_crashed(),
     {ok, {{simple_one_for_one, 0, 1},
           [{pushy_job_state, {pushy_job_state, start_link, []},
             temporary, brutal_kill, worker, [pushy_job_state]}]}}.
