@@ -12,6 +12,7 @@
          %% job ops
          fetch_job/1,
          fetch_jobs/1,
+         fetch_incomplete_jobs/0,
          create_job/1,
          update_job/1,
          update_job_node/1,
@@ -32,6 +33,16 @@ fetch_job(JobId) ->
             {ok, job_join_rows_to_record(Rows)};
         {error, Error} ->
             lager:info("ERROR"),
+            {error, Error}
+    end.
+
+fetch_incomplete_jobs() ->
+    case sqerl:select(find_incomplete_jobs, []) of
+        {ok, none} ->
+            {ok, not_found};
+        {ok, Rows} ->
+            [prepare_pushy_job_record(Row) || Row <- Rows];
+        {error, Error} ->
             {error, Error}
     end.
 
@@ -180,6 +191,16 @@ prepare_job(Job) ->
       {<<"created_at">>, CreatedAtFormatted},
       {<<"status">>, Status}]}.
 
+prepare_pushy_job_record(Job) ->
+    CreatedAt = trunc_date_time_to_second(safe_get(<<"created_at">>, Job)),
+    CreatedAtFormatted = iolist_to_binary(httpd_util:rfc1123_date(CreatedAt)),
+    Status = atom_to_binary(job_status(safe_get(<<"status">>, Job)), utf8),
+
+    #pushy_job{id = safe_get(<<"id">>, Job),
+               created_at = CreatedAtFormatted,
+               last_updated_by = safe_get(<<"last_updated_by">>, Job),
+               status = Status}.
+
 
 %% @doc Convenience function for assembling a job_node tuple from a proplist
 proplist_to_job_node(Proplist) ->
@@ -202,13 +223,15 @@ job_status(quorum_failed) -> 3;
 job_status(aborted) -> 4;
 job_status(new) -> 5;
 job_status(timed_out) -> 6;
+job_status(crashed) -> 7;
 job_status(0) -> voting;
 job_status(1) -> running;
 job_status(2) -> complete;
 job_status(3) -> quorum_failed;
 job_status(4) -> aborted;
 job_status(5) -> new;
-job_status(6) -> timed_out.
+job_status(6) -> timed_out;
+job_status(7) -> crashed.
 
 %% Job Node Status translators
 job_node_status(new) -> 0;
