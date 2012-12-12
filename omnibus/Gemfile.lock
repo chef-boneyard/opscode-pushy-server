@@ -1,6 +1,6 @@
 GIT
   remote: git://github.com/opscode/omnibus-ruby.git
-  revision: 38ea302d90af095820e0a4239a323684579e6eb4
+  revision: 58e1cb8abd127dcbe2eee2f702f47886e722a235
   branch: master
   specs:
     omnibus (0.1)
@@ -12,7 +12,7 @@ GIT
 
 GIT
   remote: git://github.com/opscode/omnibus-software.git
-  revision: e900c159aa40b2d3f13cfb3a74aa19f9bb3c4de0
+  revision: 33e5ee618013325d06181fcd4397ed6190348e60
   branch: master
   specs:
     omnibus-software (0.0.1)
@@ -24,7 +24,7 @@ GEM
     childprocess (0.3.6)
       ffi (~> 1.0, >= 1.0.6)
     erubis (2.7.0)
-    ffi (1.1.5)
+    ffi (1.2.0)
     fpm (0.3.11)
       json
     i18n (0.6.1)
@@ -46,7 +46,7 @@ GEM
       mixlib-log
       systemu
       yajl-ruby
-    rake (0.9.2.2)
+    rake (10.0.2)
     systemu (2.5.2)
     uber-s3 (0.2.4)
       mime-types (~> 1.17)
