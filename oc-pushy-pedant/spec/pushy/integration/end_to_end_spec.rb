@@ -639,7 +639,7 @@ describe "end-to-end-test" do
   context 'when one client is running a long running job' do
     before :each do
       start_new_clients('DONKEY')
-      start_job('sleep 20', [ 'DONKEY' ])
+      @long_job = start_job('sleep 20', [ 'DONKEY' ])
     end
 
     context 'and the server goes down and comes back up' do
@@ -653,6 +653,10 @@ describe "end-to-end-test" do
       it 'the client should abort and then be able to run another job' do
         start_echo_job_on_all_clients
         echo_job_should_complete_on_all_clients
+      end
+
+      it 'the job should be set to crashed', :focus do
+        wait_for_job_status(@long_job['uri'], 'crashed')
       end
 
     end
