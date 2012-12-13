@@ -130,7 +130,7 @@ insert_job_nodes([#pushy_job_node{job_id=JobId,
                                     created_at=CreatedAt,
                                     updated_at=UpdatedAt}|Rest]) ->
     case sqerl:statement(insert_job_node, [JobId, OrgId, NodeName,
-            job_status(Status), CreatedAt, UpdatedAt], count) of
+            job_node_status(Status), CreatedAt, UpdatedAt], count) of
         {ok, 1} ->
             insert_job_nodes(Rest);
         {error, Reason} ->
