@@ -39,9 +39,9 @@ fetch_job(JobId) ->
 fetch_incomplete_jobs() ->
     case sqerl:select(find_incomplete_jobs, []) of
         {ok, none} ->
-            {ok, not_found};
+            {ok, []};
         {ok, Rows} ->
-            [prepare_pushy_job_record(Row) || Row <- Rows];
+            {ok, [prepare_pushy_job_record(Row) || Row <- Rows]};
         {error, Error} ->
             {error, Error}
     end.
