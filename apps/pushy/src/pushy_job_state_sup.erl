@@ -52,6 +52,7 @@ register_process(JobId) ->
         %% assigned before anyone else tries to start things up gproc:reg can only return
         %% true or throw
         true = gproc:reg({n, l, {pushy_job, JobId}}),
+        pushy_job_monitor:monitor_job(JobId),
         true
     catch
         error:badarg ->
