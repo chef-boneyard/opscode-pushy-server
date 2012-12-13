@@ -63,6 +63,7 @@ init([#pushy_state{ctx=_Ctx} = PushyState]) ->
                ?WORKER(pushy_heartbeat_generator, [PushyState]),
                ?WORKER(pushy_command_switch, [PushyState]),
                ?WORKER(pushy_process_monitor, [<<"pushy_command_switch">>, pushy_command_switch, 1000]),
+               ?WORKER(pushy_job_monitor, []),
                ?SUP(pushy_node_state_sup, []),
                ?SUP(pushy_job_state_sup, []),
                ?WORKERNL(webmachine_mochiweb, [WebMachineConfig])  %% FIXME start or start_link here?
