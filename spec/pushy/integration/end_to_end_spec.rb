@@ -190,6 +190,17 @@ describe "end-to-end-test" do
                                         'status' => 'online'
                                       }})
         end
+        # While we're waiting, let's verify that the node shows as "new".  This
+        # is the only test where we're guaranteed to get this response--most
+        # tests will vote immediately.
+        get(response['uri'], admin_user) do |response|
+          response.should look_like({
+            :status => 200,
+            :body => {
+              'nodes' => { 'new' => ['DONKEY'] }
+            }
+          })
+        end
         job = wait_for_job_status(response['uri'], 'quorum_failed', :timeout => 65)
         job['nodes'].should == { 'unavailable' => [ 'DONKEY' ] }
         # This verifies our assumption that this was caused by the TIMEOUT rather
