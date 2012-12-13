@@ -67,10 +67,16 @@ register_process(JobId) ->
 %% ------------------------------------------------------------------
 
 mark_incomplete_jobs_as_crashed() ->
-    Jobs = pushy_sql:fetch_incomplete_jobs(),
-    [pushy_object:update_object(update_job,
-                                Job#pushy_job{status=crashed},
-                                Job#pushy_job.id) || Job <- Jobs].
+    case pushy_sql:fetch_incomplete_jobs() of
+        {ok, Jobs} ->
+            Update =fun(J) ->
+                        pushy_object:update_object(update_job,
+                                            J#pushy_job{status=crashed},
+                                            J#pushy_job.id)
+                     end,
+            [ Update(Job) || Job <- Jobs];
+        {error, Error} -> {error, Error}
+    end.
 
 
 %% ------------------------------------------------------------------
