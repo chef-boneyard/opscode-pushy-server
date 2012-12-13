@@ -53,7 +53,7 @@
          terminate/3,
          code_change/4]).
 
--spec start_link(node_ref(), node_addr()) -> ok.
+-spec start_link(node_ref(), node_addr()) -> {ok, pid()} | ignore | {error, {already_started, pid()} | term()}.
 start_link(NodeRef, NodeAddr) ->
     gen_fsm:start_link(?MODULE, [NodeRef, NodeAddr], []).
 
@@ -144,7 +144,7 @@ post_init(Message, #state{node_ref=NodeRef}=State) ->
     {next_state, state_transition(init, rehab, State1), State1}.
 
 rehab(aborted, #state{state_timer=TRef}=State) ->
-    timer:cancel(TRef),
+    _Result = timer:cancel(TRef),
     State1 = State#state{availability=available},
     {next_state, state_transition(rehab, idle, State1), State1};
 rehab(Message, #state{node_ref=NodeRef}=State) ->
@@ -281,6 +281,8 @@ state_transition(Current, New,
     notify_watchers(Watchers, NodeRef, Current, New),
     New.
 
+%% TODO - JC return args are different and we never have anything we check here
+%% Should we check that we notified successfully ?
 notify_watchers([], _NodeRef, _Current, _New) ->
     ok;
 notify_watchers(Watchers, NodeRef, Current, New) ->
@@ -334,30 +336,34 @@ dispatch_raw_message([Addr, _Header, Body] = Message) ->
 maybe_process_and_dispatch_message(CurrentState, State, Message) ->
     case process_and_dispatch_message(Message, State) of
         {ok, State1} -> {next_state, CurrentState, State1};
+        %% TODO - JC we never get a {should_die, State} right now.  Need to improve logic around
+        %% failed decode messages
         {should_die, State1} -> {stop, state_transition(CurrentState, shutdown, State1), State1}
     end.
 
+-spec process_and_dispatch_message(Message :: [binary()],
+                                   State :: #state{} ) -> {ok, #state{} }.
 process_and_dispatch_message([Address, Header, Body], State) ->
     KeyFetch = fun key_fetch/2,
-    State1 = try ?TIME_IT(pushy_messaging, parse_message, (Address, Header, Body, KeyFetch)) of
-                 {ok, #pushy_message{} = Msg} ->
-                     {ok, process_message(State, Msg)};
-                 {error, #pushy_message{validated=bad_sig}} ->
-                     lager:error("Command message failed verification: header=~s", [Header]),
-                     {ok, State}
-             catch
-                 error:Error ->
-                     Stack = erlang:get_stacktrace(),
-                     lager:error("Command message parser failed horribly: header=~p~nstack~p~s", [Error, Stack]),
-                     {ok, State};
-                 Error ->
-                     Stack = erlang:get_stacktrace(),
-                     lager:error("Command message parser failed horribly: header=~p~nstack~p~s", [Error, Stack]),
-                     {ok, State}
-             end,
-    State1.
+    try ?TIME_IT(pushy_messaging, parse_message, (Address, Header, Body, KeyFetch)) of
+        {ok, #pushy_message{} = Msg} ->
+            {ok, process_message(State, Msg)};
+        {error, #pushy_message{validated=bad_sig}} ->
+            lager:error("Command message failed verification: header=~s", [Header]),
+            {ok, State}
+    catch
+        error:Error ->
+            Stack = erlang:get_stacktrace(),
+            lager:error("Command message parser failed horribly: header=~p~nstack~p~s", [Error, Stack]),
+            {ok, State};
+        Error ->
+            Stack = erlang:get_stacktrace(),
+            lager:error("Command message parser failed horribly: header=~p~nstack~p~s", [Error, Stack]),
+            {ok, State}
+    end.
 
-
+-spec process_message(State :: #state{},
+                      Message :: #pushy_message{}) -> #state{}.
 process_message(#state{node_ref=NodeRef, node_addr=CurAddr} = State, #pushy_message{address=NewAddr} = Message)
   when CurAddr =/= NewAddr ->
     %% Our address has changed. By this point we've validated the message, so we can trust the address
@@ -377,9 +383,11 @@ process_message(#state{node_ref=NodeRef, node_addr=Address} = State, #pushy_mess
                 [NodeRef, BinaryType, pushy_tools:bin_to_hex(Address)]),
     case Type of
         unknown ->
-            lager:error("Status message for node ~p was missing type field!~n", [NodeRef]);
+            lager:error("Status message for node ~p was missing type field!~n", [NodeRef]),
+            State;
         undefined ->
-            lager:error("Status message for node ~p had unknown type ~p~n", [NodeRef, BinaryType]);
+            lager:error("Status message for node ~p had unknown type ~p~n", [NodeRef, BinaryType]),
+            State;
         _ ->
             send_node_event(State, JobId, NodeRef, Type)
     end.
