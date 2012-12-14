@@ -655,7 +655,7 @@ describe "end-to-end-test" do
         echo_job_should_complete_on_all_clients
       end
 
-      it 'the job should be set to crashed', :focus do
+      it 'the job should be set to crashed' do
         wait_for_job_status(@long_job['uri'], 'crashed')
       end
 
