@@ -120,7 +120,7 @@ handle_cast(_Msg, State) ->
 handle_info(start_measure, #state{process = Process,
                                   interval = Interval} = State) ->
     lager:info("Starting Process Monitor for ~p", [Process]),
-    timer:apply_interval(Interval, ?MODULE, measure, [self()]),
+    _Timer = timer:apply_interval(Interval, ?MODULE, measure, [self()]),
     {noreply, State};
 handle_info(Info, State) ->
     lager:warning("handle_info: [~s] unhandled message ~w:", [State, Info]),
