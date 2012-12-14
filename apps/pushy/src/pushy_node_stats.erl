@@ -25,15 +25,17 @@
          stop/0,
          scan/0]).
 
--spec init() -> atom() | ets:tid().
+-spec init() -> ok.
 init() ->
-    ets:new(?MODULE, [set, public, named_table, {keypos, 2},
-                      {write_concurrency, true}, {read_concurrency, true}]).
+    _Tid = ets:new(?MODULE, [set, public, named_table, {keypos, 2},
+                             {write_concurrency, true}, {read_concurrency, true}]),
+    ok.
 
 %% This exists to make eunit tests less painful to write.
 -spec stop() -> ok.
 stop() ->
-    ets:delete(?MODULE).
+    true = ets:delete(?MODULE),
+    ok.
 
 
 -spec heartbeat(pid()) -> ok | should_die.
