@@ -7,8 +7,10 @@
 
 -export([fetch_public_key/2]).
 
--spec fetch_public_key(OrgName :: binary(), Requestor :: binary()) ->
-                            binary() | not_found.
+-include("pushy_wm.hrl").
+
+-spec fetch_public_key(OrgName :: binary(), Requestor :: string()) ->
+    {binary(), pushy_requestor_type()}  | {not_found, term()}.
 %% @doc get pubkey for given requestor against given organization
 fetch_public_key(OrgName, Requestor) ->
     try
@@ -18,6 +20,9 @@ fetch_public_key(OrgName, Requestor) ->
             {not_found, Why}
     end.
 
+-spec request_pubkey(OrgName :: binary(),
+                     Requestor :: string()) ->
+    {binary(), pushy_requestor_type()}.
 request_pubkey(OrgName, Requestor) ->
     Headers = [{"Accept", "application/json"},
                {"Content-Type", "application/json"},
@@ -36,6 +41,7 @@ request_pubkey(OrgName, Requestor) ->
             throw({error, Reason})
     end.
 
+-spec parse_json_response(Body :: binary()) -> {binary(), pushy_requestor_type()}.
 parse_json_response(Body) ->
     EJson = jiffy:decode(Body),
     {ej:get({"public_key"}, EJson), requestor_type(ej:get({"type"}, EJson))}.
@@ -43,10 +49,10 @@ parse_json_response(Body) ->
 requestor_type(<<"user">>) ->
     user;
 requestor_type(<<"client">>) ->
-    client;
-requestor_type(_) ->
-    undefined.
+    client.
 
+-spec api_url(OrgName :: binary(),
+              Requestor :: string()) -> list().
 api_url(OrgName, Requestor) ->
     Hostname = pushy_util:get_env(erchef, hostname, "localhost", fun is_list/1),
     Port = pushy_util:get_env(erchef, port, 8000, fun is_integer/1),
