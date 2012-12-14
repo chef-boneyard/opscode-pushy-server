@@ -190,7 +190,7 @@ forbidden(Req, #config_state{requestor_id = UserName, requestor_type = Type,
             {NotFound, Req, State};
         true ->
             {false, Req, State};
-        _ ->
+        false ->
             Msg = iolist_to_binary([<<"User or client '">>, UserName, <<"' does not ">>,
                                     <<"have access to that action on this server.">>]),
             Req1 = wrq:set_resp_body(jiffy:encode({[{<<"error">>, [Msg]}]}), Req),
