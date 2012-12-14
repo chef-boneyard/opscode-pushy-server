@@ -5,8 +5,8 @@
 
 -type pushy_requestor_type() :: 'client' | 'user'.
 
--record(config_state, {organization_name :: string(),
-                       organization_guid :: string(),
+-record(config_state, {organization_name :: binary(),
+                       organization_guid :: <<_:256>>,
                        % TODO: probably want to split this into specific states, instead of this
                        % catch-all, but right now authentication requires the above two things,
                        % and config + job endpoints (respectively) need the following:
