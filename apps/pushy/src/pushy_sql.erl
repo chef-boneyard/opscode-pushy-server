@@ -117,8 +117,8 @@ update_job_node(#pushy_job_node{job_id = JobId,
     UpdateFields = [job_node_status(Status), UpdatedAt, OrgId, NodeName, JobId],
     do_update(update_job_node_by_orgid_nodename_jobid, UpdateFields).
 
--spec create_object(atom(), tuple() | list()) -> {ok, non_neg_integer()} | {error, term()}.
-create_object(QueryName, Args) when is_atom(QueryName), is_list(Args) ->
+-spec create_object(atom(), list()) -> {ok, non_neg_integer()} | {error, term()}.
+create_object(QueryName, Args) ->
     case sqerl:statement(QueryName, Args, count) of
         {ok, N} ->
             {ok, N};
@@ -129,10 +129,7 @@ create_object(QueryName, Args) when is_atom(QueryName), is_list(Args) ->
         %% FIXME: original code for create_node had the following match, but seems like
         %% crashing would be better if we get an unexpected error.
         %% Error -> Error
-    end;
-create_object(QueryName, Record) when is_atom(QueryName), is_tuple(Record) ->
-    List = flatten_record(Record),
-    create_object(QueryName, List).
+    end.
 
 -spec job_fields_for_insert(CbFields:: list()) -> list().
 job_fields_for_insert(CbFields) ->
@@ -257,13 +254,27 @@ job_node_status(9) -> was_ready;
 job_node_status(10) -> crashed;
 job_node_status(11) -> timed_out.
 
-%% CHEF_COMMON CARGO_CULT
+%% CHEF_DB CARGO_CULT
 %% chef_sql:flatten_record/1
 flatten_record(Rec) ->
     [_Head|Tail] = tuple_to_list(Rec),
+    %% We detect if any of the fields in the record have not been set
+    %% and throw an error
+    case lists:any(fun is_undefined/1, Tail) of
+        true -> error({undefined_in_record, Rec});
+        false -> ok
+    end,
     Tail.
 
-%% CHEF_COMMON CARGO_CULT
+%% CHEF_DB CARGO_CULT
+%% chef_sql:is_undefined/1
+is_undefined(undefined) ->
+    true;
+is_undefined(_) ->
+    false.
+
+
+%% CHEF_DB CARGO_CULT
 %% chef_sql:parse_error/1
 parse_error(Reason) ->
     DbType = envy:get(sqerl, db_type, atom),
@@ -298,7 +309,7 @@ parse_error(_, no_members) ->
     {error, "Pooler had no members"}.
 
 
-%% CHEF_COMMON CARGO_CULT
+%% CHEF_DB CARGO_CULT
 %% chef_sql:do_update/2
 do_update(QueryName, UpdateFields) ->
     case sqerl:statement(QueryName, UpdateFields) of
@@ -307,7 +318,7 @@ do_update(QueryName, UpdateFields) ->
         {error, Error} -> {error, Error}
     end.
 
-%% CHEF_COMMON CARGO_CULT
+%% CHEF_DB CARGO_CULT
 %% chef_sql:safe_get/2
 
 %% @doc Safely retrieves a value from a proplist. Throws an error if the specified key does
@@ -317,7 +328,7 @@ safe_get(Key, Proplist) ->
     {Key, Value} = lists:keyfind(Key, 1, Proplist),
     Value.
 
-%% CHEF_COMMON CARGO_CULT
+%% CHEF_DB CARGO_CULT
 %% chef_sql:statements/1
 statements(DbType) ->
     File = atom_to_list(DbType) ++ "_statements.config",
