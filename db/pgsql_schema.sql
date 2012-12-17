@@ -60,20 +60,6 @@ CREATE TABLE jobs (
 
 
 --
--- Name: node_status; Type: TABLE; Schema: public; Owner: -; Tablespace:
---
-
-CREATE TABLE node_status (
-    node_name text NOT NULL,
-    org_id character(32) NOT NULL,
-    status integer NOT NULL,
-    last_updated_by character(32) NOT NULL,
-    created_at timestamp without time zone NOT NULL,
-    updated_at timestamp without time zone NOT NULL
-);
-
-
---
 -- Name: schema_info; Type: TABLE; Schema: public; Owner: -; Tablespace:
 --
 
@@ -96,14 +82,6 @@ ALTER TABLE ONLY job_nodes
 
 ALTER TABLE ONLY jobs
     ADD CONSTRAINT jobs_pkey PRIMARY KEY (id);
-
-
---
--- Name: node_status_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace:
---
-
-ALTER TABLE ONLY node_status
-    ADD CONSTRAINT node_status_pkey PRIMARY KEY (org_id, node_name);
 
 
 --
