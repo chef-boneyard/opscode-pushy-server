@@ -4,7 +4,8 @@
 -type object_id() :: <<_:256>>.
 
 %% job status
--type job_status() :: voting |
+-type job_status() :: new |
+                      voting |
                       running |
                       complete |
                       quorum_failed |
@@ -30,8 +31,8 @@
                          'org_id'::object_id(),              % organization guid
                          'node_name'::binary(),              % node name
                          'status'::job_node_status(),        % node's status in context of job
-                         'created_at'::calendar:datetime(),  % time created at
-                         'updated_at'::calendar:datetime()   % time updated at
+                         'created_at'::binary(),  % time created at
+                         'updated_at'::binary()   % time updated at
                          }).
 
 -record(pushy_job, {'id'::object_id(),                  % guid for object (unique)
@@ -42,8 +43,8 @@
                     'run_timeout'::non_neg_integer(),   % max duration (in seconds) to allow execution
                     'job_nodes' ::[#pushy_job_node{}],
                     'last_updated_by'::object_id(),     % authz guid of last actor to update
-                    'created_at'::calendar:datetime(),  % time created at
-                    'updated_at'::calendar:datetime()  % time updated at
+                    'created_at'::binary(),  % time created at
+                    'updated_at'::binary()  % time updated at
                     }).
 
 -type pushy_object() :: #pushy_job{}.

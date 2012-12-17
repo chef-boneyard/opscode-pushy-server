@@ -18,12 +18,10 @@
          update_job/1,
          update_job_node/1,
 
-         sql_now/0,
-         sql_date/1,
-         statements/1
-        ]).
+         statements/1,
 
-sql_now() -> calendar:now_to_universal_time(os:timestamp()).
+         sql_date/1
+        ]).
 
 %% job ops
 
@@ -178,22 +176,40 @@ job_join_rows_to_record(Rows) ->
     job_join_rows_to_record(Rows, []).
 job_join_rows_to_record([LastRow|[]], JobNodes) ->
     C = proplist_to_job_node(LastRow),
+    CreatedAt = safe_get(<<"created_at">>, LastRow),
+    UpdatedAt = safe_get(<<"updated_at">>, LastRow),
     #pushy_job{id = safe_get(<<"id">>, LastRow),
                   org_id = safe_get(<<"org_id">>, LastRow),
                   command = safe_get(<<"command">>, LastRow),
                   status = safe_get(<<"status">>, LastRow),
                   run_timeout = safe_get(<<"run_timeout">>, LastRow),
                   last_updated_by = safe_get(<<"last_updated_by">>, LastRow),
-                  created_at = trunc_date_time_to_second(safe_get(<<"created_at">>, LastRow)),
-                  updated_at = trunc_date_time_to_second(safe_get(<<"updated_at">>, LastRow)),
+                  created_at = date_time_to_sql_date(CreatedAt),
+                  updated_at = date_time_to_sql_date(UpdatedAt),
                   job_nodes = lists:flatten(lists:reverse([C|JobNodes]))};
 job_join_rows_to_record([Row|Rest], JobNodes ) ->
     C = proplist_to_job_node(Row),
     job_join_rows_to_record(Rest, [C|JobNodes]).
 
+date_time_to_sql_date(Date) ->
+    Date0 = trunc_date_time_to_second(Date),
+    iolist_to_binary(httpd_util:rfc1123_date(Date0)).
+
+%%% Emit in DATETIME friendly format
+%% @doc Convert an Erlang timestamp (see `os:timestamp/0') to DATETIME friendly format.
+-spec sql_date(now | {non_neg_integer(), non_neg_integer(), non_neg_integer()}) -> binary().
+sql_date(now) ->
+    sql_date(os:timestamp());
+sql_date({_,_,_} = TS) ->
+    {{Year,Month,Day},{Hour,Minute,Second}} = calendar:now_to_universal_time(TS),
+    iolist_to_binary(io_lib:format("~4w-~2..0w-~2..0w ~2..0w:~2..0w:~2..0w",
+                  [Year, Month, Day, Hour, Minute, Second])).
+
+
+
 prepare_job(Job) ->
-    CreatedAt = trunc_date_time_to_second(safe_get(<<"created_at">>, Job)),
-    CreatedAtFormatted = iolist_to_binary(httpd_util:rfc1123_date(CreatedAt)),
+    CreatedAt = safe_get(<<"created_at">>, Job),
+    CreatedAtFormatted = date_time_to_sql_date(CreatedAt),
     Status = safe_get(<<"status">>, Job),
 
     {[{<<"id">>, safe_get(<<"id">>, Job)},
@@ -201,8 +217,8 @@ prepare_job(Job) ->
       {<<"status">>, Status}]}.
 
 prepare_pushy_job_record(Job) ->
-    CreatedAt = trunc_date_time_to_second(safe_get(<<"created_at">>, Job)),
-    CreatedAtFormatted = iolist_to_binary(httpd_util:rfc1123_date(CreatedAt)),
+    CreatedAt = safe_get(<<"created_at">>, Job),
+    CreatedAtFormatted = date_time_to_sql_date(CreatedAt),
     Status = safe_get(<<"status">>, Job),
 
     #pushy_job{id = safe_get(<<"id">>, Job),
@@ -224,8 +240,8 @@ proplist_to_job_node(Proplist) ->
                 org_id = safe_get(<<"org_id">>, Proplist),
                 node_name = safe_get(<<"node_name">>, Proplist),
                 status = job_node_status(safe_get(<<"job_node_status">>, Proplist)),
-                created_at = trunc_date_time_to_second(safe_get(<<"created_at">>, Proplist)),
-                updated_at = trunc_date_time_to_second(safe_get(<<"updated_at">>, Proplist))}
+                created_at = date_time_to_sql_date(safe_get(<<"created_at">>, Proplist)),
+                updated_at = date_time_to_sql_date(safe_get(<<"updated_at">>, Proplist))}
     end.
 
 %% Job Node Status translators
@@ -340,16 +356,3 @@ statements(DbType) ->
                  exit(no_statement_file)
          end,
     Rv.
-
-%% CHEF_COMMON CARGO_CULT
-%% chef_db:sql_date/1
-
-%%%
-%%% Emit in DATETIME friendly format
-%%% TODO: Modify to generate datetime pseudo record as used by emysql?
-sql_date(now) ->
-    sql_date(os:timestamp());
-sql_date({_,_,_} = TS) ->
-    {{Year,Month,Day},{Hour,Minute,Second}} = calendar:now_to_universal_time(TS),
-    iolist_to_binary(io_lib:format("~4w-~2..0w-~2..0w ~2..0w:~2..0w:~2..0w",
-                  [Year, Month, Day, Hour, Minute, Second])).

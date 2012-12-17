@@ -34,23 +34,30 @@ fetch_org_id(OrgName) ->
             Guid
     end.
 
+-spec new_record(atom(),
+                 OrgId :: object_id(),
+                 NodeNames :: [binary()],
+                 Command :: binary(),
+                 RunTimeout :: non_neg_integer(),
+                 Quorum :: non_neg_integer()) -> pushy_object().
 new_record(pushy_job, OrgId, NodeNames, Command, RunTimeout, Quorum) ->
     Id = make_org_prefix_id(OrgId),
+    Now = pushy_sql:sql_date(now),
     #pushy_job{id = Id,
                 org_id = OrgId,
                 status = new,
                 command = Command,
                 run_timeout = RunTimeout,
                 quorum = Quorum,
-                created_at = pushy_sql:sql_date(now),
-                updated_at = pushy_sql:sql_date(now),
+                created_at = Now,
+                updated_at = Now,
                 job_nodes = [
                   #pushy_job_node{job_id = Id,
                                   org_id = OrgId,
                                   node_name = NodeName,
                                   status = new,
-                                  created_at = pushy_sql:sql_date(now),
-                                  updated_at = pushy_sql:sql_date(now)} ||
+                                  created_at = Now,
+                                  updated_at = Now} ||
                                   NodeName <- NodeNames]
                 }.
 
