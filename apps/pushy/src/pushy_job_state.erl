@@ -60,9 +60,6 @@ stop_job(JobId) ->
 %%%
 %%% Initialization
 %%%
--spec init(#pushy_job{}) ->
-    {'ok', job_status(), #state{}} |
-    {'stop', 'shutdown', #state{}}.
 init(#pushy_job{id = JobId, job_nodes = JobNodeList} = Job) ->
     Host = list_to_binary(envy:get(pushy, server_name, string)),
     case pushy_job_state_sup:register_process(JobId) of
@@ -156,7 +153,9 @@ handle_event(Event, StateName, State) ->
     {next_state, StateName, State}.
 
 -spec handle_sync_event(any(), any(), job_status(), #state{}) ->
-        {'reply', 'ok', job_status(), #state{}}.
+        {'next_state', job_status(), #state{}}|
+        {'reply', 'ok', job_status(), #state{}} |
+        {'stop', 'shutdown', 'ok', #state{}}.
 handle_sync_event(get_job_status, _From, StateName,
         #state{job = Job, job_nodes = JobNodes} = State) ->
     JobNodesList = [ JobNode || {_,JobNode} <- dict:to_list(JobNodes) ],
