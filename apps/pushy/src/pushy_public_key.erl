@@ -46,6 +46,7 @@ parse_json_response(Body) ->
     EJson = jiffy:decode(Body),
     {ej:get({"public_key"}, EJson), requestor_type(ej:get({"type"}, EJson))}.
 
+-spec requestor_type(binary()) -> pushy_requestor_type().
 requestor_type(<<"user">>) ->
     user;
 requestor_type(<<"client">>) ->
