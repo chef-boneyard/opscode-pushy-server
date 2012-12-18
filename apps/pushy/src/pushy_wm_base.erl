@@ -27,8 +27,8 @@ malformed_request(Req, State) ->
             Msg1 = malformed_request_message(bad_clock, Req, State),
             Req3 = wrq:set_resp_body(jiffy:encode(Msg1), Req),
             {{halt, 401}, Req3, State};
-        throw:bad_headers ->
-            Msg1 = malformed_request_message(bad_headers, Req, State),
+        throw:{bad_headers, Headers} ->
+            Msg1 = malformed_request_message({bad_headers, Headers}, Req, State),
             Req3 = wrq:set_resp_body(jiffy:encode(Msg1), Req),
             {{halt, 401}, Req3, State};
         throw:bad_sign_desc ->
@@ -135,7 +135,7 @@ verify_request_signature(Req, State) ->
     OrgName = list_to_binary(wrq:path_info(organization_id, Req)),
     State1 = State#config_state{organization_guid = pushy_object:fetch_org_id(OrgName),
                                 organization_name = OrgName},
-    case get_public_key(OrgName, UserName) of
+    case pushy_public_key:fetch_public_key(OrgName, UserName) of
         {not_found, What} ->
             NotFoundMsg = verify_request_message({not_found, What},
                                                  UserName, OrgName),
@@ -158,9 +158,6 @@ verify_request_signature(Req, State) ->
                     {false, Req1, State1}
             end
     end.
-
-get_public_key(OrgName, UserName) ->
-    pushy_public_key:fetch_public_key(OrgName, UserName).
 
 body_or_default(Req, Default) ->
     case wrq:req_body(Req) of
