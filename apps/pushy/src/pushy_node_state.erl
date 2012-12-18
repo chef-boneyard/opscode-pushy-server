@@ -281,13 +281,11 @@ state_transition(Current, New,
     notify_watchers(Watchers, NodeRef, Current, New),
     New.
 
-%% TODO - JC return args are different and we never have anything we check here
-%% Should we check that we notified successfully ?
 notify_watchers([], _NodeRef, _Current, _New) ->
     ok;
-notify_watchers(Watchers, NodeRef, Current, New) ->
-    F = fun(Watcher) -> Watcher ! {state_change, NodeRef, Current, New} end,
-    [F(Watcher) || {Watcher, _Monitor} <- Watchers].
+notify_watchers([{Watcher,_Monitor}|Tail], NodeRef, Current, New) ->
+    Watcher ! {state_change, NodeRef, Current, New},
+    notify_watchers(Tail, NodeRef, Current, New).
 
 %%
 %% Message processing and parsing code; this executes in the caller's context
@@ -335,10 +333,10 @@ dispatch_raw_message([Addr, _Header, Body] = Message) ->
 %%
 maybe_process_and_dispatch_message(CurrentState, State, Message) ->
     case process_and_dispatch_message(Message, State) of
-        {ok, State1} -> {next_state, CurrentState, State1};
+        {ok, State1} -> {next_state, CurrentState, State1}
         %% TODO - JC we never get a {should_die, State} right now.  Need to improve logic around
         %% failed decode messages
-        {should_die, State1} -> {stop, state_transition(CurrentState, shutdown, State1), State1}
+        %%{should_die, State1} -> {stop, state_transition(CurrentState, shutdown, State1), State1}
     end.
 
 -spec process_and_dispatch_message(Message :: [binary()],

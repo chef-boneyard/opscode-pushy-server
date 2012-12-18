@@ -28,7 +28,11 @@ start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
 start(Job) ->
-    supervisor:start_child(?SERVER, [Job]).
+    case supervisor:start_child(?SERVER, [Job]) of
+        {ok, _Child} ->
+            ok;
+        {error, Error} ->  throw({error, Error})
+    end.
 
 -spec get_process(object_id()) -> pid() | not_found.
 get_process(JobId) ->
