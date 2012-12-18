@@ -141,16 +141,18 @@ verify_request_signature(Req, State) ->
                                                  UserName, OrgName),
             {false, wrq:set_resp_body(jiffy:encode(NotFoundMsg), Req), State1};
         {PublicKey, Type} ->
+            DecodedPubKey = chef_authn:decode_key_data(PublicKey),
             Body = body_or_default(Req, <<>>),
             HTTPMethod = method_as_binary(Req),
             Path = iolist_to_binary(wrq:path(Req)),
             GetHeader = get_header_fun(Req),
             case chef_authn:authenticate_user_request(GetHeader, HTTPMethod,
-                                                      Path, Body, PublicKey,
+                                                      Path, Body, PublicKey, %% TODO use DecodedPubKey
                                                       ?AUTH_SKEW) of
                 {name, _} ->
                     {true, Req, State1#config_state{requestor_id = UserName,
-                                                    requestor_type = Type}};
+                                                    requestor_type = Type,
+                                                    requestor_key = DecodedPubKey}};
                 {no_authn, Reason} ->
                     Msg = verify_request_message(Reason, UserName, OrgName),
                     Json = jiffy:encode(Msg),
