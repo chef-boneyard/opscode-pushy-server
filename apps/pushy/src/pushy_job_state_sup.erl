@@ -38,14 +38,14 @@ get_process(JobId) ->
         error:badarg -> not_found
     end.
 
--spec get_job_processes() -> {binary(), pid()}.
+-spec get_job_processes() -> [{binary(), pid()}].
 get_job_processes() ->
     MatchHead = pushy_util:gproc_match_head(n, l, {pushy_job, '_'}),
     Guard = [],
     Result = ['$$'],
     [{JobId, Pid} || [{_,_,{_,JobId}},Pid,_] <- gproc:select([{MatchHead, Guard, Result}])].
 
--spec register_process(object_id()) -> pid().
+-spec register_process(object_id()) -> boolean().
 register_process(JobId) ->
     try
         %% The most important thing to have happen is this registration; we need to get this
