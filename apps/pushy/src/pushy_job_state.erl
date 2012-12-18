@@ -214,7 +214,7 @@ set_node_state(NodeRef, NewNodeState, #state{job_nodes = JobNodes} = State) ->
             terminal -> error("Attempt to change node ~p from terminal state ~p to state ~p");
             _ ->
                 NewPushyJobNode = OldPushyJobNode#pushy_job_node{status = NewNodeState},
-                pushy_sql:update_job_node(NewPushyJobNode),
+                {ok, 1} = pushy_sql:update_job_node(NewPushyJobNode),
                 NewPushyJobNode
         end
     end, JobNodes),
@@ -237,7 +237,7 @@ send_matching_to_rehab(OldNodeState, NewNodeState, #state{job_nodes = JobNodes} 
             case OldPushyJobNode#pushy_job_node.status of
                 OldNodeState ->
                     NewPushyJobNode = OldPushyJobNode#pushy_job_node{status = NewNodeState},
-                    pushy_sql:update_job_node(NewPushyJobNode),
+                    {ok, 1} = pushy_sql:update_job_node(NewPushyJobNode),
                     pushy_node_state:rehab({NewPushyJobNode#pushy_job_node.org_id,
                                             NewPushyJobNode#pushy_job_node.node_name}),
                     NewPushyJobNode;
