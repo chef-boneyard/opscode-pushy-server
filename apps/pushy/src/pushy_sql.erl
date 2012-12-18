@@ -215,24 +215,6 @@ proplist_to_job_node(Proplist) ->
                 updated_at = trunc_date_time_to_second(safe_get(<<"updated_at">>, Proplist))}
     end.
 
-%%% Job Status translators
-%job_status(voting) -> 0;
-%job_status(running) -> 1;
-%job_status(complete) -> 2;
-%job_status(quorum_failed) -> 3;
-%job_status(aborted) -> 4;
-%job_status(new) -> 5;
-%job_status(timed_out) -> 6;
-%job_status(crashed) -> 7;
-%job_status(0) -> voting;
-%job_status(1) -> running;
-%job_status(2) -> complete;
-%job_status(3) -> quorum_failed;
-%job_status(4) -> aborted;
-%job_status(5) -> new;
-%job_status(6) -> timed_out;
-%job_status(7) -> crashed.
-
 %% Job Node Status translators
 job_node_status(new) -> 0;
 job_node_status(ready) -> 1;
