@@ -64,7 +64,7 @@ CREATE TABLE jobs (
 --
 
 CREATE TABLE job_status (
-    id character(32) NOT NULL,
+    id integer NOT NULL,
     description text NOT NULL
 );
 
@@ -99,6 +99,12 @@ CREATE TABLE schema_info (
 ALTER TABLE ONLY job_nodes
     ADD CONSTRAINT job_nodes_job_id_org_id_node_name_key UNIQUE (job_id, org_id, node_name);
 
+--
+-- Name: job_status_pkey; Type: CONSTRAINT
+--
+
+ALTER TABLE ONLY job_status
+    ADD CONSTRAINT job_status_pkey PRIMARY KEY (id);
 
 --
 -- Name: jobs_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace:
@@ -107,6 +113,13 @@ ALTER TABLE ONLY job_nodes
 ALTER TABLE ONLY jobs
     ADD CONSTRAINT jobs_pkey PRIMARY KEY (id);
 
+
+--
+-- Name: job_status_fkey; Type: CONSTRAINT
+--
+
+ALTER TABLE ONLY jobs
+    ADD CONSTRAINT job_status_fkey FOREIGN KEY (status) REFERENCES job_status(id);
 
 --
 -- Name: job_nodes_job_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
