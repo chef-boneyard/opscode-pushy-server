@@ -80,7 +80,7 @@ job_to_json(#pushy_job{
     NodesJson = job_nodes_json_by_status(Nodes),
     {[ {<<"id">>, iolist_to_binary(Id)},
        {<<"command">>, iolist_to_binary(Command)},
-       {<<"status">>, atom_to_binary(Status, utf8)},
+       {<<"status">>, Status},
        {<<"run_timeout">>, RunTimeout},
        {<<"nodes">>, NodesJson}
 %       {<<"created_at">>, CreatedAtDate},

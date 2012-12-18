@@ -58,7 +58,7 @@ fetch_jobs(OrgId) ->
 
 create_job(#pushy_job{status = Status, job_nodes = JobNodes}=Job) ->
     %% convert status into an integer
-    Job1 = Job#pushy_job{status=job_status(Status)},
+    Job1 = Job#pushy_job{status=Status},
     Fields0 = flatten_record(Job1),
     Fields = job_fields_for_insert(Fields0),
     %% We're not dispatching to the general create_object/2 because creating a job
@@ -93,7 +93,7 @@ update_job(#pushy_job{id = JobId,
                       status = Status,
                       last_updated_by = LastUpdatedBy,
                       updated_at = UpdatedAt}) ->
-    UpdateFields = [job_status(Status), LastUpdatedBy, UpdatedAt, JobId],
+    UpdateFields = [Status, LastUpdatedBy, UpdatedAt, JobId],
     do_update(update_job_by_id, UpdateFields).
 
 -spec update_job_node(#pushy_job_node{}) -> {ok, 1 | not_found} | {error, term()}.
@@ -172,7 +172,7 @@ job_join_rows_to_record([LastRow|[]], JobNodes) ->
     #pushy_job{id = safe_get(<<"id">>, LastRow),
                   org_id = safe_get(<<"org_id">>, LastRow),
                   command = safe_get(<<"command">>, LastRow),
-                  status = job_status(safe_get(<<"status">>, LastRow)),
+                  status = safe_get(<<"status">>, LastRow),
                   run_timeout = safe_get(<<"run_timeout">>, LastRow),
                   last_updated_by = safe_get(<<"last_updated_by">>, LastRow),
                   created_at = trunc_date_time_to_second(safe_get(<<"created_at">>, LastRow)),
@@ -185,7 +185,7 @@ job_join_rows_to_record([Row|Rest], JobNodes ) ->
 prepare_job(Job) ->
     CreatedAt = trunc_date_time_to_second(safe_get(<<"created_at">>, Job)),
     CreatedAtFormatted = iolist_to_binary(httpd_util:rfc1123_date(CreatedAt)),
-    Status = atom_to_binary(job_status(safe_get(<<"status">>, Job)), utf8),
+    Status = safe_get(<<"status">>, Job),
 
     {[{<<"id">>, safe_get(<<"id">>, Job)},
       {<<"created_at">>, CreatedAtFormatted},
@@ -194,7 +194,7 @@ prepare_job(Job) ->
 prepare_pushy_job_record(Job) ->
     CreatedAt = trunc_date_time_to_second(safe_get(<<"created_at">>, Job)),
     CreatedAtFormatted = iolist_to_binary(httpd_util:rfc1123_date(CreatedAt)),
-    Status = atom_to_binary(job_status(safe_get(<<"status">>, Job)), utf8),
+    Status = safe_get(<<"status">>, Job),
 
     #pushy_job{id = safe_get(<<"id">>, Job),
                created_at = CreatedAtFormatted,
@@ -215,23 +215,23 @@ proplist_to_job_node(Proplist) ->
                 updated_at = trunc_date_time_to_second(safe_get(<<"updated_at">>, Proplist))}
     end.
 
-%% Job Status translators
-job_status(voting) -> 0;
-job_status(running) -> 1;
-job_status(complete) -> 2;
-job_status(quorum_failed) -> 3;
-job_status(aborted) -> 4;
-job_status(new) -> 5;
-job_status(timed_out) -> 6;
-job_status(crashed) -> 7;
-job_status(0) -> voting;
-job_status(1) -> running;
-job_status(2) -> complete;
-job_status(3) -> quorum_failed;
-job_status(4) -> aborted;
-job_status(5) -> new;
-job_status(6) -> timed_out;
-job_status(7) -> crashed.
+%%% Job Status translators
+%job_status(voting) -> 0;
+%job_status(running) -> 1;
+%job_status(complete) -> 2;
+%job_status(quorum_failed) -> 3;
+%job_status(aborted) -> 4;
+%job_status(new) -> 5;
+%job_status(timed_out) -> 6;
+%job_status(crashed) -> 7;
+%job_status(0) -> voting;
+%job_status(1) -> running;
+%job_status(2) -> complete;
+%job_status(3) -> quorum_failed;
+%job_status(4) -> aborted;
+%job_status(5) -> new;
+%job_status(6) -> timed_out;
+%job_status(7) -> crashed.
 
 %% Job Node Status translators
 job_node_status(new) -> 0;
