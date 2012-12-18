@@ -70,18 +70,12 @@ to_json(Req, #config_state{organization_name = OrgName,
     ClientName = {OrgGuid, iolist_to_binary(NodeName)},
     {Method,Key} = pushy_key_manager:get_key(ClientName),
 
-    %% TODO: OC-4204
-    %% The session key should be sent encrypted using the client's public key. We're
-    %% skipping that for the moment, but this work is not done unless we fix this.
-    %% This needs the client key fetch work to be done first though...
-
+    %% Implementation note: this doesn't prevent a MiM attack where a different session key
+    %% is substituted. The best way to prevent this is to insure a proper SSL chain of trust
+    %% from the client to the server.
     EncodedKey = public_key:encrypt_public(Key, ClientKey),
     B64EncodedKey = base64:encode(EncodedKey),
     EKeyStruct =  {[{<<"method">>, Method}, {<<"key">>, B64EncodedKey}]},
-    KeyStruct =  {[{<<"method">>, Method}, {<<"key">>, base64:encode(Key) }]}, %% TODO REMOVE
-
-    lager:info("Key ~s~n~s", [Key, base64:encode(Key)]),
-    lager:info("EncodedKey ~s~n~s", [EncodedKey, B64EncodedKey]),
 
     ConfigurationStruct =
         {[{<<"type">>, <<"config">>},
@@ -97,7 +91,6 @@ to_json(Req, #config_state{organization_name = OrgName,
           {<<"node">>, NodeName},
           {<<"organization">>, OrgName},
           {<<"public_key">>, PublicKey},
-          {<<"session_key">>, KeyStruct},
           {<<"encoded_session_key">>, EKeyStruct},
           {<<"lifetime">>, ConfigLifetime},
           {<<"incarnation_id">>, IncarnationId}
