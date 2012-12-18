@@ -147,7 +147,7 @@ verify_request_signature(Req, State) ->
             Path = iolist_to_binary(wrq:path(Req)),
             GetHeader = get_header_fun(Req),
             case chef_authn:authenticate_user_request(GetHeader, HTTPMethod,
-                                                      Path, Body, PublicKey, %% TODO use DecodedPubKey
+                                                      Path, Body, DecodedPubKey,
                                                       ?AUTH_SKEW) of
                 {name, _} ->
                     {true, Req, State1#config_state{requestor_id = UserName,
