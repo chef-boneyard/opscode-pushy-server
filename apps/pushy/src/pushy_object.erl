@@ -42,15 +42,15 @@ new_record(pushy_job, OrgId, NodeNames, Command, RunTimeout, Quorum) ->
                 command = Command,
                 run_timeout = RunTimeout,
                 quorum = Quorum,
-                created_at = sql_date(now),
-                updated_at = sql_date(now),
+                created_at = pushy_sql:sql_date(now),
+                updated_at = pushy_sql:sql_date(now),
                 job_nodes = [
                   #pushy_job_node{job_id = Id,
                                   org_id = OrgId,
                                   node_name = NodeName,
                                   status = new,
-                                  created_at = sql_date(now),
-                                  updated_at = sql_date(now)} ||
+                                  created_at = pushy_sql:sql_date(now),
+                                  updated_at = pushy_sql:sql_date(now)} ||
                                   NodeName <- NodeNames]
                 }.
 
@@ -85,11 +85,11 @@ update_object(Fun, Object) ->
 %% `set_updated' using standard emacs code tools.
 -define(MAKE_SET_UPDATED_WITH_ACTOR(Rec),
         set_updated(#Rec{}=Object, ActorId) ->
-            Object#Rec{updated_at = sql_date(now), last_updated_by = ActorId}).
+            Object#Rec{updated_at = pushy_sql:sql_date(now), last_updated_by = ActorId}).
 
 -define(MAKE_SET_UPDATED(Rec),
         set_updated(#Rec{}=Object) ->
-            Object#Rec{updated_at = sql_date(now)}).
+            Object#Rec{updated_at = pushy_sql:sql_date(now)}).
 
 ?MAKE_SET_UPDATED_WITH_ACTOR(pushy_job).
 
@@ -99,24 +99,11 @@ update_object(Fun, Object) ->
 %% created_at, updated_at, and last_updated_by on any of the Chef object types.
 -define(MAKE_SET_CREATED(Rec),
         set_created(#Rec{}=Object, ActorId) ->
-               Now = sql_date(now),
+               Now = pushy_sql:sql_date(now),
                Object#Rec{created_at = Now,
                           updated_at = Now, last_updated_by = ActorId}).
 
 ?MAKE_SET_CREATED(pushy_job).
-
-%% CHEF_COMMON CARGO_CULT
-%% chef_db:sql_date/1
-
-%%%
-%%% Emit in DATETIME friendly format
-%%% TODO: Modify to generate datetime pseudo record as used by emysql?
-sql_date(now) ->
-    sql_date(os:timestamp());
-sql_date({_,_,_} = TS) ->
-    {{Year,Month,Day},{Hour,Minute,Second}} = calendar:now_to_universal_time(TS),
-    iolist_to_binary(io_lib:format("~4w-~2..0w-~2..0w ~2..0w:~2..0w:~2..0w",
-                  [Year, Month, Day, Hour, Minute, Second])).
 
 %% CHEF_COMMON CARGO_CULT
 %% chef_db:make_org_prefix_id/1
