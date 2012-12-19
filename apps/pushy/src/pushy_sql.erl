@@ -13,6 +13,7 @@
          fetch_job/1,
          fetch_jobs/1,
          fetch_incomplete_jobs/0,
+         fetch_incomplete_job_nodes/0,
          create_job/1,
          update_job/1,
          update_job_node/1,
@@ -53,6 +54,16 @@ fetch_jobs(OrgId) ->
             {ok, []};
         {ok, Rows} ->
             {ok, [prepare_job(Row) || Row <- Rows]};
+        {error, Error} ->
+            {error, Error}
+    end.
+
+fetch_incomplete_job_nodes() ->
+    case sqerl:select(find_incomplete_job_nodes, []) of
+        {ok, none} ->
+            {ok, []};
+        {ok, Rows} ->
+            {ok, [prepare_incomplete_job_nodes(Row) || Row <- Rows]};
         {error, Error} ->
             {error, Error}
     end.
@@ -101,8 +112,8 @@ update_job(#pushy_job{id = JobId,
 update_job_node(#pushy_job_node{job_id = JobId,
                                 node_name = NodeName,
                                 org_id = OrgId,
-                                status = Status,
-                                updated_at = UpdatedAt}) ->
+                                status = Status}) ->
+    UpdatedAt = sql_date(now),
     UpdateFields = [job_node_status(Status), UpdatedAt, OrgId, NodeName, JobId],
     do_update(update_job_node_by_orgid_nodename_jobid, UpdateFields).
 
@@ -202,6 +213,10 @@ prepare_pushy_job_record(Job) ->
                last_updated_by = safe_get(<<"last_updated_by">>, Job),
                status = Status}.
 
+prepare_incomplete_job_nodes(Node) ->
+    #pushy_job_node{job_id = safe_get(<<"job_id">>, Node),
+                    org_id = safe_get(<<"org_id">>, Node),
+                    node_name = safe_get(<<"node_name">>, Node)}.
 
 %% @doc Convenience function for assembling a job_node tuple from a proplist
 proplist_to_job_node(Proplist) ->

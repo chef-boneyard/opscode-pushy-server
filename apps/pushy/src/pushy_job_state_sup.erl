@@ -11,6 +11,7 @@
          start/1,
          get_process/1,
          get_job_processes/0,
+         mark_incomplete_job_nodes_as_crashed/0,
          register_process/1]).
 
 %% Supervisor callbacks
@@ -63,6 +64,15 @@ register_process(JobId) ->
             false
     end.
 
+%% Find running job nodes associated with crashed jobs. Mark them as crashed in the db.
+mark_incomplete_job_nodes_as_crashed() ->
+    case pushy_sql:fetch_incomplete_job_nodes() of
+        {ok, Nodes} ->
+            [pushy_sql:update_job_node(Node#pushy_job_node{status=crashed})
+                || Node <- Nodes];
+        {error, Error} -> {error, Error}
+    end.
+
 %% ------------------------------------------------------------------
 %% Internal functions
 %% ------------------------------------------------------------------
@@ -86,6 +96,7 @@ mark_incomplete_jobs_as_crashed() ->
 
 init([]) ->
     mark_incomplete_jobs_as_crashed(),
+    mark_incomplete_job_nodes_as_crashed(),
     {ok, {{simple_one_for_one, 0, 1},
           [{pushy_job_state, {pushy_job_state, start_link, []},
             temporary, brutal_kill, worker, [pushy_job_state]}]}}.
