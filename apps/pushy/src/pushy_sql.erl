@@ -18,6 +18,7 @@
          update_job_node/1,
 
          sql_now/0,
+         sql_date/1,
          statements/1
         ]).
 
@@ -313,3 +314,16 @@ statements(DbType) ->
                  exit(no_statement_file)
          end,
     Rv.
+
+%% CHEF_COMMON CARGO_CULT
+%% chef_db:sql_date/1
+
+%%%
+%%% Emit in DATETIME friendly format
+%%% TODO: Modify to generate datetime pseudo record as used by emysql?
+sql_date(now) ->
+    sql_date(os:timestamp());
+sql_date({_,_,_} = TS) ->
+    {{Year,Month,Day},{Hour,Minute,Second}} = calendar:now_to_universal_time(TS),
+    iolist_to_binary(io_lib:format("~4w-~2..0w-~2..0w ~2..0w:~2..0w:~2..0w",
+                  [Year, Month, Day, Hour, Minute, Second])).
