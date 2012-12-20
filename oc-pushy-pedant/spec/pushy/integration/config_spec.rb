@@ -38,7 +38,7 @@ describe "pushy config" do
   let(:outside_user_not_associated_msg) {
     ["'pedant-nobody' not associated with organization '#{org}'"] }
 
-  describe 'access control' do
+  describe 'access control', :focus do
     context 'GET /config/<name>' do
       it 'returns a 200 ("OK") for admin' do
         get(api_url("/pushy/config/#{config_name}"), admin_user) do |response|
@@ -85,7 +85,7 @@ describe "pushy config" do
         end
       end
 
-      it 'returns a 403 ("Forbidden") for outside user', :pending do
+      it 'returns a 403 ("Forbidden") for outside user' do
         get(api_url("/pushy/config/#{config_name}"),
             outside_user) do |response|
           response.should look_like({
