@@ -38,7 +38,7 @@ describe "Jobs API Endpoint", :jobs do
   let(:outside_user_not_associated_msg) {
     ["'pedant-nobody' not associated with organization '#{org}'"] }
 
-  describe 'access control with no pushy_job groups' do
+  describe 'access control with no pushy_job groups', :focus do
     let(:job_path) {
       # This is evaluated at runtime, so there's always a (short-lived) job to
       # detect during the test
@@ -95,7 +95,7 @@ describe "Jobs API Endpoint", :jobs do
         end
       end
 
-      it 'returns a 403 ("Forbidden") for outside user', :pending do
+      it 'returns a 403 ("Forbidden") for outside user' do
         get(api_url("/pushy/jobs"),
             outside_user) do |response|
           response.should look_like({
@@ -162,7 +162,7 @@ describe "Jobs API Endpoint", :jobs do
         end
       end
 
-      it 'returns a 403 ("Forbidden") for outside user', :pending do
+      it 'returns a 403 ("Forbidden") for outside user' do
         post(api_url("/pushy/jobs"), outside_user, :payload => job_to_run) do |response|
           response.should look_like({
                                       :status => 403,
@@ -219,7 +219,7 @@ describe "Jobs API Endpoint", :jobs do
         end
       end
 
-      it 'returns a 403 ("Forbidden") for outside user', :pending do
+      it 'returns a 403 ("Forbidden") for outside user' do
         get(job_path,
             outside_user) do |response|
           response.should look_like({
@@ -251,7 +251,7 @@ describe "Jobs API Endpoint", :jobs do
     end # context 'GET /jobs/<name>'
   end # describe 'access control with no pushy_job groups'
 
-  describe 'access control with pushy_job groups' do
+  describe 'access control with pushy_job groups', :focus do
     # Doing these in reverse for extra fun; this will guarantee it doesn't
     # "accidentally" work if the groups are missing
     let(:member) { normal_user }
