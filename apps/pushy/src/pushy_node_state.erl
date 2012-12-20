@@ -80,29 +80,13 @@ status(NodeRef) ->
     end.
 
 watch(NodeRef) ->
-    case call(NodeRef, {watch, self()}) of
-        ok ->
-            ok;
-        Error ->
-            Error
-    end.
+    call(NodeRef, {watch, self()}).
 
 aborted(NodeRef) ->
-    case cast(NodeRef, aborted) of
-        ok ->
-            ok;
-        Error ->
-            Error
-    end.
+    cast(NodeRef, aborted).
 
 rehab(NodeRef) ->
-    case cast(NodeRef, do_rehab) of
-        ok ->
-            ok;
-        Error ->
-            Error
-    end.
-
+    cast(NodeRef, do_rehab).
 
 init([NodeRef, NodeAddr]) ->
     State = #state{node_ref = NodeRef, node_addr = NodeAddr, availability=unavailable},

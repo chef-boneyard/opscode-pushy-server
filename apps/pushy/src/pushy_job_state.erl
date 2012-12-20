@@ -33,7 +33,7 @@
 -include("pushy_sql.hrl").
 
 %% This is Erlang not C/C++
--record(state, {job_host        :: string(),
+-record(state, {job_host        :: binary(),
                 job             :: #pushy_job{},
                 job_nodes       :: dict(),
                 voting_timeout  :: integer()}).
@@ -64,7 +64,7 @@ stop_job(JobId) ->
     {'ok', job_status(), #state{}} |
     {'stop', 'shutdown', #state{}}.
 init(#pushy_job{id = JobId, job_nodes = JobNodeList} = Job) ->
-    Host = envy:get(pushy, server_name, string),
+    Host = list_to_binary(envy:get(pushy, server_name, string)),
     case pushy_job_state_sup:register_process(JobId) of
         true ->
             {ok, _} = pushy_object:create_object(create_job, Job, JobId),
@@ -339,7 +339,7 @@ send_command_to_all(Type, #state{job_host=Host, job = Job, job_nodes = JobNodes}
 send_command_to_nodes(Type, Host, Job, NodeRefs) ->
     Message = [{type, Type},
                {job_id, Job#pushy_job.id},
-               {server, list_to_binary(Host)},
+               {server, Host},
                {command, Job#pushy_job.command}],
     pushy_node_state:send_msg(NodeRefs, {Message}).
 
