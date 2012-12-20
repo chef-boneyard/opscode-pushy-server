@@ -14,7 +14,7 @@
 %% API Function Exports
 %% ------------------------------------------------------------------
 
--export([start_link/1,
+-export([start_link/2,
          send/1]).
 
 %% ------------------------------------------------------------------
@@ -55,8 +55,8 @@
 %% API Function Definitions
 %% ------------------------------------------------------------------
 
-start_link(PushyState) ->
-    gen_server:start_link(?MODULE, [PushyState], []).
+start_link(PushyState, Id) ->
+    gen_server:start_link(?MODULE, [PushyState, Id], []).
 
 -spec send([binary()]) -> ok.
 send(Message) ->
