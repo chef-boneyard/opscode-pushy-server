@@ -20,11 +20,10 @@
 -define(MAX_JOB_ID_LENGTH, 64).
 
 %% API
--export([start_link/2,
+-export([start_link/3,
          recv_msg/1,
          send_msg/2,
          send_msg/3,
-         heartbeat/1,
          status/1,
          watch/1,
          aborted/1,
@@ -42,6 +41,7 @@
                 job                   :: any(),
                 availability          :: node_availability(),
                 watchers = [],
+                incarnation_id,
                 state_timer
                }).
 
@@ -53,13 +53,10 @@
          terminate/3,
          code_change/4]).
 
--spec start_link(node_ref(), node_addr()) -> ok.
-start_link(NodeRef, NodeAddr) ->
-    gen_fsm:start_link(?MODULE, [NodeRef, NodeAddr], []).
+-spec start_link(node_ref(), node_addr(), binary()) -> ok.
+start_link(NodeRef, NodeAddr, IncarnationId) ->
+    gen_fsm:start_link(?MODULE, [NodeRef, NodeAddr, IncarnationId], []).
 
-heartbeat(NodeRef) ->
-    send_info(NodeRef, heartbeat),
-    ok.
 recv_msg(Message) ->
     dispatch_raw_message(Message).
 
@@ -104,8 +101,9 @@ rehab(NodeRef) ->
     end.
 
 
-init([NodeRef, NodeAddr]) ->
-    State = #state{node_ref = NodeRef, node_addr = NodeAddr, availability=unavailable},
+init([NodeRef, NodeAddr, IncarnationId]) ->
+    State = #state{node_ref = NodeRef, node_addr = NodeAddr,
+                   incarnation_id = IncarnationId, availability=unavailable},
     GprocName = pushy_node_state_sup:mk_gproc_name(NodeRef),
     GprocAddr = pushy_node_state_sup:mk_gproc_addr(NodeAddr),
     try
@@ -197,10 +195,16 @@ handle_info(Message, post_init, State) ->
     State1 = force_abort(State),
     send_info(self(), Message),
     {next_state, rehab, State1};
-handle_info(heartbeat, CurrentState, State) ->
-    case pushy_node_stats:heartbeat(self()) of
-        ok -> {next_state, CurrentState, State};
-        should_die -> {stop, state_transition(CurrentState, shutdown, State), State}
+handle_info({heartbeat, IncarnationId}, CurrentState,
+        #state{incarnation_id = OrigIncarnationId} = State) ->
+    if
+        IncarnationId =/= OrigIncarnationId ->
+            {stop, state_transition(CurrentState, shutdown, State), State};
+        true ->
+            case pushy_node_stats:heartbeat(self()) of
+                ok -> {next_state, CurrentState, State};
+                should_die -> {stop, state_transition(CurrentState, shutdown, State), State}
+            end
     end;
 handle_info(should_die, CurrentState, State) ->
     {stop, state_transition(CurrentState, shutdown, State), State};
@@ -222,7 +226,8 @@ handle_info({'DOWN', _MRef, _Type, Pid, _Reason}, StateName, #state{watchers=Wat
 handle_info(_Info, StateName, State) ->
     {next_state, StateName, State}.
 
-terminate(_Reason, _StateName, _State) ->
+terminate(_Reason, _StateName, #state{node_ref = NodeRef}) ->
+    lager:info("Shutting Down: ~p~n", [NodeRef]),
     ok.
 
 code_change(_OldVsn, StateName, State, _Extra) ->
@@ -323,8 +328,9 @@ dispatch_raw_message([Addr, _Header, Body] = Message) ->
                   %% parse and extract (bypassing json perhaps?)
                   EJSon = jiffy:decode(Body),
                   NodeRef = get_node_ref(EJSon),
+                  IncarnationId = ej:get({<<"incarnation_id">>}, EJSon),
                   lager:info("No addr ~s for msg: ~p~n", [pushy_tools:bin_to_hex(Addr), NodeRef]),
-                  pushy_node_state_sup:get_or_create_process(NodeRef, Addr)
+                  pushy_node_state_sup:get_or_create_process(NodeRef, Addr, IncarnationId)
           end,
     send_info(Pid, {raw_message, Message}).
 
@@ -372,6 +378,7 @@ process_message(#state{node_ref=NodeRef, node_addr=CurAddr} = State, #pushy_mess
 process_message(#state{node_ref=NodeRef, node_addr=Address} = State, #pushy_message{address=Address, body=Data}) ->
     JobId = extract_job_id(Data),
     BinaryType = ej:get({<<"type">>}, Data),
+    IncarnationId = ej:get({<<"incarnation_id">>}, Data),
     Type = message_type_to_atom(BinaryType),
     lager:debug("Received message for Node ~p Type ~p (address ~p)",
                 [NodeRef, BinaryType, pushy_tools:bin_to_hex(Address)]),
@@ -380,12 +387,14 @@ process_message(#state{node_ref=NodeRef, node_addr=Address} = State, #pushy_mess
             lager:error("Status message for node ~p was missing type field!~n", [NodeRef]);
         undefined ->
             lager:error("Status message for node ~p had unknown type ~p~n", [NodeRef, BinaryType]);
+        heartbeat ->
+            send_node_event(State, JobId, {NodeRef, IncarnationId}, Type);
         _ ->
             send_node_event(State, JobId, NodeRef, Type)
     end.
 
 -spec send_node_event(#state{}, any(), any(), node_event()) -> #state{}.
-send_node_event(State, JobId, NodeRef, heartbeat) ->
+send_node_event(State, JobId, {NodeRef, IncarnationId}, heartbeat) ->
     lager:debug("Received heartbeat for node ~p with job id ~p", [NodeRef, JobId]),
     case JobId /= null andalso pushy_job_state_sup:get_process(JobId) == not_found of
         true ->
@@ -393,7 +402,7 @@ send_node_event(State, JobId, NodeRef, heartbeat) ->
         _ ->
             ok
     end,
-    send_info(self(), heartbeat),
+    send_info(self(), {heartbeat, IncarnationId}),
     State;
 send_node_event(State, JobId, NodeRef, aborted = Msg) ->
     gen_fsm:send_event(self(), aborted),
@@ -419,7 +428,6 @@ get_node_ref(Data) ->
     %% TODO: Clean up usage and propagation of org name vs org guid (OC-4351)
     OrgId = pushy_object:fetch_org_id(OrgName),
     {OrgId, NodeName}.
-
 
 get_key_for_method(hmac_sha256, {_,_} = NodeRef) ->
     {hmac_sha256, Key} = pushy_key_manager:get_key(NodeRef),
