@@ -141,7 +141,7 @@ verify_request_signature(Req, State) ->
                                                  UserName, OrgName),
             {false, wrq:set_resp_body(jiffy:encode(NotFoundMsg), Req), State1};
         {PublicKey, Type} ->
-            DecodedPubKey = chef_authn:decode_key_data(PublicKey),
+            DecodedPubKey = chef_authn:extract_public_key(PublicKey),
             Body = body_or_default(Req, <<>>),
             HTTPMethod = method_as_binary(Req),
             Path = iolist_to_binary(wrq:path(Req)),
