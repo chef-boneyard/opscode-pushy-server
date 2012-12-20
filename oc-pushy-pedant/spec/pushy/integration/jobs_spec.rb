@@ -38,7 +38,7 @@ describe "Jobs API Endpoint", :jobs do
   let(:outside_user_not_associated_msg) {
     ["'pedant-nobody' is not associated with organization '#{org}'"] }
 
-  describe 'access control with no pushy_job groups', :focus do
+  describe 'access control with no pushy_job groups' do
     let(:job_path) {
       # This is evaluated at runtime, so there's always a (short-lived) job to
       # detect during the test
@@ -251,7 +251,7 @@ describe "Jobs API Endpoint", :jobs do
     end # context 'GET /jobs/<name>'
   end # describe 'access control with no pushy_job groups'
 
-  describe 'access control with pushy_job groups', :focus do
+  describe 'access control with pushy_job groups' do
     # Doing these in reverse for extra fun; this will guarantee it doesn't
     # "accidentally" work if the groups are missing
     let(:member) { normal_user }

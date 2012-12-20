@@ -32,7 +32,7 @@ describe "Node_States API Endpoint", :node_states do
       "status" => "offline"
     } }
 
-  describe 'access control with no pushy_job_readers', :focus do
+  describe 'access control with no pushy_job_readers' do
     context 'GET /node_states' do
       it 'returns a 200 ("OK") for admin' do
         get(api_url("/pushy/node_states/"), admin_user) do |response|
@@ -182,7 +182,7 @@ describe "Node_States API Endpoint", :node_states do
     end # context 'GET /node_states/<name>'
   end # describe 'access control with no pushy_job_readers'
 
-  describe 'access control with pushy_job_readers', :focus do
+  describe 'access control with pushy_job_readers' do
     # Doing these in reverse for extra fun; this will guarantee it doesn't
     # "accidentally" work if the groups are missing
     let(:member) { normal_user }
