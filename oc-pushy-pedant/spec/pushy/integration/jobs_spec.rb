@@ -36,7 +36,7 @@ describe "Jobs API Endpoint", :jobs do
   let(:failed_to_authenticate_as_invalid_msg) {
     ["Failed to authenticate as 'invalid'. Ensure that your node_name and client key are correct."] }
   let(:outside_user_not_associated_msg) {
-    ["'pedant-nobody' not associated with organization '#{org}'"] }
+    ["'pedant-nobody' is not associated with organization '#{org}'"] }
 
   describe 'access control with no pushy_job groups', :focus do
     let(:job_path) {
