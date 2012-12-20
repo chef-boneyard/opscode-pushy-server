@@ -38,7 +38,7 @@ describe "pushy config" do
   let(:outside_user_not_associated_msg) {
     ["'pedant-nobody' is not associated with organization '#{org}'"] }
 
-  describe 'access control', :focus do
+  describe 'access control' do
     context 'GET /config/<name>' do
       it 'returns a 200 ("OK") for admin' do
         get(api_url("/pushy/config/#{config_name}"), admin_user) do |response|
