@@ -132,7 +132,7 @@ rehab(aborted, #state{state_timer=TRef}=State) ->
     State1 = State#state{availability=available},
     {next_state, state_transition(rehab, idle, State1), State1};
 rehab(Message, #state{node_ref=NodeRef}=State) ->
-    lager:info("~p in rehab. Ignoring message: ~p~n", [NodeRef, Message]),
+    lager:debug("~p in rehab. Ignoring message: ~p~n", [NodeRef, Message]),
     {next_state, rehab, State}.
 
 idle(do_rehab, State) ->
@@ -148,7 +148,7 @@ running(do_rehab, State) ->
     State1 = force_abort(State),
     {next_state, state_transition(running, rehab, State1), State1};
 running(aborted, #state{node_ref=NodeRef}=State) ->
-    lager:info("~p aborted during job.~n", [NodeRef]),
+    lager:debug("~p aborted during job.~n", [NodeRef]),
     State1 = State#state{job=undefined, availability=available},
     {next_state, state_transition(running, idle, State1), State1};
 running({complete, Job}, #state{job=Job, node_ref=NodeRef}=State) ->
@@ -307,7 +307,7 @@ dispatch_raw_message([Addr, _Header, Body] = Message) ->
                   %% parse and extract (bypassing json perhaps?)
                   EJSon = jiffy:decode(Body),
                   NodeRef = get_node_ref(EJSon),
-                  lager:info("No addr ~s for msg: ~p~n", [pushy_tools:bin_to_hex(Addr), NodeRef]),
+                  lager:debug("No addr ~s for msg: ~p~n", [pushy_tools:bin_to_hex(Addr), NodeRef]),
                   pushy_node_state_sup:get_or_create_process(NodeRef, Addr)
           end,
     send_info(Pid, {raw_message, Message}).
@@ -345,7 +345,7 @@ process_and_dispatch_message([Address, Header, Body], State) ->
 process_message(#state{node_ref=NodeRef, node_addr=CurAddr} = State, #pushy_message{address=NewAddr} = Message)
   when CurAddr =/= NewAddr ->
     %% Our address has changed. By this point we've validated the message, so we can trust the address
-    lager:info("Address change for ~p '~s' to '~s'~n",
+    lager:debug("Address change for ~p '~s' to '~s'~n",
                [NodeRef, pushy_tools:bin_to_hex(CurAddr),
                 pushy_tools:bin_to_hex(NewAddr)]),
     GprocNewAddr = pushy_node_state_sup:mk_gproc_addr(NewAddr),
