@@ -270,8 +270,10 @@ describe "Jobs API Endpoint", :jobs do
     }
 
     before(:all) do
-      setup_group("pushy_job_readers", [member.name], [member_client.name], [])
-      setup_group("pushy_job_writers", [member.name], [member_client.name], [])
+      setup_group("pushy_job_readers", [member.name, outside_user.name],
+                  [member_client.name], [])
+      setup_group("pushy_job_writers", [member.name, outside_user.name],
+                  [member_client.name], [])
     end
 
     after(:all) do
@@ -318,6 +320,18 @@ describe "Jobs API Endpoint", :jobs do
                              })
         end
       end
+
+      it 'returns a 403 ("Forbidden") for outside user' do
+        get(api_url("/pushy/jobs"),
+            outside_user) do |response|
+          response.should look_like({
+                                      :status => 403,
+                                      :body_exact => {
+                                        "error" => outside_user_not_associated_msg
+                                      }
+                                    })
+        end
+      end
     end # context 'GET /jobs with pushy_job_readers'
 
     context 'POST /jobs with pushy_job_writers' do
@@ -361,6 +375,18 @@ describe "Jobs API Endpoint", :jobs do
                              })
         end
       end
+
+      it 'returns a 403 ("Forbidden") for outside user' do
+        post(api_url("/pushy/jobs"), outside_user,
+            :payload => job_to_run) do |response|
+          response.should look_like({
+                                      :status => 403,
+                                      :body_exact => {
+                                        "error" => outside_user_not_associated_msg
+                                      }
+                                    })
+        end
+      end
     end # context 'POST /jobs with pushy_job_writers'
 
     context 'GET /jobs/<name> with pushy_job_readers' do
@@ -400,6 +426,17 @@ describe "Jobs API Endpoint", :jobs do
                                  "error" => non_member_client_authorization_failed_msg
                                }
                              })
+        end
+      end
+
+      it 'returns a 403 ("Forbidden") for outside user' do
+        get(job_path, outside_user) do |response|
+          response.should look_like({
+                                      :status => 403,
+                                      :body_exact => {
+                                        "error" => outside_user_not_associated_msg
+                                      }
+                                    })
         end
       end
     end # context 'GET /jobs/<name> with pushy_job_readers'
