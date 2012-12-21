@@ -13,8 +13,8 @@
 
 -record(metric, {node_pid :: pid(),
                  avg=down_threshold() * 2 :: float(),
-                 interval_start=pushy_time:timestamp() :: pos_integer(),
-                 heartbeats=1 :: pos_integer()}).
+                 interval_start=pushy_time:timestamp() :: number(),
+                 heartbeats=1 :: non_neg_integer()}).
 
 %% These two weights must total to 1.0
 -define(NOW_WEIGHT, (1.0/decay_window())).
@@ -25,15 +25,17 @@
          stop/0,
          scan/0]).
 
--spec init() -> atom() | ets:tid().
+-spec init() -> ok.
 init() ->
-    ets:new(?MODULE, [set, public, named_table, {keypos, 2},
-                      {write_concurrency, true}, {read_concurrency, true}]).
+    _Tid = ets:new(?MODULE, [set, public, named_table, {keypos, 2},
+                             {write_concurrency, true}, {read_concurrency, true}]),
+    ok.
 
 %% This exists to make eunit tests less painful to write.
 -spec stop() -> ok.
 stop() ->
-    ets:delete(?MODULE).
+    true = ets:delete(?MODULE),
+    ok.
 
 
 -spec heartbeat(pid()) -> ok | should_die.
@@ -46,9 +48,6 @@ heartbeat(NodePid) ->
             Node1 = hb(Node),
             case evaluate_node_health(Node1) of
                 {reset, Node2} ->
-                    ets:insert(?MODULE, Node2),
-                    ok;
-                {ok, Node2} ->
                     ets:insert(?MODULE, Node2),
                     ok;
                 {should_die, _Node2} ->
@@ -73,9 +72,6 @@ scan('$end_of_table') ->
 scan(NodePid) ->
     [Node] = ets:lookup(?MODULE, NodePid),
     case evaluate_node_health(Node) of
-        {ok, Node1} ->
-            ets:insert(?MODULE, Node1),
-            ok;
         {reset, Node1} ->
             ets:insert(?MODULE, Node1),
             ok;
@@ -90,6 +86,7 @@ hb(#metric{}=Node) ->
     Node1#metric{heartbeats=Node1#metric.heartbeats + 1}.
 
 
+-spec evaluate_node_health(Node::#metric{}) -> {reset | should_die, #metric{} }.
 evaluate_node_health(Node) ->
     Node1 = maybe_advance_interval(Node),
     #metric{node_pid=Pid, avg=NAvg} = Node1,

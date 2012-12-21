@@ -12,11 +12,10 @@
          update_job/1,
          update_job_node/1,
 
-         sql_now/0,
-         statements/1
-        ]).
+         statements/1,
 
-sql_now() -> calendar:now_to_universal_time(os:timestamp()).
+         sql_date/1
+        ]).
 
 %% job ops
 
@@ -90,8 +89,8 @@ update_job_node(#pushy_job_node{job_id = JobId,
     UpdateFields = [job_node_status(Status), UpdatedAt, OrgId, NodeName, JobId],
     do_update(update_job_node_by_orgid_nodename_jobid, UpdateFields).
 
--spec create_object(atom(), tuple() | list()) -> {ok, non_neg_integer()} | {error, term()}.
-create_object(QueryName, Args) when is_atom(QueryName), is_list(Args) ->
+-spec create_object(atom(), list()) -> {ok, non_neg_integer()} | {error, term()}.
+create_object(QueryName, Args) ->
     case sqerl:statement(QueryName, Args, count) of
         {ok, N} ->
             {ok, N};
@@ -102,10 +101,7 @@ create_object(QueryName, Args) when is_atom(QueryName), is_list(Args) ->
         %% FIXME: original code for create_node had the following match, but seems like
         %% crashing would be better if we get an unexpected error.
         %% Error -> Error
-    end;
-create_object(QueryName, Record) when is_atom(QueryName), is_tuple(Record) ->
-    List = flatten_record(Record),
-    create_object(QueryName, List).
+    end.
 
 -spec job_fields_for_insert(CbFields:: list()) -> list().
 job_fields_for_insert(CbFields) ->
@@ -154,22 +150,40 @@ job_join_rows_to_record(Rows) ->
     job_join_rows_to_record(Rows, []).
 job_join_rows_to_record([LastRow|[]], JobNodes) ->
     C = proplist_to_job_node(LastRow),
+    CreatedAt = safe_get(<<"created_at">>, LastRow),
+    UpdatedAt = safe_get(<<"updated_at">>, LastRow),
     #pushy_job{id = safe_get(<<"id">>, LastRow),
                   org_id = safe_get(<<"org_id">>, LastRow),
                   command = safe_get(<<"command">>, LastRow),
                   status = job_status(safe_get(<<"status">>, LastRow)),
                   run_timeout = safe_get(<<"run_timeout">>, LastRow),
                   last_updated_by = safe_get(<<"last_updated_by">>, LastRow),
-                  created_at = trunc_date_time_to_second(safe_get(<<"created_at">>, LastRow)),
-                  updated_at = trunc_date_time_to_second(safe_get(<<"updated_at">>, LastRow)),
+                  created_at = date_time_to_sql_date(CreatedAt),
+                  updated_at = date_time_to_sql_date(UpdatedAt),
                   job_nodes = lists:flatten(lists:reverse([C|JobNodes]))};
 job_join_rows_to_record([Row|Rest], JobNodes ) ->
     C = proplist_to_job_node(Row),
     job_join_rows_to_record(Rest, [C|JobNodes]).
 
+date_time_to_sql_date(Date) ->
+    Date0 = trunc_date_time_to_second(Date),
+    iolist_to_binary(httpd_util:rfc1123_date(Date0)).
+
+%%% Emit in DATETIME friendly format
+%% @doc Convert an Erlang timestamp (see `os:timestamp/0') to DATETIME friendly format.
+-spec sql_date(now | {non_neg_integer(), non_neg_integer(), non_neg_integer()}) -> binary().
+sql_date(now) ->
+    sql_date(os:timestamp());
+sql_date({_,_,_} = TS) ->
+    {{Year,Month,Day},{Hour,Minute,Second}} = calendar:now_to_universal_time(TS),
+    iolist_to_binary(io_lib:format("~4w-~2..0w-~2..0w ~2..0w:~2..0w:~2..0w",
+                  [Year, Month, Day, Hour, Minute, Second])).
+
+
+
 prepare_job(Job) ->
-    CreatedAt = trunc_date_time_to_second(safe_get(<<"created_at">>, Job)),
-    CreatedAtFormatted = iolist_to_binary(httpd_util:rfc1123_date(CreatedAt)),
+    CreatedAt = safe_get(<<"created_at">>, Job),
+    CreatedAtFormatted = date_time_to_sql_date(CreatedAt),
     Status = atom_to_binary(job_status(safe_get(<<"status">>, Job)), utf8),
 
     {[{<<"id">>, safe_get(<<"id">>, Job)},
@@ -186,8 +200,8 @@ proplist_to_job_node(Proplist) ->
                 org_id = safe_get(<<"org_id">>, Proplist),
                 node_name = safe_get(<<"node_name">>, Proplist),
                 status = job_node_status(safe_get(<<"job_node_status">>, Proplist)),
-                created_at = trunc_date_time_to_second(safe_get(<<"created_at">>, Proplist)),
-                updated_at = trunc_date_time_to_second(safe_get(<<"updated_at">>, Proplist))}
+                created_at = date_time_to_sql_date(safe_get(<<"created_at">>, Proplist)),
+                updated_at = date_time_to_sql_date(safe_get(<<"updated_at">>, Proplist))}
     end.
 
 %% Job Status translators
@@ -232,13 +246,27 @@ job_node_status(9) -> was_ready;
 job_node_status(10) -> crashed;
 job_node_status(11) -> timed_out.
 
-%% CHEF_COMMON CARGO_CULT
+%% CHEF_DB CARGO_CULT
 %% chef_sql:flatten_record/1
 flatten_record(Rec) ->
     [_Head|Tail] = tuple_to_list(Rec),
+    %% We detect if any of the fields in the record have not been set
+    %% and throw an error
+    case lists:any(fun is_undefined/1, Tail) of
+        true -> error({undefined_in_record, Rec});
+        false -> ok
+    end,
     Tail.
 
-%% CHEF_COMMON CARGO_CULT
+%% CHEF_DB CARGO_CULT
+%% chef_sql:is_undefined/1
+is_undefined(undefined) ->
+    true;
+is_undefined(_) ->
+    false.
+
+
+%% CHEF_DB CARGO_CULT
 %% chef_sql:parse_error/1
 parse_error(Reason) ->
     DbType = envy:get(sqerl, db_type, atom),
@@ -273,7 +301,7 @@ parse_error(_, no_members) ->
     {error, "Pooler had no members"}.
 
 
-%% CHEF_COMMON CARGO_CULT
+%% CHEF_DB CARGO_CULT
 %% chef_sql:do_update/2
 do_update(QueryName, UpdateFields) ->
     case sqerl:statement(QueryName, UpdateFields) of
@@ -282,7 +310,7 @@ do_update(QueryName, UpdateFields) ->
         {error, Error} -> {error, Error}
     end.
 
-%% CHEF_COMMON CARGO_CULT
+%% CHEF_DB CARGO_CULT
 %% chef_sql:safe_get/2
 
 %% @doc Safely retrieves a value from a proplist. Throws an error if the specified key does
@@ -292,7 +320,7 @@ safe_get(Key, Proplist) ->
     {Key, Value} = lists:keyfind(Key, 1, Proplist),
     Value.
 
-%% CHEF_COMMON CARGO_CULT
+%% CHEF_DB CARGO_CULT
 %% chef_sql:statements/1
 statements(DbType) ->
     File = atom_to_list(DbType) ++ "_statements.config",

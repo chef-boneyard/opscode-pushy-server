@@ -28,7 +28,14 @@ start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
 start(Job) ->
-    supervisor:start_child(?SERVER, [Job]).
+    case supervisor:start_child(?SERVER, [Job]) of
+        {ok, _Child} ->
+            ok;
+        %% No nodes in job, so it has shut down straight away
+        {error, {shutdown, complete}} ->
+            ok;
+        {error, Error} ->  throw({error, Error})
+    end.
 
 -spec get_process(object_id()) -> pid() | not_found.
 get_process(JobId) ->
@@ -38,14 +45,14 @@ get_process(JobId) ->
         error:badarg -> not_found
     end.
 
--spec get_job_processes() -> {binary(), pid()}.
+-spec get_job_processes() -> [{binary(), pid()}].
 get_job_processes() ->
     MatchHead = pushy_util:gproc_match_head(n, l, {pushy_job, '_'}),
     Guard = [],
     Result = ['$$'],
     [{JobId, Pid} || [{_,_,{_,JobId}},Pid,_] <- gproc:select([{MatchHead, Guard, Result}])].
 
--spec register_process(object_id()) -> pid().
+-spec register_process(object_id()) -> boolean().
 register_process(JobId) ->
     try
         %% The most important thing to have happen is this registration; we need to get this

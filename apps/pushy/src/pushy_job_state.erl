@@ -60,9 +60,6 @@ stop_job(JobId) ->
 %%%
 %%% Initialization
 %%%
--spec init(#pushy_job{}) ->
-    {'ok', job_status(), #state{}} |
-    {'stop', 'shutdown', #state{}}.
 init(#pushy_job{id = JobId, job_nodes = JobNodeList} = Job) ->
     Host = envy:get(pushy, server_name, string),
     case pushy_job_state_sup:register_process(JobId) of
@@ -83,7 +80,7 @@ init(#pushy_job{id = JobId, job_nodes = JobNodeList} = Job) ->
             % Start voting--if there are no nodes, the job finishes immediately.
             case start_voting(State) of
                 {next_state, StateName, State2} -> {ok, StateName, State2};
-                {stop, Reason, _State} -> {stop, {shutdown, Reason}}
+                {stop, Reason, _State} -> {stop, Reason}
             end;
         false ->
             {stop, shutdown}
@@ -156,7 +153,9 @@ handle_event(Event, StateName, State) ->
     {next_state, StateName, State}.
 
 -spec handle_sync_event(any(), any(), job_status(), #state{}) ->
-        {'reply', 'ok', job_status(), #state{}}.
+        {'next_state', job_status(), #state{}}|
+        {'reply', 'ok', job_status(), #state{}} |
+        {'stop', 'shutdown', 'ok', #state{}}.
 handle_sync_event(get_job_status, _From, StateName,
         #state{job = Job, job_nodes = JobNodes} = State) ->
     JobNodesList = [ JobNode || {_,JobNode} <- dict:to_list(JobNodes) ],
@@ -215,7 +214,7 @@ set_node_state(NodeRef, NewNodeState, #state{job_nodes = JobNodes} = State) ->
             terminal -> error("Attempt to change node ~p from terminal state ~p to state ~p");
             _ ->
                 NewPushyJobNode = OldPushyJobNode#pushy_job_node{status = NewNodeState},
-                pushy_sql:update_job_node(NewPushyJobNode),
+                {ok, 1} = pushy_sql:update_job_node(NewPushyJobNode),
                 NewPushyJobNode
         end
     end, JobNodes),
@@ -238,7 +237,7 @@ send_matching_to_rehab(OldNodeState, NewNodeState, #state{job_nodes = JobNodes} 
             case OldPushyJobNode#pushy_job_node.status of
                 OldNodeState ->
                     NewPushyJobNode = OldPushyJobNode#pushy_job_node{status = NewNodeState},
-                    pushy_sql:update_job_node(NewPushyJobNode),
+                    {ok, 1} = pushy_sql:update_job_node(NewPushyJobNode),
                     pushy_node_state:rehab({NewPushyJobNode#pushy_job_node.org_id,
                                             NewPushyJobNode#pushy_job_node.node_name}),
                     NewPushyJobNode;
