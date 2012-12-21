@@ -15,7 +15,8 @@
           pushy_job :: tuple(),
           incarnation_id :: binary(),
           requestor_id :: string(),
-          requestor_type :: atom() }).
+          requestor_type :: atom(),
+          requestor_key :: binary() }).
 
 -define(AUTH_SKEW, 900).
 -define(MAX_SIZE, 1000000).

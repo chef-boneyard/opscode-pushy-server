@@ -50,7 +50,8 @@ content_types_provided(Req, State) ->
 to_json(Req, #config_state{organization_name = OrgName,
                            organization_guid = OrgGuid,
                            node_name = NodeName,
-                           incarnation_id = IncarnationId} = State) ->
+                           incarnation_id = IncarnationId,
+                           requestor_key = ClientKey } = State) ->
     Host = envy:get(pushy, server_name, string),
     ConfigLifetime = envy:get(pushy, config_lifetime, ?DEFAULT_CONFIG_LIFETIME, integer),
     HeartbeatAddress = iolist_to_binary(
@@ -69,11 +70,12 @@ to_json(Req, #config_state{organization_name = OrgName,
     ClientName = {OrgGuid, iolist_to_binary(NodeName)},
     {Method,Key} = pushy_key_manager:get_key(ClientName),
 
-    %% TODO: OC-4204
-    %% The session key should be sent encrypted using the client's public key. We're
-    %% skipping that for the moment, but this work is not done unless we fix this.
-    %% This needs the client key fetch work to be done first though...
-    KeyStruct =  {[{<<"method">>, Method}, {<<"key">>, base64:encode(Key) }]},
+    %% Implementation note: this doesn't prevent a MiM attack where a different session key
+    %% is substituted. The best way to prevent this is to insure a proper SSL chain of trust
+    %% from the client to the server.
+    EncodedKey = public_key:encrypt_public(Key, ClientKey),
+    B64EncodedKey = base64:encode(EncodedKey),
+    EKeyStruct =  {[{<<"method">>, Method}, {<<"key">>, B64EncodedKey}]},
 
     ConfigurationStruct =
         {[{<<"type">>, <<"config">>},
@@ -89,7 +91,7 @@ to_json(Req, #config_state{organization_name = OrgName,
           {<<"node">>, NodeName},
           {<<"organization">>, OrgName},
           {<<"public_key">>, PublicKey},
-          {<<"session_key">>, KeyStruct},
+          {<<"encoded_session_key">>, EKeyStruct},
           {<<"lifetime">>, ConfigLifetime},
           {<<"incarnation_id">>, IncarnationId}
          ]},
