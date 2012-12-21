@@ -60,17 +60,27 @@ CREATE TABLE jobs (
 
 
 --
--- Name: node_status; Type: TABLE; Schema: public; Owner: -; Tablespace:
+-- Name: jobs; Type: TABLE; Schema: public; Owner: -; Tablespace:
 --
 
-CREATE TABLE node_status (
-    node_name text NOT NULL,
-    org_id character(32) NOT NULL,
-    status integer NOT NULL,
-    last_updated_by character(32) NOT NULL,
-    created_at timestamp without time zone NOT NULL,
-    updated_at timestamp without time zone NOT NULL
+CREATE TABLE job_status (
+    id integer NOT NULL,
+    description text NOT NULL
 );
+
+--
+-- INSERT job statuses
+--
+
+INSERT INTO job_status VALUES
+  (0, 'voting'),
+  (1, 'running'),
+  (2, 'complete'),
+  (3, 'quorum_failed'),
+  (4, 'aborted'),
+  (5, 'new'),
+  (6, 'timed_out'),
+  (7, 'crashed');
 
 
 --
@@ -89,6 +99,12 @@ CREATE TABLE schema_info (
 ALTER TABLE ONLY job_nodes
     ADD CONSTRAINT job_nodes_job_id_org_id_node_name_key UNIQUE (job_id, org_id, node_name);
 
+--
+-- Name: job_status_pkey; Type: CONSTRAINT
+--
+
+ALTER TABLE ONLY job_status
+    ADD CONSTRAINT job_status_pkey PRIMARY KEY (id);
 
 --
 -- Name: jobs_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace:
@@ -99,12 +115,11 @@ ALTER TABLE ONLY jobs
 
 
 --
--- Name: node_status_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace:
+-- Name: job_status_fkey; Type: CONSTRAINT
 --
 
-ALTER TABLE ONLY node_status
-    ADD CONSTRAINT node_status_pkey PRIMARY KEY (org_id, node_name);
-
+ALTER TABLE ONLY jobs
+    ADD CONSTRAINT job_status_fkey FOREIGN KEY (status) REFERENCES job_status(id);
 
 --
 -- Name: job_nodes_job_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -

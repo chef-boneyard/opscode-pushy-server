@@ -1,3 +1,7 @@
+%% -*- erlang-indent-level: 4;indent-tabs-mode: nil; fill-column: 92 -*-
+%% ex: ts=4 sw=4 et
+%% @copyright 2011-2012 Opscode Inc.
+
 -module(pushy_sql).
 
 -include_lib("pushy_sql.hrl").
@@ -8,11 +12,14 @@
          %% job ops
          fetch_job/1,
          fetch_jobs/1,
+         fetch_incomplete_jobs/0,
+         fetch_incomplete_job_nodes/0,
          create_job/1,
          update_job/1,
          update_job_node/1,
 
          sql_now/0,
+         sql_date/1,
          statements/1
         ]).
 
@@ -31,6 +38,16 @@ fetch_job(JobId) ->
             {error, Error}
     end.
 
+fetch_incomplete_jobs() ->
+    case sqerl:select(find_incomplete_jobs, []) of
+        {ok, none} ->
+            {ok, []};
+        {ok, Rows} ->
+            {ok, [prepare_pushy_job_record(Row) || Row <- Rows]};
+        {error, Error} ->
+            {error, Error}
+    end.
+
 fetch_jobs(OrgId) ->
     case sqerl:select(find_jobs_by_org, [OrgId]) of
         {ok, none} ->
@@ -41,9 +58,19 @@ fetch_jobs(OrgId) ->
             {error, Error}
     end.
 
+fetch_incomplete_job_nodes() ->
+    case sqerl:select(find_incomplete_job_nodes, []) of
+        {ok, none} ->
+            {ok, []};
+        {ok, Rows} ->
+            {ok, [prepare_incomplete_job_nodes(Row) || Row <- Rows]};
+        {error, Error} ->
+            {error, Error}
+    end.
+
 create_job(#pushy_job{status = Status, job_nodes = JobNodes}=Job) ->
     %% convert status into an integer
-    Job1 = Job#pushy_job{status=job_status(Status)},
+    Job1 = Job#pushy_job{status=Status},
     Fields0 = flatten_record(Job1),
     Fields = job_fields_for_insert(Fields0),
     %% We're not dispatching to the general create_object/2 because creating a job
@@ -78,15 +105,15 @@ update_job(#pushy_job{id = JobId,
                       status = Status,
                       last_updated_by = LastUpdatedBy,
                       updated_at = UpdatedAt}) ->
-    UpdateFields = [job_status(Status), LastUpdatedBy, UpdatedAt, JobId],
+    UpdateFields = [Status, LastUpdatedBy, UpdatedAt, JobId],
     do_update(update_job_by_id, UpdateFields).
 
 -spec update_job_node(#pushy_job_node{}) -> {ok, 1 | not_found} | {error, term()}.
 update_job_node(#pushy_job_node{job_id = JobId,
                                 node_name = NodeName,
                                 org_id = OrgId,
-                                status = Status,
-                                updated_at = UpdatedAt}) ->
+                                status = Status}) ->
+    UpdatedAt = sql_date(now),
     UpdateFields = [job_node_status(Status), UpdatedAt, OrgId, NodeName, JobId],
     do_update(update_job_node_by_orgid_nodename_jobid, UpdateFields).
 
@@ -157,7 +184,7 @@ job_join_rows_to_record([LastRow|[]], JobNodes) ->
     #pushy_job{id = safe_get(<<"id">>, LastRow),
                   org_id = safe_get(<<"org_id">>, LastRow),
                   command = safe_get(<<"command">>, LastRow),
-                  status = job_status(safe_get(<<"status">>, LastRow)),
+                  status = safe_get(<<"status">>, LastRow),
                   run_timeout = safe_get(<<"run_timeout">>, LastRow),
                   last_updated_by = safe_get(<<"last_updated_by">>, LastRow),
                   created_at = trunc_date_time_to_second(safe_get(<<"created_at">>, LastRow)),
@@ -170,12 +197,26 @@ job_join_rows_to_record([Row|Rest], JobNodes ) ->
 prepare_job(Job) ->
     CreatedAt = trunc_date_time_to_second(safe_get(<<"created_at">>, Job)),
     CreatedAtFormatted = iolist_to_binary(httpd_util:rfc1123_date(CreatedAt)),
-    Status = atom_to_binary(job_status(safe_get(<<"status">>, Job)), utf8),
+    Status = safe_get(<<"status">>, Job),
 
     {[{<<"id">>, safe_get(<<"id">>, Job)},
       {<<"created_at">>, CreatedAtFormatted},
       {<<"status">>, Status}]}.
 
+prepare_pushy_job_record(Job) ->
+    CreatedAt = trunc_date_time_to_second(safe_get(<<"created_at">>, Job)),
+    CreatedAtFormatted = iolist_to_binary(httpd_util:rfc1123_date(CreatedAt)),
+    Status = safe_get(<<"status">>, Job),
+
+    #pushy_job{id = safe_get(<<"id">>, Job),
+               created_at = CreatedAtFormatted,
+               last_updated_by = safe_get(<<"last_updated_by">>, Job),
+               status = Status}.
+
+prepare_incomplete_job_nodes(Node) ->
+    #pushy_job_node{job_id = safe_get(<<"job_id">>, Node),
+                    org_id = safe_get(<<"org_id">>, Node),
+                    node_name = safe_get(<<"node_name">>, Node)}.
 
 %% @doc Convenience function for assembling a job_node tuple from a proplist
 proplist_to_job_node(Proplist) ->
@@ -189,22 +230,6 @@ proplist_to_job_node(Proplist) ->
                 created_at = trunc_date_time_to_second(safe_get(<<"created_at">>, Proplist)),
                 updated_at = trunc_date_time_to_second(safe_get(<<"updated_at">>, Proplist))}
     end.
-
-%% Job Status translators
-job_status(voting) -> 0;
-job_status(running) -> 1;
-job_status(complete) -> 2;
-job_status(quorum_failed) -> 3;
-job_status(aborted) -> 4;
-job_status(new) -> 5;
-job_status(timed_out) -> 6;
-job_status(0) -> voting;
-job_status(1) -> running;
-job_status(2) -> complete;
-job_status(3) -> quorum_failed;
-job_status(4) -> aborted;
-job_status(5) -> new;
-job_status(6) -> timed_out.
 
 %% Job Node Status translators
 job_node_status(new) -> 0;
@@ -304,3 +329,16 @@ statements(DbType) ->
                  exit(no_statement_file)
          end,
     Rv.
+
+%% CHEF_COMMON CARGO_CULT
+%% chef_db:sql_date/1
+
+%%%
+%%% Emit in DATETIME friendly format
+%%% TODO: Modify to generate datetime pseudo record as used by emysql?
+sql_date(now) ->
+    sql_date(os:timestamp());
+sql_date({_,_,_} = TS) ->
+    {{Year,Month,Day},{Hour,Minute,Second}} = calendar:now_to_universal_time(TS),
+    iolist_to_binary(io_lib:format("~4w-~2..0w-~2..0w ~2..0w:~2..0w:~2..0w",
+                  [Year, Month, Day, Hour, Minute, Second])).
