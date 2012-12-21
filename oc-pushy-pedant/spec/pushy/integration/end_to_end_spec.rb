@@ -650,15 +650,11 @@ describe "end-to-end-test" do
         wait_for_node_to_come_out_of_rehab("DONKEY")
       end
 
-      it 'the client should abort and then be able to run another job' do
+      it 'the client should abort and then be able to run another job, and the job should be set to crashed' do
         start_echo_job_on_all_clients
         echo_job_should_complete_on_all_clients
-      end
-
-      it 'the job should be set to crashed' do
         wait_for_job_status(@long_job['uri'], 'crashed')
       end
-
     end
   end
 
