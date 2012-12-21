@@ -80,7 +80,7 @@ init(#pushy_job{id = JobId, job_nodes = JobNodeList} = Job) ->
             % Start voting--if there are no nodes, the job finishes immediately.
             case start_voting(State) of
                 {next_state, StateName, State2} -> {ok, StateName, State2};
-                {stop, Reason, _State} -> {stop, {shutdown, Reason}}
+                {stop, Reason, _State} -> {stop, Reason}
             end;
         false ->
             {stop, shutdown}
