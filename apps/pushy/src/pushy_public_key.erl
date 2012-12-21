@@ -38,7 +38,12 @@ request_pubkey(OrgName, Requestor) ->
 
 parse_json_response(Body) ->
     EJson = jiffy:decode(Body),
-    {ej:get({"public_key"}, EJson), requestor_type(ej:get({"type"}, EJson))}.
+    case ej:get({"org_member"}, EJson) of
+        true ->
+            {ej:get({"public_key"}, EJson), requestor_type(ej:get({"type"}, EJson))};
+        _ ->
+            {not_found, not_associated_with_org}
+    end.
 
 requestor_type(<<"user">>) ->
     user;
