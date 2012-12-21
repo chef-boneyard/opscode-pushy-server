@@ -101,12 +101,12 @@ shared_context "end_to_end_util" do
     end
   end
 
-  def wait_for_node_to_come_out_of_rehab(*names)
+  def wait_for_nodes_availabilty(availability, *names)
     begin
       Timeout::timeout(10) do
         until names.all? { |name|
                 response = get_rest("pushy/node_states/#{name}")
-                response['availability'] == 'available'
+                response['availability'] == availability
               }
           sleep SLEEP_TIME
         end
@@ -116,8 +116,12 @@ shared_context "end_to_end_util" do
       names.each do |name|
         nodes_in_rehab[name] = get_rest("pushy/node_states/#{name}")
       end
-      raise "Clients never came out of rehab: #{nodes_in_rehab}"
+      raise "Clients availability never never changed to #{availablity}: #{nodes_in_rehab}"
     end
+  end
+
+  def wait_for_node_to_come_out_of_rehab(*names)
+    wait_for_nodes_availabilty('available', *names)
   end
 
   def stop_client(name)
