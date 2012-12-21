@@ -24,16 +24,13 @@
          recv_msg/1,
          send_msg/2,
          send_msg/3,
-         heartbeat/1,
          status/1,
          watch/1,
-         aborted/1,
          rehab/1]).
 
 %% States
 -export([idle/2,
          post_init/2,
-         running/2,
          rehab/2]).
 
 -record(state, {node_ref              :: node_ref(),
@@ -57,9 +54,6 @@
 start_link(NodeRef, NodeAddr) ->
     gen_fsm:start_link(?MODULE, [NodeRef, NodeAddr], []).
 
-heartbeat(NodeRef) ->
-    send_info(NodeRef, heartbeat),
-    ok.
 recv_msg(Message) ->
     dispatch_raw_message(Message).
 
@@ -81,9 +75,6 @@ status(NodeRef) ->
 
 watch(NodeRef) ->
     call(NodeRef, {watch, self()}).
-
-aborted(NodeRef) ->
-    cast(NodeRef, aborted).
 
 rehab(NodeRef) ->
     cast(NodeRef, do_rehab).
@@ -138,23 +129,8 @@ rehab(Message, #state{node_ref=NodeRef}=State) ->
 idle(do_rehab, State) ->
     State1 = force_abort(State),
     {next_state, state_transition(idle, rehab, State1), State1};
-idle({job, Job}, State) ->
-    State1 = State#state{job=Job, availability=unavailable},
-    {next_state, state_transition(idle, running, State1), State1};
 idle(aborted, State) ->
     {next_state, idle, State}.
-
-running(do_rehab, State) ->
-    State1 = force_abort(State),
-    {next_state, state_transition(running, rehab, State1), State1};
-running(aborted, #state{node_ref=NodeRef}=State) ->
-    lager:debug("~p aborted during job.~n", [NodeRef]),
-    State1 = State#state{job=undefined, availability=available},
-    {next_state, state_transition(running, idle, State1), State1};
-running({complete, Job}, #state{job=Job, node_ref=NodeRef}=State) ->
-    lager:info("~p completed job.~n", [NodeRef]),
-    State1 = State#state{job=undefined, availability=available},
-    {next_state, state_transition(running, idle, State1), State1}.
 
 handle_event(_Event, StateName, State) ->
     {next_state, StateName, State}.
@@ -218,9 +194,7 @@ eval_state({idle, undefined}) ->
 eval_state({post_init, undefined}) ->
     {online, {unavailable, none}};
 eval_state({rehab, undefined}) ->
-    {online, {unavailable, none}};
-eval_state({running, Job}) ->
-    {online, {unavailable, Job}}.
+    {online, {unavailable, none}}.
 
 rehab_interval() ->
     envy:get(pushy, rehab_timer, 1000, integer).
