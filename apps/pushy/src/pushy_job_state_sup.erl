@@ -31,6 +31,9 @@ start(Job) ->
     case supervisor:start_child(?SERVER, [Job]) of
         {ok, _Child} ->
             ok;
+        %% No nodes in job, so it has shut down straight away
+        {error, {shutdown, complete}} ->
+            ok;
         {error, Error} ->  throw({error, Error})
     end.
 
