@@ -33,6 +33,11 @@
          post_init/2,
          rehab/2]).
 
+%% Exposed for testing support
+-export([heartbeat/1,
+         aborted/1
+        ]).
+
 -record(state, {node_ref              :: node_ref(),
                 node_addr             :: node_addr(),
                 heartbeats = 1        :: pos_integer(),
@@ -79,6 +84,17 @@ watch(NodeRef) ->
 rehab(NodeRef) ->
     cast(NodeRef, do_rehab).
 
+%% Testing API
+
+heartbeat(NodeRef) ->
+    send_info(NodeRef, heartbeat),
+    ok.
+
+aborted(NodeRef) ->
+    cast(NodeRef, aborted).
+
+
+%% Gen_fsm
 init([NodeRef, NodeAddr]) ->
     State = #state{node_ref = NodeRef, node_addr = NodeAddr, availability=unavailable},
     GprocName = pushy_node_state_sup:mk_gproc_name(NodeRef),
