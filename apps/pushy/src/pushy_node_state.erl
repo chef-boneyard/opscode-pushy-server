@@ -43,6 +43,7 @@
                 node_addr             :: node_addr(),
                 heartbeats = 1        :: pos_integer(),
                 job                   :: any(),
+                sequence_no = 1       :: pos_integer(),
                 availability          :: node_availability(),
                 watchers = [],
                 incarnation_id,
@@ -440,11 +441,16 @@ do_send(State, Message) ->
     do_send(State, hmac_sha256, Message).
 
 -spec do_send(#state{}, atom(), json_term()) -> #state{}.
-do_send(#state{node_addr=NodeAddr, node_ref=NodeRef} = State, Method, Message) ->
+do_send(#state{node_addr=NodeAddr, node_ref=NodeRef, sequence_no = SeqNo} = State,
+        Method, Message) ->
+    %% Normalize msg by adding standard fields.
+    Message2 = pushy_messaging:insert_timestamp_and_sequence(Message, SeqNo),
+    State2 = State#state{sequence_no = SeqNo+1},
+
     {ok, Key} = get_key_for_method(Method, NodeRef),
-    Packets = ?TIME_IT(pushy_messaging, make_message, (proto_v2, Method, Key, Message)),
+    Packets = ?TIME_IT(pushy_messaging, make_message, (proto_v2, Method, Key, Message2)),
     ok = pushy_command_switch:send([NodeAddr | Packets]),
-    State.
+    State2.
 
 message_type_to_atom(<<"aborted">>) -> aborted;
 message_type_to_atom(<<"ack_commit">>) -> ack_commit;

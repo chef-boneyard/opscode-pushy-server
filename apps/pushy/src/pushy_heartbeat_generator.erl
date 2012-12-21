@@ -112,12 +112,11 @@ do_send(#state{heartbeat_sock=HeartbeatSock, beat_count=Count, private_key=Priva
 
     {ok, Hostname} = inet:gethostname(),
     Msg = {[{server, list_to_binary(Hostname)},
-            {timestamp, list_to_binary(httpd_util:rfc1123_date())},
             {type, heartbeat},
-            {sequence, Count},
             {incarnation_id, IncarnationId}
            ]},
-    Packets = ?TIME_IT(pushy_messaging, make_message, (proto_v2, rsa2048_sha1, PrivateKey, Msg)),
+    Msg2 = pushy_messaging:insert_timestamp_and_sequence(Msg, Count),
+    Packets = ?TIME_IT(pushy_messaging, make_message, (proto_v2, rsa2048_sha1, PrivateKey, Msg2)),
     pushy_messaging:send_message(HeartbeatSock, Packets),
     %?debugVal(BodyFrame),
     lager:debug("Heartbeat sent: header=~s,body=~s", Packets),
