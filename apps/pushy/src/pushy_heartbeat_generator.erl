@@ -84,7 +84,7 @@ init([#pushy_state{ctx=Ctx, incarnation_id=IncarnationId }]) ->
                    private_key = PrivateKey,
                    incarnation_id = IncarnationId
                   },
-    timer:apply_interval(Interval, ?MODULE, heartbeat, []),
+    _Timer = timer:apply_interval(Interval, ?MODULE, heartbeat, []),
     {ok, State}.
 
 handle_call(stats, _From, State) ->

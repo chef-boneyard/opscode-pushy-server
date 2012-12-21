@@ -32,13 +32,14 @@
 
 -spec init() -> ok.
 init() ->
-    ets:new(?TABLE, [set,public,named_table, {read_concurrency, true}]),
+    _Tid = ets:new(?TABLE, [set,public,named_table, {read_concurrency, true}]),
     ok.
 
 %% This exists to make eunit tests less painful to write.
 -spec stop() -> ok.
 stop() ->
-    ets:delete(?TABLE).
+    true = ets:delete(?TABLE),
+    ok.
 
 %%%
 %%% Key descriptor: {algorithm:atom, key:binary}

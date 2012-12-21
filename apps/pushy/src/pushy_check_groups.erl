@@ -6,6 +6,7 @@
 %% @doc check to see if requestor is in a group
 -module(pushy_check_groups).
 
+-include("pushy_wm.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 -export([
@@ -14,7 +15,9 @@
 
 %% @doc determine if a requestor is in a group, not in a group, or the group
 %% doesn't exist (returns undefined)
--spec group_membership(Name :: string(), Type :: string(), OrgName :: string(),
+-spec group_membership(Name :: string(),
+                       Type :: pushy_requestor_type(),
+                       OrgName :: string(),
                        Group :: string()) -> true | false | group_not_found.
 group_membership(Name, Type, OrgName, Group) ->
     Path = path(OrgName, Group),
@@ -25,34 +28,29 @@ group_membership(Name, Type, OrgName, Group) ->
             check_for_membership(Name, Type, OrgName, ResponseBody)
     end.
 
-path(OrgName, Group) ->
-    "/organizations/" ++ OrgName ++ "/groups/" ++ Group.
-
 %%
 %% Internal functions
 %%
 
+-spec path(OrgName :: string(), Group :: string()) -> string().
+path(OrgName, Group) ->
+    "/organizations/" ++ OrgName ++ "/groups/" ++ Group.
+
+-spec check_for_membership(Name :: string(),
+                           Type :: pushy_requestor_type(),
+                           OrgName :: string(),
+                           Body :: binary()) -> boolean().
 %% @doc determine if a member of the group, or recurse if necessary
 %%
 check_for_membership(Name, Type, OrgName, Body) ->
     EJson = jiffy:decode(Body),
-    Reqs = case Type of
-               user ->
-                   ej:get({<<"users">>}, EJson);
-               client ->
-                   ej:get({<<"clients">>}, EJson)
-           end,
+    Reqs = ej:get({field_for_type(Type)}, EJson),
     case lists:member(list_to_binary(Name), Reqs) of
         true ->
             true;
         false ->
             Groups = ej:get({<<"groups">>}, EJson),
-            case check_subgroups(Name, Type, OrgName, Groups) of
-                true ->
-                    true;
-                false ->
-                    false
-            end
+            check_subgroups(Name, Type, OrgName, Groups)
     end.
 
 %% @doc recurse over subgroups
@@ -65,3 +63,9 @@ check_subgroups(Name, Type, OrgName, [Group|OtherGroups]) ->
         _ ->
             check_subgroups(Name, Type, OrgName, OtherGroups)
     end.
+
+-spec field_for_type(pushy_requestor_type()) -> binary().
+field_for_type(user) ->
+    <<"users">>;
+field_for_type(client) ->
+    <<"clients">>.
