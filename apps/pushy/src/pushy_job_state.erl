@@ -33,7 +33,7 @@
 -include("pushy_sql.hrl").
 
 %% This is Erlang not C/C++
--record(state, {job_host        :: string(),
+-record(state, {job_host        :: binary(),
                 job             :: #pushy_job{},
                 job_nodes       :: dict(),
                 voting_timeout  :: integer()}).
@@ -64,7 +64,7 @@ stop_job(JobId) ->
     {'ok', job_status(), #state{}} |
     {'stop', 'shutdown', #state{}}.
 init(#pushy_job{id = JobId, job_nodes = JobNodeList} = Job) ->
-    Host = envy:get(pushy, server_name, string),
+    Host = list_to_binary(envy:get(pushy, server_name, string)),
     case pushy_job_state_sup:register_process(JobId) of
         true ->
             {ok, _} = pushy_object:create_object(create_job, Job, JobId),
@@ -77,7 +77,7 @@ init(#pushy_job{id = JobId, job_nodes = JobNodeList} = Job) ->
                            voting_timeout = envy:get(pushy, voting_timeout, 60, integer)},
             listen_for_down_nodes(dict:fetch_keys(JobNodes)),
 
-            lager:info("Job ~p starting '~p' on ~p nodes, with timeout ~ps",
+            lager:debug("Job ~p starting '~p' on ~p nodes, with timeout ~ps",
                 [JobId, Job#pushy_job.command, length(JobNodeList), Job#pushy_job.run_timeout]),
 
             % Start voting--if there are no nodes, the job finishes immediately.
@@ -174,7 +174,7 @@ handle_info({state_change, NodeRef, _Current, shutdown}, StateName, State) ->
     pushy_job_state:StateName({down,NodeRef}, State);
 handle_info(voting_timeout, voting,
         #state{job = Job, voting_timeout = VotingTimeout} = State) ->
-    lager:info("Timeout occurred during voting on job ~p after ~ps", [Job#pushy_job.id, VotingTimeout]),
+    lager:debug("Timeout occurred during voting on job ~p after ~ps", [Job#pushy_job.id, VotingTimeout]),
     % Set all nodes that have not responded to the vote, to new, forcing voting to finish
     State2 = send_matching_to_rehab(new, unavailable, State),
     maybe_finished_voting(State2);
@@ -184,7 +184,7 @@ handle_info(voting_timeout, running, State) ->
     {next_state, running, State};
 handle_info(running_timeout, running,
         #state{job = Job} = State) ->
-    lager:info("Timeout occurred while running job ~p after ~ps", [Job#pushy_job.id, Job#pushy_job.run_timeout]),
+    lager:debug("Timeout occurred while running job ~p after ~ps", [Job#pushy_job.id, Job#pushy_job.run_timeout]),
     State2 = send_matching_to_rehab(ready, timed_out, State),
     State3 = send_matching_to_rehab(running, timed_out, State2),
     finish_job(timed_out, State3);
@@ -267,7 +267,7 @@ maybe_finished_running(State) ->
     end.
 
 start_voting(#state{job = Job, voting_timeout = VotingTimeout} = State) ->
-    lager:info("Job ~p -> voting", [Job#pushy_job.id]),
+    lager:debug("Job ~p -> voting", [Job#pushy_job.id]),
     Job2 = Job#pushy_job{status = voting},
     State2 = State#state{job = Job2},
     pushy_object:update_object(update_job, Job2, Job2#pushy_job.id),
@@ -276,7 +276,7 @@ start_voting(#state{job = Job, voting_timeout = VotingTimeout} = State) ->
     maybe_finished_voting(State2).
 
 start_running(#state{job = Job} = State) ->
-    lager:info("Job ~p -> running", [Job#pushy_job.id]),
+    lager:debug("Job ~p -> running", [Job#pushy_job.id]),
     Job2 = Job#pushy_job{status = running},
     State2 = State#state{job = Job2},
     pushy_object:update_object(update_job, Job2, Job2#pushy_job.id),
@@ -287,7 +287,7 @@ start_running(#state{job = Job} = State) ->
 finish_job(Reason, #state{job = Job} = State) ->
     % All nodes are guaranteed to be in terminal state by this point, so no
     % nodes need to be sent to rehab.
-    lager:info("Job ~p -> ~p", [Job#pushy_job.id, Reason]),
+    lager:debug("Job ~p -> ~p", [Job#pushy_job.id, Reason]),
     Job2 = Job#pushy_job{status = Reason},
     State2 = State#state{job = Job2},
     pushy_object:update_object(update_job, Job2, Job2#pushy_job.id),
@@ -326,26 +326,26 @@ listen_for_down_nodes([NodeRef|JobNodes]) ->
 -spec send_command_to_ready(binary(), #state{}) -> 'ok'.
 send_command_to_ready(Type, #state{job_host = Host,
                                    job = Job} = State) ->
-    lager:info("Sending ~p to nodes in ready state", [Type]),
+    lager:debug("Sending ~p to nodes in ready state", [Type]),
     ReadyNodeRefs = nodes_in_state([ready], State),
     send_command_to_nodes(Type, Host, Job, ReadyNodeRefs).
 
 -spec send_command_to_all(binary(), #state{}) -> 'ok'.
 send_command_to_all(Type, #state{job_host=Host, job = Job, job_nodes = JobNodes}) ->
-    lager:info("Sending ~p to all nodes", [Type]),
+    lager:debug("Sending ~p to all nodes", [Type]),
     NodeRefs = dict:fetch_keys(JobNodes),
     send_command_to_nodes(Type, Host, Job, NodeRefs).
 
 send_command_to_nodes(Type, Host, Job, NodeRefs) ->
     Message = [{type, Type},
                {job_id, Job#pushy_job.id},
-               {server, list_to_binary(Host)},
+               {server, Host},
                {command, Job#pushy_job.command}],
     pushy_node_state:send_msg(NodeRefs, {Message}).
 
 -spec send_node_event(object_id(), node_ref(), job_event()) -> ok | not_found.
 send_node_event(JobId, NodeRef, Event) ->
-    lager:info("---------> job:node_event(~p, ~p, ~p)", [JobId, NodeRef, Event]),
+    lager:debug("---------> job:node_event(~p, ~p, ~p)", [JobId, NodeRef, Event]),
     case pushy_job_state_sup:get_process(JobId) of
         Pid when is_pid(Pid) ->
             gen_fsm:send_event(Pid, {Event, NodeRef});

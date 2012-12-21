@@ -24,16 +24,13 @@
          recv_msg/1,
          send_msg/2,
          send_msg/3,
-         heartbeat/1,
          status/1,
          watch/1,
-         aborted/1,
          rehab/1]).
 
 %% States
 -export([idle/2,
          post_init/2,
-         running/2,
          rehab/2]).
 
 -record(state, {node_ref              :: node_ref(),
@@ -57,9 +54,6 @@
 start_link(NodeRef, NodeAddr) ->
     gen_fsm:start_link(?MODULE, [NodeRef, NodeAddr], []).
 
-heartbeat(NodeRef) ->
-    send_info(NodeRef, heartbeat),
-    ok.
 recv_msg(Message) ->
     dispatch_raw_message(Message).
 
@@ -80,29 +74,10 @@ status(NodeRef) ->
     end.
 
 watch(NodeRef) ->
-    case call(NodeRef, {watch, self()}) of
-        ok ->
-            ok;
-        Error ->
-            Error
-    end.
-
-aborted(NodeRef) ->
-    case cast(NodeRef, aborted) of
-        ok ->
-            ok;
-        Error ->
-            Error
-    end.
+    call(NodeRef, {watch, self()}).
 
 rehab(NodeRef) ->
-    case cast(NodeRef, do_rehab) of
-        ok ->
-            ok;
-        Error ->
-            Error
-    end.
-
+    cast(NodeRef, do_rehab).
 
 init([NodeRef, NodeAddr]) ->
     State = #state{node_ref = NodeRef, node_addr = NodeAddr, availability=unavailable},
@@ -148,29 +123,14 @@ rehab(aborted, #state{state_timer=TRef}=State) ->
     State1 = State#state{availability=available},
     {next_state, state_transition(rehab, idle, State1), State1};
 rehab(Message, #state{node_ref=NodeRef}=State) ->
-    lager:info("~p in rehab. Ignoring message: ~p~n", [NodeRef, Message]),
+    lager:debug("~p in rehab. Ignoring message: ~p~n", [NodeRef, Message]),
     {next_state, rehab, State}.
 
 idle(do_rehab, State) ->
     State1 = force_abort(State),
     {next_state, state_transition(idle, rehab, State1), State1};
-idle({job, Job}, State) ->
-    State1 = State#state{job=Job, availability=unavailable},
-    {next_state, state_transition(idle, running, State1), State1};
 idle(aborted, State) ->
     {next_state, idle, State}.
-
-running(do_rehab, State) ->
-    State1 = force_abort(State),
-    {next_state, state_transition(running, rehab, State1), State1};
-running(aborted, #state{node_ref=NodeRef}=State) ->
-    lager:info("~p aborted during job.~n", [NodeRef]),
-    State1 = State#state{job=undefined, availability=available},
-    {next_state, state_transition(running, idle, State1), State1};
-running({complete, Job}, #state{job=Job, node_ref=NodeRef}=State) ->
-    lager:info("~p completed job.~n", [NodeRef]),
-    State1 = State#state{job=undefined, availability=available},
-    {next_state, state_transition(running, idle, State1), State1}.
 
 handle_event(_Event, StateName, State) ->
     {next_state, StateName, State}.
@@ -234,9 +194,7 @@ eval_state({idle, undefined}) ->
 eval_state({post_init, undefined}) ->
     {online, {unavailable, none}};
 eval_state({rehab, undefined}) ->
-    {online, {unavailable, none}};
-eval_state({running, Job}) ->
-    {online, {unavailable, Job}}.
+    {online, {unavailable, none}}.
 
 rehab_interval() ->
     envy:get(pushy, rehab_timer, 1000, integer).
@@ -323,7 +281,7 @@ dispatch_raw_message([Addr, _Header, Body] = Message) ->
                   %% parse and extract (bypassing json perhaps?)
                   EJSon = jiffy:decode(Body),
                   NodeRef = get_node_ref(EJSon),
-                  lager:info("No addr ~s for msg: ~p~n", [pushy_tools:bin_to_hex(Addr), NodeRef]),
+                  lager:debug("No addr ~s for msg: ~p~n", [pushy_tools:bin_to_hex(Addr), NodeRef]),
                   pushy_node_state_sup:get_or_create_process(NodeRef, Addr)
           end,
     send_info(Pid, {raw_message, Message}).
@@ -361,7 +319,7 @@ process_and_dispatch_message([Address, Header, Body], State) ->
 process_message(#state{node_ref=NodeRef, node_addr=CurAddr} = State, #pushy_message{address=NewAddr} = Message)
   when CurAddr =/= NewAddr ->
     %% Our address has changed. By this point we've validated the message, so we can trust the address
-    lager:info("Address change for ~p '~s' to '~s'~n",
+    lager:debug("Address change for ~p '~s' to '~s'~n",
                [NodeRef, pushy_tools:bin_to_hex(CurAddr),
                 pushy_tools:bin_to_hex(NewAddr)]),
     GprocNewAddr = pushy_node_state_sup:mk_gproc_addr(NewAddr),
