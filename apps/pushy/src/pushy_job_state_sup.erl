@@ -11,7 +11,6 @@
          start/1,
          get_process/1,
          get_job_processes/0,
-         mark_incomplete_job_nodes_as_crashed/0,
          register_process/1]).
 
 %% Supervisor callbacks
@@ -71,6 +70,10 @@ register_process(JobId) ->
             false
     end.
 
+%% ------------------------------------------------------------------
+%% Internal functions
+%% ------------------------------------------------------------------
+
 -spec mark_incomplete_job_nodes_as_crashed() -> ok | {error, term()}.
 %% Find running job nodes associated with crashed jobs. Mark them as crashed in the db.
 mark_incomplete_job_nodes_as_crashed() ->
@@ -80,10 +83,6 @@ mark_incomplete_job_nodes_as_crashed() ->
         {error, Error} ->
             {error, Error}
     end.
-
-%% ------------------------------------------------------------------
-%% Internal functions
-%% ------------------------------------------------------------------
 
 update_job_node([]) ->
     ok;
