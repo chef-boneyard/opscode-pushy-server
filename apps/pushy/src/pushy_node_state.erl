@@ -388,13 +388,13 @@ process_message(#state{node_ref=NodeRef, node_addr=Address} = State, #pushy_mess
         undefined ->
             lager:error("Status message for node ~p had unknown type ~p~n", [NodeRef, BinaryType]);
         heartbeat ->
-            send_node_event(State, JobId, {NodeRef, IncarnationId}, Type);
+            send_node_event(State, JobId, NodeRef, IncarnationId, Type);
         _ ->
             send_node_event(State, JobId, NodeRef, Type)
     end.
 
--spec send_node_event(#state{}, any(), any(), node_event()) -> #state{}.
-send_node_event(State, JobId, {NodeRef, IncarnationId}, heartbeat) ->
+-spec send_node_event(#state{}, any(), any(), any(), node_event()) -> #state{}.
+send_node_event(State, JobId, NodeRef, IncarnationId, heartbeat) ->
     lager:debug("Received heartbeat for node ~p with job id ~p", [NodeRef, JobId]),
     case JobId /= null andalso pushy_job_state_sup:get_process(JobId) == not_found of
         true ->
@@ -403,7 +403,9 @@ send_node_event(State, JobId, {NodeRef, IncarnationId}, heartbeat) ->
             ok
     end,
     send_info(self(), {heartbeat, IncarnationId}),
-    State;
+    State.
+
+-spec send_node_event(#state{}, any(), any(), node_event()) -> #state{}.
 send_node_event(State, JobId, NodeRef, aborted = Msg) ->
     gen_fsm:send_event(self(), aborted),
     if
