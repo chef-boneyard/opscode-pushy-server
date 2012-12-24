@@ -23,8 +23,12 @@
          sql_date/1
         ]).
 
+-type property() :: atom() | tuple(). %% As defined in proplists
+-type proplist() :: [ property() ].
 %% job ops
 
+-spec fetch_job(JobId :: object_id()) ->
+    {ok, not_found | #pushy_job{}} | {error, term()}.
 fetch_job(JobId) ->
     case sqerl:select(find_job_by_id, [JobId]) of
         {ok, none} ->
@@ -36,6 +40,7 @@ fetch_job(JobId) ->
             {error, Error}
     end.
 
+-spec fetch_incomplete_jobs() -> {ok, [ #pushy_job{} ] } | {error, term()}.
 fetch_incomplete_jobs() ->
     case sqerl:select(find_incomplete_jobs, []) of
         {ok, none} ->
@@ -46,6 +51,7 @@ fetch_incomplete_jobs() ->
             {error, Error}
     end.
 
+-spec fetch_jobs(OrgId :: object_id() ) -> {ok, [ #pushy_job{} ] } | {error, term()}.
 fetch_jobs(OrgId) ->
     case sqerl:select(find_jobs_by_org, [OrgId]) of
         {ok, none} ->
@@ -56,6 +62,7 @@ fetch_jobs(OrgId) ->
             {error, Error}
     end.
 
+-spec fetch_incomplete_job_nodes() -> {ok, [ #pushy_job_node{} ] } | {error, term()}.
 fetch_incomplete_job_nodes() ->
     case sqerl:select(find_incomplete_job_nodes, []) of
         {ok, none} ->
@@ -66,6 +73,7 @@ fetch_incomplete_job_nodes() ->
             {error, Error}
     end.
 
+-spec create_job(#pushy_job{}) -> {ok, 1} | {error, term()}.
 create_job(#pushy_job{status = Status, job_nodes = JobNodes}=Job) ->
     %% convert status into an integer
     Job1 = Job#pushy_job{status=Status},
@@ -136,6 +144,7 @@ job_fields_for_insert(CbFields) ->
           end,
    lists:filter(Pred,CbFields).
 
+-spec insert_job_nodes([#pushy_job_node{}]) -> ok | {error, term()}.
 %% @doc Inserts job_nodes records into the database. All records are timestamped
 %% with the same stamp, namely `CreatedAt`, which is a binary string in SQL date time
 %% format.
@@ -166,6 +175,7 @@ insert_job_nodes([#pushy_job_node{job_id=JobId,
 trunc_date_time_to_second({{YY,MM,DD},{H,M,S}}) ->
     {{YY,MM,DD},{H,M, erlang:trunc(S)}}.
 
+-spec job_join_rows_to_record(Rows :: [proplist()]) ->  #pushy_job{}.
 %% @doc Transforms a collection of proplists representing a job / job_nodes join query
 %% result and collapses them all into a single job record. There is a row for each
 %% job_node. A job_node tuple is extracted from each row; job information is extracted
@@ -174,6 +184,8 @@ trunc_date_time_to_second({{YY,MM,DD},{H,M,S}}) ->
 %% See the 'find_job_by_id' prepared query for the row "shape".
 job_join_rows_to_record(Rows) ->
     job_join_rows_to_record(Rows, []).
+
+-spec job_join_rows_to_record(Rows :: [proplist()], [#pushy_job_node{}]) -> #pushy_job{}.
 job_join_rows_to_record([LastRow|[]], JobNodes) ->
     C = proplist_to_job_node(LastRow),
     CreatedAt = safe_get(<<"created_at">>, LastRow),
@@ -231,6 +243,7 @@ prepare_incomplete_job_nodes(Node) ->
                     org_id = safe_get(<<"org_id">>, Node),
                     node_name = safe_get(<<"node_name">>, Node)}.
 
+-spec proplist_to_job_node(Proplist:: proplist()) -> #pushy_job_node{}.
 %% @doc Convenience function for assembling a job_node tuple from a proplist
 proplist_to_job_node(Proplist) ->
     case safe_get(<<"node_name">>, Proplist) of
