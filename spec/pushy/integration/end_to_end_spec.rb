@@ -54,17 +54,18 @@ describe "end-to-end-test" do
 
     context 'when running a job and a client goes down and quickly back up' do
       before :each do
-        @job = start_job(echo_yahoo, %w{DONKEY})
+        @job = start_job('sleep 1', %w{DONKEY})
+        wait_for_job_status(@job['uri'], 'running')
         stop_client('DONKEY')
         start_client('DONKEY')
       end
 
       it 'should be marked as unavailable immediatly' do
         get_job(@job['uri']).should == {
-          'command' => echo_yahoo,
+          'command' => 'sleep 1',
           'run_timeout' => 3600,
-          'nodes' => { 'unavailable' => [ 'DONKEY' ] },
-          'status' => 'quorum_failed'
+          'nodes' => { 'crashed' => [ 'DONKEY' ] },
+          'status' => 'complete'
         }
       end
     end
