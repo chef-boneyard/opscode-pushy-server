@@ -52,6 +52,24 @@ describe "end-to-end-test" do
       end
     end
 
+    context 'when running a job and a client goes down and quickly back up' do
+      before :each do
+        @job = start_job('sleep 1', %w{DONKEY})
+        wait_for_job_status(@job['uri'], 'running')
+        stop_client('DONKEY')
+        start_client('DONKEY')
+      end
+
+      it 'should be marked as unavailable immediatly' do
+        get_job(@job['uri']).should == {
+          'command' => 'sleep 1',
+          'run_timeout' => 3600,
+          'nodes' => { 'crashed' => [ 'DONKEY' ] },
+          'status' => 'complete'
+        }
+      end
+    end
+
     context 'when running a failing job' do
       let(:command) {'ruby -e "exit 1"'}
       before(:each) do
