@@ -11,7 +11,7 @@
 
 %% API
 -export([start_link/0,
-         get_or_create_process/2,
+         get_or_create_process/3,
          get_process/1,
          get_heartbeating_nodes/0,
          get_heartbeating_nodes/1,
@@ -35,14 +35,14 @@ start_link() ->
             Error
     end.
 
--spec get_or_create_process(node_ref(), node_addr()) -> pid().
-get_or_create_process(NodeRef, NodeAddr) ->
+-spec get_or_create_process(node_ref(), node_addr(), binary()) -> pid().
+get_or_create_process(NodeRef, NodeAddr, IncarnationId) ->
     GprocName = mk_gproc_name(NodeRef),
     case catch gproc:lookup_pid({n,l,GprocName}) of
         {'EXIT', _} ->
             % Run start_child asynchronously; we only need to wait until the
             % process registers itself before we can send it messages.
-            spawn(supervisor, start_child, [?SERVER, [NodeRef, NodeAddr]]),
+            spawn(supervisor, start_child, [?SERVER, [NodeRef, NodeAddr, IncarnationId]]),
             {Pid, _Value} = gproc:await({n,l,GprocName},1000),
             Pid;
         Pid -> Pid
@@ -83,6 +83,7 @@ mk_gproc_addr(Addr) when is_binary(Addr) ->
 %% ------------------------------------------------------------------
 
 init([]) ->
+    %lager:trace_console([{module, pushy_node_state}], debug),
     {ok, {{simple_one_for_one, 60, 120},
           [{pushy_node_state, {pushy_node_state, start_link, []},
             transient, brutal_kill, worker, [pushy_node_state]}]}}.
