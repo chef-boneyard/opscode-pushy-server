@@ -34,7 +34,7 @@
          rehab/2]).
 
 %% Exposed for testing support
--export([heartbeat/1,
+-export([
          aborted/1
         ]).
 
@@ -204,7 +204,7 @@ handle_info(_Info, StateName, State) ->
     {next_state, StateName, State}.
 
 terminate(_Reason, _StateName, #state{node_ref = NodeRef}) ->
-    lager:info("Shutting Down: ~p~n", [NodeRef]),
+    lager:debug("Shutting Down: ~p~n", [NodeRef]),
     ok.
 
 code_change(_OldVsn, StateName, State, _Extra) ->
