@@ -388,7 +388,7 @@ process_message(#state{node_ref=NodeRef, node_addr=Address} = State, #pushy_mess
         undefined ->
             lager:error("Status message for node ~p had unknown type ~p~n", [NodeRef, BinaryType]);
         heartbeat ->
-            send_node_event(State, JobId, NodeRef, IncarnationId, Type);
+            send_node_event(State, JobId, NodeRef, IncarnationId, heartbeat);
         _ ->
             send_node_event(State, JobId, NodeRef, Type)
     end.
