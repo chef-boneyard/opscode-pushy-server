@@ -64,6 +64,7 @@ init(#pushy_job{id = JobId, job_nodes = JobNodeList} = Job) ->
     Host = list_to_binary(envy:get(pushy, server_name, string)),
     case pushy_job_state_sup:register_process(JobId) of
         true ->
+            pushy_job_monitor:monitor_job(JobId, self()),
             {ok, _} = pushy_object:create_object(create_job, Job, JobId),
             JobNodes = dict:from_list([{{OrgId, NodeName}, JobNode} ||
                                           #pushy_job_node{org_id = OrgId, node_name = NodeName} =

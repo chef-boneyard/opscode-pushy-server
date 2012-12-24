@@ -1,7 +1,8 @@
 %%%-------------------------------------------------------------------
 %%% @author Matthew Peck
 %%% @copyright 2012 Opscode, Inc.
-%%% @doc
+%%% @doc Monitor a set of pushy_job_state processes and clean up
+%%% the state in the database on job_state process crashes
 %%%
 %%% @end
 %%%-------------------------------------------------------------------
@@ -12,7 +13,7 @@
 
 %% API
 -export([start_link/0,
-         monitor_job/1]).
+         monitor_job/2]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -36,8 +37,9 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, #state{}, []).
 
-monitor_job(JobId) ->
-    gen_server:cast(?MODULE, {monitor, JobId}).
+%% @doc Monitor a Pushy Job FSM, specified by the JobId and its Pid
+monitor_job(JobId, Pid) ->
+    gen_server:cast(?MODULE, {monitor, JobId, Pid}).
 
 
 %%%===================================================================
@@ -52,8 +54,7 @@ handle_call(Msg, _From, State) ->
     lager:warn("Unknown message handle_call: ~p~n", [Msg]),
     {reply, ok, State}.
 
-handle_cast({monitor, JobId}, #state{jobs = Jobs} = State) ->
-    Pid = pushy_job_state_sup:get_process(JobId),
+handle_cast({monitor, JobId, Pid}, #state{jobs = Jobs} = State) ->
     erlang:monitor(process, Pid),
     State1 = State#state{jobs = dict:append(Pid, JobId, Jobs)},
     {noreply, State1};

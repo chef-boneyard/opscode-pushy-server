@@ -53,13 +53,13 @@ get_job_processes() ->
     [{JobId, Pid} || [{_,_,{_,JobId}},Pid,_] <- gproc:select([{MatchHead, Guard, Result}])].
 
 -spec register_process(object_id()) -> boolean().
+%% @doc Register a pushy_job FSM process in Gproc.  This runs in the pushy_job process.
 register_process(JobId) ->
     try
         %% The most important thing to have happen is this registration; we need to get this
         %% assigned before anyone else tries to start things up gproc:reg can only return
         %% true or throw
         true = gproc:reg({n, l, {pushy_job, JobId}}),
-        pushy_job_monitor:monitor_job(JobId),
         true
     catch
         error:badarg ->
