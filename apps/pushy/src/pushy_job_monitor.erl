@@ -13,7 +13,8 @@
 
 %% API
 -export([start_link/0,
-         monitor_job/2]).
+         monitor_job/2,
+         is_monitored/1]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -41,6 +42,9 @@ start_link() ->
 monitor_job(JobId, Pid) ->
     gen_server:cast(?MODULE, {monitor, JobId, Pid}).
 
+%% @doc Is a given Pid being monitored
+is_monitored(Pid) ->
+    gen_server:call(?MODULE, {is_monitored, Pid}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -50,13 +54,15 @@ init(State) ->
     lager:info("Starting job monitor"),
     {ok, State#state{jobs = dict:new()}}.
 
+handle_call({is_monitored, Pid}, _From, #state{jobs = Jobs} =State) ->
+    {reply, dict:is_key(Pid, Jobs), State};
 handle_call(Msg, _From, State) ->
     lager:warn("Unknown message handle_call: ~p~n", [Msg]),
     {reply, ok, State}.
 
 handle_cast({monitor, JobId, Pid}, #state{jobs = Jobs} = State) ->
     erlang:monitor(process, Pid),
-    State1 = State#state{jobs = dict:append(Pid, JobId, Jobs)},
+    State1 = State#state{jobs = dict:store(Pid, JobId, Jobs)},
     {noreply, State1};
 handle_cast(Msg, State) ->
     lager:warn("Unknown message handle_cast: ~p~n", [Msg]),
