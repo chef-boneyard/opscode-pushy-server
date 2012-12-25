@@ -50,15 +50,7 @@ describe "Node_States API Endpoint", :node_states do
         end
       end
 
-      it 'returns a 200 ("OK") for admin client' do
-        get(api_url("/pushy/node_states/"), platform.admin_client) do |response|
-          response.should look_like({
-                                      :status => 200
-                                    })
-        end
-      end
-
-      it 'returns a 200 ("OK") for non-admin client', :pending do
+      it 'returns a 200 ("OK") for client' do
         get(api_url("/pushy/node_states/"), platform.non_admin_client) do |response|
           response.should look_like({
                                       :status => 200
@@ -111,19 +103,9 @@ describe "Node_States API Endpoint", :node_states do
         end
       end
 
-      it 'returns a 200 ("OK") for non-admin client', :pending do
+      it 'returns a 200 ("OK") for client' do
         get(api_url("/pushy/node_states/#{node_name}"),
             platform.non_admin_client) do |response|
-          response.should look_like({
-                                      :status => 200,
-                                      :body_exact => node_state_status
-                                    })
-        end
-      end
-
-      it 'returns a 200 ("OK") for admin client' do
-        get(api_url("/pushy/node_states/#{node_name}"),
-            platform.admin_client) do |response|
           response.should look_like({
                                       :status => 200,
                                       :body_exact => node_state_status
@@ -218,8 +200,7 @@ describe "Node_States API Endpoint", :node_states do
         end
       end
 
-      it 'returns a 200 ("OK") for member client', :pending do
-        # TODO: same authn problem as above
+      it 'returns a 200 ("OK") for member client' do
         get(api_url("/pushy/node_states/"), member_client) do |response|
           response.should look_like({
                                       :status => 200
@@ -261,7 +242,7 @@ describe "Node_States API Endpoint", :node_states do
         end
       end
 
-      it 'returns a 200 ("OK") for member client', :pending do
+      it 'returns a 200 ("OK") for member client' do
         get(api_url("/pushy/node_states/#{node_name}"),
             member_client) do |response|
           response.should look_like({
@@ -324,8 +305,7 @@ describe "Node_States API Endpoint", :node_states do
         end
       end
 
-      it 'returns a 200 ("OK") for member client', :pending do
-        # TODO: same authn problem as above
+      it 'returns a 200 ("OK") for member client' do
         get(api_url("/pushy/node_states/"), member_client) do |response|
           response.should look_like({
                                       :status => 200
@@ -367,7 +347,7 @@ describe "Node_States API Endpoint", :node_states do
         end
       end
 
-      it 'returns a 200 ("OK") for member client', :pending do
+      it 'returns a 200 ("OK") for member client' do
         get(api_url("/pushy/node_states/#{node_name}"),
             member_client) do |response|
           response.should look_like({
