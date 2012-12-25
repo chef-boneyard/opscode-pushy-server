@@ -56,15 +56,7 @@ describe "pushy config" do
         end
       end
 
-      it 'returns a 200 ("OK") for admin client' do
-        get(api_url("/pushy/config/#{config_name}"), platform.admin_client) do |response|
-          response.should look_like({
-                                      :status => 200
-                                    })
-        end
-      end
-
-      it 'returns a 200 ("OK") for non-admin client', :pending do
+      it 'returns a 200 ("OK") for client' do
         get(api_url("/pushy/config/#{config_name}"),
             platform.non_admin_client) do |response|
           response.should look_like({
