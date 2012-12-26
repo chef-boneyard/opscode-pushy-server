@@ -16,7 +16,8 @@
                        pushy_job :: tuple(),
                        incarnation_id :: binary(),
                        requestor_id :: string(),
-                       requestor_type :: pushy_requestor_type()
+                       requestor_type :: pushy_requestor_type(),
+                       requestor_key :: any()
                       }).
 
 -define(AUTH_SKEW, 900).
