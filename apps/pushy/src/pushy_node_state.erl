@@ -35,6 +35,7 @@
 
 %% Exposed for testing support
 -export([
+         heartbeat/2,
          aborted/1
         ]).
 
@@ -87,6 +88,8 @@ rehab(NodeRef) ->
 
 %% Testing API
 
+heartbeat(NodeRef, IncarnationId) ->
+    send_info(NodeRef, {heartbeat, IncarnationId}).
 
 aborted(NodeRef) ->
     cast(NodeRef, aborted).
@@ -369,8 +372,7 @@ process_message(#state{node_ref=NodeRef, node_addr=Address} = State, #pushy_mess
             lager:error("Status message for node ~p had unknown type ~p~n", [NodeRef, BinaryType]),
             State;
         heartbeat ->
-            send_node_event(State, JobId, NodeRef, IncarnationId, heartbeat),
-            State;
+            send_node_event(State, JobId, NodeRef, IncarnationId, heartbeat);
         _ ->
             send_node_event(State, JobId, NodeRef, Type)
     end.
