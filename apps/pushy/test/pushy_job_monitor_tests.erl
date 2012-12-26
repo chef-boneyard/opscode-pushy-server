@@ -51,13 +51,15 @@ kill_process_test_() ->
                 %% map the JobId to a pushy_object and
                 %% update state in the DB
                 meck:expect(pushy_sql, fetch_job,
-                            fun(J) -> ?assertEqual(MyJobId, J),
-                                      make_job(MyJobId)
+                            fun(J) ->
+                                    ?assertEqual(MyJobId, J),
+                                    {ok, #pushy_job{id = J} }
                             end),
                 meck:expect(pushy_object, update_object,
                             fun(update_job, GotJob, GotJobId) ->
                                     ?assertEqual(MyJobId, GotJobId),
-                                    ?assertEqual(crashed, GotJob#pushy_job.status)
+                                    ?assertEqual(crashed, GotJob#pushy_job.status),
+                                    {ok, 1}
                             end),
 
                 {ok, Pid} = test_fsm:start_link(),
@@ -76,13 +78,15 @@ kill_process_test_() ->
                 %% map the JobId to a pushy_object and
                 %% update state in the DB
                 meck:expect(pushy_sql, fetch_job,
-                            fun(J) -> ?assertEqual(MyJobId, J),
-                                      make_job(MyJobId)
+                            fun(J) ->
+                                    ?assertEqual(MyJobId, J),
+                                    {ok, #pushy_job{id = J} }
                             end),
                 meck:expect(pushy_object, update_object,
                             fun(update_job, GotJob, GotJobId) ->
                                     ?assertEqual(MyJobId, GotJobId),
-                                    ?assertEqual(crashed, GotJob#pushy_job.status)
+                                    ?assertEqual(crashed, GotJob#pushy_job.status),
+                                    {ok, 1}
                             end),
                 {ok, Pid} = test_fsm:start_link(),
                 unlink(Pid),
@@ -118,5 +122,3 @@ assert_no_calls([Module | Rest]) ->
     ?assertEqual(0, meck:num_calls(Module, '_', '_')),
     assert_no_calls(Rest).
 
-make_job(JobId) ->
-    {ok, #pushy_job{id = JobId} }.

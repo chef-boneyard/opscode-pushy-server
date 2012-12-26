@@ -78,8 +78,7 @@ handle_info({'DOWN', _Ref, process, Pid, _Reason},
     case dict:find(Pid, Jobs) of
         {ok, JobId} ->
             {ok, Job} = pushy_sql:fetch_job(JobId),
-            pushy_object:update_object(update_job,
-                Job#pushy_job{status=crashed}, JobId);
+            ok = mark_as_crashed(Job);
         error ->
             lager:error("JobId not found"),
             error
@@ -94,3 +93,19 @@ terminate(_Reason, _State) ->
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
+%%
+%% Internal functions
+%%
+mark_as_crashed(#pushy_job{id = JobId} = Job) ->
+  case pushy_object:update_object(update_job,
+                                  Job#pushy_job{status=crashed},
+                                  JobId) of
+    {ok, 1} ->
+      ok;
+    {ok, not_found} ->
+      lager:warning("Couldn't find job ~p in DB when cleaning up crashed job", [JobId]),
+      %% Not much to do about it, so return ok
+      ok;
+    {error, Error} ->
+      {error, Error}
+  end.
