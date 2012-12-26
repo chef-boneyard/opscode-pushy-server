@@ -13,6 +13,7 @@
 
 -define(NODE, {<<"org">>, <<"thenode">>}).
 -define(ADDR, <<"AAAAAAA">>).
+-define(INC_ID, <<"12345">>).
 -define(NS, pushy_node_state).
 -define(GPROC_NAME, {heartbeat,<<"org">>,<<"thenode">>}).
 
@@ -29,10 +30,9 @@
 basic_setup() ->
     test_util:start_apps(),
 
-    meck:new(pushy_command_switch, []),
+    meck:new([pushy_command_switch, pushy_object], []),
     meck:expect(pushy_command_switch, send,
                 fun(_Message) -> ok end),
-    meck:new(pushy_object, []),
     meck:expect(pushy_object, fetch_org_id,
                 fun(X) -> X end),
     application:set_env(pushy, heartbeat_interval, ?HB_INTERVAL),
@@ -50,22 +50,22 @@ basic_cleanup() ->
     meck:unload(pushy_object),
     meck:unload(pushy_command_switch).
 
-mk_message_body({Org,Node}, Type) ->
+mk_message_body({Org,Node}, Type, IncarnationId) ->
     EJson =
         {[{<<"node">>, Node},
           {<<"client">>, <<"private-chef.opscode.piab">>},
           {<<"org">>, Org},
           {<<"type">>,  atom_to_binary(Type, utf8)},
           {<<"timestamp">>, <<"Thu, 29 Nov 2012 00:26:17 GMT">>},
-          {<<"incarnation_id">>, <<"5b8061c8-cb44-4ad9-a85f-82e87b8c87fb">>},
+          {<<"incarnation_id">>, IncarnationId},
           {<<"job_state">>, <<"idle">>},
           {<<"job_id">>, <<"null">>},
           {<<"sequence">>, 2} ]},
     jiffy:encode(EJson).
 
-send_message(Node, Type) ->
+send_message(Node, Type, IncarnationId) ->
     {hmac_sha256, Key} = pushy_key_manager:get_key(Node),
-    Body = mk_message_body(Node, Type),
+    Body = mk_message_body(Node, Type, IncarnationId),
     Header = pushy_messaging:make_header(proto_v2, hmac_sha256, Key, Body),
     Message = [?ADDR, Header, Body],
     pushy_node_state:recv_msg(Message).
@@ -74,7 +74,7 @@ message_test_() ->
     {foreach,
      fun() ->
              basic_setup(),
-             {ok, Pid} = ?NS:start_link(?NODE, ?ADDR),
+             {ok, Pid} = ?NS:start_link(?NODE, ?ADDR, ?INC_ID),
              erlang:unlink(Pid),
              {Pid}
      end,
@@ -86,25 +86,25 @@ message_test_() ->
      [fun(_) ->
               {"Send heartbeats to a node",
                fun() ->
-                       send_message(?NODE, heartbeat),
+                       send_message(?NODE, heartbeat, ?INC_ID),
                        timer:sleep(?HB_INTERVAL),
-                       send_message(?NODE, heartbeat),
+                       send_message(?NODE, heartbeat, ?INC_ID),
                        timer:sleep(?HB_INTERVAL),
-                       send_message(?NODE, heartbeat),
+                       send_message(?NODE, heartbeat, ?INC_ID),
                        timer:sleep(?HB_INTERVAL),
-                       send_message(?NODE, heartbeat),
+                       send_message(?NODE, heartbeat, ?INC_ID),
                        timer:sleep(?HB_INTERVAL),
-                       send_message(?NODE, heartbeat),
+                       send_message(?NODE, heartbeat, ?INC_ID),
                        timer:sleep(?HB_INTERVAL),
-                       send_message(?NODE, heartbeat),
+                       send_message(?NODE, heartbeat, ?INC_ID),
                        timer:sleep(?HB_INTERVAL),
-                       send_message(?NODE, heartbeat),
+                       send_message(?NODE, heartbeat, ?INC_ID),
                        timer:sleep(?HB_INTERVAL),
-                       send_message(?NODE, heartbeat),
+                       send_message(?NODE, heartbeat, ?INC_ID),
                        timer:sleep(?HB_INTERVAL),
-                       send_message(?NODE, heartbeat),
+                       send_message(?NODE, heartbeat, ?INC_ID),
                        timer:sleep(?HB_INTERVAL),
-                       send_message(?NODE, aborted),
+                       send_message(?NODE, aborted, ?INC_ID),
                        timer:sleep(?HB_INTERVAL),
                        ?ASSERT_AVAILABLE(?NODE)
                end
@@ -124,7 +124,7 @@ init_test_() ->
               %% Resource creation
               {"Start things up, check that we can find it, shut it down",
                fun() ->
-                       Result = (catch ?NS:start_link(?NODE, ?ADDR)),
+                       Result = (catch ?NS:start_link(?NODE, ?ADDR, ?INC_ID)),
                        ?assertMatch({ok, _}, Result),
                        {ok, Pid} = Result,
                        ?assert(is_pid(Pid)),
@@ -140,7 +140,7 @@ init_test_() ->
       fun(_) ->
               {"Start it up, check that we can get state",
                fun() ->
-                       {ok, Pid} = ?NS:start_link(?NODE, ?ADDR),
+                       {ok, Pid} = ?NS:start_link(?NODE, ?ADDR, ?INC_ID),
 
                        erlang:unlink(Pid),
                        erlang:exit(Pid, kill)
@@ -152,7 +152,7 @@ heartbeat_test_() ->
     {foreach,
      fun() ->
              basic_setup(),
-             {ok, Pid} = ?NS:start_link(?NODE, ?ADDR),
+             {ok, Pid} = ?NS:start_link(?NODE, ?ADDR, ?INC_ID),
              erlang:unlink(Pid),
              {Pid}
      end,
@@ -180,7 +180,7 @@ heartbeat_test_() ->
       fun(_) ->
               {"Start it up, send hb",
                fun() ->
-                       ?NS:heartbeat(?ADDR),
+                       ?NS:heartbeat(?ADDR, ?INC_ID),
                        V = ?NS:status(?NODE),
                        ?assertMatch({online,{unavailable, none}}, V)
                end}
@@ -188,7 +188,7 @@ heartbeat_test_() ->
       fun(_) ->
               {"Start it up, send hb, sleep, check state",
                fun() ->
-                       ?NS:heartbeat(?ADDR),
+                       ?NS:heartbeat(?ADDR, ?INC_ID),
                        V1= ?NS:status(?NODE),
                        ?assertEqual({online, {unavailable, none}}, V1),
                        timer:sleep(?HB_INTERVAL),
@@ -199,7 +199,7 @@ heartbeat_test_() ->
       fun(_) ->
               {"Start it up, send hb, sleep, check state until we drive it into 'up'",
                fun() ->
-                       ?NS:heartbeat(?ADDR),
+                       ?NS:heartbeat(?ADDR, ?INC_ID),
                        ?ASSERT_UNAVAILABLE(?NODE),
                        timer:sleep(?HB_INTERVAL),
 
@@ -212,7 +212,7 @@ heartbeat_test_() ->
       fun(_) ->
               {"Start it up, send hb, sleep, check state until we drive it into 'up', then wait until it goes down",
                fun() ->
-                       ?NS:heartbeat(?ADDR),
+                       ?NS:heartbeat(?ADDR, ?INC_ID),
                        ?ASSERT_UNAVAILABLE(?NODE),
                        timer:sleep(?HB_INTERVAL),
 
@@ -234,7 +234,7 @@ watcher_test_() ->
     {foreach,
      fun() ->
              basic_setup(),
-             {ok, Pid} = ?NS:start_link(?NODE, ?ADDR),
+             {ok, Pid} = ?NS:start_link(?NODE, ?ADDR, ?INC_ID),
              erlang:unlink(Pid),
              {Pid}
      end,
@@ -252,7 +252,7 @@ watcher_test_() ->
       fun(_) ->
               {"Start it up, start watch, do hb, check that we don't get a message w/o state change",
                fun() ->
-                       ?NS:heartbeat(?ADDR),
+                       ?NS:heartbeat(?ADDR, ?INC_ID),
                        V1= ?NS:status(?NODE),
                        ?assertEqual({online, {unavailable, none}}, V1),
                        timer:sleep(?HB_INTERVAL),
@@ -270,7 +270,7 @@ watcher_test_() ->
               {"Start it up, send hb, check state until we drive it into 'up'",
                fun() ->
                        ?NS:watch(?NODE),
-                       ?NS:heartbeat(?ADDR),
+                       ?NS:heartbeat(?ADDR, ?INC_ID),
                        heartbeat_step(?ADDR, ?HB_INTERVAL, 6),
                        ?NS:aborted(?NODE),
                        ?ASSERT_AVAILABLE(?NODE)
@@ -301,7 +301,7 @@ heartbeat_step(Node, SleepTime, Count) ->
     heartbeat_step(Node, SleepTime, Count-1).
 
 heartbeat_step(Node, SleepTime) ->
-    ?NS:heartbeat(Node),
+    ?NS:heartbeat(Node, ?INC_ID),
     _V = ?NS:status(Node),
     timer:sleep(SleepTime).
 
