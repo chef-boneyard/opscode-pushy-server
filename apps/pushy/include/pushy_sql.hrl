@@ -9,6 +9,7 @@
                       running |
                       complete |
                       quorum_failed |
+                      crashed |
                       aborted |
                       timed_out.
 
