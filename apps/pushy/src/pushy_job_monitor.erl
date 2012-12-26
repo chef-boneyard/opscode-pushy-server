@@ -96,16 +96,32 @@ code_change(_OldVsn, State, _Extra) ->
 %%
 %% Internal functions
 %%
-mark_as_crashed(#pushy_job{id = JobId} = Job) ->
-  case pushy_object:update_object(update_job,
-                                  Job#pushy_job{status=crashed},
-                                  JobId) of
+mark_as_crashed(#pushy_job{id = JobId,
+                           job_nodes = JobNodes} = Job) ->
+    case pushy_object:update_object(update_job,
+                                    Job#pushy_job{status=crashed},
+                                    JobId) of
     {ok, 1} ->
-      ok;
+        %% Now we send nodes in the job to rehab
+        nodes_to_rehab(JobNodes);
     {ok, not_found} ->
-      lager:warning("Couldn't find job ~p in DB when cleaning up crashed job", [JobId]),
-      %% Not much to do about it, so return ok
-      ok;
+        lager:warning("Couldn't find job ~p in DB when cleaning up crashed job", [JobId]),
+        %% Not much to do about it, so return ok
+        ok;
     {error, Error} ->
-      {error, Error}
+        {error, Error}
   end.
+
+-spec nodes_to_rehab(JobNodes :: [#pushy_job_node{}] | undefined) -> ok | {error, term()}.
+nodes_to_rehab(undefined) ->
+    ok;
+nodes_to_rehab([]) ->
+    ok;
+nodes_to_rehab([#pushy_job_node{org_id = OrgId,
+                                node_name = NodeName} | Rest]) ->
+    case pushy_node_state:rehab({OrgId, NodeName}) of
+        ok ->
+            nodes_to_rehab(Rest);
+        Error ->
+            Error
+    end.

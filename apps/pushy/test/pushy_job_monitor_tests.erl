@@ -25,8 +25,10 @@
 
 -include("pushy_sql.hrl").
 
+-define(ORG_ID, <<"AAAA">>).
+
 mocked_modules() ->
-    [pushy_sql, pushy_object].
+    [pushy_sql, pushy_object, pushy_node_state].
 
 setup() ->
     meck:new(mocked_modules(), []),
@@ -97,6 +99,38 @@ kill_process_test_() ->
                 ?assertEqual(false, pushy_job_monitor:is_monitored(Pid))
        end
       },
+      {"Test that a crashed process with nodes sends them to rehab",
+       fun() ->
+                meck:expect(pushy_sql, fetch_job,
+                            fun(J) ->
+                                    ?assertEqual(MyJobId, J),
+                                    {ok, #pushy_job{id = J,
+                                                    job_nodes = mk_job_nodes(J)} }
+                            end),
+                meck:expect(pushy_object, update_object,
+                            fun(update_job, GotJob, GotJobId) ->
+                                    ?assertEqual(MyJobId, GotJobId),
+                                    ?assertEqual(crashed, GotJob#pushy_job.status),
+                                    {ok, 1}
+                            end),
+                meck:expect(pushy_node_state, rehab,
+                            fun({OrgId, _NodeName}) ->
+                                    ?assertEqual(?ORG_ID, OrgId),
+                                    ok
+                            end),
+                {ok, Pid} = test_fsm:start_link(),
+                unlink(Pid),
+                pushy_job_monitor:monitor_job(MyJobId, Pid),
+                ?assertEqual(true, pushy_job_monitor:is_monitored(Pid)),
+                test_fsm:crash_me(),
+                timer:sleep(10),
+                ?assertEqual(false, pushy_job_monitor:is_monitored(Pid)),
+
+                %% Both nodes are sent to rehab
+                ?assertEqual(1, meck:num_calls(pushy_node_state, rehab, [{?ORG_ID, <<"Node1">>}])),
+                ?assertEqual(1, meck:num_calls(pushy_node_state, rehab, [{?ORG_ID, <<"Node2">>}]))
+       end
+      },
       {"Test a monitored process that ends gets removed from the monitor",
        fun() ->
                 %% We expect that when the job is stopped it'll
@@ -121,4 +155,14 @@ assert_no_calls([]) ->
 assert_no_calls([Module | Rest]) ->
     ?assertEqual(0, meck:num_calls(Module, '_', '_')),
     assert_no_calls(Rest).
+
+mk_job_nodes(J) ->
+    [#pushy_job_node{job_id = J,
+                     org_id = ?ORG_ID,
+                     node_name = <<"Node1">>,
+                     status = running},
+     #pushy_job_node{job_id = J,
+                     org_id = ?ORG_ID,
+                     node_name = <<"Node2">>,
+                     status = succeeded}].
 
