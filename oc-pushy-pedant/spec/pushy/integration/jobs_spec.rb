@@ -7,10 +7,17 @@
 #
 
 require 'pedant/rspec/common'
+require 'pedant/rspec/auth_headers_util'
 require 'pushy/support/authorization_groups_util'
 
 describe "Jobs API Endpoint", :jobs do
   include_context "authorization_groups_util"
+
+  def self.ruby?
+    # Needed for pedant header checking
+
+    false
+  end
 
   # TODO: turns out this doesn't really matter; will we need to create it
   # at some point?
@@ -562,4 +569,73 @@ describe "Jobs API Endpoint", :jobs do
       end
     end # context 'GET /jobs/<name> with nested pushy_job_readers'
   end # describe 'access control with nested pushy_job groups'
+
+  describe 'input error checking', :focus do
+    context 'invalid POST request body', :focus do
+    end
+
+    describe 'handling authentication headers' do
+      let(:method) { :GET }
+      let(:body) { nil }
+      let(:success_user) { admin_user }
+      let(:failure_user) { invalid_user }
+
+      context 'GET /jobs' do
+        let(:url) { api_url("/pushy/jobs") }
+        let(:response_should_be_successful) do
+          response.should look_like({
+                                      :status => 200
+                                      # TODO: seems it's still not matching arrays
+                                      # correctly; Didn't John fix this at some point?
+                                    })
+        end
+
+        include_context 'handles authentication headers correctly'
+      end
+
+      context 'POST /jobs' do
+        let(:method) { :POST }
+        let(:body) { job_to_run }
+        let(:url) { api_url("/pushy/jobs") }
+        let(:response_should_be_successful) do
+          response.should look_like({
+                                      :status => 201,
+                                      :body_exact => {
+                                        'uri' => /^https\:\/\/.*\/jobs\/[0-9a-f]{32}$/
+                                      }
+                                    })
+        end
+
+        include_context 'handles authentication headers correctly'
+      end
+
+      context 'GET /jobs/<name>' do
+        let(:job_path) {
+          # This is evaluated at runtime, so there's always a (short-lived) job to
+          # detect during the test
+
+          post(api_url("/pushy/jobs"), admin_user, :payload => job_to_run) do |response|
+            list = JSON.parse(response.body)
+            list["uri"]
+          end
+        }
+
+        let(:url) { job_path }
+        let(:response_should_be_successful) do
+          response.should look_like({
+                                      :status => 200,
+                                      :body_exact => {
+                                        'command' => 'sleep 1',
+                                        'id' => /^[0-9a-f]{32}$/,
+                                        'nodes' => {"unavailable" => ["DONKEY"]},
+                                        'run_timeout' => 3600,
+                                        'status' => 'quorum_failed'
+                                      }
+                                    })
+        end
+
+        include_context 'handles authentication headers correctly'
+      end
+    end # describe 'handling authentication headers'
+  end # describe 'input error checking'
 end # describe "Jobs API Endpoint"
