@@ -116,8 +116,8 @@ update_job(#pushy_job{id = JobId,
 update_job_node(#pushy_job_node{job_id = JobId,
                                 node_name = NodeName,
                                 org_id = OrgId,
+                                updated_at = UpdatedAt,
                                 status = Status}) ->
-    UpdatedAt = sql_date(now),
     UpdateFields = [job_node_status(Status), UpdatedAt, OrgId, NodeName, JobId],
     do_update(update_job_node_by_orgid_nodename_jobid, UpdateFields).
 
