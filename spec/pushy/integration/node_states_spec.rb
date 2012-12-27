@@ -13,6 +13,10 @@ require 'pushy/support/authorization_groups_util'
 describe "Node_States API Endpoint", :node_states do
   include_context "authorization_groups_util"
 
+  def self.ruby?
+    false
+  end
+
   let(:node_name) { 'some_node' }
   let(:non_existent_node_name) { 'not_a_number' }
 
@@ -32,10 +36,6 @@ describe "Node_States API Endpoint", :node_states do
       "node_name" => node_name,
       "status" => "offline"
     } }
-
-  def self.ruby?
-    false
-  end
 
   describe 'access control with no pushy_job_readers' do
     context 'GET /node_states' do
@@ -403,7 +403,7 @@ describe "Node_States API Endpoint", :node_states do
     let(:success_user) { admin_user }
     let(:failure_user) { invalid_user }
 
-    context 'GET /node_states/', :focus do
+    context 'GET /node_states/' do
       let(:url) { api_url("/pushy/node_states") }
       let(:response_should_be_successful) do
         response.should look_like({
@@ -416,7 +416,7 @@ describe "Node_States API Endpoint", :node_states do
       include_context 'handles authentication headers correctly'
     end
 
-    context 'GET /node_states/<name>', :focus do
+    context 'GET /node_states/<name>' do
       let(:url) { api_url("/pushy/node_states/#{node_name}") }
       let(:response_should_be_successful) do
         response.should look_like({
