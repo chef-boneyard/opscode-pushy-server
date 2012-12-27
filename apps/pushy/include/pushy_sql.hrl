@@ -25,9 +25,6 @@
                            was_ready |
                            timed_out.
 
-%% random PoC hard-codings
--define(POC_HB_THRESHOLD, 3).
-
 -record(pushy_job_node, {'job_id'::object_id(),              % guid for object (unique)
                          'org_id'::object_id(),              % organization guid
                          'node_name'::binary(),              % node name
