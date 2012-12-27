@@ -3,6 +3,10 @@
 %% length, might be able to constrain further for range of elements.
 -type object_id() :: <<_:256>>.
 
+%% We use this to track when the pushy server itself updates DB records,
+%% for example on job crash
+-define(PUSHY_ACTOR_ID, <<"00000000000000000000000000000000">>).
+
 %% job status
 -type job_status() :: new |
                       voting |
