@@ -118,8 +118,9 @@ nodes_to_rehab([]) ->
 nodes_to_rehab([#pushy_job_node{org_id = OrgId,
                                 node_name = NodeName} | Rest]) ->
     case pushy_node_state:rehab({OrgId, NodeName}) of
+        undefined ->
+            lager:info("Tried to send node {~p, ~p}, into rehab but it wasn't there", [OrgId, NodeName]);
         ok ->
-            nodes_to_rehab(Rest);
-        Error ->
-            Error
-    end.
+            ok
+    end,
+    nodes_to_rehab(Rest).
