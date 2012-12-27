@@ -89,7 +89,7 @@ requestors({
                  :admin => true
                },
                :non_admin => {
-                 :name => 'pedant_client',
+                 :name => 'pedant_non_admin_client',
                  :create_me => true,
                  :create_knife => true,
                },

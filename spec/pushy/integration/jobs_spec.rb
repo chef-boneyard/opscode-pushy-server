@@ -28,7 +28,7 @@ describe "Jobs API Endpoint", :jobs do
   let(:non_admin_authorization_failed_msg) {
     ["User or client 'pedant_user' does not have access to that action on this server."] }
   let(:non_admin_client_authorization_failed_msg) {
-    ["User or client 'pedant_client' does not have access to that action on this server."] }
+    ["User or client 'pedant_non_admin_client' does not have access to that action on this server."] }
   let(:non_member_authorization_failed_msg) {
     ["User or client 'pedant_admin_user' does not have access to that action on this server."] }
   let(:non_member_client_authorization_failed_msg) {
@@ -66,15 +66,7 @@ describe "Jobs API Endpoint", :jobs do
         end
       end
 
-      it 'returns a 200 ("OK") for admin client' do
-        get(api_url("/pushy/jobs/"), platform.admin_client) do |response|
-          response.should look_like({
-                                      :status => 200
-                                    })
-        end
-      end
-
-      it 'returns a 200 ("OK") for non-admin client', :pending do
+      it 'returns a 200 ("OK") for client' do
         get(api_url("/pushy/jobs/"), platform.non_admin_client) do |response|
           response.should look_like({
                                       :status => 200
@@ -128,16 +120,7 @@ describe "Jobs API Endpoint", :jobs do
         end
       end
 
-      it 'returns a 200 ("OK") for admin client', :pending do
-        post(api_url("/pushy/jobs/"), platform.admin_client,
-             :payload => job_to_run) do |response|
-          response.should look_like({
-                                      :status => 201
-                                    })
-        end
-      end
-
-      it 'returns a 403 ("Forbidden") for non-admin client', :pending do
+      it 'returns a 403 ("Forbidden") for client' do
         post(api_url("/pushy/jobs/"), platform.non_admin_client,
              :payload => job_to_run) do |response|
           response.
@@ -191,15 +174,7 @@ describe "Jobs API Endpoint", :jobs do
         end
       end
 
-      it 'returns a 200 ("OK") for admin client' do
-        get(job_path, platform.admin_client) do |response|
-          response.should look_like({
-                                      :status => 200
-                                    })
-        end
-      end
-
-      it 'returns a 200 ("OK") for non-admin client', :pending do
+      it 'returns a 200 ("OK") for client' do
         get(job_path, platform.non_admin_client) do |response|
           response.should look_like({
                                       :status => 200
@@ -299,7 +274,7 @@ describe "Jobs API Endpoint", :jobs do
         end
       end
 
-      it 'returns a 200 ("OK") for member client', :pending do
+      it 'returns a 200 ("OK") for member client' do
         get(api_url("/pushy/jobs/"), member_client) do |response|
           response.should look_like({
                                       :status => 200
@@ -340,7 +315,7 @@ describe "Jobs API Endpoint", :jobs do
         end
       end
 
-      it 'returns a 200 ("OK") for member client', :pending do
+      it 'returns a 200 ("OK") for member client' do
         post(api_url("/pushy/jobs/"), member_client,
              :payload => job_to_run) do |response|
           response.should look_like({
@@ -372,7 +347,7 @@ describe "Jobs API Endpoint", :jobs do
         end
       end
 
-      it 'returns a 403 ("OK") for non-member' do
+      it 'returns a 403 ("Forbidden") for non-member' do
         get(job_path, non_member) do |response|
           response.should look_like({
                                       :status => 403,
@@ -383,7 +358,7 @@ describe "Jobs API Endpoint", :jobs do
         end
       end
 
-      it 'returns a 200 ("OK") for member client', :pending do
+      it 'returns a 200 ("OK") for member client' do
         get(job_path, member_client) do |response|
           response.should look_like({
                                       :status => 200
@@ -391,7 +366,7 @@ describe "Jobs API Endpoint", :jobs do
         end
       end
 
-      it 'returns a 403 ("OK") for non-member client' do
+      it 'returns a 403 ("Forbidden") for non-member client' do
         get(job_path, non_member_client) do |response|
           response.
             should look_like({
@@ -457,7 +432,7 @@ describe "Jobs API Endpoint", :jobs do
         end
       end
 
-      it 'returns a 200 ("OK") for member client', :pending do
+      it 'returns a 200 ("OK") for member client' do
         get(api_url("/pushy/jobs/"), member_client) do |response|
           response.should look_like({
                                       :status => 200
@@ -498,7 +473,7 @@ describe "Jobs API Endpoint", :jobs do
         end
       end
 
-      it 'returns a 200 ("OK") for member client', :pending do
+      it 'returns a 200 ("OK") for member client' do
         post(api_url("/pushy/jobs/"), member_client,
              :payload => job_to_run) do |response|
           response.should look_like({
@@ -530,7 +505,7 @@ describe "Jobs API Endpoint", :jobs do
         end
       end
 
-      it 'returns a 403 ("OK") for non-member' do
+      it 'returns a 403 ("Forbidden") for non-member' do
         get(job_path, non_member) do |response|
           response.should look_like({
                                       :status => 403,
@@ -541,7 +516,7 @@ describe "Jobs API Endpoint", :jobs do
         end
       end
 
-      it 'returns a 200 ("OK") for member client', :pending do
+      it 'returns a 200 ("OK") for member client' do
         get(job_path, member_client) do |response|
           response.should look_like({
                                       :status => 200
@@ -549,7 +524,7 @@ describe "Jobs API Endpoint", :jobs do
         end
       end
 
-      it 'returns a 403 ("OK") for non-member client' do
+      it 'returns a 403 ("Forbidden") for non-member client' do
         get(job_path, non_member_client) do |response|
           response.
             should look_like({
