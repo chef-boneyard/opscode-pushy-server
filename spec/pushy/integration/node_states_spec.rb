@@ -7,6 +7,7 @@
 #
 
 require 'pedant/rspec/common'
+require 'pedant/rspec/auth_headers_util'
 require 'pushy/support/authorization_groups_util'
 
 describe "Node_States API Endpoint", :node_states do
@@ -31,6 +32,10 @@ describe "Node_States API Endpoint", :node_states do
       "node_name" => node_name,
       "status" => "offline"
     } }
+
+  def self.ruby?
+    false
+  end
 
   describe 'access control with no pushy_job_readers' do
     context 'GET /node_states' do
@@ -391,4 +396,36 @@ describe "Node_States API Endpoint", :node_states do
       end
     end # context 'GET /node_states/<name>'
   end # describe 'access control with pushy_job_readers and nested groups'
+
+  describe 'handling authentication headers' do
+    let(:method) { :GET }
+    let(:body) { nil }
+    let(:success_user) { admin_user }
+    let(:failure_user) { invalid_user }
+
+    context 'GET /node_states/', :focus do
+      let(:url) { api_url("/pushy/node_states") }
+      let(:response_should_be_successful) do
+        response.should look_like({
+                                    :status => 200
+                                    # TODO: seems it's still not matching arrays
+                                    # correctly; Didn't John fix this at some point?
+                                  })
+      end
+
+      include_context 'handles authentication headers correctly'
+    end
+
+    context 'GET /node_states/<name>', :focus do
+      let(:url) { api_url("/pushy/node_states/#{node_name}") }
+      let(:response_should_be_successful) do
+        response.should look_like({
+                                    :status => 200,
+                                    :body_exact => node_state_status
+                                  })
+      end
+
+      include_context 'handles authentication headers correctly'
+    end
+  end
 end
