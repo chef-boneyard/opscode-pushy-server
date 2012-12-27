@@ -69,7 +69,7 @@ init(#pushy_job{id = JobId, job_nodes = JobNodeList} = Job) ->
             JobNodes = dict:from_list([{{OrgId, NodeName}, JobNode} ||
                                           #pushy_job_node{org_id = OrgId, node_name = NodeName} =
                                               JobNode <- JobNodeList]),
-            State = #state{job = Job#pushy_job{job_nodes = undefined},
+            State = #state{job = Job#pushy_job{},
                            job_nodes = JobNodes,
                            job_host = Host,
                            voting_timeout = envy:get(pushy, voting_timeout, 60, integer)},

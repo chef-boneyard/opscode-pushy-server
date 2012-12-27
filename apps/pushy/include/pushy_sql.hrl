@@ -42,7 +42,7 @@
                     'quorum'::non_neg_integer(),        % quorum count
                     'status'::job_status(),             % job status
                     'run_timeout'::non_neg_integer(),   % max duration (in seconds) to allow execution
-                    'job_nodes' ::[#pushy_job_node{}],
+                    'job_nodes' = [] ::[#pushy_job_node{}],
                     'last_updated_by'::object_id(),     % authz guid of last actor to update
                     'created_at'::binary(),  % time created at
                     'updated_at'::binary()  % time updated at
