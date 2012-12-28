@@ -1,7 +1,8 @@
 %%%-------------------------------------------------------------------
 %%% @author Matthew Peck
 %%% @copyright 2012 Opscode, Inc.
-%%% @doc
+%%% @doc Monitor a set of pushy_job_state processes and clean up
+%%% the state in the database on job_state process crashes
 %%%
 %%% @end
 %%%-------------------------------------------------------------------
@@ -12,7 +13,8 @@
 
 %% API
 -export([start_link/0,
-         monitor_job/1]).
+         monitor_job/2,
+         is_monitored/1]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -36,9 +38,13 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, #state{}, []).
 
-monitor_job(JobId) ->
-    gen_server:cast(?MODULE, {monitor, JobId}).
+%% @doc Monitor a Pushy Job FSM, specified by the JobId and its Pid
+monitor_job(JobId, Pid) ->
+    gen_server:cast(?MODULE, {monitor, JobId, Pid}).
 
+%% @doc Is a given Pid being monitored
+is_monitored(Pid) ->
+    gen_server:call(?MODULE, {is_monitored, Pid}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -48,14 +54,15 @@ init(State) ->
     lager:info("Starting job monitor"),
     {ok, State#state{jobs = dict:new()}}.
 
+handle_call({is_monitored, Pid}, _From, #state{jobs = Jobs} =State) ->
+    {reply, dict:is_key(Pid, Jobs), State};
 handle_call(Msg, _From, State) ->
     lager:warn("Unknown message handle_call: ~p~n", [Msg]),
     {reply, ok, State}.
 
-handle_cast({monitor, JobId}, #state{jobs = Jobs} = State) ->
-    Pid = pushy_job_state_sup:get_process(JobId),
+handle_cast({monitor, JobId, Pid}, #state{jobs = Jobs} = State) ->
     erlang:monitor(process, Pid),
-    State1 = State#state{jobs = dict:append(Pid, JobId, Jobs)},
+    State1 = State#state{jobs = dict:store(Pid, JobId, Jobs)},
     {noreply, State1};
 handle_cast(Msg, State) ->
     lager:warn("Unknown message handle_cast: ~p~n", [Msg]),
@@ -71,8 +78,7 @@ handle_info({'DOWN', _Ref, process, Pid, _Reason},
     case dict:find(Pid, Jobs) of
         {ok, JobId} ->
             {ok, Job} = pushy_sql:fetch_job(JobId),
-            pushy_object:update_object(update_job,
-                Job#pushy_job{status=crashed}, JobId);
+            ok = mark_as_crashed(Job);
         error ->
             lager:error("JobId not found"),
             error
@@ -87,3 +93,34 @@ terminate(_Reason, _State) ->
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
+%%
+%% Internal functions
+%%
+mark_as_crashed(#pushy_job{id = JobId,
+                           job_nodes = JobNodes} = Job) ->
+    case pushy_object:update_object(update_job,
+                                    Job#pushy_job{status=crashed},
+                                    JobId) of
+    {ok, 1} ->
+        %% Now we send nodes in the job to rehab
+        nodes_to_rehab(JobNodes);
+    {ok, not_found} ->
+        lager:warning("Couldn't find job ~p in DB when cleaning up crashed job", [JobId]),
+        %% Not much to do about it, so return ok
+        ok;
+    {error, Error} ->
+        {error, Error}
+  end.
+
+-spec nodes_to_rehab(JobNodes :: [#pushy_job_node{}]) -> ok | {error, term()}.
+nodes_to_rehab([]) ->
+    ok;
+nodes_to_rehab([#pushy_job_node{org_id = OrgId,
+                                node_name = NodeName} | Rest]) ->
+    case pushy_node_state:rehab({OrgId, NodeName}) of
+        undefined ->
+            lager:info("Tried to send node {~p, ~p}, into rehab but it wasn't there", [OrgId, NodeName]);
+        ok ->
+            ok
+    end,
+    nodes_to_rehab(Rest).

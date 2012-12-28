@@ -48,6 +48,7 @@ get_or_create_process(NodeRef, NodeAddr, IncarnationId) ->
         Pid -> Pid
     end.
 
+-spec get_process(node_ref() | binary()) -> pid() | undefined.
 get_process({_,_} =NodeRef) ->
     GprocName = mk_gproc_name(NodeRef),
     get_process_int(GprocName);
@@ -55,6 +56,8 @@ get_process(Addr) when is_binary(Addr) ->
     GprocName = mk_gproc_addr(Addr),
     get_process_int(GprocName).
 
+-spec get_process_int({heartbeat, binary(), binary()} |
+                      {addr, binary()}) -> pid() | undefined.
 get_process_int(GprocName) ->
     case catch gproc:lookup_pid({n,l,GprocName}) of
         {'EXIT', _} ->
