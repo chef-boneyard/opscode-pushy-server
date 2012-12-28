@@ -80,17 +80,22 @@ status(NodeRef) ->
             eval_state(CurrentState)
     end.
 
+-spec watch(NodeRef :: node_ref()) -> term() | undefined.
 watch(NodeRef) ->
     call(NodeRef, {watch, self()}).
 
+-spec rehab(NodeRef :: node_ref()) -> ok | undefined.
 rehab(NodeRef) ->
     cast(NodeRef, do_rehab).
 
 %% Testing API
 
+-spec heartbeat(NodeRef :: node_ref(),
+                IncarnationId :: binary()) -> ok.
 heartbeat(NodeRef, IncarnationId) ->
     send_info(NodeRef, {heartbeat, IncarnationId}).
 
+-spec aborted(NodeRef :: node_ref()) -> ok.
 aborted(NodeRef) ->
     cast(NodeRef, aborted).
 
@@ -224,30 +229,35 @@ eval_state({rehab, undefined}) ->
 rehab_interval() ->
     envy:get(pushy, rehab_timer, 1000, integer).
 
+-spec call(NodeRef :: node_ref(),
+           Message :: any()) -> term() | undefined.
 call(NodeRef, Message) ->
     case pushy_node_state_sup:get_process(NodeRef) of
         Pid when is_pid(Pid) ->
             gen_fsm:sync_send_all_state_event(Pid, Message, infinity);
-        Error ->
-            Error
+        undefined ->
+            undefined
     end.
 
+-spec cast(NodeRef :: node_ref(),
+           Message :: any()) -> ok | undefined.
 cast(NodeRef, Message) ->
     case pushy_node_state_sup:get_process(NodeRef) of
         Pid when is_pid(Pid) ->
             gen_fsm:send_event(Pid, Message);
-        Error ->
-            Error
+        undefined ->
+            undefined
     end.
 
+-spec send_info(pid() | node_ref(), Message :: any()) -> ok | undefined.
 send_info(NodePid, Message) when is_pid(NodePid) ->
     NodePid ! Message;
 send_info(NodeRef, Message) ->
     case pushy_node_state_sup:get_process(NodeRef) of
         Pid when is_pid(Pid) ->
             Pid ! Message;
-        Error ->
-            Error
+        undefined ->
+            undefined
     end.
 
 force_abort(State) ->
