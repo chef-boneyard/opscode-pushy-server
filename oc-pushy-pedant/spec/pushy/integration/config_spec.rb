@@ -111,6 +111,17 @@ describe "pushy config" do
     end
   end
 
+  context 'invalid request' do
+    it "returns 403 (\"Forbidden\") when organization doesn't exist" do
+      path = api_url("/pushy/config/#{config_name}").gsub(org, "bogus-org")
+      get(path, admin_user) do |response|
+        response.should look_like({
+                                    :status => 403
+                                  })
+      end
+    end
+  end
+
   describe 'handling authentication headers' do
     let(:method) { :GET }
     let(:body) { nil }
