@@ -21,11 +21,18 @@
                        Group :: string()) -> true | false | group_not_found.
 group_membership(Name, Type, OrgName, Group) ->
     Path = path(OrgName, Group),
-    case pushy_http_common:fetch_authenticated(Path) of
-        not_found ->
-            group_not_found;
-        ResponseBody ->
-            check_for_membership(Name, Type, OrgName, ResponseBody)
+    try
+        case pushy_http_common:fetch_authenticated(Path) of
+            not_found ->
+                group_not_found;
+            ResponseBody ->
+                check_for_membership(Name, Type, OrgName, ResponseBody)
+        end
+    catch
+        % If server_error is thrown, something is wrong (e.g., organization may not
+        % exist); forbid by default
+        throw:{error, {server_error, _}} ->
+            false
     end.
 
 %%

@@ -121,7 +121,9 @@ is_authorized(Req, State) ->
         {true, Req1, State1} ->
             {true, Req1, State1};
         {false, ReqOther, StateOther} ->
-            {"X-Ops-Sign version=\"1.0\" version=\"1.1\"", ReqOther, StateOther}
+            {"X-Ops-Sign version=\"1.0\" version=\"1.1\"", ReqOther, StateOther};
+        {conn_failed, ReqFailure, StateFailure} ->
+            {{halt, 502}, ReqFailure, StateFailure}
     end.
 
 %% @doc Perform request signature verification (authenticate)
@@ -140,6 +142,10 @@ verify_request_signature(Req, State) ->
             NotFoundMsg = verify_request_message({not_found, What},
                                                  UserName, OrgName),
             {false, wrq:set_resp_body(jiffy:encode(NotFoundMsg), Req), State1};
+        {conn_failed, Why} ->
+            ConnFailedMsg = verify_request_message({conn_failed, Why},
+                                                   UserName, OrgName),
+            {conn_failed, wrq:set_resp_body(jiffy:encode(ConnFailedMsg), Req), State1};
         {PublicKey, Type} ->
             DecodedPubKey = chef_authn:extract_public_key(PublicKey),
             Body = body_or_default(Req, <<>>),
@@ -204,6 +210,10 @@ verify_request_message({not_found, _}, User, _Org) ->
                             <<"Ensure that your node_name and client key ">>,
                             <<"are correct.">>]),
     {[{<<"error">>, [Msg]}]};
+verify_request_message({conn_failed, Why}, _User, _Org) ->
+    Msg = iolist_to_binary([<<"Failed to connect to erchef to get key: ">>,
+                            io_lib:format("~p", [Why])]),
+    {[{<<"error">>, [Msg]}]};    
 verify_request_message(bad_sig, User, _Org) ->
     Msg = iolist_to_binary([<<"Invalid signature for user or client '">>,
                             User,<<"'">>]),
