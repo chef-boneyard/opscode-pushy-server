@@ -71,20 +71,18 @@ job_to_json(#pushy_job{
     command = Command,
     status = Status,
     run_timeout = RunTimeout,
-%    created_at = CreatedAt,
-%    updated_at = UpdatedAt,
+    created_at = CreatedAt,
+    updated_at = UpdatedAt,
     job_nodes = Nodes
     }) ->
-%    CreatedAtDate =  iolist_to_binary(httpd_util:rfc1123_date(CreatedAt)),
-%    UpdatedAtDate =  iolist_to_binary(httpd_util:rfc1123_date(UpdatedAt)),
     NodesJson = job_nodes_json_by_status(Nodes),
-    {[ {<<"id">>, iolist_to_binary(Id)},
-       {<<"command">>, iolist_to_binary(Command)},
+    {[ {<<"id">>, Id},
+       {<<"command">>, Command},
        {<<"status">>, Status},
        {<<"run_timeout">>, RunTimeout},
-       {<<"nodes">>, NodesJson}
-%       {<<"created_at">>, CreatedAtDate},
-%       {<<"updated_at">>, UpdatedAtDate}
+       {<<"nodes">>, NodesJson},
+       {<<"created_at">>, CreatedAt},
+       {<<"updated_at">>, UpdatedAt}
     ]}.
 
 job_nodes_json_by_status(Nodes) ->
