@@ -34,7 +34,19 @@ init(Config) ->
 %% then go to localhost:WXYZ/wmtrace
 
 malformed_request(Req, State) ->
-    pushy_wm_base:malformed_request(Req, State).
+    try
+        validate_request(Req),
+        pushy_wm_base:malformed_request(Req, State)
+    catch
+        throw:bad_command ->
+            Msg = <<"invalid command supplied">>,
+            Req1 = wrq:set_resp_body(jiffy:encode({[{<<"error">>, Msg}]}), Req),
+            {{halt, 400}, Req1, State};
+        throw:no_nodes ->
+            Msg = <<"at least one node must be supplied">>,
+            Req1 = wrq:set_resp_body(jiffy:encode({[{<<"error">>, Msg}]}), Req),
+            {{halt, 400}, Req1, State}
+    end.
 
 is_authorized(Req, State) ->
     pushy_wm_base:is_authorized(Req, State).
@@ -66,6 +78,7 @@ post_is_create(Req, State) ->
 % This creates the job record
 create_path(Req, #config_state{organization_guid = OrgId} = State) ->
     {Command, NodeNames, RunTimeout, Quorum} = parse_post_body(Req),
+    lager:info("Command: ~p~nNodeNames: ~p~n", [Command, NodeNames]),
     RunTimeout2 = case RunTimeout of
         undefined -> envy:get(pushy, default_running_timeout, 3600, integer);
         Value -> Value
@@ -86,6 +99,26 @@ to_json(Req, #config_state{organization_guid = OrgId} = State) ->
     {jiffy:encode(Jobs), Req, State}.
 
 % Private stuff
+
+validate_request(Req) ->
+    { Command, NodeNames, _RunTimeout, _Quorum } = parse_post_body(Req),
+    validate_command(Command),
+    validate_nodes(NodeNames).
+
+validate_command(Command) ->
+    case Command of
+        undefined ->
+            throw(bad_command);
+        _ ->
+            true
+    end.
+
+validate_nodes(Nodes) ->
+    if
+        length(Nodes) =:= 0 -> throw(no_nodes);
+        true -> true
+    end.
+
 
 parse_post_body(Req) ->
     Body = wrq:req_body(Req),
