@@ -601,7 +601,7 @@ describe "Jobs API Endpoint", :jobs do
       end
     end
 
-    context 'invalid POST request', :focus do
+    context 'invalid POST request' do
       it "returns 403 (\"Forbidden\") when organization doesn't exist" do
         path = api_url("/pushy/jobs").gsub(org, "bogus-org")
         post(path, admin_user, :payload => job_to_run) do |response|
