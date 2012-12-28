@@ -83,9 +83,13 @@ from_json(Req, #config_state{pushy_job = Job} = State) ->
 %% GET /pushy/jobs
 to_json(Req, #config_state{organization_guid = OrgId} = State) ->
     {ok, Jobs} = pushy_sql:fetch_jobs(OrgId),
-    {jiffy:encode(Jobs), Req, State}.
+    EJson = assemble_jobs_ejson(Jobs),
+    {jiffy:encode(EJson), Req, State}.
 
 % Private stuff
+
+assemble_jobs_ejson(Jobs) ->
+    [ pushy_object:assemble_job_ejson(Job) || Job <- Jobs ].
 
 parse_post_body(Req) ->
     Body = wrq:req_body(Req),
