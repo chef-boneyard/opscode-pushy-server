@@ -17,7 +17,9 @@ fetch_public_key(OrgName, Requestor) ->
         request_pubkey(OrgName, Requestor)
     catch
         throw:{error, {not_found, Why}} ->
-            {not_found, Why}
+            {not_found, Why};
+        throw:{error, {conn_failed, Why}} ->
+            {conn_failed, Why}
     end.
 
 -spec request_pubkey(OrgName :: binary(),
