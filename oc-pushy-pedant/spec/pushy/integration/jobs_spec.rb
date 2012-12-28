@@ -570,8 +570,46 @@ describe "Jobs API Endpoint", :jobs do
     end # context 'GET /jobs/<name> with nested pushy_job_readers'
   end # describe 'access control with nested pushy_job groups'
 
-  describe 'input error checking', :focus do
-    context 'invalid POST request body', :focus do
+  describe 'input error checking' do
+    let(:job_path) {
+      # This is evaluated at runtime, so there's always a (short-lived) job to
+      # detect during the test
+
+      post(api_url("/pushy/jobs"), admin_user, :payload => job_to_run) do |response|
+        list = JSON.parse(response.body)
+        list["uri"]
+      end
+    }
+
+    context 'invalid GET request', :focus do
+      it "return 403 (\"Forbidden\") when organization doesn't exist for /jobs" do
+        path = api_url("/pushy/jobs").gsub(org, "bogus-org")
+        get(path, admin_user) do |response|
+          response.should look_like({
+                                      :status => 403
+                                    })
+        end
+      end
+
+      it "return 403 (\"Forbidden\") when organization doesn't exist for /jobs/<name>" do
+        path = job_path.gsub(org, "bogus-org")
+        get(path, admin_user) do |response|
+          response.should look_like({
+                                      :status => 403
+                                    })
+        end
+      end
+    end
+
+    context 'invalid POST request', :focus do
+      it "return 403 (\"Forbidden\") when organization doesn't exist" do
+        path = api_url("/pushy/jobs").gsub(org, "bogus-org")
+        post(path, admin_user, :payload => job_to_run) do |response|
+          response.should look_like({
+                                      :status => 403
+                                    })
+        end
+      end
     end
 
     describe 'handling authentication headers' do
@@ -610,16 +648,6 @@ describe "Jobs API Endpoint", :jobs do
       end
 
       context 'GET /jobs/<name>' do
-        let(:job_path) {
-          # This is evaluated at runtime, so there's always a (short-lived) job to
-          # detect during the test
-
-          post(api_url("/pushy/jobs"), admin_user, :payload => job_to_run) do |response|
-            list = JSON.parse(response.body)
-            list["uri"]
-          end
-        }
-
         let(:url) { job_path }
         let(:response_should_be_successful) do
           response.should look_like({
