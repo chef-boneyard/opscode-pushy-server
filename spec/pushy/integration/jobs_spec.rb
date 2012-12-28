@@ -570,7 +570,7 @@ describe "Jobs API Endpoint", :jobs do
     end # context 'GET /jobs/<name> with nested pushy_job_readers'
   end # describe 'access control with nested pushy_job groups'
 
-  describe 'input error checking' do
+  describe 'request error checking' do
     let(:job_path) {
       # This is evaluated at runtime, so there's always a (short-lived) job to
       # detect during the test
@@ -581,8 +581,8 @@ describe "Jobs API Endpoint", :jobs do
       end
     }
 
-    context 'invalid GET request', :focus do
-      it "return 403 (\"Forbidden\") when organization doesn't exist for /jobs" do
+    context 'invalid GET request' do
+      it 'returns 403 ("Forbidden") with bogus org for /jobs' do
         path = api_url("/pushy/jobs").gsub(org, "bogus-org")
         get(path, admin_user) do |response|
           response.should look_like({
@@ -591,7 +591,7 @@ describe "Jobs API Endpoint", :jobs do
         end
       end
 
-      it "return 403 (\"Forbidden\") when organization doesn't exist for /jobs/<name>" do
+      it 'returns 403 ("Forbidden") with bogus org for /jobs/<name>' do
         path = job_path.gsub(org, "bogus-org")
         get(path, admin_user) do |response|
           response.should look_like({
@@ -602,7 +602,7 @@ describe "Jobs API Endpoint", :jobs do
     end
 
     context 'invalid POST request', :focus do
-      it "return 403 (\"Forbidden\") when organization doesn't exist" do
+      it "returns 403 (\"Forbidden\") when organization doesn't exist" do
         path = api_url("/pushy/jobs").gsub(org, "bogus-org")
         post(path, admin_user, :payload => job_to_run) do |response|
           response.should look_like({
