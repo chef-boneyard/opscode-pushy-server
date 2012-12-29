@@ -135,7 +135,7 @@ verify_request_signature(Req, State) ->
     OrgName = list_to_binary(wrq:path_info(organization_id, Req)),
     State1 = State#config_state{organization_guid = pushy_object:fetch_org_id(OrgName),
                                 organization_name = OrgName},
-    case pushy_public_key:fetch_principal(OrgName, UserName) of
+    case pushy_principal:fetch_principal(OrgName, UserName) of
         {not_found, What} ->
             NotFoundMsg = verify_request_message({not_found, What},
                                                  UserName, OrgName),

@@ -3,7 +3,7 @@
 %% @author Douglas Triggs <doug@opscode.com>
 %% @copyright Copyright 2012 Opscode Inc.
 
--module(pushy_public_key).
+-module(pushy_principal).
 
 -include("pushy_wm.hrl").
 
