@@ -131,16 +131,18 @@ is_authorized(Req, State) ->
 %% returned `#wm_reqdata{}' record will have a response body
 %% explaining why.
 verify_request_signature(Req, State) ->
-    UserName = wrq:get_req_header("x-ops-userid", Req),
+    UserName = list_to_binary(wrq:get_req_header("x-ops-userid", Req)),
     OrgName = list_to_binary(wrq:path_info(organization_id, Req)),
     State1 = State#config_state{organization_guid = pushy_object:fetch_org_id(OrgName),
                                 organization_name = OrgName},
-    case pushy_public_key:fetch_public_key(OrgName, UserName) of
+    case pushy_principal:fetch_principal(OrgName, UserName) of
         {not_found, What} ->
             NotFoundMsg = verify_request_message({not_found, What},
                                                  UserName, OrgName),
             {false, wrq:set_resp_body(jiffy:encode(NotFoundMsg), Req), State1};
-        {PublicKey, Type} ->
+        #pushy_principal{requestor_key = PublicKey,
+                         requestor_type = Type,
+                         requestor_id = RequestorId} ->
             DecodedPubKey = chef_authn:extract_public_key(PublicKey),
             Body = body_or_default(Req, <<>>),
             HTTPMethod = method_as_binary(Req),
@@ -150,7 +152,8 @@ verify_request_signature(Req, State) ->
                                                       Path, Body, DecodedPubKey,
                                                       ?AUTH_SKEW) of
                 {name, _} ->
-                    {true, Req, State1#config_state{requestor_id = UserName,
+                    {true, Req, State1#config_state{requestor = UserName,
+                                                    requestor_id = RequestorId,
                                                     requestor_type = Type,
                                                     requestor_key = DecodedPubKey}};
                 {no_authn, Reason} ->
@@ -181,9 +184,11 @@ write_forbidden(Req, State) ->
 read_forbidden(Req, State) ->
     forbidden(Req, State, "pushy_job_readers", false).
 
-forbidden(Req, #config_state{requestor_id = UserName, requestor_type = Type,
+forbidden(Req, #config_state{requestor = UserName, requestor_type = Type,
                              organization_name = OrgName} = State, Group, NotFound) ->
-    case pushy_check_groups:group_membership(UserName, Type, binary_to_list(OrgName),
+    case pushy_check_groups:group_membership(binary_to_list(UserName),
+                                             Type,
+                                             binary_to_list(OrgName),
                                              Group) of
         group_not_found ->
             {NotFound, Req, State};

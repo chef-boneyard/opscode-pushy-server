@@ -3,27 +3,25 @@
 %% @author Douglas Triggs <doug@opscode.com>
 %% @copyright Copyright 2012 Opscode Inc.
 
--module(pushy_public_key).
-
--export([fetch_public_key/2]).
+-module(pushy_principal).
 
 -include("pushy_wm.hrl").
 
--spec fetch_public_key(OrgName :: binary(), Requestor :: string()) ->
-    {binary(), pushy_requestor_type()}  | {not_found, term()}.
-%% @doc get pubkey for given requestor against given organization
-fetch_public_key(OrgName, Requestor) ->
+-export([fetch_principal/2]).
+
+-spec fetch_principal(OrgName :: binary(),
+                      Requestor :: binary()) -> #pushy_principal{} | {not_found, term()}.
+fetch_principal(OrgName, Requestor) ->
     try
-        request_pubkey(OrgName, Requestor)
+        request_principal(OrgName, Requestor)
     catch
         throw:{error, {not_found, Why}} ->
             {not_found, Why}
     end.
 
--spec request_pubkey(OrgName :: binary(),
-                     Requestor :: string()) ->
-    {binary(), pushy_requestor_type()}.
-request_pubkey(OrgName, Requestor) ->
+-spec request_principal(OrgName :: binary(),
+                        Requestor :: binary()) -> #pushy_principal{}.
+request_principal(OrgName, Requestor) ->
     Headers = [{"Accept", "application/json"},
                {"Content-Type", "application/json"},
                {"User-Agent", "opscode-pushy-server pushy pubkey"},
@@ -41,10 +39,12 @@ request_pubkey(OrgName, Requestor) ->
             throw({error, Reason})
     end.
 
--spec parse_json_response(Body :: binary()) -> {binary(), pushy_requestor_type()}.
+-spec parse_json_response(Body :: binary()) -> #pushy_principal{}.
 parse_json_response(Body) ->
     EJson = jiffy:decode(Body),
-    {ej:get({"public_key"}, EJson), requestor_type(ej:get({"type"}, EJson))}.
+    #pushy_principal{requestor_key = ej:get({"public_key"}, EJson),
+                     requestor_type = requestor_type(ej:get({"type"}, EJson)),
+                     requestor_id = ej:get({"authz_id"}, EJson)}.
 
 -spec requestor_type(binary()) -> pushy_requestor_type().
 requestor_type(<<"user">>) ->
@@ -52,8 +52,7 @@ requestor_type(<<"user">>) ->
 requestor_type(<<"client">>) ->
     client.
 
--spec api_url(OrgName :: binary(),
-              Requestor :: string()) -> list().
+-spec api_url(OrgName :: binary(), Requestor :: binary()) -> list().
 api_url(OrgName, Requestor) ->
     Hostname = pushy_util:get_env(erchef, hostname, "localhost", fun is_list/1),
     Port = pushy_util:get_env(erchef, port, 8000, fun is_integer/1),
