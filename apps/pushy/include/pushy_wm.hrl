@@ -5,6 +5,11 @@
 
 -type pushy_requestor_type() :: 'client' | 'user'.
 
+-record(pushy_principal, {requestor_id :: binary(),
+                          requestor_type :: pushy_requestor_type(),
+                          requestor_key :: binary()}).
+
+
 -record(config_state, {organization_name :: binary(),
                        organization_guid :: <<_:256>>,
                        % TODO: probably want to split this into specific states, instead of this
@@ -15,7 +20,10 @@
                        % not everything that includes this includes pushy_sql.hrl
                        pushy_job :: tuple(),
                        incarnation_id :: binary(),
-                       requestor_id :: string(),
+                       requestor :: binary(),
+
+                       %% Authz ID of the requestor
+                       requestor_id :: binary(),
                        requestor_type :: pushy_requestor_type(),
                        requestor_key :: any()
                       }).
