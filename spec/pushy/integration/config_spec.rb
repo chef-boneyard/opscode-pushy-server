@@ -6,25 +6,37 @@
 # Copyright:: Copyright (c) 2012 Opscode, Inc.
 #
 
+require 'pedant/rspec/auth_headers_util'
+
 describe "pushy config" do
+  def self.ruby?
+    false
+  end
+
+  let(:chef_server_host) {
+    chef_server = Pedant.config[:chef_server]
+    chef_server.gsub(/http[s]?:\/\//,'')
+  }
+
+  let(:config_body) {
+    {
+      "host" => chef_server_host,
+      "public_key" => /^-----BEGIN PUBLIC KEY-----/,
+      "type" => "config"
+      # There are a bunch of additional values
+      # We're not testing; one difficulty is that
+      # Organization/node are returning arrays,
+      # not actual strings, and push_jobs is complicated
+    } }
+
   context "GET /organization/<name>/pushy/config/<nodename>" do
     it "returns 200 and server config" do
       get(api_url("pushy/config/DONKEY"), admin_user) do |response|
-        chef_server = Pedant.config[:chef_server]
-        chef_server_host = chef_server.gsub(/http[s]?:\/\//,'')
         # TODO: probably should grab the correct values from config instead of
         # hard-coding this, but this is proof-of-concept test only right now
         response.should look_like({
                                     :status => 200,
-                                    :body => {
-                                      "host" => chef_server_host,
-                                      "public_key" => /^-----BEGIN PUBLIC KEY-----/,
-                                      "type" => "config"
-                                      # There are a bunch of additional values
-                                      # We're not testing; one difficulty is that
-                                      # Organization/node are returning arrays,
-                                      # not actual strings, and push_jobs is complicated
-                                    }
+                                    :body => config_body
                                   })
       end
     end
@@ -88,6 +100,36 @@ describe "pushy config" do
                                     })
         end
       end
+    end
+  end
+
+  context 'invalid request' do
+    it "returns 403 (\"Forbidden\") when organization doesn't exist" do
+      path = api_url("/pushy/config/#{config_name}").gsub(org, "bogus-org")
+      get(path, admin_user) do |response|
+        response.should look_like({
+                                    :status => 403
+                                  })
+      end
+    end
+  end
+
+  describe 'handling authentication headers' do
+    let(:method) { :GET }
+    let(:body) { nil }
+    let(:success_user) { admin_user }
+    let(:failure_user) { invalid_user }
+
+    context 'GET /config/<name>' do
+      let(:url) { api_url("/pushy/config/#{config_name}") }
+      let(:response_should_be_successful) do
+        response.should look_like({
+                                    :status => 200,
+                                    :body => config_body
+                                  })
+      end
+
+      include_context 'handles authentication headers correctly'
     end
   end
 end # describe "pushy config"
