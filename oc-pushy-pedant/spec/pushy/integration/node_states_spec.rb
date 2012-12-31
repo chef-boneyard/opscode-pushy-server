@@ -7,10 +7,15 @@
 #
 
 require 'pedant/rspec/common'
+require 'pedant/rspec/auth_headers_util'
 require 'pushy/support/authorization_groups_util'
 
 describe "Node_States API Endpoint", :node_states do
   include_context "authorization_groups_util"
+
+  def self.ruby?
+    false
+  end
 
   let(:node_name) { 'some_node' }
   let(:non_existent_node_name) { 'not_a_number' }
@@ -371,4 +376,56 @@ describe "Node_States API Endpoint", :node_states do
       end
     end # context 'GET /node_states/<name>'
   end # describe 'access control with pushy_job_readers and nested groups'
+
+  context 'invalid request' do
+    it 'returns 403 ("Forbidden") with bogus org for /node_states' do
+      path = api_url("/pushy/node_states").gsub(org, "bogus-org")
+      get(path, admin_user) do |response|
+        response.should look_like({
+                                    :status => 403
+                                  })
+      end
+    end
+
+    it 'returns 403 ("Forbidden") with bogus org for /node_states/<name>' do
+      path = api_url("/pushy/node_states/#{node_name}").gsub(org, "bogus-org")
+      get(path, admin_user) do |response|
+        response.should look_like({
+                                    :status => 403
+                                  })
+      end
+    end
+  end
+
+  describe 'handling authentication headers' do
+    let(:method) { :GET }
+    let(:body) { nil }
+    let(:success_user) { admin_user }
+    let(:failure_user) { invalid_user }
+
+    context 'GET /node_states/' do
+      let(:url) { api_url("/pushy/node_states") }
+      let(:response_should_be_successful) do
+        response.should look_like({
+                                    :status => 200
+                                    # TODO: seems it's still not matching arrays
+                                    # correctly; Didn't John fix this at some point?
+                                  })
+      end
+
+      include_context 'handles authentication headers correctly'
+    end
+
+    context 'GET /node_states/<name>' do
+      let(:url) { api_url("/pushy/node_states/#{node_name}") }
+      let(:response_should_be_successful) do
+        response.should look_like({
+                                    :status => 200,
+                                    :body_exact => node_state_status
+                                  })
+      end
+
+      include_context 'handles authentication headers correctly'
+    end
+  end
 end
