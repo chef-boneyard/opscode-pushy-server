@@ -74,10 +74,8 @@ fetch_incomplete_job_nodes() ->
     end.
 
 -spec create_job(#pushy_job{}) -> {ok, 1} | {error, term()}.
-create_job(#pushy_job{status = Status, job_nodes = JobNodes}=Job) ->
-    %% convert status into an integer
-    Job1 = Job#pushy_job{status=Status},
-    Fields0 = flatten_record(Job1),
+create_job(#pushy_job{job_nodes = JobNodes}=Job) ->
+    Fields0 = flatten_record(Job),
     Fields = job_fields_for_insert(Fields0),
     %% We're not dispatching to the general create_object/2 because creating a job
     %% involves adding multiple rows to multiple tables. Also, we currently embed a list of
