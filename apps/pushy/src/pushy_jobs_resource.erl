@@ -78,7 +78,6 @@ post_is_create(Req, State) ->
 % This creates the job record
 create_path(Req, #config_state{organization_guid = OrgId} = State) ->
     {Command, NodeNames, RunTimeout, Quorum} = parse_post_body(Req),
-    lager:info("Command: ~p~nNodeNames: ~p~n", [Command, NodeNames]),
     RunTimeout2 = case RunTimeout of
         undefined -> envy:get(pushy, default_running_timeout, 3600, integer);
         Value -> Value
