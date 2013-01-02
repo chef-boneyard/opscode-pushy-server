@@ -45,6 +45,10 @@ malformed_request(Req, State) ->
         throw:no_nodes ->
             Msg = <<"at least one node must be supplied">>,
             Req1 = wrq:set_resp_body(jiffy:encode({[{<<"error">>, Msg}]}), Req),
+            {{halt, 400}, Req1, State};
+        throw:bad_key ->
+            Msg = <<"invalid key supplied">>,
+            Req1 = wrq:set_resp_body(jiffy:encode({[{<<"error">>, Msg}]}), Req),
             {{halt, 400}, Req1, State}
     end.
 
@@ -100,9 +104,12 @@ to_json(Req, #config_state{organization_guid = OrgId} = State) ->
 % Private stuff
 
 validate_request(Req) ->
-    { Command, NodeNames, _RunTimeout, _Quorum } = parse_post_body(Req),
-    validate_command(Command),
-    validate_nodes(NodeNames).
+    Body = wrq:req_body(Req),
+    JobJson = jiffy:decode(Body),
+
+    validate_keys(JobJson),
+    validate_command(ej:get({<<"command">>}, JobJson)),
+    validate_nodes(ej:get({<<"nodes">>}, JobJson)).
 
 validate_command(Command) ->
     case Command of
@@ -115,6 +122,17 @@ validate_command(Command) ->
 validate_nodes(Nodes) ->
     if
         length(Nodes) =:= 0 -> throw(no_nodes);
+        true -> true
+    end.
+
+validate_keys({Json}) ->
+    ExpectedKeys = [<<"command">>, <<"nodes">>, <<"run_timeout">>, <<"quorum">>],
+    Keys = proplists:get_keys(Json),
+
+    case lists:all(fun(Key) ->
+                        lists:any(fun(EKey) -> Key =:= EKey end, lists:sort(ExpectedKeys))
+                      end, lists:sort(Keys)) of
+        false -> throw(bad_key);
         true -> true
     end.
 
