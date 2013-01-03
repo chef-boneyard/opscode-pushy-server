@@ -598,6 +598,22 @@ describe "Jobs API Endpoint", :jobs do
         fails_with_value("command", 0, "")
         fails_with_value("command", false, "")
       end
+
+      context "for nodes" do
+        fails_with_value("nodes", :delete, "")
+        fails_with_value("nodes", "", "")
+        fails_with_value("nodes", "DONKEY", "")
+        fails_with_value("nodes", [], "")
+        succeeds_with_value("nodes", ["DONKEY"], {"unavailable" => ["DONKEY"]})
+        succeeds_with_value("nodes", ["DONKEY", "FIONA"],
+                            {"unavailable" => ["DONKEY", "FIONA"]})
+        fails_with_value("nodes", ["DONKEY", "FIONA", false], "")
+        fails_with_value("nodes", ["DONKEY", "FIONA", nil], "")
+        fails_with_value("nodes", ["DONKEY", "FIONA", {}], "")
+        fails_with_value("nodes", {}, "")
+        fails_with_value("nodes", 0, "")
+        fails_with_value("nodes", false, "")
+      end
     end
 
     describe 'handling authentication headers' do
