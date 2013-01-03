@@ -20,9 +20,15 @@ shared_context "job_body_util" do
 
   def make_payload(payload, overwrite_variables)
     result = payload
+    if (overwrite_variables[:skip_delete])
+      overwrite_variables.delete(:skip_delete)
+      skip_delete = true
+    end
     overwrite_variables.each do |variable,value|
       if value == :delete
-        result.delete(variable)
+        if (!skip_delete)
+          result.delete(variable)
+        end
       else
         if (result[variable])
           result[variable] = value
@@ -65,7 +71,8 @@ shared_context "job_body_util" do
           should look_like({
                              :status => 200,
                              :body_exact => make_payload(default_result,
-                                                         variable => expected_value) })
+                                                         variable => expected_value,
+                                                         :skip_delete => true) })
       end
     end
   end
