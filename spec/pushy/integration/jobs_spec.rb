@@ -8,6 +8,7 @@
 
 require 'pedant/rspec/common'
 require 'pedant/rspec/auth_headers_util'
+require 'pushy/support/jobs_util'
 require 'pushy/support/authorization_groups_util'
 
 describe "Jobs API Endpoint", :jobs do
@@ -576,7 +577,9 @@ describe "Jobs API Endpoint", :jobs do
       end
     end
 
-    context 'invalid POST request' do
+    context 'invalid POST request', :focus do
+      include_context "job_body_util"
+
       it "returns 403 (\"Forbidden\") when organization doesn't exist" do
         path = api_url("/pushy/jobs").gsub(org, "bogus-org")
         post(path, admin_user, :payload => job_to_run) do |response|
@@ -584,6 +587,16 @@ describe "Jobs API Endpoint", :jobs do
                                       :status => 403
                                     })
         end
+      end
+
+      context "for command" do
+        fails_with_value("command", :delete, "")
+        succeeds_with_value("command", "")
+        succeeds_with_value("command", "sleep 2")
+        fails_with_value("command", [], "")
+        fails_with_value("command", {}, "")
+        fails_with_value("command", 0, "")
+        fails_with_value("command", false, "")
       end
     end
 
