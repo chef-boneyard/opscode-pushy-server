@@ -577,7 +577,7 @@ describe "Jobs API Endpoint", :jobs do
       end
     end
 
-    context 'invalid POST request', :focus do
+    context 'invalid POST request' do
       include_context "job_body_util"
 
       it "returns 403 (\"Forbidden\") when organization doesn't exist" do
