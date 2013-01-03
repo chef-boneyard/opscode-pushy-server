@@ -24,6 +24,8 @@
 
 -include_lib("webmachine/include/webmachine.hrl").
 
+-include_lib("ej/include/ej.hrl").
+
 -include_lib("eunit/include/eunit.hrl").
 
 init(Config) ->
@@ -42,12 +44,24 @@ malformed_request(Req, State) ->
             Msg = <<"invalid command supplied">>,
             Req1 = wrq:set_resp_body(jiffy:encode({[{<<"error">>, Msg}]}), Req),
             {{halt, 400}, Req1, State};
-        throw:no_nodes ->
+        throw:bad_nodes ->
             Msg = <<"at least one node must be supplied">>,
             Req1 = wrq:set_resp_body(jiffy:encode({[{<<"error">>, Msg}]}), Req),
             {{halt, 400}, Req1, State};
         throw:bad_key ->
             Msg = <<"invalid key supplied">>,
+            Req1 = wrq:set_resp_body(jiffy:encode({[{<<"error">>, Msg}]}), Req),
+            {{halt, 400}, Req1, State};
+        throw:bad_type_quorum ->
+            Msg = <<"invalid type supplied for quorum (expected a number)">>,
+            Req1 = wrq:set_resp_body(jiffy:encode({[{<<"error">>, Msg}]}), Req),
+            {{halt, 400}, Req1, State};
+        throw:bad_type_run_timeout ->
+            Msg = <<"invalid type supplied for run_timeout (expected a number)">>,
+            Req1 = wrq:set_resp_body(jiffy:encode({[{<<"error">>, Msg}]}), Req),
+            {{halt, 400}, Req1, State};
+        throw:unknown_validation_error ->
+            Msg = <<"an unknown validation error has occurred">>,
             Req1 = wrq:set_resp_body(jiffy:encode({[{<<"error">>, Msg}]}), Req),
             {{halt, 400}, Req1, State}
     end.
@@ -107,21 +121,35 @@ validate_request(Req) ->
     Body = wrq:req_body(Req),
     JobJson = jiffy:decode(Body),
 
-    validate_keys(JobJson),
-    validate_command(ej:get({<<"command">>}, JobJson)),
-    validate_nodes(ej:get({<<"nodes">>}, JobJson)).
+    validate_body(JobJson).
 
-validate_command(Command) ->
-    case Command of
-        undefined ->
-            throw(bad_command);
-        _ ->
-            true
+validate_body(Json) ->
+    Spec = {[{<<"command">>, string},
+             {<<"nodes">>, array},
+             {{opt, <<"run_timeout">>}, number},
+             {{opt, <<"quorum">>}, number}]},
+
+    case ej:valid(Spec, Json) of
+        ok ->
+            %% Make sure there are no extra keys
+            validate_keys(Json),
+            %% Make sure there is at least one node in the array
+            validate_nodes(ej:get({<<"nodes">>}, Json)),
+            ok;
+        #ej_invalid{type = Type, key = Key} ->
+            case {Type, Key} of
+                {_, <<"nodes">>} -> throw(bad_nodes);
+                {_, <<"command">>} -> throw(bad_command);
+                {json_type, <<"quorum">>} -> throw(bad_type_quorum);
+                {json_type, <<"run_timeout">>} -> throw(bad_type_run_timeout);
+                {_T, _K} -> throw(unknown_validation_error)
+            end
+                    
     end.
 
 validate_nodes(Nodes) ->
     if
-        length(Nodes) =:= 0 -> throw(no_nodes);
+        length(Nodes) =:= 0 -> throw(bad_nodes);
         true -> true
     end.
 
