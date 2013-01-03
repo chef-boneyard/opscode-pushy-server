@@ -618,6 +618,7 @@ describe "Jobs API Endpoint", :jobs do
       context "quorum" do
         succeeds_with_value("quorum", :delete)
         succeeds_with_value("quorum", 1)
+        # TODO: Might want to make this a failure with one node?:
         succeeds_with_value("quorum", 999)
         fails_with_value("quorum", "")
         fails_with_value("quorum", "1")
@@ -627,6 +628,15 @@ describe "Jobs API Endpoint", :jobs do
       end
 
       context "run_timeout" do
+        succeeds_with_value("run_timeout", :delete)
+        # TODO: Might want to make this a failure for 0?:
+        succeeds_with_value("run_timeout", 0)
+        succeeds_with_value("run_timeout", 3600)
+        fails_with_value("run_timeout", "")
+        fails_with_value("run_timeout", "1")
+        fails_with_value("run_timeout", [])
+        fails_with_value("run_timeout", {})
+        fails_with_value("run_timeout", false)
       end
 
       context "random shiznit" do
