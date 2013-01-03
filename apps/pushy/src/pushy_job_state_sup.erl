@@ -87,7 +87,8 @@ mark_incomplete_job_nodes_as_crashed() ->
 update_job_node([]) ->
     ok;
 update_job_node([Node | Nodes]) ->
-    {ok, 1} = pushy_sql:update_job_node(Node#pushy_job_node{status=crashed}),
+    {ok, 1} = pushy_object:update_object(update_job_node,
+                                         Node#pushy_job_node{status=crashed}),
     update_job_node(Nodes).
 
 
@@ -105,7 +106,7 @@ update_job([]) ->
 update_job([Node | Nodes]) ->
     pushy_object:update_object(update_job,
                                Node#pushy_job{status=crashed},
-                               Node#pushy_job.id),
+                               ?PUSHY_ACTOR_ID),
     update_job(Nodes).
 
 %% ------------------------------------------------------------------

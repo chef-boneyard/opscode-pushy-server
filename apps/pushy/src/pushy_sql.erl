@@ -46,7 +46,7 @@ fetch_incomplete_jobs() ->
         {ok, none} ->
             {ok, []};
         {ok, Rows} ->
-            {ok, [prepare_pushy_job_record(Row) || Row <- Rows]};
+            {ok, [prepare_incomplete_job(Row) || Row <- Rows]};
         {error, Error} ->
             {error, Error}
     end.
@@ -57,7 +57,7 @@ fetch_jobs(OrgId) ->
         {ok, none} ->
             {ok, []};
         {ok, Rows} ->
-            {ok, [prepare_job(Row) || Row <- Rows]};
+            {ok, [prepare_pushy_job_record(Row) || Row <- Rows]};
         {error, Error} ->
             {error, Error}
     end.
@@ -116,8 +116,8 @@ update_job(#pushy_job{id = JobId,
 update_job_node(#pushy_job_node{job_id = JobId,
                                 node_name = NodeName,
                                 org_id = OrgId,
+                                updated_at = UpdatedAt,
                                 status = Status}) ->
-    UpdatedAt = sql_date(now),
     UpdateFields = [job_node_status(Status), UpdatedAt, OrgId, NodeName, JobId],
     do_update(update_job_node_by_orgid_nodename_jobid, UpdateFields).
 
@@ -186,17 +186,8 @@ job_join_rows_to_record(Rows) ->
 -spec job_join_rows_to_record(Rows :: [proplist()], [#pushy_job_node{}]) -> #pushy_job{}.
 job_join_rows_to_record([LastRow|[]], JobNodes) ->
     C = proplist_to_job_node(LastRow),
-    CreatedAt = safe_get(<<"created_at">>, LastRow),
-    UpdatedAt = safe_get(<<"updated_at">>, LastRow),
-    #pushy_job{id = safe_get(<<"id">>, LastRow),
-                  org_id = safe_get(<<"org_id">>, LastRow),
-                  command = safe_get(<<"command">>, LastRow),
-                  status = safe_get(<<"status">>, LastRow),
-                  run_timeout = safe_get(<<"run_timeout">>, LastRow),
-                  last_updated_by = safe_get(<<"last_updated_by">>, LastRow),
-                  created_at = date_time_to_sql_date(CreatedAt),
-                  updated_at = date_time_to_sql_date(UpdatedAt),
-                  job_nodes = lists:flatten(lists:reverse([C|JobNodes]))};
+    Job = prepare_pushy_job_record(LastRow),
+    Job#pushy_job{job_nodes = lists:flatten(lists:reverse([C|JobNodes]))};
 job_join_rows_to_record([Row|Rest], JobNodes ) ->
     C = proplist_to_job_node(Row),
     job_join_rows_to_record(Rest, [C|JobNodes]).
@@ -215,26 +206,24 @@ sql_date({_,_,_} = TS) ->
     iolist_to_binary(io_lib:format("~4w-~2..0w-~2..0w ~2..0w:~2..0w:~2..0w",
                   [Year, Month, Day, Hour, Minute, Second])).
 
-
-
-prepare_job(Job) ->
-    CreatedAt = safe_get(<<"created_at">>, Job),
-    CreatedAtFormatted = date_time_to_sql_date(CreatedAt),
-    Status = safe_get(<<"status">>, Job),
-
-    {[{<<"id">>, safe_get(<<"id">>, Job)},
-      {<<"created_at">>, CreatedAtFormatted},
-      {<<"status">>, Status}]}.
-
 prepare_pushy_job_record(Job) ->
     CreatedAt = safe_get(<<"created_at">>, Job),
     CreatedAtFormatted = date_time_to_sql_date(CreatedAt),
-    Status = safe_get(<<"status">>, Job),
+    UpdatedAt = safe_get(<<"updated_at">>, Job),
+    UpdatedAtFormatted = date_time_to_sql_date(UpdatedAt),
 
     #pushy_job{id = safe_get(<<"id">>, Job),
+               org_id = safe_get(<<"org_id">>, Job),
+               command = safe_get(<<"command">>, Job),
+               status = safe_get(<<"status">>, Job),
+               run_timeout = safe_get(<<"run_timeout">>, Job),
+               updated_at = UpdatedAtFormatted,
                created_at = CreatedAtFormatted,
-               last_updated_by = safe_get(<<"last_updated_by">>, Job),
-               status = Status}.
+               last_updated_by = safe_get(<<"last_updated_by">>, Job)}.
+
+prepare_incomplete_job(Job) ->
+    #pushy_job{id = safe_get(<<"id">>, Job),
+               status = safe_get(<<"status">>, Job)}.
 
 prepare_incomplete_job_nodes(Node) ->
     #pushy_job_node{job_id = safe_get(<<"job_id">>, Node),
