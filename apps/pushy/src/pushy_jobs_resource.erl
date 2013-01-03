@@ -125,7 +125,7 @@ validate_request(Req) ->
 
 validate_body(Json) ->
     Spec = {[{<<"command">>, string},
-             {<<"nodes">>, array},
+             {<<"nodes">>, {array_map, string}},
              {{opt, <<"run_timeout">>}, number},
              {{opt, <<"quorum">>}, number}]},
 
