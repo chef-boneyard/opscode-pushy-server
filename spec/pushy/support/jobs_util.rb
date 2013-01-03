@@ -24,13 +24,17 @@ shared_context "job_body_util" do
       overwrite_variables.delete(:skip_delete)
       skip_delete = true
     end
+    if (overwrite_variables[:bogus_value])
+      overwrite_variables.delete(:bogus_value)
+      bogus_value = true
+    end
     overwrite_variables.each do |variable,value|
       if value == :delete
         if (!skip_delete)
           result.delete(variable)
         end
       else
-        if (result[variable])
+        if (result[variable] || bogus_value)
           result[variable] = value
         end
       end
@@ -38,14 +42,15 @@ shared_context "job_body_util" do
     return result
   end
 
-  def self.fails_with_value(variable, value, pending = false)
+  def self.fails_with_value(variable, value, bogus = false, pending = false)
     if (pending)
       it "with #{variable} = #{value} it reports 400", :validation, :pending do
       end
     else
       it "with #{variable} = #{value} it reports 400", :validation do
         response = post(api_url("/pushy/jobs"), admin_user,
-                        :payload => make_payload(default_payload, variable => value))
+                        :payload => make_payload(default_payload, variable => value,
+                                                 :bogus_value => bogus))
       end
     end
   end
