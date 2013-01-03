@@ -261,7 +261,7 @@ describe "Jobs API Endpoint", :jobs do
       delete(api_url("/groups/pushy_job_readers"), superuser)
       delete(api_url("/groups/pushy_job_writers"), superuser)
     end
-      
+
     context 'GET /jobs with pushy_job_readers' do
       it 'returns a 200 ("OK") for member' do
         get(api_url("/pushy/jobs/"), member) do |response|
@@ -419,7 +419,7 @@ describe "Jobs API Endpoint", :jobs do
       delete(api_url("/groups/nested_pushy_job_readers"), superuser)
       delete(api_url("/groups/nested_pushy_job_writers"), superuser)
     end
-      
+
     context 'GET /jobs with nested pushy_job_readers' do
       it 'returns a 200 ("OK") for member' do
         get(api_url("/pushy/jobs/"), member) do |response|
@@ -705,4 +705,50 @@ describe "Jobs API Endpoint", :jobs do
       end
     end # describe 'handling authentication headers'
   end # describe 'input error checking'
+
+  describe 'provides timestamps in API responses' do
+    include_context "validation_util"
+    let(:job_path) {
+      # This is evaluated at runtime, so there's always a (short-lived) job to
+      # detect during the test
+
+      post(api_url("/pushy/jobs"), admin_user, :payload => job_to_run) do |response|
+        job = parse(response)
+        job["uri"]
+      end
+    }
+
+    context 'GET /jobs/<name>' do
+      it 'returns created_at' do
+        get(job_path, admin_user) do |response|
+          response.should look_like({
+                                      :status => 200
+                                    })
+          json = parse(response)
+          validate_timestamp json['created_at']
+        end
+      end
+
+      it 'returns updated_at' do
+        get(job_path, admin_user) do |response|
+          response.should look_like({
+                                      :status => 200
+                                    })
+          json = parse(response)
+          validate_timestamp json['updated_at']
+        end
+      end
+
+      it 'has an updated_at later than or equal to created_at' do
+        get(job_path, admin_user) do |response|
+          response.should look_like({
+                                      :status => 200
+                                    })
+          json = parse(response)
+          validate_time_ordering(json['created_at'], json['updated_at'])
+        end
+
+      end
+    end
+  end
 end # describe "Jobs API Endpoint"
