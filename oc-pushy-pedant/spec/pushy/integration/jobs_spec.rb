@@ -590,29 +590,46 @@ describe "Jobs API Endpoint", :jobs do
       end
 
       context "for command" do
-        fails_with_value("command", :delete, "")
         succeeds_with_value("command", "")
         succeeds_with_value("command", "sleep 2")
-        fails_with_value("command", [], "")
-        fails_with_value("command", {}, "")
-        fails_with_value("command", 0, "")
-        fails_with_value("command", false, "")
+        fails_with_value("command", :delete)
+        fails_with_value("command", [])
+        fails_with_value("command", {})
+        fails_with_value("command", 0)
+        fails_with_value("command", false)
       end
 
       context "for nodes" do
-        fails_with_value("nodes", :delete, "")
-        fails_with_value("nodes", "", "")
-        fails_with_value("nodes", "DONKEY", "")
-        fails_with_value("nodes", [], "")
         succeeds_with_value("nodes", ["DONKEY"], {"unavailable" => ["DONKEY"]})
         succeeds_with_value("nodes", ["DONKEY", "FIONA"],
                             {"unavailable" => ["DONKEY", "FIONA"]})
-        fails_with_value("nodes", ["DONKEY", "FIONA", false], "")
-        fails_with_value("nodes", ["DONKEY", "FIONA", nil], "")
-        fails_with_value("nodes", ["DONKEY", "FIONA", {}], "")
-        fails_with_value("nodes", {}, "")
-        fails_with_value("nodes", 0, "")
-        fails_with_value("nodes", false, "")
+        fails_with_value("nodes", :delete)
+        fails_with_value("nodes", "")
+        fails_with_value("nodes", "DONKEY")
+        fails_with_value("nodes", [])
+        fails_with_value("nodes", ["DONKEY", "FIONA", false])
+        fails_with_value("nodes", ["DONKEY", "FIONA", nil])
+        fails_with_value("nodes", ["DONKEY", "FIONA", {}])
+        fails_with_value("nodes", {})
+        fails_with_value("nodes", 0)
+        fails_with_value("nodes", false)
+      end
+
+      context "quorum" do
+        succeeds_with_value("quorum", :delete)
+        succeeds_with_value("quorum", 1)
+        succeeds_with_value("quorum", 999)
+        fails_with_value("quorum", "")
+        fails_with_value("quorum", "1")
+        fails_with_value("quorum", [])
+        fails_with_value("quorum", {})
+        fails_with_value("quorum", false)
+      end
+
+      context "run_timeout" do
+      end
+
+      context "random shiznit" do
       end
     end
 
