@@ -597,6 +597,7 @@ describe "Jobs API Endpoint", :jobs do
         fails_with_value("command", {})
         fails_with_value("command", 0)
         fails_with_value("command", false)
+        fails_with_value("command", nil)
       end
 
       context "for nodes" do
@@ -613,6 +614,7 @@ describe "Jobs API Endpoint", :jobs do
         fails_with_value("nodes", {})
         fails_with_value("nodes", 0)
         fails_with_value("nodes", false)
+        fails_with_value("nodes", nil)
       end
 
       context "quorum" do
@@ -625,6 +627,7 @@ describe "Jobs API Endpoint", :jobs do
         fails_with_value("quorum", [])
         fails_with_value("quorum", {})
         fails_with_value("quorum", false)
+        fails_with_value("quorum", nil)
       end
 
       context "run_timeout" do
@@ -637,9 +640,14 @@ describe "Jobs API Endpoint", :jobs do
         fails_with_value("run_timeout", [])
         fails_with_value("run_timeout", {})
         fails_with_value("run_timeout", false)
+        fails_with_value("run_timeout", nil)
       end
 
       context "random shiznit" do
+        fails_with_value("foo", nil, true)
+        fails_with_value("foo", "", true)
+        fails_with_value("foo", "bar", true)
+        fails_with_value("foo", 0, true)
       end
     end
 
