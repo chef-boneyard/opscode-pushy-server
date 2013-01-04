@@ -36,6 +36,11 @@ init(Config) ->
 %% then go to localhost:WXYZ/wmtrace
 
 malformed_request(Req, State) ->
+    malformed_request(wrq:method(Req), Req, State).
+
+malformed_request('GET', Req, State) ->
+    pushy_wm_base:malformed_request(Req, State);
+malformed_request('POST', Req, State) ->
     try
         validate_request(Req),
         pushy_wm_base:malformed_request(Req, State)
@@ -65,6 +70,7 @@ malformed_request(Req, State) ->
             Req1 = wrq:set_resp_body(jiffy:encode({[{<<"error">>, Msg}]}), Req),
             {{halt, 400}, Req1, State}
     end.
+
 
 is_authorized(Req, State) ->
     pushy_wm_base:is_authorized(Req, State).
