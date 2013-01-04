@@ -234,7 +234,7 @@ rehab_interval() ->
 call(NodeRef, Message) ->
     case pushy_node_state_sup:get_process(NodeRef) of
         Pid when is_pid(Pid) ->
-            gen_fsm:sync_send_all_state_event(Pid, Message, infinity);
+            safe_sync_send_all_state_event(Pid, Message);
         undefined ->
             undefined
     end.
@@ -470,4 +470,17 @@ extract_job_id(Data) ->
             X;
         _ ->
             invalid_job_id
+    end.
+
+%% We can end up in a race condition with sync messages where
+%% the process terminates and the message is still in the queue
+%%
+%% This deals with the race condition by matching the error
+%% message returned and converting it to `undefined`.
+safe_sync_send_all_state_event(Pid, Message) ->
+    case catch gen_fsm:sync_send_all_state_event(Pid, Message, infinity) of
+        {'EXIT', {shutdown, _Details}} ->
+            undefined;
+        Else ->
+            Else
     end.
