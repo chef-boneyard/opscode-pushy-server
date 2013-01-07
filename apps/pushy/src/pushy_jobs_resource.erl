@@ -24,6 +24,8 @@
 
 -include_lib("webmachine/include/webmachine.hrl").
 
+-include_lib("ej/include/ej.hrl").
+
 -include_lib("eunit/include/eunit.hrl").
 
 init(Config) ->
@@ -34,7 +36,41 @@ init(Config) ->
 %% then go to localhost:WXYZ/wmtrace
 
 malformed_request(Req, State) ->
-    pushy_wm_base:malformed_request(Req, State).
+    malformed_request(wrq:method(Req), Req, State).
+
+malformed_request('GET', Req, State) ->
+    pushy_wm_base:malformed_request(Req, State);
+malformed_request('POST', Req, State) ->
+    try
+        validate_request(Req),
+        pushy_wm_base:malformed_request(Req, State)
+    catch
+        throw:bad_command ->
+            Msg = <<"invalid command supplied">>,
+            Req1 = wrq:set_resp_body(jiffy:encode({[{<<"error">>, Msg}]}), Req),
+            {{halt, 400}, Req1, State};
+        throw:bad_nodes ->
+            Msg = <<"at least one node must be supplied">>,
+            Req1 = wrq:set_resp_body(jiffy:encode({[{<<"error">>, Msg}]}), Req),
+            {{halt, 400}, Req1, State};
+        throw:bad_key ->
+            Msg = <<"invalid key supplied">>,
+            Req1 = wrq:set_resp_body(jiffy:encode({[{<<"error">>, Msg}]}), Req),
+            {{halt, 400}, Req1, State};
+        throw:bad_type_quorum ->
+            Msg = <<"invalid type supplied for quorum (expected a number)">>,
+            Req1 = wrq:set_resp_body(jiffy:encode({[{<<"error">>, Msg}]}), Req),
+            {{halt, 400}, Req1, State};
+        throw:bad_type_run_timeout ->
+            Msg = <<"invalid type supplied for run_timeout (expected a number)">>,
+            Req1 = wrq:set_resp_body(jiffy:encode({[{<<"error">>, Msg}]}), Req),
+            {{halt, 400}, Req1, State};
+        throw:unknown_validation_error ->
+            Msg = <<"an unknown validation error has occurred">>,
+            Req1 = wrq:set_resp_body(jiffy:encode({[{<<"error">>, Msg}]}), Req),
+            {{halt, 400}, Req1, State}
+    end.
+
 
 is_authorized(Req, State) ->
     pushy_wm_base:is_authorized(Req, State).
@@ -86,6 +122,53 @@ to_json(Req, #config_state{organization_guid = OrgId} = State) ->
     {jiffy:encode(Jobs), Req, State}.
 
 % Private stuff
+
+validate_request(Req) ->
+    Body = wrq:req_body(Req),
+    JobJson = jiffy:decode(Body),
+
+    validate_body(JobJson).
+
+validate_body(Json) ->
+    Spec = {[{<<"command">>, string},
+             {<<"nodes">>, {array_map, string}},
+             {{opt, <<"run_timeout">>}, number},
+             {{opt, <<"quorum">>}, number}]},
+
+    case ej:valid(Spec, Json) of
+        ok ->
+            %% Make sure there are no extra keys
+            validate_keys(Json),
+            %% Make sure there is at least one node in the array
+            validate_nodes(ej:get({<<"nodes">>}, Json)),
+            ok;
+        #ej_invalid{type = Type, key = Key} ->
+            case {Type, Key} of
+                {_, <<"command">>} -> throw(bad_command);
+                {_, <<"nodes">>} -> throw(bad_nodes);
+                {json_type, <<"run_timeout">>} -> throw(bad_type_run_timeout);
+                {json_type, <<"quorum">>} -> throw(bad_type_quorum);
+                {_T, _K} -> throw(unknown_validation_error)
+            end
+    end.
+
+validate_nodes(Nodes) ->
+    if
+        length(Nodes) =:= 0 -> throw(bad_nodes);
+        true -> true
+    end.
+
+validate_keys({Json}) ->
+    ExpectedKeys = [<<"command">>, <<"nodes">>, <<"run_timeout">>, <<"quorum">>],
+    Keys = proplists:get_keys(Json),
+
+    case lists:all(fun(Key) ->
+                        lists:any(fun(EKey) -> Key =:= EKey end, lists:sort(ExpectedKeys))
+                      end, lists:sort(Keys)) of
+        false -> throw(bad_key);
+        true -> true
+    end.
+
 
 parse_post_body(Req) ->
     Body = wrq:req_body(Req),
