@@ -48,13 +48,13 @@ start_link(Job) ->
 get_job_state(JobId) ->
     case pushy_job_state_sup:get_process(JobId) of
         not_found -> not_found;
-        Pid -> gen_fsm:sync_send_all_state_event(Pid, get_job_status)
+        Pid -> pushy_fsm_utils:safe_sync_send_all_state_event(Pid, get_job_status)
     end.
 
 stop_job(JobId) ->
     case pushy_job_state_sup:get_process(JobId) of
         not_found -> not_found;
-        Pid -> gen_fsm:sync_send_all_state_event(Pid, stop_job)
+        Pid -> pushy_fsm_utils:safe_sync_send_all_state_event(Pid, stop_job)
     end.
 
 %%%
@@ -366,3 +366,4 @@ terminalize(timed_out) -> terminal;
 terminalize(new) -> new;
 terminalize(ready) -> ready;
 terminalize(running) -> running.
+
