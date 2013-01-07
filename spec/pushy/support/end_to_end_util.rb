@@ -116,7 +116,7 @@ shared_context "end_to_end_util" do
       names.each do |name|
         nodes_in_rehab[name] = get_rest("pushy/node_states/#{name}")
       end
-      raise "Clients availability never never changed to #{availablity}: #{nodes_in_rehab}"
+      raise "Clients availability never never changed to #{availability}: #{nodes_in_rehab}"
     end
   end
 
