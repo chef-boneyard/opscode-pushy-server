@@ -74,13 +74,13 @@ send_msg(NodeRefs, Method, Message) ->
 
 status(NodeRef) ->
     case call(NodeRef, current_state) of
-        undefined ->
+        not_found ->
             {offline, {unavailable, none}};
         CurrentState ->
             eval_state(CurrentState)
     end.
 
--spec watch(NodeRef :: node_ref()) -> term() | undefined.
+-spec watch(NodeRef :: node_ref()) -> term() | not_found.
 watch(NodeRef) ->
     call(NodeRef, {watch, self()}).
 
@@ -230,13 +230,13 @@ rehab_interval() ->
     envy:get(pushy, rehab_timer, 1000, integer).
 
 -spec call(NodeRef :: node_ref(),
-           Message :: any()) -> term() | undefined.
+           Message :: any()) -> term() | not_found.
 call(NodeRef, Message) ->
     case pushy_node_state_sup:get_process(NodeRef) of
         Pid when is_pid(Pid) ->
-            gen_fsm:sync_send_all_state_event(Pid, Message, infinity);
+            pushy_fsm_utils:safe_sync_send_all_state_event(Pid, Message);
         undefined ->
-            undefined
+            not_found
     end.
 
 -spec cast(NodeRef :: node_ref(),
