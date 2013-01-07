@@ -144,13 +144,12 @@ validate_body(Json) ->
             ok;
         #ej_invalid{type = Type, key = Key} ->
             case {Type, Key} of
-                {_, <<"nodes">>} -> throw(bad_nodes);
                 {_, <<"command">>} -> throw(bad_command);
-                {json_type, <<"quorum">>} -> throw(bad_type_quorum);
+                {_, <<"nodes">>} -> throw(bad_nodes);
                 {json_type, <<"run_timeout">>} -> throw(bad_type_run_timeout);
+                {json_type, <<"quorum">>} -> throw(bad_type_quorum);
                 {_T, _K} -> throw(unknown_validation_error)
             end
-                    
     end.
 
 validate_nodes(Nodes) ->
