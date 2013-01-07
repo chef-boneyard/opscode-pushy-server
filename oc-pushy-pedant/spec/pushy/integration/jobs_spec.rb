@@ -8,6 +8,7 @@
 
 require 'pedant/rspec/common'
 require 'pedant/rspec/auth_headers_util'
+require 'pushy/support/jobs_util'
 require 'pushy/support/authorization_groups_util'
 
 describe "Jobs API Endpoint", :jobs do
@@ -577,6 +578,8 @@ describe "Jobs API Endpoint", :jobs do
     end
 
     context 'invalid POST request' do
+      include_context "job_body_util"
+
       it "returns 403 (\"Forbidden\") when organization doesn't exist" do
         path = api_url("/pushy/jobs").gsub(org, "bogus-org")
         post(path, admin_user, :payload => job_to_run) do |response|
@@ -584,6 +587,67 @@ describe "Jobs API Endpoint", :jobs do
                                       :status => 403
                                     })
         end
+      end
+
+      context "for command" do
+        succeeds_with_value("command", "")
+        succeeds_with_value("command", "sleep 2")
+        fails_with_value("command", :delete)
+        fails_with_value("command", [])
+        fails_with_value("command", {})
+        fails_with_value("command", 0)
+        fails_with_value("command", false)
+        fails_with_value("command", nil)
+      end
+
+      context "for nodes" do
+        succeeds_with_value("nodes", ["DONKEY"], {"unavailable" => ["DONKEY"]})
+        succeeds_with_value("nodes", ["DONKEY", "FIONA"],
+                            {"unavailable" => ["DONKEY", "FIONA"]})
+        fails_with_value("nodes", :delete)
+        fails_with_value("nodes", "")
+        fails_with_value("nodes", "DONKEY")
+        fails_with_value("nodes", [])
+        fails_with_value("nodes", ["DONKEY", "FIONA", false])
+        fails_with_value("nodes", ["DONKEY", "FIONA", nil])
+        fails_with_value("nodes", ["DONKEY", "FIONA", {}])
+        fails_with_value("nodes", {})
+        fails_with_value("nodes", 0)
+        fails_with_value("nodes", false)
+        fails_with_value("nodes", nil)
+      end
+
+      context "quorum" do
+        succeeds_with_value("quorum", :delete)
+        succeeds_with_value("quorum", 1)
+        # TODO: Might want to make this a failure with one node?:
+        succeeds_with_value("quorum", 999)
+        fails_with_value("quorum", "")
+        fails_with_value("quorum", "1")
+        fails_with_value("quorum", [])
+        fails_with_value("quorum", {})
+        fails_with_value("quorum", false)
+        fails_with_value("quorum", nil)
+      end
+
+      context "run_timeout" do
+        succeeds_with_value("run_timeout", :delete)
+        # TODO: Might want to make this a failure for 0?:
+        succeeds_with_value("run_timeout", 0)
+        succeeds_with_value("run_timeout", 3600)
+        fails_with_value("run_timeout", "")
+        fails_with_value("run_timeout", "1")
+        fails_with_value("run_timeout", [])
+        fails_with_value("run_timeout", {})
+        fails_with_value("run_timeout", false)
+        fails_with_value("run_timeout", nil)
+      end
+
+      context "random shiznit" do
+        fails_with_value("foo", nil, true)
+        fails_with_value("foo", "", true)
+        fails_with_value("foo", "bar", true)
+        fails_with_value("foo", 0, true)
       end
     end
 

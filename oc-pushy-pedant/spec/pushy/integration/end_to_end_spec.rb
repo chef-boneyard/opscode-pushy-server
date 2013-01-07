@@ -394,26 +394,6 @@ describe "end-to-end-test" do
     end
   end
 
-  context 'with no clients' do
-    before(:each) { @clients = {} }
-
-    context 'when running a job' do
-      before(:each) do
-        start_echo_job_on_all_clients
-      end
-
-      it 'the job and node statuses are marked complete' do
-        job = wait_for_job_complete(@response['uri'])
-        job.should == {
-          'command' => echo_yahoo,
-          'run_timeout' => 3600,
-          'nodes' => { },
-          'status' => 'complete'
-        }
-      end
-    end
-  end
-
   context 'with three clients' do
     before :each do
       start_new_clients('DONKEY', 'FARQUAD', 'FIONA')
