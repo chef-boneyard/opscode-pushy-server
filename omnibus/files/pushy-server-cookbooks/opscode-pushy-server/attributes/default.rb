@@ -43,6 +43,9 @@ default['pushy']['opscode-pushy-server']['log_directory'] = "/var/log/opscode-pu
 default['pushy']['opscode-pushy-server']['listen'] = '127.0.0.1'
 default['pushy']['opscode-pushy-server']['db_pool_size'] = '20'
 
+default['pushy']['opscode-pushy-server']['ibrowse_max_sessions'] = 256
+default['pushy']['opscode-pushy-server']['ibrowse_max_pipeline_size'] = 1
+
 default['pushy']['opscode-pushy-server']['heartbeat_interval'] = '1000'
 
 default['pushy']['opscode-pushy-server']['zeromq_listen_address'] = 'tcp://*'
