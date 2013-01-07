@@ -48,13 +48,13 @@ start_link(Job) ->
 get_job_state(JobId) ->
     case pushy_job_state_sup:get_process(JobId) of
         not_found -> not_found;
-        Pid -> safe_sync_send_all_state_event(Pid, get_job_status)
+        Pid -> pushy_fsm_utils:safe_sync_send_all_state_event(Pid, get_job_status)
     end.
 
 stop_job(JobId) ->
     case pushy_job_state_sup:get_process(JobId) of
         not_found -> not_found;
-        Pid -> safe_sync_send_all_state_event(Pid, stop_job)
+        Pid -> pushy_fsm_utils:safe_sync_send_all_state_event(Pid, stop_job)
     end.
 
 %%%
@@ -367,15 +367,3 @@ terminalize(new) -> new;
 terminalize(ready) -> ready;
 terminalize(running) -> running.
 
-%% We can end up in a race condition with sync messages where
-%% the process terminates and the message is still in the queue
-%%
-%% This deals with the race condition by matching the error
-%% message returned and converting it to `not_found`.
-safe_sync_send_all_state_event(Pid, Message) ->
-    case catch gen_fsm:sync_send_all_state_event(Pid, Message) of
-        {'EXIT', {shutdown, _Details}} ->
-            not_found;
-        Else ->
-            Else
-    end.

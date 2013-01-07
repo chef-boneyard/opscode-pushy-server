@@ -74,13 +74,13 @@ send_msg(NodeRefs, Method, Message) ->
 
 status(NodeRef) ->
     case call(NodeRef, current_state) of
-        undefined ->
+        not_found ->
             {offline, {unavailable, none}};
         CurrentState ->
             eval_state(CurrentState)
     end.
 
--spec watch(NodeRef :: node_ref()) -> term() | undefined.
+-spec watch(NodeRef :: node_ref()) -> term() | not_found.
 watch(NodeRef) ->
     call(NodeRef, {watch, self()}).
 
@@ -230,13 +230,13 @@ rehab_interval() ->
     envy:get(pushy, rehab_timer, 1000, integer).
 
 -spec call(NodeRef :: node_ref(),
-           Message :: any()) -> term() | undefined.
+           Message :: any()) -> term() | not_found.
 call(NodeRef, Message) ->
     case pushy_node_state_sup:get_process(NodeRef) of
         Pid when is_pid(Pid) ->
-            safe_sync_send_all_state_event(Pid, Message);
+            pushy_fsm_utils:safe_sync_send_all_state_event(Pid, Message);
         undefined ->
-            undefined
+            not_found
     end.
 
 -spec cast(NodeRef :: node_ref(),
@@ -470,17 +470,4 @@ extract_job_id(Data) ->
             X;
         _ ->
             invalid_job_id
-    end.
-
-%% We can end up in a race condition with sync messages where
-%% the process terminates and the message is still in the queue
-%%
-%% This deals with the race condition by matching the error
-%% message returned and converting it to `undefined`.
-safe_sync_send_all_state_event(Pid, Message) ->
-    case catch gen_fsm:sync_send_all_state_event(Pid, Message) of
-        {'EXIT', {shutdown, _Details}} ->
-            undefined;
-        Else ->
-            Else
     end.
