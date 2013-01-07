@@ -478,7 +478,7 @@ extract_job_id(Data) ->
 %% This deals with the race condition by matching the error
 %% message returned and converting it to `undefined`.
 safe_sync_send_all_state_event(Pid, Message) ->
-    case catch gen_fsm:sync_send_all_state_event(Pid, Message, infinity) of
+    case catch gen_fsm:sync_send_all_state_event(Pid, Message) of
         {'EXIT', {shutdown, _Details}} ->
             undefined;
         Else ->
