@@ -1,5 +1,5 @@
 shared_context "job_body_util" do
-  include_context "validation_util"
+  let(:valid_datetime) { ->(v) { Time.parse(v) } }
 
   let(:default_payload) {
     {
