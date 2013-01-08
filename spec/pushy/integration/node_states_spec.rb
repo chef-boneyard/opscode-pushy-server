@@ -27,7 +27,7 @@ describe "Node_States API Endpoint", :node_states do
   let(:non_member_client_authorization_failed_msg) {
     ["User or client 'pedant_admin_client' does not have access to that action on this server."] }
   let(:outside_user_not_associated_msg) {
-    ["'pedant-nobody' not associated with organization '#{org}'"] }
+    ["'pedant-nobody' is not associated with organization '#{org}'"] }
   let(:cannot_load_nonexistent_msg) { 
     ["Cannot load client #{non_existent_node_name}"] }
   let(:node_state_status) {
@@ -76,7 +76,7 @@ describe "Node_States API Endpoint", :node_states do
         end
       end
 
-      it 'returns a 403 ("Forbidden") for outside user', :pending do
+      it 'returns a 403 ("Forbidden") for outside user' do
         get(api_url("/pushy/node_states"),
             outside_user) do |response|
           response.should look_like({
@@ -130,7 +130,7 @@ describe "Node_States API Endpoint", :node_states do
         end
       end
 
-      it 'returns a 403 ("Forbidden") for outside user', :pending do
+      it 'returns a 403 ("Forbidden") for outside user' do
         get(api_url("/pushy/node_states/#{node_name}"),
             outside_user) do |response|
           response.should look_like({
@@ -178,7 +178,8 @@ describe "Node_States API Endpoint", :node_states do
     let(:non_member_client) { platform.admin_client }
 
     before(:all) do
-      setup_group("pushy_job_readers", [member.name], [member_client.name], [])
+      setup_group("pushy_job_readers", [member.name, outside_user.name],
+                  [member_client.name], [])
     end
 
     after(:all) do
@@ -224,6 +225,18 @@ describe "Node_States API Endpoint", :node_states do
                              })
         end
       end
+
+      it 'returns a 403 ("Forbidden") for outside user' do
+        get(api_url("/pushy/node_states"),
+            outside_user) do |response|
+          response.should look_like({
+                                      :status => 403,
+                                      :body_exact => {
+                                        "error" => outside_user_not_associated_msg
+                                      }
+                                    })
+        end
+      end
     end # context 'GET /node_states'
 
     context 'GET /node_states/<name>' do
@@ -267,6 +280,18 @@ describe "Node_States API Endpoint", :node_states do
                                  "error" => non_member_client_authorization_failed_msg
                                }
                              })
+        end
+      end
+
+      it 'returns a 403 ("Forbidden") for outside user' do
+        get(api_url("/pushy/node_states/#{node_name}"),
+            outside_user) do |response|
+          response.should look_like({
+                                      :status => 403,
+                                      :body_exact => {
+                                        "error" => outside_user_not_associated_msg
+                                      }
+                                    })
         end
       end
     end # context 'GET /node_states/<name>'

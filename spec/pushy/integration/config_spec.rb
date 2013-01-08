@@ -48,7 +48,7 @@ describe "pushy config" do
   let(:failed_to_authenticate_as_invalid_msg) {
     ["Failed to authenticate as 'invalid'. Ensure that your node_name and client key are correct."] }
   let(:outside_user_not_associated_msg) {
-    ["'pedant-nobody' not associated with organization '#{org}'"] }
+    ["'pedant-nobody' is not associated with organization '#{org}'"] }
 
   describe 'access control' do
     context 'GET /config/<name>' do
@@ -89,7 +89,7 @@ describe "pushy config" do
         end
       end
 
-      it 'returns a 403 ("Forbidden") for outside user', :pending do
+      it 'returns a 403 ("Forbidden") for outside user' do
         get(api_url("/pushy/config/#{config_name}"),
             outside_user) do |response|
           response.should look_like({
