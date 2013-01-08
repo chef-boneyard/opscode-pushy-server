@@ -9,6 +9,7 @@
 require 'pedant/rspec/common'
 require 'pedant/rspec/auth_headers_util'
 require 'pushy/support/jobs_util'
+require 'pushy/support/validation_util'
 require 'pushy/support/authorization_groups_util'
 
 describe "Jobs API Endpoint", :jobs do
