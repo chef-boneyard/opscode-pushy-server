@@ -44,9 +44,14 @@ request_principal(OrgName, Requestor) ->
 -spec parse_json_response(Body :: binary()) -> #pushy_principal{}.
 parse_json_response(Body) ->
     EJson = jiffy:decode(Body),
-    #pushy_principal{requestor_key = ej:get({"public_key"}, EJson),
-                     requestor_type = requestor_type(ej:get({"type"}, EJson)),
-                     requestor_id = ej:get({"authz_id"}, EJson)}.
+    case ej:get({"org_member"}, EJson) of
+        true ->
+            #pushy_principal{requestor_key = ej:get({"public_key"}, EJson),
+                             requestor_type = requestor_type(ej:get({"type"}, EJson)),
+                             requestor_id = ej:get({"authz_id"}, EJson)}.
+        _ ->
+            {not_found, not_associated_with_org}
+    end.
 
 -spec requestor_type(binary()) -> pushy_requestor_type().
 requestor_type(<<"user">>) ->

@@ -123,7 +123,9 @@ is_authorized(Req, State) ->
         {false, ReqOther, StateOther} ->
             {"X-Ops-Sign version=\"1.0\" version=\"1.1\"", ReqOther, StateOther};
         {conn_failed, ReqFailure, StateFailure} ->
-            {{halt, 502}, ReqFailure, StateFailure}
+            {{halt, 502}, ReqFailure, StateFailure};
+        {not_associated_with_org, ReqForbid, StateForbid} ->
+            {{halt, 403}, ReqForbid, StateForbid}
     end.
 
 %% @doc Perform request signature verification (authenticate)
@@ -138,6 +140,11 @@ verify_request_signature(Req, State) ->
     State1 = State#config_state{organization_guid = pushy_object:fetch_org_id(OrgName),
                                 organization_name = OrgName},
     case pushy_principal:fetch_principal(OrgName, UserName) of
+        {not_found, not_associated_with_org} ->
+            NotFoundMsg = verify_request_message(not_associated_with_org,
+                                                 UserName, OrgName),
+            Req1 = wrq:set_resp_body(jiffy:encode(NotFoundMsg), Req),
+            {not_associated_with_org, Req1, State1};
         {not_found, What} ->
             NotFoundMsg = verify_request_message({not_found, What},
                                                  UserName, OrgName),
