@@ -17,7 +17,11 @@
           new_record/6,
 
           make_org_prefix_id/1,
-          make_org_prefix_id/2
+          make_org_prefix_id/2,
+
+          assemble_job_ejson/1,
+          assemble_job_ejson_with_nodes/1
+
         ]).
 
 fetch_org_id(OrgName) ->
@@ -150,3 +154,36 @@ make_org_prefix_id(OrgId, Name) ->
     Bin = iolist_to_binary([OrgId, Name, crypto:rand_bytes(6)]),
     <<ObjectPart:80, _/binary>> = crypto:md5(Bin),
     iolist_to_binary(io_lib:format("~s~20.16.0b", [OrgSuffix, ObjectPart])).
+
+assemble_job_ejson_with_nodes(#pushy_job{job_nodes = Nodes} = Job) ->
+    {NodePropList} = assemble_job_ejson(Job),
+    NodesJson = job_nodes_json_by_status(Nodes),
+    {[ {<<"nodes">>, NodesJson} | NodePropList]}.
+
+assemble_job_ejson(#pushy_job{id = Id,
+                              command = Command,
+                              status = Status,
+                              run_timeout = RunTimeout,
+                              created_at = CreatedAt,
+                              updated_at = UpdatedAt}) ->
+    {[ {<<"id">>, Id},
+       {<<"command">>, Command},
+       {<<"status">>, Status},
+       {<<"run_timeout">>, RunTimeout},
+       {<<"created_at">>, CreatedAt},
+       {<<"updated_at">>, UpdatedAt}
+    ]}.
+
+job_nodes_json_by_status(Nodes) ->
+    NodesByStatus = job_nodes_by_status(Nodes, dict:new()),
+    {[
+        { erlang:atom_to_binary(Status, utf8), dict:fetch(Status, NodesByStatus) }
+        || Status <- dict:fetch_keys(NodesByStatus)
+    ]}.
+
+job_nodes_by_status([], Dict) ->
+    Dict;
+job_nodes_by_status([#pushy_job_node{node_name = Name, status = Status} | Nodes], Dict) ->
+    Dict2 = dict:append(Status, Name, Dict),
+    job_nodes_by_status(Nodes, Dict2).
+
