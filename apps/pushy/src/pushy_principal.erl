@@ -48,7 +48,7 @@ parse_json_response(Body) ->
         true ->
             #pushy_principal{requestor_key = ej:get({"public_key"}, EJson),
                              requestor_type = requestor_type(ej:get({"type"}, EJson)),
-                             requestor_id = ej:get({"authz_id"}, EJson)}.
+                             requestor_id = ej:get({"authz_id"}, EJson)};
         _ ->
             {not_found, not_associated_with_org}
     end.
