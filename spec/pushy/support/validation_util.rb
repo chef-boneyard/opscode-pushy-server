@@ -1,8 +1,9 @@
 require 'date'
 
 shared_context "validation_util" do
+    let(:valid_datetime) { ->(v) { Time.parse(v) } }
 
-    def validate_timestamp(field)
+    def validate_datetime(field)
 
        expect{
           Time.parse(field)

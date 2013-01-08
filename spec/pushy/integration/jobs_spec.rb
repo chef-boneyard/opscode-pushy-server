@@ -687,6 +687,7 @@ describe "Jobs API Endpoint", :jobs do
       end
 
       context 'GET /jobs/<name>' do
+        include_context "validation_util"
         let(:url) { job_path }
         let(:response_should_be_successful) do
           response.should look_like({
@@ -696,7 +697,9 @@ describe "Jobs API Endpoint", :jobs do
                                         'id' => /^[0-9a-f]{32}$/,
                                         'nodes' => {"unavailable" => ["DONKEY"]},
                                         'run_timeout' => 3600,
-                                        'status' => 'quorum_failed'
+                                        'status' => 'quorum_failed',
+                                        'created_at' => valid_datetime,
+                                        'updated_at' => valid_datetime
                                       }
                                     })
         end
@@ -725,7 +728,7 @@ describe "Jobs API Endpoint", :jobs do
                                       :status => 200
                                     })
           json = parse(response)
-          validate_timestamp json['created_at']
+          validate_datetime json['created_at']
         end
       end
 
@@ -735,7 +738,7 @@ describe "Jobs API Endpoint", :jobs do
                                       :status => 200
                                     })
           json = parse(response)
-          validate_timestamp json['updated_at']
+          validate_datetime json['updated_at']
         end
       end
 
