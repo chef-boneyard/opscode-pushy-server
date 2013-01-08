@@ -1,4 +1,6 @@
 shared_context "job_body_util" do
+  include_context "validation_util"
+
   let(:default_payload) {
     {
       "command" => "sleep 1",
@@ -14,7 +16,9 @@ shared_context "job_body_util" do
       "nodes" => {"unavailable" => ["DONKEY"]},
       "id" => /^[0-9a-f]{32}$/,
       "run_timeout" => 3600,
-      "status" => "quorum_failed"
+      "status" => "quorum_failed",
+      "created_at" => valid_datetime,
+      "updated_at" => valid_datetime
     }
   }
 
