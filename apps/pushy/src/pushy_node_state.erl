@@ -342,7 +342,10 @@ process_and_dispatch_message([Address, Header, Body], State) ->
         {ok, #pushy_message{} = Msg} ->
             {ok, process_message(State, Msg)};
         {error, #pushy_message{validated=bad_sig}} ->
-            lager:error("Command message failed verification: header=~s", [Header]),
+            lager:error("Bad signature in message: header=~s", [Header]),
+            {ok, State};
+        {error, #pushy_message{validated=bad_timestamp}} ->
+            lager:error("Bad timestamp in message: =~s", [Header]),
             {ok, State}
     catch
         error:Error ->
