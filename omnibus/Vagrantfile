@@ -56,7 +56,7 @@ Vagrant::Config.run do |config|
     chef.add_recipe "omnibus"
     chef.json = {
       "omnibus" => {
-        "install-dirs" => ["/opt/opscode-push-jobs-server"]
+        "install-dirs" => ["/opt/opscode-push-jobs-server", "/opt/opscode-push-jobs-client"]
       }
     }
   end
