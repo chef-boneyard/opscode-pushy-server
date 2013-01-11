@@ -345,7 +345,7 @@ process_and_dispatch_message([Address, Header, Body], State) ->
             lager:error("Bad signature in message: header=~s", [Header]),
             {ok, State};
         {error, #pushy_message{validated=bad_timestamp}} ->
-            lager:error("Bad timestamp in message: =~s", [Header]),
+            lager:error("Bad timestamp in message: =~s", [Body]),
             {ok, State}
     catch
         error:Error ->
