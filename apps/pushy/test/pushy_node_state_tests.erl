@@ -51,23 +51,22 @@ basic_cleanup() ->
     meck:unload(pushy_command_switch).
 
 mk_message_body({Org,Node}, Type, IncarnationId) ->
-    EJson =
-        {[{<<"node">>, Node},
-          {<<"client">>, <<"private-chef.opscode.piab">>},
-          {<<"org">>, Org},
-          {<<"type">>,  atom_to_binary(Type, utf8)},
-          {<<"timestamp">>, <<"Thu, 29 Nov 2012 00:26:17 GMT">>},
-          {<<"incarnation_id">>, IncarnationId},
-          {<<"job_state">>, <<"idle">>},
-          {<<"job_id">>, <<"null">>},
-          {<<"sequence">>, 2} ]},
-    jiffy:encode(EJson).
+    {[{<<"node">>, Node},
+      {<<"client">>, <<"private-chef.opscode.piab">>},
+      {<<"org">>, Org},
+      {<<"type">>,  atom_to_binary(Type, utf8)},
+      {<<"incarnation_id">>, IncarnationId},
+      {<<"job_state">>, <<"idle">>},
+      {<<"job_id">>, <<"null">>},
+      {<<"sequence">>, 2} ]}.
 
 send_message(Node, Type, IncarnationId) ->
     {hmac_sha256, Key} = pushy_key_manager:get_key(Node),
     Body = mk_message_body(Node, Type, IncarnationId),
-    Header = pushy_messaging:make_header(proto_v2, hmac_sha256, Key, Body),
-    Message = [?ADDR, Header, Body],
+    Body2 = pushy_messaging:insert_timestamp_and_sequence(Body, 0),
+    Json = jiffy:encode(Body2),
+    Header = pushy_messaging:make_header(proto_v2, hmac_sha256, Key, Json),
+    Message = [?ADDR, Header, Json],
     pushy_node_state:recv_msg(Message).
 
 message_test_() ->
