@@ -125,6 +125,25 @@ describe "end-to-end-test" do
         end
       end
 
+      context 'when the client sends an unexpected message with a bad timestamp' do
+        before :each do
+          client = @clients['DONKEY'][:client]
+          job_id = @response["uri"].split("/").last
+
+          pp :class=>client.class
+
+          @expired_time = Time.now - (1000)
+          TimeSendWrapper.stub!(:now).and_return(@expired_time, Time.now() )
+
+          client.send_command(:nack_commit, job_id)
+        end
+
+        it 'the message is ignored and the job completes successfully' do
+          job = wait_for_job_complete(@response["uri"])
+          job['nodes'].should == { 'succeeded' => [ 'DONKEY' ] }
+        end
+      end
+
       context 'when the client sends an unexpected message with an invalid job_id' do
         before :each do
           client = @clients['DONKEY'][:client]
