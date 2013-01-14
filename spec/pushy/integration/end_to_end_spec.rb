@@ -56,9 +56,9 @@ describe "end-to-end-test" do
       end
 
       it 'should nack when asked to commit to another job' do
-        job = start_job(echo_yahoo, %w{DONKEY})
+        job = start_job('chef-client', %w{DONKEY})
         get_job(job['uri']).should == {
-          'command' => echo_yahoo,
+          'command' => 'chef-client',
           'run_timeout' => 3600,
           'nodes' => { 'nacked' => [ 'DONKEY' ] },
           'status' => 'quorum_failed'
