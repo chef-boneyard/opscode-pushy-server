@@ -26,5 +26,5 @@ build_iteration "1"
 # (either externally or at the project level) this can go away.
 ENV['CHEF_GIT_REV'] ||= "master"
 
-dependencies ["preparation","chef","opscode-pushy-client","version-manifest"]
+dependencies ["preparation","chef-gem","opscode-pushy-client","version-manifest"]
 
