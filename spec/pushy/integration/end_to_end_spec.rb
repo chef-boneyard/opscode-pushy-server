@@ -125,6 +125,46 @@ describe "end-to-end-test" do
         end
       end
 
+      context 'when the client sends an unexpected message with a bad timestamp' do
+        before :each do
+          client = @clients['DONKEY'][:client]
+          job_id = @response["uri"].split("/").last
+
+          @expired_time = Time.now - (1000)
+          PushyClient::ProtocolHandler::TimeSendWrapper.stub!(:now).and_return(@expired_time, Time.now())
+
+          client.send_command(:nack_commit, job_id)
+        end
+
+        it 'the message is ignored and the job completes successfully' do
+          job = wait_for_job_complete(@response["uri"])
+          job['nodes'].should == { 'succeeded' => [ 'DONKEY' ] }
+        end
+      end
+
+      context 'when the client sends an unexpected message with a old, but good timestamp' do
+        before :each do
+          client = @clients['DONKEY'][:client]
+          job_id = @response["uri"].split("/").last
+
+          @expired_time = Time.now - (100) # assumes timeout is 500 s.
+          PushyClient::ProtocolHandler::TimeSendWrapper.stub!(:now).and_return(@expired_time, Time.now())
+
+          client.send_command(:nack_commit, job_id)
+        end
+
+        it 'aborts the node and we can run another job on the node afterwards successfully' do
+          job = wait_for_job_complete(@response["uri"])
+          job['nodes'].should == { 'crashed' => [ 'DONKEY' ] }
+
+          wait_for_node_to_come_out_of_rehab('DONKEY')
+
+          start_echo_job_on_all_clients
+          echo_job_should_complete_on_all_clients
+        end
+      end
+
+
       context 'when the client sends an unexpected message with an invalid job_id' do
         before :each do
           client = @clients['DONKEY'][:client]
