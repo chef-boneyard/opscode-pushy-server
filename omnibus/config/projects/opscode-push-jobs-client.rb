@@ -18,7 +18,7 @@
 name "opscode-push-jobs-client"
 
 install_path    "/opt/opscode-push-jobs-client"
-build_version   Omnibus::BuildVersion.full
+build_version   Omnibus::BuildVersion.new.semver
 build_iteration "1"
 
 # Hacky but allows us to set the embedded chef version that is installed.
