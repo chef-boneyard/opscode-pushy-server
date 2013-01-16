@@ -93,6 +93,7 @@ to_json(Req, #config_state{organization_name = OrgName,
           {<<"public_key">>, PublicKey},
           {<<"encoded_session_key">>, EKeyStruct},
           {<<"lifetime">>, ConfigLifetime},
+          {<<"max_message_skew">>, pushy_messaging:get_max_message_skew()},
           {<<"incarnation_id">>, IncarnationId}
          ]},
     ConfigurationJson = jiffy:encode(ConfigurationStruct),
