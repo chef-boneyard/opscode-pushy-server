@@ -41,6 +41,32 @@ describe "end-to-end-test" do
       end
     end
 
+    context 'that is already running chef-client' do
+      before :each do
+        # create a lockfile to simulate a chef-client run
+        lockfile_location = Chef::Config[:lockfile] || "#{Chef::Config[:file_cache_path]}/chef-client-running.pid"
+        @lockfile = File.open(lockfile_location, File::RDWR|File::CREAT, 0644)
+        @lockfile.flock(File::LOCK_EX|File::LOCK_NB)
+      end
+
+      after :each do
+        # release the lock
+        @lockfile.flock(File::LOCK_UN)
+        @lockfile.close
+      end
+
+      it 'should nack when asked to commit to another job' do
+        job = start_job('chef-client', %w{DONKEY})
+        get_job(job['uri']).should == {
+          'command' => 'chef-client',
+          'run_timeout' => 3600,
+          'nodes' => { 'nacked' => [ 'DONKEY' ] },
+          'status' => 'quorum_failed'
+        }
+      end
+
+    end
+
     context 'when running a job' do
       before(:each) do
         node = get_node_state("DONKEY")
