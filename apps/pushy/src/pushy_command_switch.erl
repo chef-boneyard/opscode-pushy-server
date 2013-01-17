@@ -15,7 +15,8 @@
 %% ------------------------------------------------------------------
 
 -export([start_link/2,
-         send/1]).
+         send/1,
+         switch_processes_fun/0]).
 
 %% ------------------------------------------------------------------
 %% Private Exports - only exported for instrumentation
@@ -68,6 +69,18 @@ send(Message) ->
             Error
     end.
 
+%% @doc Generate a function suitable for use with pushy_process_monitor that
+%% lists the switch processes
+-spec switch_processes_fun() -> fun(() -> [{binary(), pid()}]).
+switch_processes_fun()->
+    fun() ->
+            case gproc:select({local, names}, [{{{n,l,{?MODULE, '_'}},'_','_'},[],['$_']}]) of
+                [] ->
+                   [];
+                Switches ->
+                    [extract_process_info(Switch) || Switch <- Switches]
+            end
+    end.
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
 %% ------------------------------------------------------------------
@@ -146,3 +159,6 @@ select_switch() ->
             {_, Pid, _} = lists:nth(Pos, Switches),
             {ok, Pid}
     end.
+
+extract_process_info({{n,l, {Name, Id}}, Pid, _})  ->
+    {list_to_binary(io_lib:format("~s_~B", [Name, Id])), Pid}.

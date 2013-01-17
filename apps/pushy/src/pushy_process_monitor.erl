@@ -1,7 +1,8 @@
 %%%-------------------------------------------------------------------
 %%% @author James Casey
 %%% @copyright 2012 Opscode, Inc.
-%%% @doc
+%%% @doc A simple process monitor which inserts process statistics
+%%% to folsom
 %%%
 %%% @end
 %%%-------------------------------------------------------------------
@@ -12,7 +13,8 @@
 
 %% API
 -export([start_link/3,
-         measure/1]).
+         measure/1,
+         single_process/2]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -22,9 +24,10 @@
          terminate/2,
          code_change/3]).
 
+-type process_fun() :: fun(() -> [{binary(), pid()}]).
 -type process() :: atom() | pid().
--record(state, {name :: binary(),
-                process :: process(),
+-record(state, {name,
+                process_fun :: process_fun(),
                 interval :: integer()
                }).
 
@@ -39,11 +42,17 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link(Name, Process, Interval) ->
-    gen_server:start_link(?MODULE, [Name, Process, Interval], []).
+start_link(Name, ProcessFun, Interval) ->
+    gen_server:start_link(?MODULE, [Name, ProcessFun, Interval], []).
 
 measure(Pid) ->
-  gen_server:cast(Pid, measure).
+  gen_server:call(Pid, measure).
+
+%% @doc A simple helper which generates a process fun for a single process
+%% based on it's pid or process name
+-spec single_process(Name :: binary(), Process :: process()) -> [{binary(), process()}].
+single_process(Name, Process) ->
+    fun() -> [{Name, erlang:whereis(Process)}] end.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -60,10 +69,10 @@ measure(Pid) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([Name, Process, Interval]) ->
+init([Name, ProcessFun, Interval]) ->
     {ok, _Timer} = timer:send_after(Interval, start_measure),
     {ok, #state{name = Name,
-                process = Process,
+                process_fun = ProcessFun,
                 interval = Interval}}.
 
 %%--------------------------------------------------------------------
@@ -80,6 +89,9 @@ init([Name, Process, Interval]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call(measure, _From, #state{process_fun = ProcessFun} = State) ->
+    Reply = gather_stats(ProcessFun),
+    {reply, Reply, State};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -94,16 +106,6 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast(measure, #state{name = Name,
-                            process = Process} = State) ->
-  case mbox_stats(Process) of
-    undefined ->
-      lager:warning("Process undefined : ~p", [Process]),
-      ignore;
-    Len when is_integer(Len) ->
-      send_metric(Name, Len)
-  end,
-  {noreply, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -117,9 +119,9 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(start_measure, #state{process = Process,
+handle_info(start_measure, #state{name = Name,
                                   interval = Interval} = State) ->
-    lager:info("Starting Process Monitor for ~p", [Process]),
+    lager:info("Starting Process Monitor for ~p", [Name]),
     _Timer = timer:apply_interval(Interval, ?MODULE, measure, [self()]),
     {noreply, State};
 handle_info(Info, State) ->
@@ -155,6 +157,21 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
+gather_stats(ProcessFun) ->
+    ProcessList = ProcessFun(),
+    gather_stats0(ProcessList).
+
+gather_stats0([]) ->
+    ok;
+gather_stats0([{Name, Process} |Rest]) ->
+    case mbox_stats(Process) of
+        undefined ->
+            lager:warning("Process undefined : ~p", [Process]),
+            no_process;
+        Len when is_integer(Len) ->
+            send_metric(Name, Len),
+            gather_stats0(Rest)
+    end.
 
 mbox_stats(Name) when is_atom(Name) ->
     case erlang:whereis(Name) of
