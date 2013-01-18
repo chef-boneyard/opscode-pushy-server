@@ -8,7 +8,6 @@
 
 -module(pushy_tools).
 
--define(PUSHY_ORG,<<"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa">> ).
 -include("pushy_sql.hrl").
 
 -export([send_job/3,
@@ -19,7 +18,8 @@
 %% where HOSTNAME is the server where the simulated clients are running
 send_job(Host, OrgName, Num) ->
     Names = [ construct_name(Host, N) || N <- lists:seq(1, Num)],
-    Job = pushy_object:new_record(pushy_job, OrgName, Names, <<"chef-client">>,
+    OrgId = pushy_org:fetch_org_id(OrgName),
+    Job = pushy_object:new_record(pushy_job, OrgId, Names, <<"chef-client">>,
                                   10000, Num),
     pushy_job_state_sup:start(Job).
 
@@ -31,7 +31,7 @@ construct_name(Hostname, Id) ->
     list_to_binary(io_lib:format("~s-~4..0B", [Hostname, Id])).
 
 %%
-%% Generate a pretty hexadecimal output for a binary. 
+%% Generate a pretty hexadecimal output for a binary.
 bin_to_hex(Bin) when is_binary(Bin) ->
     lists:flatten([ [ erlang:integer_to_list(Nibble1, 16), erlang:integer_to_list(Nibble2, 16) ]
                     || << Nibble1:4, Nibble2:4 >> <= Bin ]).
