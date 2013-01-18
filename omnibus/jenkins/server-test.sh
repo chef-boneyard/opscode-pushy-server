@@ -60,7 +60,7 @@ sudo "private-chef-ctl" reconfigure
 sleep 120
 sudo "${project_name}-ctl" reconfigure
 sleep 10
-sudo "${project_name}-ctl" test --all -J $WORKSPACE/pedant.xml
+sudo "${project_name}-ctl" test --all -J $WORKSPACE/pedant.xml --client-debug
 
 # when build succeeds, nuke the packages
 find . -type d -maxdepth 1 -mindepth 1 | xargs rm -rf
