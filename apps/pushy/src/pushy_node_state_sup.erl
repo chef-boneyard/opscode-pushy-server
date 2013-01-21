@@ -43,7 +43,7 @@ get_or_create_process(NodeRef, NodeAddr, IncarnationId) ->
             % Run start_child asynchronously; we only need to wait until the
             % process registers itself before we can send it messages.
             spawn(supervisor, start_child, [?SERVER, [NodeRef, NodeAddr, IncarnationId]]),
-            {Pid, _Value} = gproc:await({n,l,GprocName},1000),
+            {Pid, _Value} = gproc:await({n,l,GprocName},infinity),
             Pid;
         Pid -> Pid
     end.
