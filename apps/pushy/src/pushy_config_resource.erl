@@ -44,17 +44,10 @@ is_authorized(Req, State) ->
 
 forbidden(Req, State) ->
     forbidden(wrq:method(Req), Req, State).
-forbidden('GET', Req,
-        #config_state{requestor = Requestor,
-                      requestor_type = Type,
-                      node_name = NodeName} = State)
-        when Requestor =/= NodeName, Type =:= client ->
+forbidden('GET', Req, #config_state{requestor_type = client} = State) ->
     case envy:get(pushy, validate_client_node_name, true, boolean) of
-        true ->
-            Msg = <<"Client and node name must match">>,
-            Req1 = wrq:set_resp_body(jiffy:encode({[{<<"error">>, [Msg]}]}), Req),
-            {true, Req1, State};
-        false -> pushy_wm_base:read_forbidden(Req, State)
+        true -> validate_requestor(Req, State);
+        false -> {false, Req, State}
     end;
 forbidden('GET', Req, State) ->
     pushy_wm_base:read_forbidden(Req, State).
@@ -120,3 +113,12 @@ to_json(Req, #config_state{organization_name = OrgName,
 
     {ConfigurationJson, Req, State}.
 
+validate_requestor(Req, #config_state{requestor = ClientName,
+                                      node_name = NodeName} = State) ->
+    case ClientName =:= NodeName of
+        true -> {false, Req, State};
+        false ->
+            Msg = <<"Client and node name must match">>,
+            Req1 = wrq:set_resp_body(jiffy:encode({[{<<"error">>, [Msg]}]}), Req),
+            {true, Req1, State}
+    end.
