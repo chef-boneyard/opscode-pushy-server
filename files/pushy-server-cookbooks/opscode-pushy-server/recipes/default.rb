@@ -33,7 +33,7 @@ end
 node.consume_attributes(PushJobsServer.generate_config(node['fqdn']))
 
 if File.exists?("/var/opt/opscode-push-jobs-server/bootstrapped")
-  node['pushy']['bootstrap']['enable'] = false
+  node.set['pushy']['bootstrap']['enable'] = false
 end
 
 # Create the Chef User
