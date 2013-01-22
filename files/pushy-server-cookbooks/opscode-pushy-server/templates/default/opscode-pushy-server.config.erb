@@ -90,6 +90,8 @@
           {down_threshold, <%= @down_threshold %> },
           {decay_window, <%= @decay_window %> },
           {detect_offline_nodes_interval, <%= @detect_offline_nodes_interval %> },
+          %% Check to see if client and node name match (boolean)
+          {validate_client_node_name, <%= @validate_client_node_name %> },
           %% webmachine log dir
           {log_dir, "<%= @log_directory %>" },
 
