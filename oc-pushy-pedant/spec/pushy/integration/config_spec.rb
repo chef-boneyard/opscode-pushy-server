@@ -49,6 +49,8 @@ describe "pushy config" do
     ["Failed to authenticate as 'invalid'. Ensure that your node_name and client key are correct."] }
   let(:outside_user_not_associated_msg) {
     ["'pedant-nobody' is not associated with organization '#{org}'"] }
+  let(:client_and_node_name_match_msg) {
+    ["Client and node name must match"] }
 
   describe 'access control' do
     context 'GET /config/<name>' do
@@ -69,7 +71,7 @@ describe "pushy config" do
       end
 
       it 'returns a 200 ("OK") for client' do
-        get(api_url("/pushy/config/#{config_name}"),
+        get(api_url("/pushy/config/pedant_non_admin_client"),
             platform.non_admin_client) do |response|
           response.should look_like({
                                       :status => 200
@@ -100,11 +102,23 @@ describe "pushy config" do
                                     })
         end
       end
+
+      it 'returns a 403 ("Forbidden") when client and node name do not match' do
+        get(api_url("/pushy/config/#{config_name}"),
+            platform.non_admin_client) do |response|
+          response.should look_like({
+                                      :status => 403,
+                                      :body_exact => {
+                                        "error" => client_and_node_name_match_msg
+                                      }
+                                    })
+        end
+      end
     end
   end
 
   context 'invalid request' do
-    it "returns 403 (\"Forbidden\") when organization doesn't exist", :pending do
+    it "returns 403 (\"Forbidden\") when organization doesn't exist" do
       # This should be un-pended when OC-5484 is done
       path = api_url("/pushy/config/#{config_name}").gsub(org, "bogus-org")
       get(path, admin_user) do |response|
