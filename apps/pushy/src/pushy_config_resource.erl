@@ -11,6 +11,7 @@
          allowed_methods/2,
          content_types_provided/2,
          is_authorized/2,
+         forbidden/2,
          malformed_request/2,
          service_available/2,
          to_json/2]).
@@ -31,7 +32,7 @@ init(Config) ->
 %% then go to localhost:WXYZ/wmtrace
 
 service_available(Req, State) ->
-    NodeName = wrq:path_info(node_name, Req),
+    NodeName = list_to_binary(wrq:path_info(node_name, Req)),
     State1 = State#config_state{node_name = NodeName},
     {true, Req, State1}.
 
@@ -40,6 +41,16 @@ malformed_request(Req, State) ->
 
 is_authorized(Req, State) ->
     pushy_wm_base:is_authorized(Req, State).
+
+forbidden(Req, State) ->
+    forbidden(wrq:method(Req), Req, State).
+forbidden('GET', Req, #config_state{requestor_type = client} = State) ->
+    case envy:get(pushy, validate_client_node_name, true, boolean) of
+        true -> validate_requestor(Req, State);
+        false -> {false, Req, State}
+    end;
+forbidden('GET', Req, State) ->
+    pushy_wm_base:read_forbidden(Req, State).
 
 allowed_methods(Req, State) ->
     {['GET'], Req, State}.
@@ -102,3 +113,12 @@ to_json(Req, #config_state{organization_name = OrgName,
 
     {ConfigurationJson, Req, State}.
 
+validate_requestor(Req, #config_state{requestor = ClientName,
+                                      node_name = NodeName} = State) ->
+    case ClientName =:= NodeName of
+        true -> {false, Req, State};
+        false ->
+            Msg = <<"Client and node name must match">>,
+            Req1 = wrq:set_resp_body(jiffy:encode({[{<<"error">>, [Msg]}]}), Req),
+            {true, Req1, State}
+    end.
