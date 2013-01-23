@@ -57,6 +57,7 @@ default['pushy']['opscode-pushy-server']['api_port'] = '10003'
 default['pushy']['opscode-pushy-server']['down_threshold'] = '0.6'
 default['pushy']['opscode-pushy-server']['decay_window'] = '4'
 default['pushy']['opscode-pushy-server']['detect_offline_nodes_interval'] = '4'
+default['pushy']['opscode-pushy-server']['validate_client_node_name'] = 'true'
 default['pushy']['opscode-pushy-server']['enable_graphite'] = false
 default['pushy']['opscode-pushy-server']['keyring_dir'] = '/etc/opscode-push-jobs-server'
 
