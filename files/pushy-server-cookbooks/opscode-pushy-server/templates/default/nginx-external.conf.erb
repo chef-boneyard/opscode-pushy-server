@@ -1,0 +1,16 @@
+#
+# Pushy endpoints in LB
+#
+
+# pushy status endpoint
+location ~ "^/pushy/_status/?$" {
+    types { }
+    default_type application/json;
+    proxy_pass http://opscode_pushy;
+}
+
+# We don't support web-ui for pushy API
+location ~ "^/organizations/[a-z0-9-_]+?/pushy/{0,1}" {
+    proxy_redirect http://opscode_pushy /;
+    proxy_pass http://opscode_pushy;
+}
