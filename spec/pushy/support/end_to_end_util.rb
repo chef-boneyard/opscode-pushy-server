@@ -47,7 +47,23 @@ shared_context "end_to_end_util" do
       new_client = PushyClient.new(
         :chef_server_url => "#{Pedant.config[:chef_server]}/organizations/#{org}",
         :client_key      => key_path,
-        :node_name       => name
+        :node_name       => name,
+        :whitelist       => {
+          echo_yahoo => echo_yahoo,
+          'chef-client' => {
+            :command_line => 'echo true',
+            :lock => true
+          },
+          'ruby -e "ENV[\'PUSHY_NODE_NAME\'] == \'DONKEY\' ? exit(1) : exit(0)"' => 'ruby -e "ENV[\'PUSHY_NODE_NAME\'] == \'DONKEY\' ? exit(1) : exit(0)"',
+          'ruby -e "exit 1"' => 'ruby -e "exit 1"',
+          'sleep 1' => 'sleep 1',
+          'sleep 2' => 'sleep 2',
+          'sleep 5' => 'sleep 3',
+          'sleep 10' => 'sleep 10',
+          'sleep 20' => 'sleep 20',
+          'this_oughta_succeed' => 'echo true',
+          'this_oughta_fail' => 'ruby -e "exit 1"'
+        }
       )
       @clients[name][:client] = new_client
       @clients[name][:client].start
