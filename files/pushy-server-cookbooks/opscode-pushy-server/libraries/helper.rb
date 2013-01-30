@@ -18,12 +18,16 @@
 require 'chef/shell_out'
 
 class OmnibusHelper
-  def self.should_notify?(service_name)
-    File.symlink?("/opt/opscode-push-jobs-server/service/#{service_name}") && check_status(service_name)
+  def self.should_notify?(service_name,
+                          path = "/opt/opscode-push-jobs-server",
+                          command = "opscode-push-jobs-server-ctl")
+    File.symlink?("#{path}/service/#{service_name}") && check_status(service_name, path, command)
   end
 
-  def self.check_status(service_name)
-    o = Chef::ShellOut.new("/opt/opscode-push-jobs-server/bin/opscode-push-jobs-server-ctl status #{service_name}")
+  def self.check_status(service_name,
+                        path="/opt/opscode-push-jobs-server",
+                        command="opscode-push-jobs-server-ctl")
+    o = Chef::ShellOut.new("#{path}/bin/#{command} status #{service_name}")
     o.run_command
     o.exitstatus == 0 ? true : false
   end

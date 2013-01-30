@@ -67,6 +67,7 @@ end
 include_recipe "runit"
 
 include_recipe "opscode-pushy-server::postgresql"
+include_recipe "opscode-pushy-server::nginx"
 
 # Configure Services
 [

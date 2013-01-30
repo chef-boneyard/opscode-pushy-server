@@ -1,0 +1,6 @@
+#
+# Pushy upstream definition
+#
+upstream opscode_pushy {
+    server <%= node['pushy']['opscode-pushy-server']['vip'] %>:<%= node['pushy']['opscode-pushy-server']['api_port'] %>;
+}
