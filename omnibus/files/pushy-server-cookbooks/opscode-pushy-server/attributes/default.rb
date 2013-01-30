@@ -51,6 +51,7 @@ default['pushy']['opscode-pushy-server']['heartbeat_interval'] = '1000'
 default['pushy']['opscode-pushy-server']['zeromq_listen_address'] = 'tcp://*'
 default['pushy']['opscode-pushy-server']['zmq_io_processes'] = '1'
 
+default['pushy']['opscode-pushy-server']['vip'] = '127.0.0.1'
 default['pushy']['opscode-pushy-server']['server_heartbeat_port'] = '10000'
 default['pushy']['opscode-pushy-server']['command_port'] = '10002'
 default['pushy']['opscode-pushy-server']['api_port'] = '10003'
@@ -73,3 +74,5 @@ default['pushy']['postgresql']['sql_ro_user'] = "opscode_pushy_ro"
 default['pushy']['postgresql']['sql_ro_password'] = "shmunzeltazzen"
 default['pushy']['postgresql']['vip'] = "127.0.0.1"
 default['pushy']['postgresql']['port'] = 5432
+
+default['pushy']['nginx']['dir'] = "/var/opt/opscode/nginx"
