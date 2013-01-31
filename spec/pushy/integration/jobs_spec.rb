@@ -107,6 +107,14 @@ describe "Jobs API Endpoint", :jobs do
                                     })
         end
       end
+
+      it 'returns a 401 ("Unauthorized") for bogus client' do
+        get(api_url("/pushy/jobs/"), platform.bad_client) do |response|
+          response.should look_like({
+                                      :status => 401
+                                    })
+        end
+      end
     end # context 'GET /jobs'
 
     context 'POST /jobs' do
@@ -164,6 +172,15 @@ describe "Jobs API Endpoint", :jobs do
                                     })
         end
       end
+
+      it 'returns a 401 ("Unauthorized") for bogus client' do
+        post(api_url("/pushy/jobs"), platform.bad_client,
+             :payload => job_to_run) do |response|
+          response.should look_like({
+                                      :status => 401
+                                    })
+        end
+      end
     end # context 'POST /jobs'
 
     context 'GET /jobs/<name>' do
@@ -204,13 +221,20 @@ describe "Jobs API Endpoint", :jobs do
       end
 
       it 'returns a 403 ("Forbidden") for outside user' do
-        get(job_path,
-            outside_user) do |response|
+        get(job_path, outside_user) do |response|
           response.should look_like({
                                       :status => 403,
                                       :body_exact => {
                                         "error" => outside_user_not_associated_msg
                                       }
+                                    })
+        end
+      end
+
+      it 'returns a 401 ("Unauthorized") for bogus client' do
+        get(job_path, platform.bad_client) do |response|
+          response.should look_like({
+                                      :status => 401
                                     })
         end
       end
