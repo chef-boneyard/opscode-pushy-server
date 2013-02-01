@@ -88,7 +88,7 @@ describe "Node_States API Endpoint", :node_states do
         end
       end
 
-      it 'returns a 401 ("Unknown") for bogus client' do
+      it 'returns a 401 ("Unauthorized") for bogus client' do
         get(api_url("/pushy/node_states"),
             platform.bad_client) do |response|
           response.should look_like({
