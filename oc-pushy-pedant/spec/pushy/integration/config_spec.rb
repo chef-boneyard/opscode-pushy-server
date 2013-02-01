@@ -103,6 +103,15 @@ describe "pushy config" do
         end
       end
 
+      it 'returns a 401 ("Unauthorized") for bogus client' do
+        get(api_url("/pushy/config/#{config_name}"),
+            platform.bad_client) do |response|
+          response.should look_like({
+                                      :status => 401
+                                    })
+        end
+      end
+
       it 'returns a 403 ("Forbidden") when client and node name do not match' do
         get(api_url("/pushy/config/#{config_name}"),
             platform.non_admin_client) do |response|
