@@ -87,6 +87,15 @@ describe "Node_States API Endpoint", :node_states do
                                     })
         end
       end
+
+      it 'returns a 401 ("Unauthorized") for bogus client' do
+        get(api_url("/pushy/node_states"),
+            platform.bad_client) do |response|
+          response.should look_like({
+                                      :status => 401
+                                    })
+        end
+      end
     end # context 'GET /node_states'
 
     context 'GET /node_states/<name>' do
@@ -138,6 +147,15 @@ describe "Node_States API Endpoint", :node_states do
                                       :body_exact => {
                                         "error" => outside_user_not_associated_msg
                                       }
+                                    })
+        end
+      end
+
+      it 'returns a 401 ("Unauthorized") for bogus client' do
+        get(api_url("/pushy/node_states/#{node_name}"),
+            platform.bad_client) do |response|
+          response.should look_like({
+                                      :status => 401
                                     })
         end
       end
