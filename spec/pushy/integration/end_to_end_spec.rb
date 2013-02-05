@@ -242,13 +242,13 @@ describe "end-to-end-test" do
     context 'when running a job that lasts longer than its timeout' do
       before(:each) do
         File.delete('/tmp/pushytest') if File.exist?('/tmp/pushytest')
-        start_and_wait_for_job(echo_yahoo + ' 2', [ 'DONKEY' ], :run_timeout => 1)
+        start_and_wait_for_job('sleep 2', [ 'DONKEY' ], :run_timeout => 1)
       end
 
       it 'times out and aborts' do
         job = wait_for_job_status(@response['uri'], 'timed_out')
         job.should == {
-          'command' => echo_yahoo + ' 2',
+          'command' => 'sleep 2',
           'run_timeout' => 1,
           'nodes' => { 'timed_out' => [ 'DONKEY' ] },
           'status' => 'timed_out'
@@ -381,6 +381,47 @@ describe "end-to-end-test" do
         # timeout.  Fine for now, because there is no timeout :)
         job = wait_for_job_status(response['uri'], 'complete')
         job['nodes'].should == { 'crashed' => [ 'DONKEY' ] }
+      end
+    end
+
+    context 'whitelist tests' do
+      it 'trying to run a command that is not on the whitelist fails' do
+        job = start_job('echo nevereverever', ['DONKEY'])
+        job = wait_for_job_status(job['uri'], 'quorum_failed')
+        job.should == {
+          'command' => 'echo nevereverever',
+          'run_timeout' => 3600,
+          'nodes' => {
+            'nacked' => [ 'DONKEY' ]
+          },
+          'status' => 'quorum_failed'
+        }
+      end
+
+      it 'running a command with a shortened whitelist name that should succeed, it succeeds' do
+        job = start_job('this_oughta_succeed', ['DONKEY'])
+        job = wait_for_job_status(job['uri'], 'complete')
+        job.should == {
+          'command' => 'this_oughta_succeed',
+          'run_timeout' => 3600,
+          'nodes' => {
+            'succeeded' => [ 'DONKEY' ]
+          },
+          'status' => 'complete'
+        }
+      end
+
+      it 'running a command with a shortened whitelist name that should fail, it fails' do
+        job = start_job('this_oughta_fail', ['DONKEY'])
+        job = wait_for_job_status(job['uri'], 'complete')
+        job.should == {
+          'command' => 'this_oughta_fail',
+          'run_timeout' => 3600,
+          'nodes' => {
+            'failed' => [ 'DONKEY' ]
+          },
+          'status' => 'complete'
+        }
       end
     end
   end
