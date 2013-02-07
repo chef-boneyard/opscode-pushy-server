@@ -63,7 +63,7 @@ start_link(PushyState, Id) ->
 send(Message) ->
     case select_switch() of
         {ok, Pid} ->
-            gen_server:call(Pid, {send, Message});
+            gen_server:call(Pid, {send, Message}, infinity);
         Error ->
             lager:error("Unable to send message. No command switch processes found!"),
             Error

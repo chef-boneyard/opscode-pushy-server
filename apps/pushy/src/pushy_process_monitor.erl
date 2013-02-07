@@ -46,7 +46,7 @@ start_link(Name, ProcessFun, Interval) ->
     gen_server:start_link(?MODULE, [Name, ProcessFun, Interval], []).
 
 measure(Pid) ->
-  gen_server:call(Pid, measure).
+  gen_server:call(Pid, measure, infinity).
 
 %% @doc A simple helper which generates a process fun for a single process
 %% based on it's pid or process name
