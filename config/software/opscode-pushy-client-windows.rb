@@ -17,10 +17,7 @@
 
 name "opscode-pushy-client-windows"
 
-dependencies [
-              # "ruby-windows",
-              # "rubygems",
-              "bundler"]
+dependencies [ "bundler"]
 
 version "master"
 
