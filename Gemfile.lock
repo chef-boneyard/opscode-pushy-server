@@ -1,7 +1,7 @@
 GIT
   remote: git://github.com/opscode/omnibus-ruby.git
-  revision: e361837af20793d5dc502d732567be665d72f287
-  branch: adamed-oc-6037-omnibus-ruby-msi
+  revision: 6fa5ab234f31fd2438bf2a00644039941fc725f5
+  branch: master
   specs:
     omnibus (0.5.3)
       fpm (= 0.3.11)
