@@ -48,6 +48,7 @@ shared_context "end_to_end_util" do
         :chef_server_url => "#{Pedant.config[:chef_server]}/organizations/#{org}",
         :client_key      => key_path,
         :node_name       => name,
+        :hostname        => name,
         :whitelist       => {
           echo_yahoo => echo_yahoo,
           'chef-client' => {
