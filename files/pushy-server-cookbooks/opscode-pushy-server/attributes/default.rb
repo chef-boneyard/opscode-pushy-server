@@ -25,16 +25,6 @@ default['pushy']['bootstrap']['enable'] = true
 default['pushy']['chef_base_path'] = "/opt/opscode"
 
 ####
-# The User that services run as
-####
-# The username for the pushy services user
-default['pushy']['user']['username'] = "opscode"
-# The shell for the pushy services user
-default['pushy']['user']['shell'] = "/bin/sh"
-# The home directory for the pushy services user
-default['pushy']['user']['home'] = "/opt/opscode/embedded"
-
-####
 # Pushy Server
 ####
 default['pushy']['opscode-pushy-server']['enable'] = true
@@ -74,5 +64,3 @@ default['pushy']['postgresql']['sql_ro_user'] = "opscode_pushy_ro"
 default['pushy']['postgresql']['sql_ro_password'] = "shmunzeltazzen"
 default['pushy']['postgresql']['vip'] = "127.0.0.1"
 default['pushy']['postgresql']['port'] = 5432
-
-default['pushy']['nginx']['dir'] = "/var/opt/opscode/nginx"
