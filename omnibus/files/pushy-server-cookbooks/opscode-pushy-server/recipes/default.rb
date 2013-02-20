@@ -42,9 +42,6 @@ if File.exists?("/var/opt/opscode-push-jobs-server/bootstrapped")
   node.set['pushy']['bootstrap']['enable'] = false
 end
 
-# Create the Chef User
-include_recipe "opscode-pushy-server::users"
-
 pushy_key = OpenSSL::PKey::RSA.generate(2048) unless File.exists?('/etc/opscode-push-jobs-server/pushy_pub.pem')
 
 file "/etc/opscode-push-jobs-server/pushy_pub.pem" do
