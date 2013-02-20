@@ -26,6 +26,12 @@ directory "/etc/opscode-push-jobs-server" do
   action :nothing
 end.run_action(:create)
 
+# We need to load the private chef configuration
+if File.exists?("/etc/opscode/chef-server-running.json")
+  private_chef = JSON.parse(IO.read("/etc/opscode/chef-server-running.json"))
+end
+node.consume_attributes({"private_chef" => private_chef['private_chef']})
+
 PushJobsServer[:node] = node
 if File.exists?("/etc/opscode-push-jobs-server/opscode-push-jobs-server.rb")
   PushJobsServer.from_file("/etc/opscode-push-jobs-server/opscode-push-jobs-server.rb")
@@ -49,7 +55,7 @@ file "/etc/opscode-push-jobs-server/pushy_pub.pem" do
 end
 
 file "/etc/opscode-push-jobs-server/pushy_priv.pem" do
-  owner node["pushy"]["user"]["username"]
+  owner node["private_chef"]["user"]["username"]
   group "root"
   mode "0600"
   content pushy_key.to_pem.to_s unless File.exists?('/etc/opscode-push-jobs-server/pushy_pub.pem')
@@ -85,7 +91,7 @@ end
 include_recipe "opscode-pushy-server::oc-pushy-pedant"
 
 file "/etc/opscode-push-jobs-server/opscode-push-jobs-server-running.json" do
-  owner node['pushy']['user']['username']
+  owner node['private_chef']['user']['username']
   group "root"
   mode "0644"
   content Chef::JSONCompat.to_json_pretty({ "pushy" => node['pushy'].to_hash, "run_list" => node.run_list })

@@ -16,12 +16,12 @@
 #
 
 # Create a user for Pushy services to run as
-user node['pushy']['user']['username'] do
+user node['private_chef']['user']['username'] do
   system true
-  shell node['pushy']['user']['shell']
-  home node['pushy']['user']['home']
+  shell node['private_chef']['user']['shell']
+  home node['private_chef']['user']['home']
 end
 
-group node['pushy']['user']['username'] do
-  members [node['pushy']['user']['username']]
+group node['private_chef']['user']['username'] do
+  members [node['private_chef']['user']['username']]
 end
