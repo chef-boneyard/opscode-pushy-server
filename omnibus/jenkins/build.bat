@@ -33,9 +33,6 @@ call bundle install || GOTO :error
 rem # this is how we set environment variables from commands in batch files
 FOR /F %%i in ('call bundle show omnibus') DO SET OMNIBUS_GEM_PATH=%%i
 
-echo Current dir is
-cd
-
 call chef-solo -c .\jenkins\solo.rb -j .\jenkins\windows-dna.json -l debug || GOTO :error
 
 call copy /Y omnibus.rb.example.windows omnibus.rb || GOTO :error
