@@ -24,9 +24,6 @@ relative_path "ruby-#{version}-i386-mingw32"
 
 source :url => "http://rubyforge.org/frs/download.php/76528/ruby-#{version}-i386-mingw32.7z",
        :md5 => "8ba0d2203590dbf8e9d59d9d731c05d0"
-#       :md5 => "49084fc5ed4e276ad0e7aa13f40044ef"
-#       :md5 => "d41d8cd98f00b204e9800998ecf8427e"
-
 
 build do
   # Robocopy's return code is 1 if it succesfully copies over the
