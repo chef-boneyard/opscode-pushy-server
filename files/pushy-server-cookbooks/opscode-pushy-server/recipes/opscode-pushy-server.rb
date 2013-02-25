@@ -26,7 +26,7 @@ pushy_sasl_log_dir = File.join(pushy_log_dir, "sasl")
   pushy_sasl_log_dir
 ].each do |dir_name|
   directory dir_name do
-    owner node['pushy']['user']['username']
+    owner node['private_chef']['user']['username']
     mode '0700'
     recursive true
   end
