@@ -5,7 +5,7 @@
 # All Rights Reserved
 #
 
-nginx_dir = node['pushy']['nginx']['dir']
+nginx_dir = node['private_chef']['nginx']['dir']
 nginx_etc_dir = File.join(nginx_dir, "etc")
 nginx_addon_dir = File.join(nginx_etc_dir, "addon.d")
 
