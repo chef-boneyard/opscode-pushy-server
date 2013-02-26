@@ -15,18 +15,18 @@
 # limitations under the License.
 #
 
-name "opscode-push-jobs-client-windows"
+name "ruby-windows-devkit"
 
-package_name "opscode-push-jobs-client"
-install_path    "c:/opscode_pushy_build"
-build_version   Omnibus::BuildVersion.new.semver
-build_iteration "1"
+version "4.5.2-20111229-1559"
 
-# Hacky but allows us to set the embedded chef version that is installed.
-# Once omnibus-ruby supports proper software definition version overrides
-# (either externally or at the project level) this can go away.
-ENV['CHEF_GIT_REV'] ||= "master"
+source :url => "http://cloud.github.com/downloads/oneclick/rubyinstaller/DevKit-tdm-32-#{version}-sfx.exe",
+       :md5 => "4bf8f2dd1d582c8733a67027583e19a6"
 
-dependencies ["preparation", "ruby-windows", "ruby-windows-devkit", "chef-gem-windows", "libzmq-windows", "opscode-pushy-client-windows", "opscode-push-jobs-client-msi", "version-manifest"]
+dependencies ["ruby-windows"]
 
-
+build do
+  install_dir_native = install_dir.split(File::SEPARATOR).join(File::ALT_SEPARATOR)
+  command "DevKit-tdm-32-#{version}-sfx.exe -y -o#{install_dir_native}\\embedded"
+  command "echo - #{install_dir}/embedded > config.yml", :cwd => "#{install_dir_native}\\embedded"
+  ruby "dk.rb install", :cwd => "#{install_dir_native}\\embedded"
+end

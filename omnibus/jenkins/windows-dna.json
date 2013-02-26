@@ -1,0 +1,15 @@
+{
+  "omnibus": {
+    "build-user": "administrator",
+    "build-path": "",
+    "install-dirs": [
+      "c:\\opscode_pushy_build\\chef"
+    ],
+    "cache-dirs": [
+      "c:\\omnibus-ruby-cache-pushy"
+    ]
+  },
+  "run_list": [
+    "recipe[omnibus]"
+  ]
+}

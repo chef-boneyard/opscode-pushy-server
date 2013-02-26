@@ -52,12 +52,6 @@ env =
   end
 
 build do
-  rake "gem", :env => env
-
-  gem ["install pkg/opscode-pushy-client*.gem",
-      "-n #{install_dir}/bin",
-      "--no-rdoc --no-ri"].join(" "), :env => env
-  
   gem ["install",
        "zmq",
        "-n #{install_dir}/bin",

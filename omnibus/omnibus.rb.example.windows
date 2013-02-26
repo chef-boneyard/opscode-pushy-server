@@ -7,9 +7,9 @@ Omnibus.configure do |o|
   o.solaris_compiler = "gcc"
 
   # windows config
-  o.cache_dir   = "C:\\omnibus-ruby\\cache"
-  o.source_dir  = "C:\\omnibus-ruby\\src"
-  o.build_dir   = "C:\\omnibus-ruby\\build"
-  o.package_dir = "C:\\omnibus-ruby\\pkg"
+  o.cache_dir   = "C:\\omnibus-ruby-cache-pushy\\cache"
+  o.source_dir  = "C:\\omnibus-ruby-cache-pushy\\src"
+  o.build_dir   = "C:\\omnibus-ruby-cache-pushy\\build"
+  o.package_dir = "C:\\omnibus-ruby-cache-pushy\\pkg"
   
 end

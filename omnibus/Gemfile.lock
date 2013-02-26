@@ -1,6 +1,6 @@
 GIT
   remote: git://github.com/opscode/omnibus-ruby.git
-  revision: 6fa5ab234f31fd2438bf2a00644039941fc725f5
+  revision: 809ea1afcce67e1148c1bf0822d40a7ef12c380e
   branch: master
   specs:
     omnibus (0.5.3)
@@ -13,7 +13,7 @@ GIT
 
 GIT
   remote: git://github.com/opscode/omnibus-software.git
-  revision: 786b64b7e390a8241192203ad5c5d2aa08abb955
+  revision: 280ba8579ba883c853136c884423622337242689
   branch: master
   specs:
     omnibus-software (0.0.1)
@@ -25,7 +25,7 @@ GEM
     childprocess (0.3.8)
       ffi (~> 1.0, >= 1.0.11)
     erubis (2.7.0)
-    ffi (1.3.1-x86-mingw32)
+    ffi (1.4.0)
     fpm (0.3.11)
       json
     i18n (0.6.1)
