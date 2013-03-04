@@ -28,7 +28,7 @@ build do
   block do
     src_dir = self.project_dir
     
-    shell = Mixlib::ShellOut.new("heat.exe dir \"#{install_dir}\" -nologo -srd -gg -cg ChefClientDir -dr CHEFLOCATION -var var.ChefClientSourceDir -out opscode-push-jobs-client-Files.wxs", :cwd => src_dir)
+    shell = Mixlib::ShellOut.new("heat.exe dir \"#{install_dir}\" -nologo -srd -gg -cg PushyClientDir -dr PUSHYLOCATION -var var.PushyClientSourceDir -out opscode-push-jobs-client-Files.wxs", :cwd => src_dir)
     shell.run_command
     shell.error!
   end
@@ -74,7 +74,7 @@ build do
   block do
     src_dir = self.project_dir
     
-    shell = Mixlib::ShellOut.new("candle.exe -nologo -out #{install_dir_native}\\msi-tmp\\ -dChefClientSourceDir=\"#{install_dir_native}\" opscode-push-jobs-client-Files.wxs opscode-push-jobs-client.wxs", :cwd => src_dir)
+    shell = Mixlib::ShellOut.new("candle.exe -nologo -out #{install_dir_native}\\msi-tmp\\ -dPushyClientSourceDir=\"#{install_dir_native}\" opscode-push-jobs-client-Files.wxs opscode-push-jobs-client.wxs", :cwd => src_dir)
     shell.run_command
     shell.error!
   end
