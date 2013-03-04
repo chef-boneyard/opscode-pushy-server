@@ -15,4 +15,9 @@
   <String Id="ProgressDlgTitleInstalling">{\WixUI_Font_Title_White}Installing [ProductName]</String>
 
   <String Id="VerifyReadyDlgInstallTitle">{\WixUI_Font_Title_White}Ready to install [ProductName]</String>
+
+  <!-- Service -->
+  <!-- Keep these in sync with the name and description in chef-service-manager -->
+  <String Id="ServiceDisplayName">Pushy Client Service</String>
+  <String Id="ServiceDescription">Runs Opscode Pushy Client.</String>
 </WixLocalization>
