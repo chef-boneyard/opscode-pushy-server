@@ -59,7 +59,7 @@ init([#pushy_state{ctx=_Ctx} = PushyState]) ->
                 ?WORKER(chef_keyring, []),
                 ?WORKER(pushy_heartbeat_generator, [PushyState]),
                 ?WORKER(pushy_broker, [PushyState])],
-    Switches = start_switches(5, PushyState, []),
+    Switches = start_switches(1, PushyState, []),
     Workers2 = [?WORKER(pushy_process_monitor, [pushy_command_switch, pushy_command_switch:switch_processes_fun(), 1000]),
                 ?SUP(pushy_node_state_sup, []),
                 ?SUP(pushy_job_state_sup, []),
