@@ -15,32 +15,30 @@
 # limitations under the License.
 #
 
-name "opscode-push-jobs-server"
+name       "opscode-push-jobs-server"
+maintainer "Opscode, Inc."
+homepage   "http://www.opscode.com"
 
 replaces        "opscode-push-jobs-server"
 install_path    "/opt/opscode-push-jobs-server"
-build_version Omnibus::BuildVersion.new.semver
-build_iteration "1"
+build_version   Omnibus::BuildVersion.new.semver
+build_iteration 1
 
-runtime_dependencies [ "private-chef" ]
-deps = []
+runtime_dependency "private-chef"
 
 # global
-deps << "chef-gem"
-deps << "preparation"
-deps << "pushy-server-cookbooks"
-deps << "pushy-server-scripts"
-deps << "opscode-pushy-server-ctl"
-deps << "runit"
+dependency "chef-gem"
+dependency "preparation"
+dependency "pushy-server-cookbooks"
+dependency "pushy-server-scripts"
+dependency "opscode-pushy-server-ctl"
+dependency "runit"
 
-deps << "opscode-pushy-server"
-deps << "oc-pushy-pedant"
-
+dependency "opscode-pushy-server"
+dependency "oc-pushy-pedant"
 
 # version manifest file
-deps << "version-manifest"
-
-dependencies deps
+dependency "version-manifest"
 
 exclude "\.git*"
 exclude "bundler\/git"
