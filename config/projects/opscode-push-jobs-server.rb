@@ -26,9 +26,11 @@ build_iteration 1
 
 runtime_dependency "private-chef"
 
+# creates required build directories
+dependency "preparation"
+
 # global
 dependency "chef-gem"
-dependency "preparation"
 dependency "pushy-server-cookbooks"
 dependency "pushy-server-scripts"
 dependency "opscode-pushy-server-ctl"
