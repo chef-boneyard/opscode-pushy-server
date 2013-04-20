@@ -22,12 +22,12 @@ source :path => File.expand_path("files/msi", Omnibus.project_root)
 build do
 
   package_name = "opscode-push-jobs-client"
-  
+
   # harvest with heat.exe
   # recursively generate fragment for chef-client directory
   block do
     src_dir = self.project_dir
-    
+
     shell = Mixlib::ShellOut.new("heat.exe dir \"#{install_dir}\" -nologo -srd -gg -cg PushyClientDir -dr PUSHYLOCATION -var var.PushyClientSourceDir -out opscode-push-jobs-client-Files.wxs", :cwd => src_dir)
     shell.run_command
     shell.error!
@@ -42,15 +42,15 @@ build do
       # dev builds => 0.10.8-299-g360818f
       # rel builds => 0.10.8-299
       #      versions = build_version.split("-").first.split(".")
-      versions = build_version.split("+").first.split(".")      
+      versions = build_version.split("+").first.split(".")
       @major_version = versions[0]
       @minor_version = versions[1]
       @micro_version = versions[2]
       # @build_version = build_version.split("-")[1] || self.project.build_iteration
       @build_version = self.project.build_iteration
-      
+
       @guid = "D607A85C-BDFA-4F08-83ED-2ECB4DCD6BC5"
-      
+
       erb = ERB.new(file.read)
       File.open("#{project_dir}\\#{package_name}-Config.wxi", "w") { |out|
         out.write(erb.result(binding))
@@ -59,7 +59,7 @@ build do
   end
 
   install_dir_native = install_dir.split(File::SEPARATOR).join(File::ALT_SEPARATOR)
-  
+
   # Create temporary directory to store the files required for msi
   # packaging.
   command "IF exist #{install_dir_native}\\msi-tmp (echo msi-tmp is found on the system) ELSE (mkdir #{install_dir_native}\\msi-tmp && echo msi-tmp directory is created.) "
@@ -69,11 +69,11 @@ build do
 
   # Copy the asset files into the temporary file directory for packaging
   command "xcopy assets #{install_dir_native}\\msi-tmp\\assets /I /Y", :cwd => source[:path]
-  
+
   # compile with candle.exe
   block do
     src_dir = self.project_dir
-    
+
     shell = Mixlib::ShellOut.new("candle.exe -nologo -out #{install_dir_native}\\msi-tmp\\ -dPushyClientSourceDir=\"#{install_dir_native}\" opscode-push-jobs-client-Files.wxs opscode-push-jobs-client.wxs", :cwd => src_dir)
     shell.run_command
     shell.error!
