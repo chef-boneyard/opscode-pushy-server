@@ -19,7 +19,7 @@ name "pushy-server-scripts"
 
 dependencies [ "rsync" ]
 
-source :path => File.expand_path("files/pushy-server-scripts", Omnibus.root)
+source :path => File.expand_path("files/pushy-server-scripts", Omnibus.project_root)
 
 build do
   command "mkdir -p #{install_dir}/embedded/bin"
