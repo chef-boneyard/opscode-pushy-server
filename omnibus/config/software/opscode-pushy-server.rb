@@ -18,9 +18,15 @@
 name "opscode-pushy-server"
 version "master"
 
-dependencies ["erlang", "rebar", "rsync", "curl",
-              "automake", "autoconf", "libuuid", "libtool",
-              "bundler"]
+dependency "erlang"
+dependency "rebar"
+dependency "rsync"
+dependency "curl"
+dependency "automake"
+dependency "autoconf"
+dependency "libuuid"
+dependency "libtool"
+dependency "bundler"
 
 # TODO - use public GIT URL when repo made public
 source :git => "git@github.com:opscode/opscode-pushy-server.git"

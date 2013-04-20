@@ -18,11 +18,10 @@
 name "oc-pushy-pedant"
 version "master"
 
-
-dependencies ["libzmq",
-              "ruby",
-              "bundler",
-              "rsync"]
+dependency "libzmq"
+dependency "ruby"
+dependency "bundler"
+dependency "rsync"
 
 # TODO: use the public git:// uri once this repo is public
 source :git => "git@github.com:opscode/oc-pushy-pedant"

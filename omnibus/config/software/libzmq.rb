@@ -19,7 +19,9 @@
 name "libzmq"
 version "v2.1.11"
 
-dependencies ["autoconf", "automake", "libuuid"]
+dependency "autoconf"
+dependency "automake"
+dependency "libuuid"
 
 source :git => "git://github.com/zeromq/zeromq2-x.git"
 

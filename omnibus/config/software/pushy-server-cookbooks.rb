@@ -17,7 +17,7 @@
 
 name "pushy-server-cookbooks"
 
-dependencies [ "rsync" ]
+dependency "rsync"
 
 source :path => File.expand_path("files/pushy-server-cookbooks", Omnibus.project_root)
 

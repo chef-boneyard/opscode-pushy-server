@@ -18,9 +18,9 @@
 name "chef-gem-windows"
 version "11.2.0"
 
-dependencies ["ruby-windows", #includes rubygems
-              "ruby-windows-devkit",
-              "bundler"]
+dependency "ruby-windows" #includes rubygems
+dependency "ruby-windows-devkit"
+dependency "bundler"
 
 build do
 
