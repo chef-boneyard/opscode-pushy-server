@@ -17,7 +17,7 @@
 
 name "pushy-server-scripts"
 
-dependencies [ "rsync" ]
+dependency "rsync"
 
 source :path => File.expand_path("files/pushy-server-scripts", Omnibus.project_root)
 

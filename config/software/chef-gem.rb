@@ -24,7 +24,9 @@
 name "chef-gem"
 version "11.2.0"
 
-dependencies ["ruby", "rubygems", "yajl"]
+dependency "ruby"
+dependency "rubygems"
+dependency "yajl"
 
 build do
   gem ["install chef",

@@ -16,10 +16,9 @@
 #
 
 name "opscode-pushy-client-windows"
-
-dependencies [ "bundler"]
-
 version "master"
+
+dependency "bundler"
 
 # TODO - use public GIT URL when repo made public
 source :git => "git@github.com:opscode/opscode-pushy-client.git"
