@@ -29,10 +29,10 @@ build do
       "-v #{version}",
       "-n #{install_dir}/bin",
       "--no-rdoc --no-ri"].join(" ")
-  
+
   # the rest
   gem ["install",
-       "ffi win32-api win32-service",       
+       "ffi win32-api win32-service",
        "rdp-ruby-wmi windows-api windows-pr win32-dir win32-event win32-mutex win32-process",
        "-n #{install_dir}/bin",
        "--no-rdoc --no-ri"].join(" ")
