@@ -19,7 +19,7 @@ name "pushy-server-cookbooks"
 
 dependencies [ "rsync" ]
 
-source :path => File.expand_path("files/pushy-server-cookbooks", Omnibus.root)
+source :path => File.expand_path("files/pushy-server-cookbooks", Omnibus.project_root)
 
 build do
   command "mkdir -p #{install_dir}/embedded/cookbooks"

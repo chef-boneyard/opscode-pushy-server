@@ -19,7 +19,7 @@ name "opscode-pushy-server-ctl"
 
 dependencies [ "rsync", "omnibus-ctl" ]
 
-source :path => File.expand_path("files/pushy-server-ctl-commands", Omnibus.root)
+source :path => File.expand_path("files/pushy-server-ctl-commands", Omnibus.project_root)
 
 build do
   block do

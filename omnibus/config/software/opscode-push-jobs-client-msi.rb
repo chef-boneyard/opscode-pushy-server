@@ -17,7 +17,7 @@
 
 name "opscode-push-jobs-client-msi"
 
-source :path => File.expand_path("files/msi", Omnibus.root)
+source :path => File.expand_path("files/msi", Omnibus.project_root)
 
 build do
 
