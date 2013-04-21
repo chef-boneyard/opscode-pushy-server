@@ -16,7 +16,6 @@
 #
 
 name "libzmq-windows"
-
 version "2.2.0"
 
 zmq_installer = "ZeroMQ-#{version}~miru1.0-win32.exe"
@@ -31,12 +30,12 @@ build do
 
   # Robocopy's return code is 1 if it succesfully copies over the
   # files and 0 if the files are already existing at the destination
-  
+
   command "robocopy .\\zeromq #{install_dir}\\embedded\\lib\\zeromq /MIR", :returns => [0, 1]
 
   command ".\\zeromq\\uninstall /S", :returns => [0]
 
   install_dir_native = install_dir.split(File::SEPARATOR).join(File::ALT_SEPARATOR)
-  
+
   command "copy /y #{install_dir_native}\\embedded\\lib\\zeromq\\bin\\libzmq-v100-mt.dll #{install_dir_native}\\embedded\\lib\\zeromq\\bin\\libzmq.dll", :returns => [0]
 end

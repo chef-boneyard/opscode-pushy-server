@@ -18,9 +18,9 @@
 name "chef-gem-windows"
 version "11.2.0"
 
-dependencies ["ruby-windows", #includes rubygems
-              "ruby-windows-devkit",
-              "bundler"]
+dependency "ruby-windows" #includes rubygems
+dependency "ruby-windows-devkit"
+dependency "bundler"
 
 build do
 
@@ -29,10 +29,10 @@ build do
       "-v #{version}",
       "-n #{install_dir}/bin",
       "--no-rdoc --no-ri"].join(" ")
-  
+
   # the rest
   gem ["install",
-       "ffi win32-api win32-service",       
+       "ffi win32-api win32-service",
        "rdp-ruby-wmi windows-api windows-pr win32-dir win32-event win32-mutex win32-process",
        "-n #{install_dir}/bin",
        "--no-rdoc --no-ri"].join(" ")

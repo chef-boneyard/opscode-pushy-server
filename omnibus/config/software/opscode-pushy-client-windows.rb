@@ -16,10 +16,9 @@
 #
 
 name "opscode-pushy-client-windows"
-
-dependencies [ "bundler"]
-
 version "master"
+
+dependency "bundler"
 
 # TODO - use public GIT URL when repo made public
 source :git => "git@github.com:opscode/opscode-pushy-client.git"
@@ -56,7 +55,7 @@ build do
        "zmq",
        "-n #{install_dir}/bin",
        "--no-rdoc --no-ri",
-       "--",       
+       "--",
        "--with-zmq-dir=#{install_dir}/embedded/lib/zeromq",
        "--with-zmq-lib=#{install_dir}/embedded/lib/zeromq/bin"
       ].join(" "), :env => env
@@ -67,12 +66,12 @@ build do
        auxiliary_gems.join(" "),
        "-n #{install_dir}/bin",
        "--no-rdoc --no-ri",
-       "--",       
+       "--",
        "--with-zmq-dir=#{install_dir}/embedded/lib/zeromq",
        "--with-zmq-lib=#{install_dir}/embedded/lib/zeromq/bin"
       ].join(" "), :env => env
-  
-  rake "gem", :env => env  
+
+  rake "gem", :env => env
 
   gem ["install pkg/opscode-pushy-client*.gem",
        "-n #{install_dir}/bin",
@@ -80,7 +79,7 @@ build do
 
     # render batch files
   #
-  # TODO: 
+  # TODO:
   #  I'd love to move this out to a top-level 'template' operation in omnibus, but it currently
   #  requires pretty deep inspection of the Rubygems structure of the installed chef and ohai
   #  gems
@@ -112,5 +111,5 @@ EOBATCH
     end
   end
 
-  
+
 end
