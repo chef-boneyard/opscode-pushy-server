@@ -17,7 +17,10 @@
 
 name "opscode-pushy-client"
 
-dependencies ["ruby", "rubygems", "bundler", "libzmq"]
+dependency "ruby"
+dependency "rubygems"
+dependency "bundler"
+dependency "libzmq"
 
 version "master"
 
