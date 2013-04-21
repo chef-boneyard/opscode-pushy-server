@@ -18,37 +18,10 @@
 name "opscode-pushy-client-windows"
 version "master"
 
-dependency "bundler"
-
 # TODO - use public GIT URL when repo made public
 source :git => "git@github.com:opscode/opscode-pushy-client.git"
 
 relative_path "opscode-pushy-client"
-
-
-env =
-  case platform
-  when "solaris2"
-    if Omnibus.config.solaris_compiler == "studio"
-    {
-      "CFLAGS" => "-L#{install_dir}/embedded/lib -I#{install_dir}/embedded/include",
-      "LDFLAGS" => "-R#{install_dir}/embedded/lib -L#{install_dir}/embedded/lib -I#{install_dir}/embedded/include"
-    }
-    elsif Omnibus.config.solaris_compiler == "gcc"
-    {
-      "CFLAGS" => "-L#{install_dir}/embedded/lib -I#{install_dir}/embedded/include",
-      "LDFLAGS" => "-R#{install_dir}/embedded/lib -L#{install_dir}/embedded/lib -I#{install_dir}/embedded/include -static-libgcc",
-      "LD_OPTIONS" => "-R#{install_dir}/embedded/lib"
-    }
-    else
-      raise "Sorry, #{Omnibus.config.solaris_compiler} is not a valid compiler selection."
-    end
-  else
-    {
-      "CFLAGS" => "-L#{install_dir}/embedded/lib -I#{install_dir}/embedded/include",
-      "LDFLAGS" => "-Wl,-rpath #{install_dir}/embedded/lib -L#{install_dir}/embedded/lib -I#{install_dir}/embedded/include"
-    }
-  end
 
 build do
   gem ["install",
@@ -58,7 +31,7 @@ build do
        "--",
        "--with-zmq-dir=#{install_dir}/embedded/lib/zeromq",
        "--with-zmq-lib=#{install_dir}/embedded/lib/zeromq/bin"
-      ].join(" "), :env => env
+      ].join(" ")
 
   auxiliary_gems = ["uuidtools rdp-ruby-wmi windows-api windows-pr win32-dir win32-event win32-mutex win32-process"]
 
@@ -69,9 +42,9 @@ build do
        "--",
        "--with-zmq-dir=#{install_dir}/embedded/lib/zeromq",
        "--with-zmq-lib=#{install_dir}/embedded/lib/zeromq/bin"
-      ].join(" "), :env => env
+      ].join(" ")
 
-  rake "gem", :env => env
+  rake "gem"
 
   gem ["install pkg/opscode-pushy-client*.gem",
        "-n #{install_dir}/bin",
@@ -88,6 +61,8 @@ build do
     require 'erb'
     require 'rubygems/format'
 
+    # ensure the install_dir path only contains forward slashes
+    forward_slash_install_dir = install_dir.gsub(File::ALT_SEPARATOR, File::SEPARATOR)
     batch_template = ERB.new <<EOBATCH
 @ECHO OFF
 IF NOT "%~f0" == "~f0" GOTO :WinNT
@@ -99,13 +74,13 @@ EOBATCH
 
     gem_executables = []
     %w{opscode-pushy-client}.each do |gem|
-      gem_file = Dir["#{install_dir}/embedded/**/cache/#{gem}*.gem"].first
+      gem_file = Dir["#{forward_slash_install_dir}/embedded/**/cache/#{gem}*.gem"].first
       gem_executables << Gem::Format.from_file_by_path(gem_file).spec.executables
     end
 
     gem_executables.flatten.each do |bin|
       @bin = bin
-      File.open("#{install_dir}/bin/#{@bin}.bat", "w") do |f|
+      File.open("#{forward_slash_install_dir}/bin/#{@bin}.bat", "w") do |f|
         f.puts batch_template.result(binding)
       end
     end
