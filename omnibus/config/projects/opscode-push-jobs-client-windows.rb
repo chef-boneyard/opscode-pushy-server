@@ -20,7 +20,7 @@ maintainer "Opscode, Inc."
 homepage   "http://www.opscode.com"
 
 package_name    "opscode-push-jobs-client"
-install_path    "c:/opscode_pushy_build"
+install_path    "c:\\opscode_pushy_build"
 build_version   Omnibus::BuildVersion.new.semver
 build_iteration 1
 
