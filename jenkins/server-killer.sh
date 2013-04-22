@@ -7,8 +7,8 @@ if [ -e "/etc/inittab" ]; then
   sudo egrep -v "/opt/opscode-push-jobs-server/embedded/bin/runsvdir-start" /etc/inittab > /etc/inittab.new && sudo mv /etc/inittab.new /etc/inittab && sudo kill -1 1
 fi
 
-if [ -e "/etc/init/opscode-runsvdir.conf" ]; then
-  sudo rm /etc/init/opscode-runsvdir.conf
+if [ -e "/etc/init/opscode-push-jobs-runsvdir.conf" ]; then
+  sudo rm /etc/init/opscode-push-jobs-runsvdir.conf
 fi
 
 ps ax | egrep 'runsvdir -P /opt/opscode-push-jobs-server/service' | grep -v grep | awk '{ print $1 }' | xargs sudo kill -HUP

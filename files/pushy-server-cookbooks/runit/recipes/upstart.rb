@@ -17,22 +17,31 @@
 # limitations under the License.
 #
 
-cookbook_file "/etc/init/opscode-pushy-runsvdir.conf" do
+# Ensure the previous named iteration of the system job is nuked
+execute "initctl stop opscode-pushy-runsvdir" do
+  only_if "initctl status opscode-pushy-runsvdir | grep start"
+  retries 30
+end
+file "/etc/init/opscode-pushy-runsvdir.conf" do
+  action :delete
+end
+
+cookbook_file "/etc/init/opscode-push-jobs-runsvdir.conf" do
   owner "root"
   group "root"
   mode "0644"
-  source "opscode-pushy-runsvdir"
+  source "opscode-push-jobs-runsvdir.conf"
 end
 
 # Keep on trying till the job is found :(
-execute "initctl status opscode-pushy-runsvdir" do
+execute "initctl status opscode-push-jobs-runsvdir" do
   retries 30
 end
 
 # If we are stop/waiting, start
 #
 # Why, upstart, aren't you idempotent? :(
-execute "initctl start opscode-pushy-runsvdir" do
-  only_if "initctl status opscode-pushy-runsvdir | grep stop"
+execute "initctl start opscode-push-jobs-runsvdir" do
+  only_if "initctl status opscode-push-jobs-runsvdir | grep stop"
   retries 30
 end
