@@ -21,6 +21,7 @@ version "v2.1.11"
 
 dependency "autoconf"
 dependency "automake"
+dependency "libtool"
 dependency "libuuid"
 
 source :git => "git://github.com/zeromq/zeromq2-x.git"
@@ -29,15 +30,16 @@ relative_path "zeromq2-x"
 
 build do
   env = {
+    "PATH" => "#{install_dir}/embedded/bin:#{ENV["PATH"]}",
     "LDFLAGS" => "-L#{install_dir}/embedded/lib -I#{install_dir}/embedded/include",
     "CXXFLAGS" => "-L#{install_dir}/embedded/lib -I#{install_dir}/embedded/include",
     "LD_RUN_PATH" => "#{install_dir}/embedded/lib"
   }
-  command("./autogen.sh")
-  command(["./configure",
+  command "./autogen.sh", :env => env
+  command ["./configure",
            "--prefix=#{install_dir}/embedded",
            ].join(" "),
-          :env => env)
+          :env => env
   command "make -j #{max_build_jobs}", :env => {"LD_RUN_PATH" => "#{install_dir}/embedded/bin"}
   command "make install", :env => {"LD_RUN_PATH" => "#{install_dir}/embedded/bin"}
 end
