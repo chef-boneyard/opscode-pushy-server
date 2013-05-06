@@ -21,6 +21,7 @@ version "v2.1.11"
 
 dependency "autoconf"
 dependency "automake"
+dependency "libtool"
 dependency "libuuid"
 
 source :git => "git://github.com/zeromq/zeromq2-x.git"
