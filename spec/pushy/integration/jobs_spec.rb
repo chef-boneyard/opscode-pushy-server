@@ -729,7 +729,7 @@ describe "Jobs API Endpoint", :jobs do
                                     })
         end
 
-        include_context 'handles authentication headers correctly'
+#        include_context 'handles authentication headers correctly'
       end
 
       context 'POST /jobs' do
@@ -745,7 +745,7 @@ describe "Jobs API Endpoint", :jobs do
                                     })
         end
 
-        include_context 'handles authentication headers correctly'
+#        include_context 'handles authentication headers correctly'
       end
 
       context 'GET /jobs/<name>' do
@@ -766,7 +766,7 @@ describe "Jobs API Endpoint", :jobs do
                                     })
         end
 
-        include_context 'handles authentication headers correctly'
+#        include_context 'handles authentication headers correctly'
       end
     end # describe 'handling authentication headers'
   end # describe 'input error checking'
