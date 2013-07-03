@@ -111,9 +111,9 @@ create_path(Req, #config_state{organization_guid = OrgId} = State) ->
     {binary_to_list(Job#pushy_job.id), Req, State2}.
 
 % This processes POST /pushy/jobs
-from_json(Req, #config_state{pushy_job = Job} = State) ->
+from_json(Req, #config_state{pushy_job = Job, organization_name = OrgName} = State) ->
     ok = pushy_job_state_sup:start(Job),
-    Req2 = ripped_from_chef_rest:set_uri_of_created_resource(Req),
+    Req2 = set_uri_of_created_resource(Req, OrgName),
     {true, Req2, State}.
 
 %% GET /pushy/jobs
@@ -181,3 +181,64 @@ parse_post_body(Req) ->
     RunTimeout = ej:get({<<"run_timeout">>}, JobJson),
     Quorum = ej:get({<<"quorum">>}, JobJson, length(NodeNames)),
     { Command, NodeNames, RunTimeout, Quorum }.
+
+%% TODO The below are MERCILESSLY STOLEN FROM chef_rest.  Get this in a common place, yo.
+%% @doc Sets the JSON body of a response and it's Location header to
+%% point to the URI of a newly-created resource.
+%%
+%% The body will be of the form
+%%
+%%     {"uri":"http://foo.com/newresource"}
+%%
+%% Returns the updated request.
+set_uri_of_created_resource(Req, OrgName) ->
+    set_uri(full_uri(Req, OrgName), Req).
+
+set_uri(Uri, Req) when is_list(Uri) ->
+    set_uri(list_to_binary(Uri), Req);
+set_uri(Uri, Req0) when is_binary(Uri) ->
+    %% Uri needs to be a binary for encoding to JSON, but a string for the header value
+    Req = set_json_body(Req0, {[{<<"uri">>, Uri}]}),
+    wrq:set_resp_header("Location", binary_to_list(Uri), Req).
+
+%% @doc Converts the given json-encoded data to a JSON string and
+%% sets it as the request body, returning the updated request.
+%% @end
+set_json_body(Req, EjsonData) ->
+    Json = jiffy:encode(EjsonData),
+    wrq:set_resp_body(Json, Req).
+
+-spec base_uri(#wm_reqdata{}) -> string().
+%% @doc Returns the base URI for the server as called by the client as a string.
+base_uri(Req) ->
+    Scheme = scheme(Req),
+    Host = string:join(wrq:host_tokens(Req), "."),
+    PortString = port_string(wrq:port(Req)),
+    Scheme ++ "://" ++ Host ++ PortString.
+
+full_uri(Req, OrgName) ->
+    base_uri(Req) ++ "/organizations/" ++ binary_to_list(OrgName) ++ "/pushy/jobs/" ++
+        wrq:disp_path(Req).
+
+scheme(Req) ->
+    case wrq:get_req_header("x-forwarded-proto", Req) of
+        undefined ->
+            case wrq:scheme(Req) of
+                https -> "https";
+                http -> "http";
+                P -> erlang:atom_to_list(P)
+            end;
+        Proto -> Proto
+    end.
+
+%% So this is kind of gross and will prevent correct port info if you run https on port 80
+%% or http on port 443; otherwise it should work. The problem is two-fold, first webmachine
+%% ignores scheme information when parsing the host header and so always sets the port to 80
+%% if no port is present in the host header. But in a load-balanced situation, the scheme
+%% from webmachine may not reflect what is in use at the load balancer. A simple compromise
+%% is to treat both 80 and 443 as default and only include a port string if the port differs
+%% from those.
+port_string(Default) when Default =:= 80; Default =:= 443 ->
+    "";
+port_string(Port) ->
+    [$:|erlang:integer_to_list(Port)].
