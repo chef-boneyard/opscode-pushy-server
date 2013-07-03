@@ -153,7 +153,7 @@ describe "pushy config" do
                                   })
       end
 
-#      include_context 'handles authentication headers correctly'
+      include_context 'handles authentication headers correctly'
     end
   end
 end # describe "pushy config"
