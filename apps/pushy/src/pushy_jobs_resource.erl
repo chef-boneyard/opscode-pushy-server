@@ -217,8 +217,8 @@ base_uri(Req) ->
     Scheme ++ "://" ++ Host ++ PortString.
 
 full_uri(Req, OrgName) ->
-    UrlPattern = base_uri(Req) ++ "/organizations/~s/pushy/jobs/" ++ wrq:disp_path(Req),
-    lists:flatten(io_lib:format(UrlPattern, [OrgName])).
+    base_uri(Req) ++ "/organizations/" ++ binary_to_list(OrgName) ++ "/pushy/jobs/" ++
+        wrq:disp_path(Req).
 
 scheme(Req) ->
     case wrq:get_req_header("x-forwarded-proto", Req) of
