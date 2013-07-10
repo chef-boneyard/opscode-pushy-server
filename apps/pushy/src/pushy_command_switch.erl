@@ -65,7 +65,7 @@ send(Message) ->
         {ok, Pid} ->
             gen_server:call(Pid, {send, Message}, infinity);
         Error ->
-            lager:error("Unable to send message. No command switch processes found!"),
+            pushy_logger:error("Unable to send message. No command switch processes found!"),
             Error
     end.
 
@@ -126,12 +126,12 @@ do_receive(CommandSock, Frame, State) ->
     %% abstract out some more generalized routines to handle the message receipt process.
     case pushy_messaging:receive_message_async(CommandSock, Frame) of
         [_Address, _Header, _Body] = Message->
-            lager:debug("RECV: ~s~nRECV: ~s~nRECV: ~s~n",
+            pushy_logger:debug("RECV: ~s~nRECV: ~s~nRECV: ~s~n",
                        [pushy_tools:bin_to_hex(_Address), _Header, _Body]),
             pushy_node_state:recv_msg(Message),
             State;
         _Packets ->
-            lager:debug("Received runt/overlength message with ~n packets~n", [length(_Packets)]),
+            pushy_logger:debug("Received runt/overlength message with ~n packets~n", [length(_Packets)]),
             State
     end.
 
@@ -141,7 +141,7 @@ do_receive(CommandSock, Frame, State) ->
 -spec do_send(#state{}, addressed_message()) -> #state{}.
 do_send(#state{s_sock=Send}=State, RawMessage) ->
     [_Address, _Header, _Body] = RawMessage,
-    lager:debug("SEND: ~s~nSEND: ~s~nSEND: ~s~n",
+    pushy_logger:debug("SEND: ~s~nSEND: ~s~nSEND: ~s~n",
                [pushy_tools:bin_to_hex(_Address), _Header, _Body]),
     ok = pushy_messaging:send_message(Send, RawMessage),
     State.

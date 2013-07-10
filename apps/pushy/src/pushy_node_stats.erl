@@ -92,10 +92,10 @@ evaluate_node_health(Node) ->
     #metric{node_pid=Pid, avg=NAvg} = Node1,
     case NAvg < down_threshold() of
         true ->
-            lager:debug("Killing Node: ~p~n", [Pid]),
+            pushy_logger:debug("Killing Node: ~p~n", [Pid]),
             {should_die, Node1};
         false ->
-            lager:debug("Resetting Node: ~p~n", [Pid]),
+            pushy_logger:debug("Resetting Node: ~p~n", [Pid]),
             {reset, Node1}
     end.
 

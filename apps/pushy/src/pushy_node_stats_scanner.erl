@@ -33,7 +33,7 @@ start_link() ->
 init([]) ->
     _Seed = random:seed(erlang:now()),
     Interval = wait_interval(),
-    lager:info("Starting pushy node cleanup (every ~p ms)", [Interval]),
+    pushy_logger:info("Starting pushy node cleanup (every ~p ms)", [Interval]),
     {ok, #state{interval=Interval}, Interval}.
 
 handle_call(_Request, _From, State) ->

@@ -35,7 +35,7 @@ init([#pushy_state{ctx=Ctx}]) ->
     ok = erlzmq:bind(FE, CommandAddress),
     ok = erlzmq:bind(BEO, ?PUSHY_BROKER_OUT),
     ok = erlzmq:bind(BEI, ?PUSHY_BROKER_IN),
-    lager:info("~p has started.~n", [?MODULE]),
+    pushy_logger:info("~p has started.~n", [?MODULE]),
     {ok, #state{frontend=FE, backend_out=BEO, backend_in=BEI}}.
 
 handle_call(_Request, _From, State) ->

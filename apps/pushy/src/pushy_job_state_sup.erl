@@ -65,7 +65,7 @@ register_process(JobId) ->
         error:badarg ->
             % This happens when registration fails.  Shut this puppy down, the
             % caller will take care of it!
-            lager:error("Failed to register job ~p for PID ~p (already exists as ~p?)",
+            pushy_logger:error("Failed to register job ~p for PID ~p (already exists as ~p?)",
                         [JobId,self(), gproc:lookup_pid({n,l,JobId}) ]),
             false
     end.

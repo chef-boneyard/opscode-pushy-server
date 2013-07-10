@@ -86,7 +86,7 @@ mk_gproc_addr(Addr) when is_binary(Addr) ->
 %% ------------------------------------------------------------------
 
 init([]) ->
-    %lager:trace_console([{module, pushy_node_state}], debug),
+    %pushy_logger:trace_console([{module, pushy_node_state}], debug),
     {ok, {{simple_one_for_one, 60, 120},
           [{pushy_node_state, {pushy_node_state, start_link, []},
             transient, brutal_kill, worker, [pushy_node_state]}]}}.
