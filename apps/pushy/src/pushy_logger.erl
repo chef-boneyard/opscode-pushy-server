@@ -45,8 +45,8 @@ info(Message) ->
 info(Message, Data) ->
     lager:info(Message, Data).
 
-warn(Message) ->
-    lager:warn(Message).
+warning(Message) ->
+    lager:warning(Message).
 
-warn(Message, Data) ->
-    lager:warn(Message, Data).
+warning(Message, Data) ->
+    lager:warning(Message, Data).
