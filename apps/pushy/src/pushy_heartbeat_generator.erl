@@ -36,6 +36,7 @@
 -include("pushy.hrl").
 -include_lib("pushy_common/include/pushy_metrics.hrl").
 
+-compile([{parse_transform, lager_transform}]).
 
 %% TODO: tighten typedefs up
 -record(state,
@@ -66,7 +67,7 @@ heartbeat() ->
 
 init([#pushy_state{ctx=Ctx, incarnation_id=IncarnationId }]) ->
     erlang:process_flag(trap_exit, true),
-    pushy_logger:info("Starting heartbeat generator with incarnation id ~s.", [IncarnationId]),
+    lager:info("Starting heartbeat generator with incarnation id ~s.", [IncarnationId]),
     Interval = envy:get(pushy, heartbeat_interval, integer),
 
     {ok, HeartbeatSock} = erlzmq:socket(Ctx, pub),
@@ -75,7 +76,7 @@ init([#pushy_state{ctx=Ctx, incarnation_id=IncarnationId }]) ->
 
     HeartbeatAddress = pushy_util:make_zmq_socket_addr(server_heartbeat_port),
 
-    pushy_logger:info("Starting heartbeat generator listening on ~s.",[HeartbeatAddress]),
+    lager:info("Starting heartbeat generator listening on ~s.",[HeartbeatAddress]),
 
     ok = erlzmq:bind(HeartbeatSock, HeartbeatAddress),
     State = #state{heartbeat_sock = HeartbeatSock,
@@ -119,7 +120,7 @@ do_send(#state{heartbeat_sock=HeartbeatSock, beat_count=Count, private_key=Priva
     Packets = ?TIME_IT(pushy_messaging, make_message, (proto_v2, rsa2048_sha1, PrivateKey, Msg2)),
     pushy_messaging:send_message(HeartbeatSock, Packets),
     %?debugVal(BodyFrame),
-    pushy_logger:debug("Heartbeat sent: header=~s,body=~s", Packets),
+    lager:debug("Heartbeat sent: header=~s,body=~s", Packets),
     State#state{beat_count=Count+1}.
 
 %% ------------------------------------------------------------------

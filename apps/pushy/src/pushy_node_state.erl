@@ -17,6 +17,8 @@
 -include_lib("pushy_common/include/pushy_metrics.hrl").
 -include_lib("pushy_common/include/pushy_messaging.hrl").
 
+-compile([{parse_transform, lager_transform}]).
+
 -define(MAX_JOB_ID_LENGTH, 64).
 
 %% API
@@ -123,7 +125,7 @@ init([NodeRef, NodeAddr, IncarnationId]) ->
             %% We may also want to *not* automatically reanimate FSMs for nodes that aren't
             %% actively reporting; but rather keep them in a 'limbo' waiting for the first
             %% packet, and if one doesn't arrive within a certain time mark them down.
-            pushy_logger:error("Failed to register:~p for ~p (already exists as ~p?)",
+            lager:error("Failed to register:~p for ~p (already exists as ~p?)",
                         [NodeRef,self(), gproc:lookup_pid({n,l,GprocName}) ]),
             {stop, state_transition(init, shutdown, State), State}
     end.
@@ -138,7 +140,7 @@ post_init(timeout, State) ->
     State1 = force_abort(State),
     {next_state, state_transition(init, rehab, State1), State1};
 post_init(Message, #state{node_ref=NodeRef}=State) ->
-    pushy_logger:warning("~p in post_init. Ignoring message: ~p~n", [NodeRef, Message]),
+    lager:warning("~p in post_init. Ignoring message: ~p~n", [NodeRef, Message]),
     State1 = force_abort(State),
     {next_state, state_transition(init, rehab, State1), State1}.
 
@@ -147,7 +149,7 @@ rehab(aborted, #state{state_timer=TRef}=State) ->
     State1 = State#state{availability=available},
     {next_state, state_transition(rehab, idle, State1), State1};
 rehab(Message, #state{node_ref=NodeRef}=State) ->
-    pushy_logger:debug("~p in rehab. Ignoring message: ~p~n", [NodeRef, Message]),
+    lager:debug("~p in rehab. Ignoring message: ~p~n", [NodeRef, Message]),
     {next_state, rehab, State}.
 
 idle(do_rehab, State) ->
@@ -213,7 +215,7 @@ handle_info(_Info, StateName, State) ->
     {next_state, StateName, State}.
 
 terminate(_Reason, _StateName, #state{node_ref = NodeRef}) ->
-    pushy_logger:debug("Shutting Down: ~p~n", [NodeRef]),
+    lager:debug("Shutting Down: ~p~n", [NodeRef]),
     ok.
 
 code_change(_OldVsn, StateName, State, _Extra) ->
@@ -269,7 +271,7 @@ force_abort(State) ->
 
 state_transition(Current, New,
         #state{node_ref=NodeRef, watchers=Watchers, availability=Availability}) ->
-    pushy_logger:debug("~p transitioning from ~p to ~p~n", [NodeRef, Current, New]),
+    lager:debug("~p transitioning from ~p to ~p~n", [NodeRef, Current, New]),
     GprocName = pushy_node_state_sup:mk_gproc_name(NodeRef),
     gproc:set_value({n, l, GprocName}, Availability),
     notify_watchers(Watchers, NodeRef, Current, New),
@@ -318,7 +320,7 @@ dispatch_raw_message([Addr, _Header, Body] = Message) ->
                   EJSon = jiffy:decode(Body),
                   NodeRef = get_node_ref(EJSon),
                   IncarnationId = ej:get({<<"incarnation_id">>}, EJSon),
-                  pushy_logger:debug("No addr ~s for msg: ~p~n", [pushy_tools:bin_to_hex(Addr), NodeRef]),
+                  lager:debug("No addr ~s for msg: ~p~n", [pushy_tools:bin_to_hex(Addr), NodeRef]),
                   pushy_node_state_sup:get_or_create_process(NodeRef, Addr, IncarnationId)
           end,
     send_info(Pid, {raw_message, Message}).
@@ -342,19 +344,19 @@ process_and_dispatch_message([Address, Header, Body], State) ->
         {ok, #pushy_message{} = Msg} ->
             {ok, process_message(State, Msg)};
         {error, #pushy_message{validated=bad_sig}} ->
-            pushy_logger:error("Bad signature in message: header=~s, body=~s", [Header, Body]),
+            lager:error("Bad signature in message: header=~s, body=~s", [Header, Body]),
             {ok, State};
         {error, #pushy_message{validated=bad_timestamp}} ->
-            pushy_logger:error("Bad timestamp in message: =~s", [Body]),
+            lager:error("Bad timestamp in message: =~s", [Body]),
             {ok, State}
     catch
         error:Error ->
             Stack = erlang:get_stacktrace(),
-            pushy_logger:error("Command message parser failed horribly: header=~p~nstack~p~s", [Error, Stack]),
+            lager:error("Command message parser failed horribly: header=~p~nstack~p~s", [Error, Stack]),
             {ok, State};
         Error ->
             Stack = erlang:get_stacktrace(),
-            pushy_logger:error("Command message parser failed horribly: header=~p~nstack~p~s", [Error, Stack]),
+            lager:error("Command message parser failed horribly: header=~p~nstack~p~s", [Error, Stack]),
             {ok, State}
     end.
 
@@ -363,7 +365,7 @@ process_and_dispatch_message([Address, Header, Body], State) ->
 process_message(#state{node_ref=NodeRef, node_addr=CurAddr} = State, #pushy_message{address=NewAddr} = Message)
   when CurAddr =/= NewAddr ->
     %% Our address has changed. By this point we've validated the message, so we can trust the address
-    pushy_logger:debug("Address change for ~p '~s' to '~s'~n",
+    lager:debug("Address change for ~p '~s' to '~s'~n",
                [NodeRef, pushy_tools:bin_to_hex(CurAddr),
                 pushy_tools:bin_to_hex(NewAddr)]),
     GprocNewAddr = pushy_node_state_sup:mk_gproc_addr(NewAddr),
@@ -376,14 +378,14 @@ process_message(#state{node_ref=NodeRef, node_addr=Address} = State, #pushy_mess
     BinaryType = ej:get({<<"type">>}, Data),
     IncarnationId = ej:get({<<"incarnation_id">>}, Data),
     Type = message_type_to_atom(BinaryType),
-    pushy_logger:debug("Received message for Node ~p Type ~p (address ~p)",
+    lager:debug("Received message for Node ~p Type ~p (address ~p)",
                 [NodeRef, BinaryType, pushy_tools:bin_to_hex(Address)]),
     case Type of
         unknown ->
-            pushy_logger:error("Status message for node ~p was missing type field!~n", [NodeRef]),
+            lager:error("Status message for node ~p was missing type field!~n", [NodeRef]),
             State;
         undefined ->
-            pushy_logger:error("Status message for node ~p had unknown type ~p~n", [NodeRef, BinaryType]),
+            lager:error("Status message for node ~p had unknown type ~p~n", [NodeRef, BinaryType]),
             State;
         heartbeat ->
             send_node_event(State, JobId, NodeRef, IncarnationId, heartbeat);
@@ -393,7 +395,7 @@ process_message(#state{node_ref=NodeRef, node_addr=Address} = State, #pushy_mess
 
 -spec send_node_event(#state{}, any(), any(), any(), node_event()) -> #state{}.
 send_node_event(State, JobId, NodeRef, IncarnationId, heartbeat) ->
-    pushy_logger:debug("Received heartbeat for node ~p with job id ~p", [NodeRef, JobId]),
+    lager:debug("Received heartbeat for node ~p with job id ~p", [NodeRef, JobId]),
     case JobId /= null andalso pushy_job_state_sup:get_process(JobId) == not_found of
         true ->
             gen_fsm:send_event(self(), do_rehab);

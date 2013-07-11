@@ -9,6 +9,10 @@
 -include_lib("pushy.hrl").
 -include_lib("pushy_sql.hrl").
 
+% This isn't actually used right now; if the lager call is uncommented, this needs
+% to be uncommented instead.
+%-compile([{parse_transform, lager_transform}]).
+
 %% API
 -export([start_link/0,
          get_or_create_process/3,
@@ -86,7 +90,8 @@ mk_gproc_addr(Addr) when is_binary(Addr) ->
 %% ------------------------------------------------------------------
 
 init([]) ->
-    %pushy_logger:trace_console([{module, pushy_node_state}], debug),
+    %If this call is uncommented, uncomment compile at top of file, too:
+    %lager:trace_console([{module, pushy_node_state}], debug),
     {ok, {{simple_one_for_one, 60, 120},
           [{pushy_node_state, {pushy_node_state, start_link, []},
             transient, brutal_kill, worker, [pushy_node_state]}]}}.

@@ -10,6 +10,8 @@
 
 -behaviour(gen_server).
 
+-compile([{parse_transform, lager_transform}]).
+
 %% API
 -export([start_link/0]).
 
@@ -33,7 +35,7 @@ start_link() ->
 init([]) ->
     _Seed = random:seed(erlang:now()),
     Interval = wait_interval(),
-    pushy_logger:info("Starting pushy node cleanup (every ~p ms)", [Interval]),
+    lager:info("Starting pushy node cleanup (every ~p ms)", [Interval]),
     {ok, #state{interval=Interval}, Interval}.
 
 handle_call(_Request, _From, State) ->

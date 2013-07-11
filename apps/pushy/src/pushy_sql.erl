@@ -8,6 +8,8 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+-compile([{parse_transform, lager_transform}]).
+
 -export([
          %% job ops
          fetch_job/1,
@@ -36,7 +38,7 @@ fetch_job(JobId) ->
         {ok, Rows} ->
             {ok, job_join_rows_to_record(Rows)};
         {error, Error} ->
-            pushy_logger:info("ERROR"),
+            lager:info("ERROR"),
             {error, Error}
     end.
 
@@ -352,7 +354,7 @@ statements(DbType) ->
     Rv = case file:consult(Path) of
              {ok, Statements} -> Statements;
              {error, Error} ->
-                 pushy_logger:error("Cannot load statements from ~s, ~s", [File, Error]),
+                 lager:error("Cannot load statements from ~s, ~s", [File, Error]),
                  exit(no_statement_file)
          end,
     Rv.

@@ -11,6 +11,8 @@
 
 -behaviour(gen_server).
 
+-compile([{parse_transform, lager_transform}]).
+
 %% API
 -export([start_link/3,
          measure/1,
@@ -121,11 +123,11 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info(start_measure, #state{name = Name,
                                   interval = Interval} = State) ->
-    pushy_logger:info("Starting Process Monitor for ~p", [Name]),
+    lager:info("Starting Process Monitor for ~p", [Name]),
     _Timer = timer:apply_interval(Interval, ?MODULE, measure, [self()]),
     {noreply, State};
 handle_info(Info, State) ->
-    pushy_logger:warning("handle_info: [~s] unhandled message ~w:", [State, Info]),
+    lager:warning("handle_info: [~s] unhandled message ~w:", [State, Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -166,7 +168,7 @@ gather_stats0([]) ->
 gather_stats0([{Name, Process} |Rest]) ->
     case mbox_stats(Process) of
         undefined ->
-            pushy_logger:warning("Process undefined : ~p", [Process]),
+            lager:warning("Process undefined : ~p", [Process]),
             no_process;
         Len when is_integer(Len) ->
             send_metric(Name, Len),

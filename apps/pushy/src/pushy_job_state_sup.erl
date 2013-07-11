@@ -20,6 +20,8 @@
 
 -include_lib("pushy_sql.hrl").
 
+-compile([{parse_transform, lager_transform}]).
+
 %% ------------------------------------------------------------------
 %% API Function Definitions
 %% ------------------------------------------------------------------
@@ -65,7 +67,7 @@ register_process(JobId) ->
         error:badarg ->
             % This happens when registration fails.  Shut this puppy down, the
             % caller will take care of it!
-            pushy_logger:error("Failed to register job ~p for PID ~p (already exists as ~p?)",
+            lager:error("Failed to register job ~p for PID ~p (already exists as ~p?)",
                         [JobId,self(), gproc:lookup_pid({n,l,JobId}) ]),
             false
     end.

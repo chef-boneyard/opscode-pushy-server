@@ -7,6 +7,8 @@
 
 -module(pushy_node_stats).
 
+-compile([{parse_transform, lager_transform}]).
+
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 -endif.
@@ -92,10 +94,10 @@ evaluate_node_health(Node) ->
     #metric{node_pid=Pid, avg=NAvg} = Node1,
     case NAvg < down_threshold() of
         true ->
-            pushy_logger:debug("Killing Node: ~p~n", [Pid]),
+            lager:debug("Killing Node: ~p~n", [Pid]),
             {should_die, Node1};
         false ->
-            pushy_logger:debug("Resetting Node: ~p~n", [Pid]),
+            lager:debug("Resetting Node: ~p~n", [Pid]),
             {reset, Node1}
     end.
 

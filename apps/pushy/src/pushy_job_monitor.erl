@@ -28,6 +28,8 @@
 
 -include("pushy_sql.hrl").
 
+-compile([{parse_transform, lager_transform}]).
+
 -record(state, {jobs :: dict()}).
 
 %%%===================================================================
@@ -50,13 +52,13 @@ is_monitored(Pid) ->
 %%%===================================================================
 
 init(State) ->
-    pushy_logger:info("Starting job monitor"),
+    lager:info("Starting job monitor"),
     {ok, State#state{jobs = dict:new()}}.
 
 handle_call({is_monitored, Pid}, _From, #state{jobs = Jobs} =State) ->
     {reply, dict:is_key(Pid, Jobs), State};
 handle_call(Msg, _From, State) ->
-    pushy_logger:warn("Unknown message handle_call: ~p~n", [Msg]),
+    lager:warn("Unknown message handle_call: ~p~n", [Msg]),
     {reply, ok, State}.
 
 handle_cast({monitor, JobId, Pid}, #state{jobs = Jobs} = State) ->
@@ -64,7 +66,7 @@ handle_cast({monitor, JobId, Pid}, #state{jobs = Jobs} = State) ->
     State1 = State#state{jobs = dict:store(Pid, JobId, Jobs)},
     {noreply, State1};
 handle_cast(Msg, State) ->
-    pushy_logger:warn("Unknown message handle_cast: ~p~n", [Msg]),
+    lager:warn("Unknown message handle_cast: ~p~n", [Msg]),
     {noreply, State}.
 
 %% If we shutdown normally do nothing
@@ -79,12 +81,12 @@ handle_info({'DOWN', _Ref, process, Pid, _Reason},
             {ok, Job} = pushy_sql:fetch_job(JobId),
             ok = mark_as_crashed(Job);
         error ->
-            pushy_logger:error("JobId not found"),
+            lager:error("JobId not found"),
             error
     end,
     {noreply, State#state{jobs=dict:erase(Pid, Jobs)}};
 handle_info(Msg, State) ->
-    pushy_logger:warn("Unknown message handle_info: ~p~n", [Msg]),
+    lager:warn("Unknown message handle_info: ~p~n", [Msg]),
     {noreply, State}.
 
 terminate(_Reason, _State) ->
@@ -104,7 +106,7 @@ mark_as_crashed(#pushy_job{id = JobId,
         %% Now we send nodes in the job to rehab
         nodes_to_rehab(JobNodes);
     {ok, not_found} ->
-        pushy_logger:warning("Couldn't find job ~p in DB when cleaning up crashed job", [JobId]),
+        lager:warning("Couldn't find job ~p in DB when cleaning up crashed job", [JobId]),
         %% Not much to do about it, so return ok
         ok;
     {error, Error} ->
@@ -118,7 +120,7 @@ nodes_to_rehab([#pushy_job_node{org_id = OrgId,
                                 node_name = NodeName} | Rest]) ->
     case pushy_node_state:rehab({OrgId, NodeName}) of
         undefined ->
-            pushy_logger:info("Tried to send node {~p, ~p}, into rehab but it wasn't there", [OrgId, NodeName]);
+            lager:info("Tried to send node {~p, ~p}, into rehab but it wasn't there", [OrgId, NodeName]);
         ok ->
             ok
     end,
