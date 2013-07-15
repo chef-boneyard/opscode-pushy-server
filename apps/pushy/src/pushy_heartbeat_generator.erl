@@ -36,6 +36,7 @@
 -include("pushy.hrl").
 -include_lib("pushy_common/include/pushy_metrics.hrl").
 
+-compile([{parse_transform, lager_transform}]).
 
 %% TODO: tighten typedefs up
 -record(state,

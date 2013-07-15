@@ -43,6 +43,7 @@
 -include_lib("pushy_common/include/pushy_metrics.hrl").
 -include_lib("pushy_common/include/pushy_messaging.hrl").
 
+-compile([{parse_transform, lager_transform}]).
 
 -define(PUSHY_MULTI_SEND_CROSSOVER, 100).
 

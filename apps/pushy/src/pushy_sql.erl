@@ -8,6 +8,8 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+-compile([{parse_transform, lager_transform}]).
+
 -export([
          %% job ops
          fetch_job/1,

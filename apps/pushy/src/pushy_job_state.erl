@@ -32,6 +32,8 @@
 -include("pushy.hrl").
 -include("pushy_sql.hrl").
 
+-compile([{parse_transform, lager_transform}]).
+
 %% This is Erlang not C/C++
 -record(state, {job_host        :: binary(),
                 job             :: #pushy_job{},

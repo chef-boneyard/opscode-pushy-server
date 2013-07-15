@@ -17,6 +17,8 @@
 -include_lib("pushy_common/include/pushy_metrics.hrl").
 -include_lib("pushy_common/include/pushy_messaging.hrl").
 
+-compile([{parse_transform, lager_transform}]).
+
 -define(MAX_JOB_ID_LENGTH, 64).
 
 %% API

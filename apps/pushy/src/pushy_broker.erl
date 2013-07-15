@@ -4,6 +4,8 @@
 
 -include("pushy.hrl").
 
+-compile([{parse_transform, lager_transform}]).
+
 %% API
 -export([start_link/1]).
 

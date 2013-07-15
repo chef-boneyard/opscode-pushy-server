@@ -7,6 +7,8 @@
 
 -module(pushy_node_stats).
 
+-compile([{parse_transform, lager_transform}]).
+
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 -endif.

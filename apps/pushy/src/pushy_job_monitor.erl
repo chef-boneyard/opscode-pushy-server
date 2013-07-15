@@ -28,6 +28,7 @@
 
 -include("pushy_sql.hrl").
 
+-compile([{parse_transform, lager_transform}]).
 
 -record(state, {jobs :: dict()}).
 

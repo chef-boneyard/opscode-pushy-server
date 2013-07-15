@@ -20,6 +20,8 @@
 
 -include_lib("pushy_sql.hrl").
 
+-compile([{parse_transform, lager_transform}]).
+
 %% ------------------------------------------------------------------
 %% API Function Definitions
 %% ------------------------------------------------------------------
