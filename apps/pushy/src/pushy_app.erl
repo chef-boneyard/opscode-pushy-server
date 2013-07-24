@@ -22,24 +22,33 @@
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
-    %% TODO - find a better spot for this log setup
-    % Logs all job message to a specific file
-    lager:trace_file("log/jobs.log", [{job_id, '*'}]),
-    IncarnationId = list_to_binary(pushy_util:guid_v4()),
+    %% Bail out early if the VM isn't running in SMP mode
+    %% ZeroMQ NIFs require SMP due to the way semantics of message
+    %% sending changes SMP vs. non-SMP in the VM
+    case erlang:system_info(multi_scheduling) of
+        enabled ->
+            %% TODO - find a better spot for this log setup
+                                                % Logs all job message to a specific file
+            lager:trace_file("log/jobs.log", [{job_id, '*'}]),
+            IncarnationId = list_to_binary(pushy_util:guid_v4()),
 
-    error_logger:info_msg("Starting Pushy incarnation ~s.~n", [IncarnationId]),
+            error_logger:info_msg("Starting Pushy incarnation ~s.~n", [IncarnationId]),
 
-    IoProcesses = envy:get(pushy, zmq_io_processes, 1, integer),
-    case erlzmq:context(IoProcesses) of
-        {ok, Ctx} ->
-            case pushy_sup:start_link(#pushy_state{ctx=Ctx, incarnation_id=IncarnationId}) of
-                {ok, Pid} -> {ok, Pid, Ctx};
+            IoProcesses = envy:get(pushy, zmq_io_processes, 1, integer),
+            case erlzmq:context(IoProcesses) of
+                {ok, Ctx} ->
+                    case pushy_sup:start_link(#pushy_state{ctx=Ctx, incarnation_id=IncarnationId}) of
+                        {ok, Pid} -> {ok, Pid, Ctx};
+                        Error ->
+                            stop(Ctx),
+                            Error
+                    end;
                 Error ->
-                    stop(Ctx),
                     Error
             end;
-        Error ->
-            Error
+        _ ->
+            lager:critical("Non-SMP environment detected. Aborting."),
+            erlang:halt(336)
     end.
 
 stop(Ctx) ->
