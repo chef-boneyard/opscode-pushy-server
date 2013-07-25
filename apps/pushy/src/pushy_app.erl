@@ -47,8 +47,9 @@ start(_StartType, _StartArgs) ->
                     Error
             end;
         _ ->
-            lager:critical("Non-SMP environment detected. Aborting."),
-            erlang:halt(336)
+            lager:critical("Push Job server requires at least 2 CPU cores. "
+                           "Server startup aborted because only 1 core was detected."),
+            erlang:halt(1)
     end.
 
 stop(Ctx) ->
