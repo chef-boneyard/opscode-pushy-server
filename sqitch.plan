@@ -1,0 +1,8 @@
+%syntax-version=1.0.0-b2
+%project=pushy
+%uri=https://github.com/opscode/pushy-server-schema
+
+job_status 2013-10-10T20:01:05Z Christopher Maier <cm@opscode.com> # Add job_status lookup table
+jobs [job_status] 2013-10-10T20:04:45Z Christopher Maier <cm@opscode.com> # Add jobs table
+job_nodes [jobs] 2013-10-10T20:10:03Z Christopher Maier <cm@opscode.com> # Add job_nodes table
+@1.0.0 2013-10-14T15:28:18Z Christopher Maier <cm@opscode.com> # Version 1.0.0
