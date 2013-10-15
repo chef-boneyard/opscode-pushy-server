@@ -77,7 +77,7 @@ Vagrant.configure("2") do |config|
     chef.json = {
       "omnibus" => {
         "build_user" => "vagrant",
-        "install_dir" => "/opt/opscode-reporting"
+        "install_dir" => "/opt/opscode-push-jobs-server"
       }
     }
 
