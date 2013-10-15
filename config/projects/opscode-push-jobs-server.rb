@@ -37,6 +37,7 @@ dependency "opscode-pushy-server-ctl"
 dependency "runit"
 
 dependency "opscode-pushy-server"
+dependency "pushy-server-schema"
 dependency "oc-pushy-pedant"
 
 # version manifest file

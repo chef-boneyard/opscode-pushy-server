@@ -27,7 +27,7 @@ class OmnibusHelper
   def self.check_status(service_name,
                         path="/opt/opscode-push-jobs-server",
                         command="opscode-push-jobs-server-ctl")
-    o = Chef::ShellOut.new("#{path}/bin/#{command} status #{service_name}")
+    o = Mixlib::ShellOut.new("#{path}/bin/#{command} status #{service_name}")
     o.run_command
     o.exitstatus == 0 ? true : false
   end
