@@ -33,14 +33,26 @@ if node['pushy']['bootstrap']['enable']
     user node['pushy']['postgresql']['username']
     not_if database_exists
     retries 30
-    notifies :run, "execute[migrate_database]", :immediately
   end
 
-  execute "migrate_database" do
-    command "#{psql_cmd} opscode_pushy < pgsql_schema.sql"
-    cwd "#{node['pushy']['install_path']}/embedded/service/opscode-pushy-server/db"
+  execute "pushy_schema" do
+    # The version of the schema to be deployed will the the maximum
+    # available in the oc_bifrost repository.  This will be the same
+    # version needed by the code that is deployed here.  If we ever
+    # split bifrost's code and schema into separate repositories,
+    # we'll need to deploy to a specific schema tag
+    command <<-EOM.gsub(/\s+/," ").strip!
+    #{node['pushy']['chef_base_path']}/embedded/bin/sqitch --engine pg
+           --db-name opscode_pushy
+           --top-dir #{node['pushy']['install_path']}/embedded/service/pushy-server-schema
+           deploy --verify
+    EOM
     user node['pushy']['postgresql']['username']
-    action :nothing
+    # If sqitch is deploying the first time, it'll return 0 on
+    # success.  If it's running a second time and ends up deploying
+    # nothing (since we've already deployed all changesets), it'll
+    # return 1.  Both scenarios should be considered successful.
+    returns [0,1]
   end
 
   execute "#{psql_cmd} -d 'opscode_pushy' -c \"CREATE USER #{node['pushy']['postgresql']['sql_user']} WITH SUPERUSER ENCRYPTED PASSWORD '#{node['pushy']['postgresql']['sql_password']}'\"" do
