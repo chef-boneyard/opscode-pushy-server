@@ -2,3 +2,4 @@
 metadata
 
 cookbook 'enterprise', :git => 'git@github.com:opscode-cookbooks/enterprise-chef-common.git', :tag => '0.1.0'
+cookbook 'runit', :path => File.expand_path("../runit", File.dirname(__FILE__))
