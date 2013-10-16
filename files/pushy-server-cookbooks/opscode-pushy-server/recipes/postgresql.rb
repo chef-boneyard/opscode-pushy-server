@@ -42,7 +42,7 @@ if node['pushy']['bootstrap']['enable']
     # split bifrost's code and schema into separate repositories,
     # we'll need to deploy to a specific schema tag
     command <<-EOM.gsub(/\s+/," ").strip!
-    #{node['pushy']['chef_base_path']}/embedded/bin/sqitch --engine pg
+    sqitch --engine pg
            --db-name opscode_pushy
            --top-dir #{node['pushy']['install_path']}/embedded/service/pushy-server-schema
            deploy --verify

@@ -17,7 +17,8 @@
 
 require 'openssl'
 
-ENV['PATH'] = "#{node['pushy']['install_path']}/bin:#{node['pushy']['install_path']}/embedded/bin:#{ENV['PATH']}"
+# Prefer pushy executables, then enterprise-chef executables, then system executables
+ENV['PATH'] = "#{node['pushy']['install_path']}/bin:#{node['pushy']['install_path']}/embedded/bin:/opt/opscode/bin:/opt/opscode/embedded/bin:#{ENV['PATH']}"
 
 directory "/etc/opscode-push-jobs-server" do
   owner "root"
