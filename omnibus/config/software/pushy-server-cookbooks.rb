@@ -22,11 +22,11 @@ dependency 'berkshelf'
 cookbook_name = "opscode-pushy-server"
 cookbook_dir = "#{install_dir}/embedded/cookbooks"
 
-source :path => File.expand_path("files/pushy-server-cookbooks/#{cookbook_name}", Omnibus.project_root)
+source :path => File.expand_path("files/pushy-server-cookbooks", Omnibus.project_root)
 
 build do
   command "mkdir -p #{cookbook_dir}"
-  command "#{install_dir}/bin/berks install -c ./Berksfile --path=#{cookbook_dir}",
+  command "cd #{cookbook_name} && #{install_dir}/bin/berks install -c ./Berksfile --path=#{cookbook_dir}",
           :env => { "RUBYOPT"         => nil,
                     "BUNDLE_BIN_PATH" => nil,
                     "BUNDLE_GEMFILE"  => nil,
