@@ -70,7 +70,8 @@ end
 # Install our runit instance
 include_recipe "runit"
 
-include_recipe "opscode-pushy-server::postgresql"
+include_recipe "opscode-pushy-server::postgresql" if is_data_master?
+
 include_recipe "opscode-pushy-server::nginx"
 
 # Configure Services
