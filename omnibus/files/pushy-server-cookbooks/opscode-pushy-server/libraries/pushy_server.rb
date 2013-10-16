@@ -89,8 +89,7 @@ module PushJobsServer
       when "ha"
         PushJobsServer['opscode_pushy_server']['vip'] =
           node['private_chef']['backend_vips']['ipaddress']
-        me = node['private_chef']['servers'][node_name]
-        case me['role']
+        case node['private_chef']['servers'][node_name]['role']
         when "backend"
           # nothing special needs to be done
         when "frontend"
