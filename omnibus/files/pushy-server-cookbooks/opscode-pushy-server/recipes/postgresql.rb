@@ -35,11 +35,6 @@ execute "#{createdb_cmd} -T template0 -E UTF-8 opscode_pushy" do
 end
 
 execute "pushy_schema" do
-  # The version of the schema to be deployed will the the maximum
-  # available in the oc_bifrost repository.  This will be the same
-  # version needed by the code that is deployed here.  If we ever
-  # split bifrost's code and schema into separate repositories,
-  # we'll need to deploy to a specific schema tag
   command <<-EOM.gsub(/\s+/," ").strip!
   sqitch --engine pg
          --db-name opscode_pushy
