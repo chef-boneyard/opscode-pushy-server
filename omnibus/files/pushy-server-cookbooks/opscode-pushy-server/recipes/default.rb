@@ -31,7 +31,10 @@ end.run_action(:create)
 if File.exists?("/etc/opscode/chef-server-running.json")
   private_chef = JSON.parse(IO.read("/etc/opscode/chef-server-running.json"))
 end
-node.consume_attributes({"private_chef" => private_chef['private_chef']})
+node.consume_attributes({
+  'private_chef' => private_chef['private_chef'],
+  'runit'        => private_chef['runit']
+})
 
 PushJobsServer[:node] = node
 if File.exists?("/etc/opscode-push-jobs-server/opscode-push-jobs-server.rb")
@@ -73,14 +76,9 @@ end
 # placing its service into the Enterprise Chef service directory.
 # This means it can be started and stopped using private-chef-ctl.
 #
-# TODO: I want to just read these from the node directly; I shouldn't
-# have to carry them around manually from product to product.
-node.set['runit']['sv_bin'] = "/opt/opscode/embedded/bin/sv"
-node.set['runit']['chpst_bin'] = "/opt/opscode/embedded/bin/chpst"
-node.set['runit']['service_dir'] = "/opt/opscode/service"
-node.set['runit']['sv_dir'] = "/opt/opscode/sv"
-node.set['runit']['lsb_init_dir'] = "/opt/opscode/init"
-
+# That's why we pulled in the runit attributes from Enterprise Chef's
+# chef-server-running.json file above.
+#
 # TODO: use our private-chef runit recipe instead
 include_recipe "runit"
 
