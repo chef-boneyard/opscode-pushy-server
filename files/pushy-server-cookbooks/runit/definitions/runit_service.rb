@@ -135,7 +135,7 @@ define :runit_service, :directory => nil, :only_if => false, :finish_script => f
     end
 
     if params[:init_script_template]
-      template "/opt/opscode-push-jobs-server/init/#{params[:name]}" do
+      template "/opt/opscode/init/#{params[:name]}" do
         owner params[:owner]
         group params[:group]
         mode 0755
@@ -146,7 +146,7 @@ define :runit_service, :directory => nil, :only_if => false, :finish_script => f
       end
     else
       if params[:active_directory] == node[:runit][:service_dir]
-        link "/opt/opscode-push-jobs-server/init/#{params[:name]}" do
+        link "/opt/opscode/init/#{params[:name]}" do
           to node[:runit][:sv_bin]
         end
       end

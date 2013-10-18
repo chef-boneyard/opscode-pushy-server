@@ -66,6 +66,15 @@ runit_service "opscode-pushy-server" do
   }.merge(params))
 end
 
+# Until we migrate Pushy over to using the same runit tooling as
+# Enterprise Chef, we'll 'manually' drop off this sentinel file, which
+# indicates it is an HA service and should be managed as such by keepalived.
+if node['private_chef']['topology'] == 'ha'
+  file "#{node['runit']['sv_dir']}/opscode-pushy-server/keepalive_me" do
+    action :create
+  end
+end
+
 if node['pushy']['bootstrap']['enable']
   execute "#{node['pushy']['install_path']}/bin/opscode-push-jobs-server-ctl start opscode-pushy-server" do
     retries 20
