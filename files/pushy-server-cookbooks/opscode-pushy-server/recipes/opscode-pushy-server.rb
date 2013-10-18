@@ -76,7 +76,7 @@ if node['private_chef']['topology'] == 'ha'
 end
 
 if node['pushy']['bootstrap']['enable']
-  execute "#{node['pushy']['install_path']}/bin/opscode-push-jobs-server-ctl start opscode-pushy-server" do
+  execute "/usr/bin/private-chef-ctl start opscode-pushy-server" do
     retries 20
   end
 end
