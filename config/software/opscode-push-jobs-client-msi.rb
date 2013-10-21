@@ -52,7 +52,7 @@ build do
       # Find path to which chef gem is installed.
       # Note that install_dir is something like:
       # c:\opscode\chef
-      chef_path_regex = "#{install_dir.gsub(File::ALT_SEPARATOR, File::SEPARATOR)}/**/gems/chef*"
+      chef_path_regex = "#{install_dir.gsub(File::ALT_SEPARATOR, File::SEPARATOR)}/**/gems/opscode-pushy-client*"
       @chef_gem_path = Dir[chef_path_regex].select{ |path| File.directory?(path) }.first
       raise "Can not find installation directory for chef gem using: #{chef_path_regex}" unless @chef_gem_path
 
