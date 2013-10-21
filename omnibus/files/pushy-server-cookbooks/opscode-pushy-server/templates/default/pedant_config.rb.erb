@@ -40,6 +40,8 @@ chef_server "https://<%= node['private_chef']['lb']['api_fqdn'] %>"
 # frontends / API
 pushy_server "<%= node['pushy']['opscode-pushy-server']['vip'] %>"
 
+running_from_backend <%= @running_from_backend %>
+
 # If you are doing development testing, you can specify the address of
 # the Solr server.  The presence of this parameter will enable tests
 # to force commits to Solr, greatly decreasing the amout of time

@@ -18,4 +18,5 @@ template "/etc/opscode-push-jobs-server/pedant_config.rb" do
   owner "root"
   group "root"
   mode  "0755"
+  variables({:running_from_backend => is_data_master?})
 end
