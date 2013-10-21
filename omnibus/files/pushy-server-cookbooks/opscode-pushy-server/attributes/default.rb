@@ -20,7 +20,6 @@
 ###
 default['pushy']['install_path'] = "/opt/opscode-push-jobs-server"
 
-default['pushy']['database_type'] = "postgresql"
 default['pushy']['bootstrap']['enable'] = true
 default['pushy']['chef_base_path'] = "/opt/opscode"
 
