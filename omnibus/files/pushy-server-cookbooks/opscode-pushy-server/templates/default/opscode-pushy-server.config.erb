@@ -81,7 +81,7 @@
            {metrics_module, folsom_metrics}
           ]},
  {pushy, [
-          {server_name, "<%= node['fqdn'] %>" },
+          {server_name, "<%= node['pushy']['opscode-pushy-server']['vip'] %>" },
           {heartbeat_interval, <%= @heartbeat_interval %> },
           {zeromq_listen_address, "<%= @zeromq_listen_address %>" },
           {server_heartbeat_port, <%= @server_heartbeat_port %> },
@@ -96,7 +96,7 @@
           {log_dir, "<%= @log_directory %>" },
 
           %% Used for service to service calls
-          {erchef_root_url, "https://<%= node['fqdn'] %>"},
+          {erchef_root_url, "https://<%= node['private_chef']['lb']['api_fqdn'] %>"},
 
           %% Zeromq tunings
           {zmq_io_processes, <%= @zmq_io_processes %> }
