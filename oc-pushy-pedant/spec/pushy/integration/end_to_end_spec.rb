@@ -730,6 +730,7 @@ describe "end-to-end-test" do
 
     context 'and the client reconfigures' do
       before :each do
+        wait_for_job_status(@long_job['uri'], 'running')
         @clients['DONKEY'][:client].reconfigure
       end
 
