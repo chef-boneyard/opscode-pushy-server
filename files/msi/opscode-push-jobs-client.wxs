@@ -51,7 +51,7 @@
                   <File Id="RubyExecutable" Source="$(var.PushyClientSourceDir)\embedded\bin\ruby.exe" KeyPath="yes" />
                   <ServiceInstall Name="pushy-client" Type="ownProcess"
                                   Start="auto" Vital="yes" ErrorControl="ignore"
-                                  Arguments="[PUSHYLOCATION]$(var.ChefGemPath)\lib\pushy_client\windows_service.rb"
+                                  Arguments="[PUSHYLOCATION]$(var.PushJobsGemPath)\lib\pushy_client\windows_service.rb"
                                   DisplayName="!(loc.ServiceDisplayName)"
                                   Description="!(loc.ServiceDescription)" />
                   <ServiceControl Id="ControlPushyClientService" Name="pushy-client"

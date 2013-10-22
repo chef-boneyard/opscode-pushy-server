@@ -24,7 +24,7 @@ build do
   package_name = "opscode-push-jobs-client"
 
   # harvest with heat.exe
-  # recursively generate fragment for chef-client directory
+  # recursively generate fragment for opscode-push-jobs-client directory
   block do
     src_dir = self.project_dir
 
@@ -49,19 +49,19 @@ build do
       @micro_version = versions[2]
       @build_version = self.project.build_iteration
 
-      # Find path to which chef gem is installed.
+      # Find path to which the opscode-pushy-client gem is installed.
       # Note that install_dir is something like:
-      # c:\opscode\chef
-      chef_path_regex = "#{install_dir.gsub(File::ALT_SEPARATOR, File::SEPARATOR)}/**/gems/opscode-pushy-client*"
-      @chef_gem_path = Dir[chef_path_regex].select{ |path| File.directory?(path) }.first
-      raise "Can not find installation directory for chef gem using: #{chef_path_regex}" unless @chef_gem_path
+      # c:\opscode\pushy
+      push_jobs_path_regex = "#{install_dir.gsub(File::ALT_SEPARATOR, File::SEPARATOR)}/**/gems/opscode-pushy-client*"
+      @push_jobs_gem_path = Dir[push_jobs_path_regex].select{ |path| File.directory?(path) }.first
+      raise "Can not find installation directory for opscode-pushy-client gem using: #{push_jobs_path_regex}" unless @push_jobs_gem_path
 
-      # Convert the chef gem path to a relative path based on install_dir
-      # We are going to use this path in the startup command of chef
+      # Convert the opscode-pushy-client gem path to a relative path based on install_dir
+      # We are going to use this path in the startup command of the push-jobs
       # service. So we need to change file separators to make windows
       # happy.
-      @chef_gem_path.gsub!(File::SEPARATOR, File::ALT_SEPARATOR)
-      @chef_gem_path.slice!(install_dir.gsub(File::SEPARATOR, File::ALT_SEPARATOR) + File::ALT_SEPARATOR)
+      @push_jobs_gem_path.gsub!(File::SEPARATOR, File::ALT_SEPARATOR)
+      @push_jobs_gem_path.slice!(install_dir.gsub(File::SEPARATOR, File::ALT_SEPARATOR) + File::ALT_SEPARATOR)
 
       @guid = "D607A85C-BDFA-4F08-83ED-2ECB4DCD6BC5"
 
