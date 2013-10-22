@@ -72,15 +72,7 @@ end
 
 # Install our runit instance
 
-# In order to have Pushy managed properly in an HA environment, we're
-# placing its service into the Enterprise Chef service directory.
-# This means it can be started and stopped using private-chef-ctl.
-#
-# That's why we pulled in the runit attributes from Enterprise Chef's
-# chef-server-running.json file above.
-#
-# TODO: use our private-chef runit recipe instead
-include_recipe "runit"
+include_recipe "enterprise::runit"
 
 include_recipe "opscode-pushy-server::postgresql" if is_data_master?
 
