@@ -1,0 +1,4 @@
+
+metadata
+
+cookbook 'enterprise', :git => 'git@github.com:opscode-cookbooks/enterprise-chef-common.git'
