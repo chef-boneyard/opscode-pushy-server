@@ -56,18 +56,17 @@
             {error_logger_redirect, true}
         ]},
  {sqerl, [
-          %% The database system you are using (e.g., mysql, pgsql)
-          {db_type, <%= node['pushy']['database_type'] == "postgresql" ? "pgsql" : "mysql" %> },
+          {db_type, pgsql},
 
           %% Database connection parameters
-          {db_host, "<%= node['pushy'][node['pushy']['database_type']]['vip'] %>"},
-          {db_port, <%= node['pushy']['database_type'] == "postgresql" ? 5432 : 3306 %>},
-          {db_user, "<%= node['pushy'][node['pushy']['database_type']]['sql_user'] %>"},
-          {db_pass, "<%= node['pushy'][node['pushy']['database_type']]['sql_password'] %>"},
+          {db_host, "<%= node['pushy']['postgresql']['vip'] %>"},
+          {db_port, 5432},
+          {db_user, "<%= node['pushy']['postgresql']['sql_user'] %>"},
+          {db_pass, "<%= node['pushy']['postgresql']['sql_password'] %>"},
           {db_name,   "opscode_pushy" },
           {idle_check, 10000},
-          {prepared_statements, {pushy_sql, statements, [ <%= node['pushy']['database_type'] == "postgresql" ? "pgsql" : "mysql" %>]} },
-          {column_transforms, undefined}
+          {prepared_statements, {pushy_sql, statements, [pgsql]} },
+          {column_transforms, []}
          ]},
  {ibrowse, [
             {default_max_sessions, <%= @ibrowse_max_sessions %>},
@@ -81,7 +80,7 @@
            {metrics_module, folsom_metrics}
           ]},
  {pushy, [
-          {server_name, "<%= node['fqdn'] %>" },
+          {server_name, "<%= node['pushy']['opscode-pushy-server']['vip'] %>" },
           {heartbeat_interval, <%= @heartbeat_interval %> },
           {zeromq_listen_address, "<%= @zeromq_listen_address %>" },
           {server_heartbeat_port, <%= @server_heartbeat_port %> },
@@ -96,7 +95,7 @@
           {log_dir, "<%= @log_directory %>" },
 
           %% Used for service to service calls
-          {erchef_root_url, "https://<%= node['fqdn'] %>"},
+          {erchef_root_url, "https://<%= node['private_chef']['lb']['api_fqdn'] %>"},
 
           %% Zeromq tunings
           {zmq_io_processes, <%= @zmq_io_processes %> }

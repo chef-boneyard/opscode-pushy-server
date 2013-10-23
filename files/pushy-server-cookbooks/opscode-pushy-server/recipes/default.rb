@@ -17,7 +17,8 @@
 
 require 'openssl'
 
-ENV['PATH'] = "#{node['pushy']['install_path']}/bin:#{node['pushy']['install_path']}/embedded/bin:#{ENV['PATH']}"
+# Prefer pushy executables, then enterprise-chef executables, then system executables
+ENV['PATH'] = "#{node['pushy']['install_path']}/bin:#{node['pushy']['install_path']}/embedded/bin:/opt/opscode/bin:/opt/opscode/embedded/bin:#{ENV['PATH']}"
 
 directory "/etc/opscode-push-jobs-server" do
   owner "root"
@@ -30,7 +31,10 @@ end.run_action(:create)
 if File.exists?("/etc/opscode/chef-server-running.json")
   private_chef = JSON.parse(IO.read("/etc/opscode/chef-server-running.json"))
 end
-node.consume_attributes({"private_chef" => private_chef['private_chef']})
+node.consume_attributes({
+  'private_chef' => private_chef['private_chef'],
+  'runit'        => private_chef['runit']
+})
 
 PushJobsServer[:node] = node
 if File.exists?("/etc/opscode-push-jobs-server/opscode-push-jobs-server.rb")
@@ -67,9 +71,11 @@ directory "/var/opt/opscode-push-jobs-server" do
 end
 
 # Install our runit instance
-include_recipe "runit"
 
-include_recipe "opscode-pushy-server::postgresql"
+include_recipe "enterprise::runit"
+
+include_recipe "opscode-pushy-server::postgresql" if is_data_master?
+
 include_recipe "opscode-pushy-server::nginx"
 
 # Configure Services
