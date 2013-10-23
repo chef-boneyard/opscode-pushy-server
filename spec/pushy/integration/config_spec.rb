@@ -13,14 +13,13 @@ describe "pushy config" do
     false
   end
 
-  let(:chef_server_host) {
-    chef_server = Pedant.config[:chef_server]
-    chef_server.gsub(/http[s]?:\/\//,'')
+  let(:pushy_server) {
+    Pedant.config[:pushy_server]
   }
 
   let(:config_body) {
     {
-      "host" => chef_server_host,
+      "host" => pushy_server,
       "public_key" => /^-----BEGIN PUBLIC KEY-----/,
       "type" => "config"
       # There are a bunch of additional values

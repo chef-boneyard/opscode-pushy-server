@@ -35,6 +35,20 @@ delete_org true
 # sent to.  Only specify protocol, hostname, and port.
 chef_server "https://#{`hostname -f`.strip}"
 
+# Pushy runs on the backend servers, and we need to expose this
+# address for ZeroMQ interactions, which cannot go through the
+# frontends / API
+#
+# Note: This default value assumes a standalone topology
+pushy_server `hostname -f`.strip
+
+# Pushy runs on the backend servers, and we need to expose this
+# address for ZeroMQ interactions, which cannot go through the
+# frontends / API
+#
+# Note: This default value assumes a standalone topology
+running_from_backend true
+
 # If you are doing development testing, you can specify the address of
 # the Solr server.  The presence of this parameter will enable tests
 # to force commits to Solr, greatly decreasing the amout of time
