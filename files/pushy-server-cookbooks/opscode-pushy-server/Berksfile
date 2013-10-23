@@ -1,4 +1,4 @@
 
 metadata
 
-cookbook 'enterprise', :git => 'git@github.com:opscode-cookbooks/enterprise-chef-common.git', :branch => 'cm/runit'
+cookbook 'enterprise', :git => 'git@github.com:opscode-cookbooks/enterprise-chef-common.git'
