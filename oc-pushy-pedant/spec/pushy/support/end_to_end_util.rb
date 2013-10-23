@@ -59,7 +59,7 @@ shared_context "end_to_end_util" do
           'ruby -e "exit 1"' => 'ruby -e "exit 1"',
           'sleep 1' => 'sleep 1',
           'sleep 2' => 'sleep 2',
-          'sleep 5' => 'sleep 3',
+          'sleep 5' => 'sleep 5',
           'sleep 10' => 'sleep 10',
           'sleep 20' => 'sleep 20',
           'this_oughta_succeed' => 'echo true',
