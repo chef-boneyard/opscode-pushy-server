@@ -42,7 +42,7 @@ template "#{node['pushy']['install_path']}/embedded/service/opscode-pushy-server
   group "root"
   mode "0755"
   variables(node['pushy']['opscode-pushy-server'].to_hash)
-  notifies :restart, 'service[opscode-pushy-server]' if OmnibusHelper.should_notify?("opscode-pushy-server")
+  notifies :restart, 'runit_service[opscode-pushy-server]' if is_data_master?
 end
 
 pushy_config = File.join(pushy_etc_dir, "app.config")
@@ -51,7 +51,7 @@ template pushy_config do
   source "opscode-pushy-server.config.erb"
   mode "644"
   variables(node['pushy']['opscode-pushy-server'].to_hash)
-  notifies :restart, 'service[opscode-pushy-server]' if OmnibusHelper.should_notify?("opscode-pushy-server")
+  notifies :restart, 'runit_service[opscode-pushy-server]' if is_data_master?
 end
 
 link "#{node['pushy']['install_path']}/embedded/service/opscode-pushy-server/etc/app.config" do
