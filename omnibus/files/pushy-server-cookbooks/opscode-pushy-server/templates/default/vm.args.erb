@@ -1,0 +1,33 @@
+## Name of the node
+-name pushy@127.0.0.1
+
+## Cookie for distributed erlang
+-setcookie pushy
+
+## Heartbeat management; auto-restarts VM if it dies or becomes unresponsive
+## (Disabled by default..use with caution!)
+##-heart
+
+## Enable kernel poll and a few async threads
++K true
++A 10
+
++P 262144
+
+-smp enable
+<% if node['cpu']['total'] == 1 %>
+# Pushy only works properly with multiple schedulers.  If we're
+# running on a single core machine, we need start up at least 2.
+# If we're on a multicore machine, we'll just let the Erlang VM sort
+# things out.
++S 2:2
+<% end %>
+
+## Increase number of concurrent ports/sockets
+-env ERL_MAX_PORTS 65536
+
+## Tweak GC to run more often
+-env ERL_FULLSWEEP_AFTER 10
+
+## Increase logfile size to 10M
+-env RUN_ERL_LOG_MAXSIZE 10000000
