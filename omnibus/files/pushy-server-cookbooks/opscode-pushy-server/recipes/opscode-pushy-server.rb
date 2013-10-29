@@ -45,7 +45,8 @@ template "#{node['pushy']['install_path']}/embedded/service/opscode-pushy-server
   notifies :restart, 'runit_service[opscode-pushy-server]' if is_data_master?
 end
 
-pushy_config = File.join(pushy_etc_dir, "app.config")
+pushy_config  = File.join(pushy_etc_dir, "app.config")
+pushy_vm_args = File.join(pushy_etc_dir, "vm.args")
 
 template pushy_config do
   source "opscode-pushy-server.config.erb"
@@ -54,8 +55,18 @@ template pushy_config do
   notifies :restart, 'runit_service[opscode-pushy-server]' if is_data_master?
 end
 
+template pushy_vm_args do
+  source "vm.args.erb"
+  mode "644"
+  notifies :restart, 'runit_service[opscode-pushy-server]' if is_data_master?
+end
+
 link "#{node['pushy']['install_path']}/embedded/service/opscode-pushy-server/etc/app.config" do
   to pushy_config
+end
+
+link "#{node['pushy']['install_path']}/embedded/service/opscode-pushy-server/etc/vm.args" do
+  to pushy_vm_args
 end
 
 component_runit_service "opscode-pushy-server" do
