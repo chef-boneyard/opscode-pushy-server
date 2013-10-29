@@ -7,6 +7,7 @@
 #
 
 require 'pushy/spec_helper'
+require 'fileutils'
 
 describe "end-to-end-test" do
   include_context "end_to_end_util"
@@ -45,6 +46,8 @@ describe "end-to-end-test" do
       before :each do
         # create a lockfile to simulate a chef-client run
         lockfile_location = Chef::Config[:lockfile] || "#{Chef::Config[:file_cache_path]}/chef-client-running.pid"
+        # Ensure the directory for the lockfile exists
+        FileUtils.mkdir_p(File.expand_path('..', lockfile_location))
         @lockfile = File.open(lockfile_location, File::RDWR|File::CREAT, 0644)
         @lockfile.flock(File::LOCK_EX|File::LOCK_NB)
       end
