@@ -99,7 +99,7 @@ module PushJobsServer
           raise "I don't have a role for you!  Use 'backend' or 'frontend'."
         end
       else
-        # do nothing
+        PushJobsServer['opscode_pushy_server']['vip'] = node['private_chef']['lb']['api_fqdn']
       end
       generate_hash
     end
