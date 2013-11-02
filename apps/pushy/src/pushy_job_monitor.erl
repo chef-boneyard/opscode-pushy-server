@@ -58,7 +58,7 @@ init(State) ->
 handle_call({is_monitored, Pid}, _From, #state{jobs = Jobs} =State) ->
     {reply, dict:is_key(Pid, Jobs), State};
 handle_call(Msg, _From, State) ->
-    lager:warn("Unknown message handle_call: ~p~n", [Msg]),
+    lager:warning("Unknown message handle_call: ~p~n", [Msg]),
     {reply, ok, State}.
 
 handle_cast({monitor, JobId, Pid}, #state{jobs = Jobs} = State) ->
@@ -66,7 +66,7 @@ handle_cast({monitor, JobId, Pid}, #state{jobs = Jobs} = State) ->
     State1 = State#state{jobs = dict:store(Pid, JobId, Jobs)},
     {noreply, State1};
 handle_cast(Msg, State) ->
-    lager:warn("Unknown message handle_cast: ~p~n", [Msg]),
+    lager:warning("Unknown message handle_cast: ~p~n", [Msg]),
     {noreply, State}.
 
 %% If we shutdown normally do nothing
@@ -86,7 +86,7 @@ handle_info({'DOWN', _Ref, process, Pid, _Reason},
     end,
     {noreply, State#state{jobs=dict:erase(Pid, Jobs)}};
 handle_info(Msg, State) ->
-    lager:warn("Unknown message handle_info: ~p~n", [Msg]),
+    lager:warning("Unknown message handle_info: ~p~n", [Msg]),
     {noreply, State}.
 
 terminate(_Reason, _State) ->
