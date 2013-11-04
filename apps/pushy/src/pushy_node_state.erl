@@ -445,7 +445,7 @@ key_fetch(Method, EJson) ->
 do_send(State, Message) ->
     do_send(State, hmac_sha256, Message).
 
--spec do_send(#state{}, atom(), json_term()) -> #state{}.
+-spec do_send(#state{}, pushy_signing_method(), json_term()) -> #state{}.
 do_send(#state{node_addr=NodeAddr, node_ref=NodeRef, sequence_no = SeqNo} = State,
         Method, Message) ->
     %% Normalize msg by adding standard fields.
