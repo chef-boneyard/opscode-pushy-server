@@ -15,7 +15,7 @@
                        % TODO: probably want to split this into specific states, instead of this
                        % catch-all, but right now authentication requires the above two things,
                        % and config + job endpoints (respectively) need the following:
-                       node_name :: string(),
+                       node_name :: binary(),
                        % TODO: can't use #pushy_job{} here without some minor re-jiggering elsewhere;
                        % not everything that includes this includes pushy_sql.hrl
                        pushy_job :: tuple(),
