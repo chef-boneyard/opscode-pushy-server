@@ -25,8 +25,6 @@
          sql_date/1
         ]).
 
--type property() :: atom() | tuple(). %% As defined in proplists
--type proplist() :: [ property() ].
 %% job ops
 
 -spec fetch_job(JobId :: object_id()) ->
@@ -180,7 +178,7 @@ insert_job_nodes([#pushy_job_node{job_id=JobId,
 trunc_date_time_to_second({{YY,MM,DD},{H,M,S}}) ->
     {{YY,MM,DD},{H,M, erlang:trunc(S)}}.
 
--spec job_join_rows_to_record(Rows :: [proplist()]) ->  #pushy_job{}.
+-spec job_join_rows_to_record(Rows :: [proplists:proplist()]) ->  #pushy_job{}.
 %% @doc Transforms a collection of proplists representing a job / job_nodes join query
 %% result and collapses them all into a single job record. There is a row for each
 %% job_node. A job_node tuple is extracted from each row; job information is extracted
@@ -190,7 +188,7 @@ trunc_date_time_to_second({{YY,MM,DD},{H,M,S}}) ->
 job_join_rows_to_record(Rows) ->
     job_join_rows_to_record(Rows, []).
 
--spec job_join_rows_to_record(Rows :: [proplist()], [#pushy_job_node{}]) -> #pushy_job{}.
+-spec job_join_rows_to_record(Rows :: [proplists:proplist()], [#pushy_job_node{}]) -> #pushy_job{}.
 job_join_rows_to_record([LastRow|[]], JobNodes) ->
     C = proplist_to_job_node(LastRow),
     Job = prepare_pushy_job_record(LastRow),
@@ -237,7 +235,7 @@ prepare_incomplete_job_nodes(Node) ->
                     org_id = safe_get(<<"org_id">>, Node),
                     node_name = safe_get(<<"node_name">>, Node)}.
 
--spec proplist_to_job_node(Proplist:: proplist()) -> #pushy_job_node{}.
+-spec proplist_to_job_node(proplists:proplist()) -> #pushy_job_node{}.
 %% @doc Convenience function for assembling a job_node tuple from a proplist
 proplist_to_job_node(Proplist) ->
     case safe_get(<<"node_name">>, Proplist) of
@@ -346,7 +344,7 @@ do_update(QueryName, UpdateFields) ->
 
 %% @doc Safely retrieves a value from a proplist. Throws an error if the specified key does
 %% not exist in the list.
--spec safe_get(Key::binary(), Proplist::[{binary(), term()}]) -> term().
+-spec safe_get(Key::binary(), proplists:proplist()) -> term().
 safe_get(Key, Proplist) ->
     {Key, Value} = lists:keyfind(Key, 1, Proplist),
     Value.
