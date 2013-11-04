@@ -10,7 +10,7 @@
 -export([fetch_principal/2]).
 
 -spec fetch_principal(OrgName :: binary(),
-                      Requestor :: binary()) -> #pushy_principal{} | {not_found, term()}.
+                      Requestor :: binary()) -> #pushy_principal{} | {not_found | conn_failed, term()}.
 fetch_principal(OrgName, Requestor) ->
     try
         request_principal(OrgName, Requestor)
@@ -50,7 +50,7 @@ parse_json_response(Body) ->
                              requestor_type = requestor_type(ej:get({"type"}, EJson)),
                              requestor_id = ej:get({"authz_id"}, EJson)};
         _ ->
-            {not_found, not_associated_with_org}
+            throw({error, {not_found, not_associated_with_org}})
     end.
 
 requestor_type(<<"user">>)   -> user;
