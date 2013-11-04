@@ -53,11 +53,8 @@ parse_json_response(Body) ->
             {not_found, not_associated_with_org}
     end.
 
--spec requestor_type(binary()) -> pushy_requestor_type().
-requestor_type(<<"user">>) ->
-    user;
-requestor_type(<<"client">>) ->
-    client.
+requestor_type(<<"user">>)   -> user;
+requestor_type(<<"client">>) -> client.
 
 -spec api_url(OrgName :: binary(), Requestor :: binary()) -> list().
 api_url(OrgName, Requestor) ->
