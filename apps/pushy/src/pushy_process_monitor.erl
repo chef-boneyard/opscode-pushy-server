@@ -52,7 +52,7 @@ measure(Pid) ->
 
 %% @doc A simple helper which generates a process fun for a single process
 %% based on it's pid or process name
--spec single_process(Name :: binary(), Process :: process()) -> [{binary(), process()}].
+-spec single_process(Name :: binary(), Process :: process()) -> process_fun().
 single_process(Name, Process) ->
     fun() -> [{Name, erlang:whereis(Process)}] end.
 
