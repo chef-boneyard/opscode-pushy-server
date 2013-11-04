@@ -10,7 +10,7 @@
 
 fetch_authenticated(Path) ->
     {ok, Key} = chef_keyring:get_key(pivotal),
-    Headers = chef_authn:sign_request(Key, <<"">>, <<"pivotal">>,
+    Headers = chef_authn:sign_request(Key, <<"pivotal">>,
                                       <<"GET">>, now, list_to_binary(Path)),
     FullHeaders = [{"Accept", "application/json"}|Headers],
     fetch_authenticated(Path, FullHeaders).
