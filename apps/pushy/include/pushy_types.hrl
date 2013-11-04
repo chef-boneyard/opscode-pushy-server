@@ -13,3 +13,4 @@
 -type node_availability() :: available |
                              unavailable.
 
+-type incarnation_id() :: binary().

@@ -48,7 +48,7 @@
                 sequence_no = 1       :: pos_integer(),
                 availability          :: node_availability(),
                 watchers = [],
-                incarnation_id,
+                incarnation_id        :: incarnation_id(),
                 state_timer
                }).
 
