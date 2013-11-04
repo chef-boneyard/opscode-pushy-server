@@ -138,11 +138,11 @@ create_object(QueryName, Args) ->
     end.
 
 -spec job_fields_for_insert(CbFields:: list()) -> list().
-job_fields_for_insert(CbFields) ->
-   Pred = fun(Elem) ->
-           not(is_list(Elem))
-          end,
-   lists:filter(Pred,CbFields).
+job_fields_for_insert(JobFields) ->
+    Pred = fun(Elem) ->
+                   not(is_list(Elem))
+           end,
+    lists:filter(Pred, JobFields).
 
 -spec insert_job_nodes([#pushy_job_node{}]) -> ok | {error, term()}.
 %% @doc Inserts job_nodes records into the database. All records are timestamped
