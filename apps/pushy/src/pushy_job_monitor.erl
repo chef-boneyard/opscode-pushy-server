@@ -113,7 +113,7 @@ mark_as_crashed(#pushy_job{id = JobId,
         {error, Error}
   end.
 
--spec nodes_to_rehab(JobNodes :: [#pushy_job_node{}]) -> ok | {error, term()}.
+-spec nodes_to_rehab(JobNodes :: [#pushy_job_node{}]) -> ok.
 nodes_to_rehab([]) ->
     ok;
 nodes_to_rehab([#pushy_job_node{org_id = OrgId,
