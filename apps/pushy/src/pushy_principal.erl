@@ -61,7 +61,7 @@ requestor_type(<<"client">>) ->
 
 -spec api_url(OrgName :: binary(), Requestor :: binary()) -> list().
 api_url(OrgName, Requestor) ->
-    Hostname = pushy_util:get_env(erchef, hostname, "localhost", fun is_list/1),
-    Port = pushy_util:get_env(erchef, port, 8000, fun is_integer/1),
+    Hostname = envy:get(erchef, hostname, "localhost", string),
+    Port = envy:get(erchef, port, 8000, integer),
     lists:flatten(io_lib:format("http://~s:~w/organizations/~s/principals/~s",
                                 [Hostname, Port, OrgName, Requestor])).
