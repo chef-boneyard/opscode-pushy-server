@@ -137,7 +137,12 @@ create_object(QueryName, Args) ->
         %% Error -> Error
     end.
 
--spec job_fields_for_insert(CbFields:: list()) -> list().
+%% @doc removes any lists from the list of #pushy_job{} values; in other words, remove the
+%% 'job_nodes' field.  We don't use that to insert new rows into the jobs table (that data's
+%% joined).
+%% @end
+%%
+%% TODO: There is a better, less opaque way to achieve this.
 job_fields_for_insert(JobFields) ->
     Pred = fun(Elem) ->
                    not(is_list(Elem))
