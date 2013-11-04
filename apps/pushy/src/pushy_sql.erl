@@ -62,7 +62,7 @@ fetch_jobs(OrgId) ->
             {error, Error}
     end.
 
--spec fetch_incomplete_job_nodes() -> {ok, [ #pushy_job_node{} ] } | {error, term()}.
+-spec fetch_incomplete_job_nodes() -> {ok, [ #pushy_job_node{} ] } | {error, no_connections | {_,_}}.
 fetch_incomplete_job_nodes() ->
     case sqerl:select(find_incomplete_job_nodes, []) of
         {ok, none} ->
@@ -104,7 +104,7 @@ create_job(#pushy_job{job_nodes = JobNodes}=Job) ->
             parse_error(Reason)
     end.
 
--spec update_job(#pushy_job{}) -> {ok, 1 | not_found} | {error, term()}.
+-spec update_job(#pushy_job{}) -> {ok, 1 | not_found} | {error, no_connections | {_,_}}.
 update_job(#pushy_job{id = JobId,
                       status = Status,
                       last_updated_by = LastUpdatedBy,
@@ -112,7 +112,7 @@ update_job(#pushy_job{id = JobId,
     UpdateFields = [Status, LastUpdatedBy, UpdatedAt, JobId],
     do_update(update_job_by_id, UpdateFields).
 
--spec update_job_node(#pushy_job_node{}) -> {ok, 1 | not_found} | {error, term()}.
+-spec update_job_node(#pushy_job_node{}) -> {ok, 1 | not_found} | {error, no_connections | {_,_}}.
 update_job_node(#pushy_job_node{job_id = JobId,
                                 node_name = NodeName,
                                 org_id = OrgId,
@@ -147,7 +147,7 @@ job_fields_for_insert(JobFields) ->
            end,
     lists:filter(Pred, JobFields).
 
--spec insert_job_nodes([#pushy_job_node{}]) -> ok | {error, term()}.
+-spec insert_job_nodes([#pushy_job_node{}]) -> ok | {error, no_connections | {_,_}}.
 %% @doc Inserts job_nodes records into the database. All records are timestamped
 %% with the same stamp, namely `CreatedAt`, which is a binary string in SQL date time
 %% format.
