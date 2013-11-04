@@ -28,7 +28,7 @@
 -define(TABLE, pushy_key_manager).
 -define(KEYTYPE, hmac_sha256).
 
--type key() :: {atom(), binary()}.
+-type key() :: {?KEYTYPE, binary()}.
 
 -spec init() -> ok.
 init() ->
