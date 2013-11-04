@@ -393,7 +393,11 @@ process_message(#state{node_ref=NodeRef, node_addr=Address} = State, #pushy_mess
             send_node_event(State, JobId, NodeRef, Type)
     end.
 
--spec send_node_event(#state{}, any(), any(), any(), node_event()) -> #state{}.
+-spec send_node_event(#state{},
+                      job_id(),
+                      node_ref(),
+                      incarnation_id(),
+                      node_event()) -> #state{}.
 send_node_event(State, JobId, NodeRef, IncarnationId, heartbeat) ->
     lager:debug("Received heartbeat for node ~p with job id ~p", [NodeRef, JobId]),
     case JobId /= null andalso pushy_job_state_sup:get_process(JobId) == not_found of
@@ -405,7 +409,10 @@ send_node_event(State, JobId, NodeRef, IncarnationId, heartbeat) ->
     send_info(self(), {heartbeat, IncarnationId}),
     State.
 
--spec send_node_event(#state{}, any(), any(), node_event()) -> #state{}.
+-spec send_node_event(#state{},
+                      job_id(),
+                      node_ref(),
+                      node_event()) -> #state{}.
 send_node_event(State, JobId, NodeRef, aborted = Msg) ->
     gen_fsm:send_event(self(), aborted),
     if
@@ -471,6 +478,8 @@ message_type_to_atom(_) -> unknown.
 %%
 %% TODO: This should be revisited when we tackle OC-5328 (handle ill formed packets set to pushy)
 %%
+%% TODO: Revisit this spec, w/r/t job_id().
+-spec extract_job_id(ej:json_object()) -> job_id().
 extract_job_id(Data) ->
     case ej:get({<<"job_id">>}, Data) of
         <<"null">> ->
