@@ -441,11 +441,11 @@ key_fetch(Method, EJson) ->
     NodeRef = get_node_ref(EJson),
     get_key_for_method(Method, NodeRef).
 
--spec do_send(#state{}, json_term()) -> #state{}.
+-spec do_send(#state{}, ej:json_term()) -> #state{}.
 do_send(State, Message) ->
     do_send(State, hmac_sha256, Message).
 
--spec do_send(#state{}, pushy_signing_method(), json_term()) -> #state{}.
+-spec do_send(#state{}, pushy_signing_method(), ej:json_term()) -> #state{}.
 do_send(#state{node_addr=NodeAddr, node_ref=NodeRef, sequence_no = SeqNo} = State,
         Method, Message) ->
     %% Normalize msg by adding standard fields.
