@@ -27,6 +27,9 @@
 
 -define(SERVER, ?MODULE).
 
+%% TODO: not clear yet what we should use in place of 'any()' here
+-type heartbeating_node() :: {node_ref(), any()}.
+
 %% ------------------------------------------------------------------
 %% API Function Definitions
 %% ------------------------------------------------------------------
@@ -60,7 +63,7 @@ get_process(Addr) when is_binary(Addr) ->
     GprocName = mk_gproc_addr(Addr),
     get_process_int(GprocName).
 
--spec get_process_int({heartbeat, binary(), binary()} |
+-spec get_process_int({heartbeat, org_id(), node_name()} |
                       {addr, binary()}) -> pid() | undefined.
 get_process_int(GprocName) ->
     case catch gproc:lookup_pid({n,l,GprocName}) of
@@ -69,11 +72,11 @@ get_process_int(GprocName) ->
         Pid -> Pid
     end.
 
--spec get_heartbeating_nodes() -> list().
+-spec get_heartbeating_nodes() -> list(heartbeating_node()).
 get_heartbeating_nodes() ->
     do_get_heartbeating_nodes({heartbeat, '_', '_'}).
 
--spec get_heartbeating_nodes(binary()) -> list().
+-spec get_heartbeating_nodes(org_id()) -> list(heartbeating_node()).
 get_heartbeating_nodes(OrgId) when is_binary(OrgId) ->
     do_get_heartbeating_nodes({heartbeat, OrgId, '_'}).
 
@@ -100,6 +103,12 @@ init([]) ->
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
 
+%% TODO: don't take 'heartbeat' as part of the input of this function; it's an
+%% implementation detail
+-spec do_get_heartbeating_nodes(GProcName :: {heartbeat,
+                                              '_' | org_id(),
+                                              '_' | node_name()}) ->
+                                        [heartbeating_node()].
 do_get_heartbeating_nodes(GProcName) ->
     GProcKey = {n, l, GProcName},
     Pid = '_',
