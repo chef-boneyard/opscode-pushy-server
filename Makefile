@@ -25,6 +25,11 @@ DIALYZER_DIRS = apps/pushy/ebin
 # by concrete, add them here (along with make rules to build them if needed)
 # ALL_HOOK = ...
 
+# Ensure that we get the proper goal for the default
+.DEFAULT_GOAL := all
+
+include lock_deps.mk
+
 concrete_rules_file = $(wildcard concrete.mk)
 ifeq ($(concrete_rules_file),concrete.mk)
     include concrete.mk
@@ -33,3 +38,5 @@ else
 	@echo "ERROR: missing concrete.mk"
 	@echo "  run: concrete update"
 endif
+
+include release.mk
