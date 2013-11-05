@@ -51,7 +51,10 @@
         {r_sock,
          s_sock}).
 
--type addressed_message() :: [binary()]. % TODO Improve; it might be worth turning this into a tuple for better specificity.
+%% TODO: some refactoring around this seems necessary.  First, it seems that this is
+%% actually multiple messages (see pushy_job_state:do_send/3).  Turning it into a tuple for
+%% better specificity might also be a good idea.
+-type addressed_message() :: nonempty_list(binary()).
 
 %% ------------------------------------------------------------------
 %% API Function Definitions

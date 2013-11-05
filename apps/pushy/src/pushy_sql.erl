@@ -25,8 +25,6 @@
          sql_date/1
         ]).
 
--type property() :: atom() | tuple(). %% As defined in proplists
--type proplist() :: [ property() ].
 %% job ops
 
 -spec fetch_job(JobId :: object_id()) ->
@@ -64,7 +62,7 @@ fetch_jobs(OrgId) ->
             {error, Error}
     end.
 
--spec fetch_incomplete_job_nodes() -> {ok, [ #pushy_job_node{} ] } | {error, term()}.
+-spec fetch_incomplete_job_nodes() -> {ok, [ #pushy_job_node{} ] } | {error, no_connections | {_,_}}.
 fetch_incomplete_job_nodes() ->
     case sqerl:select(find_incomplete_job_nodes, []) of
         {ok, none} ->
@@ -106,7 +104,7 @@ create_job(#pushy_job{job_nodes = JobNodes}=Job) ->
             parse_error(Reason)
     end.
 
--spec update_job(#pushy_job{}) -> {ok, 1 | not_found} | {error, term()}.
+-spec update_job(#pushy_job{}) -> {ok, 1 | not_found} | {error, no_connections | {_,_}}.
 update_job(#pushy_job{id = JobId,
                       status = Status,
                       last_updated_by = LastUpdatedBy,
@@ -114,7 +112,7 @@ update_job(#pushy_job{id = JobId,
     UpdateFields = [Status, LastUpdatedBy, UpdatedAt, JobId],
     do_update(update_job_by_id, UpdateFields).
 
--spec update_job_node(#pushy_job_node{}) -> {ok, 1 | not_found} | {error, term()}.
+-spec update_job_node(#pushy_job_node{}) -> {ok, 1 | not_found} | {error, no_connections | {_,_}}.
 update_job_node(#pushy_job_node{job_id = JobId,
                                 node_name = NodeName,
                                 org_id = OrgId,
@@ -137,14 +135,19 @@ create_object(QueryName, Args) ->
         %% Error -> Error
     end.
 
--spec job_fields_for_insert(CbFields:: list()) -> list().
-job_fields_for_insert(CbFields) ->
-   Pred = fun(Elem) ->
-           not(is_list(Elem))
-          end,
-   lists:filter(Pred,CbFields).
+%% @doc removes any lists from the list of #pushy_job{} values; in other words, remove the
+%% 'job_nodes' field.  We don't use that to insert new rows into the jobs table (that data's
+%% joined).
+%% @end
+%%
+%% TODO: There is a better, less opaque way to achieve this.
+job_fields_for_insert(JobFields) ->
+    Pred = fun(Elem) ->
+                   not(is_list(Elem))
+           end,
+    lists:filter(Pred, JobFields).
 
--spec insert_job_nodes([#pushy_job_node{}]) -> ok | {error, term()}.
+-spec insert_job_nodes([#pushy_job_node{}]) -> ok | {error, no_connections | {_,_}}.
 %% @doc Inserts job_nodes records into the database. All records are timestamped
 %% with the same stamp, namely `CreatedAt`, which is a binary string in SQL date time
 %% format.
@@ -175,7 +178,7 @@ insert_job_nodes([#pushy_job_node{job_id=JobId,
 trunc_date_time_to_second({{YY,MM,DD},{H,M,S}}) ->
     {{YY,MM,DD},{H,M, erlang:trunc(S)}}.
 
--spec job_join_rows_to_record(Rows :: [proplist()]) ->  #pushy_job{}.
+-spec job_join_rows_to_record(Rows :: [proplists:proplist()]) ->  #pushy_job{}.
 %% @doc Transforms a collection of proplists representing a job / job_nodes join query
 %% result and collapses them all into a single job record. There is a row for each
 %% job_node. A job_node tuple is extracted from each row; job information is extracted
@@ -185,7 +188,7 @@ trunc_date_time_to_second({{YY,MM,DD},{H,M,S}}) ->
 job_join_rows_to_record(Rows) ->
     job_join_rows_to_record(Rows, []).
 
--spec job_join_rows_to_record(Rows :: [proplist()], [#pushy_job_node{}]) -> #pushy_job{}.
+-spec job_join_rows_to_record(Rows :: [proplists:proplist()], [#pushy_job_node{}]) -> #pushy_job{}.
 job_join_rows_to_record([LastRow|[]], JobNodes) ->
     C = proplist_to_job_node(LastRow),
     Job = prepare_pushy_job_record(LastRow),
@@ -232,7 +235,7 @@ prepare_incomplete_job_nodes(Node) ->
                     org_id = safe_get(<<"org_id">>, Node),
                     node_name = safe_get(<<"node_name">>, Node)}.
 
--spec proplist_to_job_node(Proplist:: proplist()) -> #pushy_job_node{}.
+-spec proplist_to_job_node(proplists:proplist()) -> #pushy_job_node{}.
 %% @doc Convenience function for assembling a job_node tuple from a proplist
 proplist_to_job_node(Proplist) ->
     case safe_get(<<"node_name">>, Proplist) of
@@ -341,7 +344,7 @@ do_update(QueryName, UpdateFields) ->
 
 %% @doc Safely retrieves a value from a proplist. Throws an error if the specified key does
 %% not exist in the list.
--spec safe_get(Key::binary(), Proplist::[{binary(), term()}]) -> term().
+-spec safe_get(Key::binary(), proplists:proplist()) -> term().
 safe_get(Key, Proplist) ->
     {Key, Value} = lists:keyfind(Key, 1, Proplist),
     Value.

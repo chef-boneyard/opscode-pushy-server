@@ -10,7 +10,7 @@
 
 fetch_authenticated(Path) ->
     {ok, Key} = chef_keyring:get_key(pivotal),
-    Headers = chef_authn:sign_request(Key, <<"">>, "pivotal",
+    Headers = chef_authn:sign_request(Key, <<"pivotal">>,
                                       <<"GET">>, now, list_to_binary(Path)),
     FullHeaders = [{"Accept", "application/json"}|Headers],
     fetch_authenticated(Path, FullHeaders).
@@ -28,7 +28,7 @@ fetch_authenticated(Path, Headers) ->
     end.
 
 url(Path) ->
-    {ok, ErchefHost} = application:get_env(pushy, erchef_root_url),
+    ErchefHost = envy:get(pushy, erchef_root_url, string),
     ErchefHost ++ Path.
 
 check_http_response(Code, Headers, Body) ->

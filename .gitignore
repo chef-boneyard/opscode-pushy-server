@@ -14,4 +14,7 @@ rel/opscode-pushy-server
 rel/pushy
 deps
 .eunit
-.pushy.plt
+
+/deps.plt
+
+/.concrete/
