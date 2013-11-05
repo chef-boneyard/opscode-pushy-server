@@ -28,7 +28,7 @@ fetch_authenticated(Path, Headers) ->
     end.
 
 url(Path) ->
-    {ok, ErchefHost} = application:get_env(pushy, erchef_root_url),
+    ErchefHost = envy:get(pushy, erchef_root_url, string),
     ErchefHost ++ Path.
 
 check_http_response(Code, Headers, Body) ->
