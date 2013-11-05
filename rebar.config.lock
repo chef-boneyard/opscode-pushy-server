@@ -9,7 +9,7 @@
                   "1cd85dc9f87f3dc4ec4c7077659ddaa8a3660cac"}},
        {chef_authn,".*",
                    {git,"git@github.com:opscode/chef_authn.git",
-                        "982bf97feef82fb602786d2896b6540fa32cc88b"}},
+                   "d9deee6bd16f700d2fcb1a15672fbcb663971c95"}},
        {edown,".*",
               {git,"git://github.com/esl/edown.git",
                    "1f6954ce8f313139385110f68c18c17adb2723f8"}},
