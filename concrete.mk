@@ -15,25 +15,25 @@ DIALYZER_DEPS = $(foreach dep,$(DEPS_LIST),deps/$(dep)/ebin)
 DEPS_PLT = deps.plt
 
 ERLANG_DIALYZER_APPS = asn1 \
-                       compiler \
-                       crypto \
-                       edoc \
-                       erts \
-                       eunit \
-                       gs \
-                       hipe \
-                       inets \
-                       kernel \
-                       mnesia \
-                       observer \
-                       public_key \
-                       runtime_tools \
-                       ssl \
-                       stdlib \
-                       syntax_tools \
-                       tools \
-                       webtool \
-                       xmerl
+		       compiler \
+		       crypto \
+		       edoc \
+		       erts \
+		       eunit \
+		       gs \
+		       hipe \
+		       inets \
+		       kernel \
+		       mnesia \
+		       observer \
+		       public_key \
+		       runtime_tools \
+		       ssl \
+		       stdlib \
+		       syntax_tools \
+		       tools \
+		       webtool \
+		       xmerl
 
 all: .concrete/DEV_MODE compile eunit dialyzer $(ALL_HOOK)
 
