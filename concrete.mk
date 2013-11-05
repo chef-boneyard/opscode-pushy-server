@@ -2,6 +2,8 @@ DEPS ?= $(CURDIR)/deps
 
 DIALYZER_OPTS ?= -Wunderspecs
 
+DIALYZER_DIRS ?= ebin
+
 # Find all the deps the project has by searching the deps dir
 ALL_DEPS = $(notdir $(wildcard deps/*))
 # Create a list of deps that should be used by dialyzer by doing a
@@ -69,10 +71,10 @@ test: eunit
 # Only include local PLT if we have deps that we are going to analyze
 ifeq ($(strip $(DIALYZER_DEPS)),)
 dialyzer: ~/.dialyzer_plt
-	@dialyzer $(DIALYZER_OPTS) -r ebin
+	@dialyzer $(DIALYZER_OPTS) -r $(DIALYZER_DIRS)
 else
 dialyzer: ~/.dialyzer_plt $(DEPS_PLT)
-	@dialyzer $(DIALYZER_OPTS) --plts ~/.dialyzer_plt $(DEPS_PLT) -r ebin
+	@dialyzer $(DIALYZER_OPTS) --plts ~/.dialyzer_plt $(DEPS_PLT) -r $(DIALYZER_DIRS)
 
 $(DEPS_PLT):
 	@dialyzer --build_plt $(DIALYZER_DEPS) --output_plt $(DEPS_PLT)

@@ -6,6 +6,13 @@
 # -Wunderspecs
 # DIALYZER_OPTS = ...
 
+# Use this to point to the ebin directory of the current application.
+# Defaults to 'ebin' for "flat"file structures.  Nested application
+# structures might use something like "apps/MYAPP/ebin"
+#
+# Corresponds to dialyzer's '-r' flag
+DIALYZER_DIRS = apps/pushy/ebin
+
 # List dependencies that you do NOT want to be included in the
 # dialyzer PLT for the project here.  Typically, you would list a
 # dependency here if it isn't spec'd well and doesn't play nice with
