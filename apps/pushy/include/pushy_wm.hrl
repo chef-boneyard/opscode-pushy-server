@@ -23,6 +23,7 @@
                        requestor :: binary(),
 
                        %% Authz ID of the requestor
+                       %% TODO: Why isn't this just an embedded #pushy_principal{} record instead?
                        requestor_id :: binary(),
                        requestor_type :: pushy_requestor_type(),
                        requestor_key :: any()

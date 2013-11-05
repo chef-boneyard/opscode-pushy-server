@@ -36,6 +36,8 @@ init() ->
     ok.
 
 %% This exists to make eunit tests less painful to write.
+
+%% TODO: conditionally compile and export this only when we're doing testing
 -spec stop() -> ok.
 stop() ->
     true = ets:delete(?TABLE),
@@ -44,6 +46,8 @@ stop() ->
 %%%
 %%% Key descriptor: {algorithm:atom, key:binary}
 %%%
+%%
+%% TODO: as currently coded, this function's argument is completely superfluous
 generate_key(hmac_sha256) ->
     Key = pushy_util:rand_bytes(erlang:trunc(256/8)),
     {hmac_sha256, Key}.
