@@ -7,7 +7,7 @@
 
 -record(pushy_state, {
           ctx :: any(),
-          incarnation_id :: binary()
+          incarnation_id :: incarnation_id()
          }).
 
 -define(PUSHY_BROKER_OUT, "inproc://pushy_broker_out").

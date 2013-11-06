@@ -157,9 +157,9 @@ handle_event(Event, StateName, State) ->
     {next_state, StateName, State}.
 
 -spec handle_sync_event(any(), any(), job_status(), #state{}) ->
-        {'next_state', job_status(), #state{}}|
-        {'reply', 'ok', job_status(), #state{}} |
-        {'stop', 'shutdown', 'ok', #state{}}.
+                               {'next_state', job_status(), #state{}}|
+                               {'reply', #pushy_job{}, job_status(), #state{}} |
+                               {'stop', 'shutdown', 'ok', #state{}}.
 handle_sync_event(get_job_status, _From, StateName,
         #state{job = Job, job_nodes = JobNodes} = State) ->
     JobNodesList = [ JobNode || {_,JobNode} <- dict:to_list(JobNodes) ],

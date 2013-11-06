@@ -10,7 +10,7 @@
 -export([fetch_principal/2]).
 
 -spec fetch_principal(OrgName :: binary(),
-                      Requestor :: binary()) -> #pushy_principal{} | {not_found, term()}.
+                      Requestor :: binary()) -> #pushy_principal{} | {not_found | conn_failed, term()}.
 fetch_principal(OrgName, Requestor) ->
     try
         request_principal(OrgName, Requestor)
@@ -50,18 +50,15 @@ parse_json_response(Body) ->
                              requestor_type = requestor_type(ej:get({"type"}, EJson)),
                              requestor_id = ej:get({"authz_id"}, EJson)};
         _ ->
-            {not_found, not_associated_with_org}
+            throw({error, {not_found, not_associated_with_org}})
     end.
 
--spec requestor_type(binary()) -> pushy_requestor_type().
-requestor_type(<<"user">>) ->
-    user;
-requestor_type(<<"client">>) ->
-    client.
+requestor_type(<<"user">>)   -> user;
+requestor_type(<<"client">>) -> client.
 
 -spec api_url(OrgName :: binary(), Requestor :: binary()) -> list().
 api_url(OrgName, Requestor) ->
-    Hostname = pushy_util:get_env(erchef, hostname, "localhost", fun is_list/1),
-    Port = pushy_util:get_env(erchef, port, 8000, fun is_integer/1),
+    Hostname = envy:get(erchef, hostname, "localhost", string),
+    Port = envy:get(erchef, port, 8000, integer),
     lists:flatten(io_lib:format("http://~s:~w/organizations/~s/principals/~s",
                                 [Hostname, Port, OrgName, Requestor])).

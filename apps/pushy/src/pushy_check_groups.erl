@@ -71,8 +71,5 @@ check_subgroups(Name, Type, OrgName, [Group|OtherGroups]) ->
             check_subgroups(Name, Type, OrgName, OtherGroups)
     end.
 
--spec field_for_type(pushy_requestor_type()) -> binary().
-field_for_type(user) ->
-    <<"users">>;
-field_for_type(client) ->
-    <<"clients">>.
+field_for_type(user)   -> <<"users">>;
+field_for_type(client) -> <<"clients">>.

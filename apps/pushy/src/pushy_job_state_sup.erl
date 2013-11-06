@@ -76,7 +76,7 @@ register_process(JobId) ->
 %% Internal functions
 %% ------------------------------------------------------------------
 
--spec mark_incomplete_job_nodes_as_crashed() -> ok | {error, term()}.
+-spec mark_incomplete_job_nodes_as_crashed() -> ok | {error, no_connections | {_, _}}.
 %% Find running job nodes associated with crashed jobs. Mark them as crashed in the db.
 mark_incomplete_job_nodes_as_crashed() ->
     case pushy_sql:fetch_incomplete_job_nodes() of
@@ -94,7 +94,7 @@ update_job_node([Node | Nodes]) ->
     update_job_node(Nodes).
 
 
--spec mark_incomplete_jobs_as_crashed() -> ok | {error, term()}.
+-spec mark_incomplete_jobs_as_crashed() -> ok | {error, no_connections | {_,_}}.
 mark_incomplete_jobs_as_crashed() ->
     case pushy_sql:fetch_incomplete_jobs() of
         {ok, Jobs} ->

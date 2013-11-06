@@ -15,7 +15,7 @@
                        % TODO: probably want to split this into specific states, instead of this
                        % catch-all, but right now authentication requires the above two things,
                        % and config + job endpoints (respectively) need the following:
-                       node_name :: string(),
+                       node_name :: binary(),
                        % TODO: can't use #pushy_job{} here without some minor re-jiggering elsewhere;
                        % not everything that includes this includes pushy_sql.hrl
                        pushy_job :: tuple(),
@@ -23,6 +23,7 @@
                        requestor :: binary(),
 
                        %% Authz ID of the requestor
+                       %% TODO: Why isn't this just an embedded #pushy_principal{} record instead?
                        requestor_id :: binary(),
                        requestor_type :: pushy_requestor_type(),
                        requestor_key :: any()
