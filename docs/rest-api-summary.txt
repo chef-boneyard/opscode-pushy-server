@@ -1,0 +1,126 @@
+Standard Auth Schema:
+  no pushy_job_readers/writers
+    GET-AUTH: org user, client, org admin
+    POST-AUTH: admin
+  pushy_job_readers
+    GET-AUTH: members only
+  pushy_job_writers
+    POST-AUTH: members only
+
+job-status: "new"|"voting"|"running"|"complete"|"quorum_failed"|
+            "crashed"|"aborted"|"timed_out"
+
+node-status: "new"|"ready"|"running"|"succeeded"|"failed"|"aborted"|
+             "unavailable"|"nacked"|"crashed"|"was_ready"|"timed_out"
+
+/pushy/_status
+  + GET
+      AUTH: no restrictions
+      RETURN STATUS: 200
+      RETURN BODY:
+        status: "it's alive"
+        incarnation_id: <id>
+        node_fsm_count: <num>
+        job_processes: [<jobs>]
+  - PUT
+  - POST
+  - DELETE
+
+/organizations/<org>/pushy/config/
+  - GET
+  - PUT
+  - POST
+  - DELETE
+/organizations/<org>/pushy/config/<nodename>
+  + GET
+      AUTH: as standard auth above for users, node matching for clients
+            (as exists: this is possibly wrong)
+      RETURN STATUS: 200
+      RETURN BODY:
+        type: "config"
+        host: <host>
+        node: <node>
+        organization: <organization>
+        public_key: <key>
+        push_jobs:
+          heartbeat:
+            out_addr: <host:port>
+            command_addr: <host:port>
+            interval: <seconds>
+            offline_threshold: <num>
+            online_threshold: <num>
+        encoded_session_key:
+          method: <type> ["hmac_sha256"]
+          key: <key>
+        lifetime: <seconds>
+        max_message_skew: <seconds>
+        incarnation_id: <id>
+  - PUT
+  - POST
+  - DELETE
+
+/organizations/<org>/pushy/jobs
+  + GET
+      AUTH: as standard auth above
+      RETURN STATUS: 200
+      RETURN BODY:
+        [
+          id: <id>
+          command: <command>
+          status: <job-status>
+          run_timeout: <seconds>
+          created_at: <datetime>
+          updated_at: <datetime>
+        ]
+  - PUT
+  + POST
+      AUTH: as standard auth above
+      POST BODY:
+        command: <command>
+        nodes: [<nodes>]
+        quorum: <count>
+        run_timeout: <seconds>
+      RETURN STATUS: 201
+      RETURN BODY:
+        uri: <uri>
+  - DELETE
+/organizations/<org>/pushy/jobs/<name>
+  + GET
+      AUTH: as standard auth above
+      RETURN STATUS: 200
+      RETURN BODY:
+        nodes:
+          <node-status>: [<nodes>]
+        id: <id>
+        command: <command>
+        status: <job-status>
+        run_timeout: <seconds>
+        created_at: <datetime>
+        updated_at: <datetime>
+  - PUT
+  - POST
+  - DELETE
+
+/organizations/<org>/pushy/node_states/
+  + GET:
+      AUTH: as standard auth above
+      RETURN STATUS: 200
+      RETURN BODY:
+        [
+          node_name: <name>
+          availability: <availability> ["available"|"unavailable"]
+        ]
+  - PUT
+  - POST
+  - DELETE
+/organizations/<org>/pushy/node_states/<nodename>
+  + GET:
+      AUTH: as standard auth above
+      RETURN STATUS: 200
+      RETURN BODY:
+        availability: <availability> ["available"|"unavailable"]
+        node_name: <name>
+        status: <status> ["offline"|"online"]
+  - PUT
+  - POST
+  - DELETE
