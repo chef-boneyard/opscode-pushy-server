@@ -37,6 +37,64 @@ describe "Node_States API Endpoint", :node_states do
       "status" => "offline"
     } }
 
+  describe 'HTTP verb validation' do
+    context '/organizations/<org>/pushy/node_states/' do
+      it 'PUT returns a 405 ("Method Not Allowed")' do
+        put(api_url("/pushy/node_states/"), admin_user,
+          :payload => node_state_status) do |response|
+          response.should look_like({
+              :status => 405
+            })
+        end
+      end
+
+      it 'POST returns a 405 ("Method Not Allowed")' do
+        post(api_url("/pushy/node_states/"), admin_user,
+          :payload => node_state_status) do |response|
+          response.should look_like({
+              :status => 405
+            })
+        end
+      end
+
+      it 'DELETE returns a 405 ("Method Not Allowed")' do
+        delete(api_url("/pushy/node_states/"), admin_user) do |response|
+          response.should look_like({
+              :status => 405
+            })
+        end
+      end
+    end # context '/organizations/<org>/pushy/jobs/'
+
+    context '/organizations/<org>/pushy/node_states/<nodename>' do
+      it 'PUT returns a 405 ("Method Not Allowed")' do
+        put(api_url("/pushy/node_states/#{node_name}"), admin_user,
+          :payload => node_state_status) do |response|
+          response.should look_like({
+              :status => 405
+            })
+        end
+      end
+
+      it 'POST returns a 405 ("Method Not Allowed")' do
+        post(api_url("/pushy/node_states/#{node_name}"), admin_user,
+          :payload => node_state_status) do |response|
+          response.should look_like({
+              :status => 405
+            })
+        end
+      end
+
+      it 'DELETE returns a 405 ("Method Not Allowed")' do
+        delete(api_url("/pushy/node_states/#{node_name}"), admin_user) do |response|
+          response.should look_like({
+              :status => 405
+            })
+        end
+      end
+    end # context '/organizations/<org>/pushy/jobs/<name>'
+  end # describe 'HTTP verb validation'
+
   describe 'access control with no pushy_job_readers' do
     context 'GET /node_states' do
       it 'returns a 200 ("OK") for admin' do
