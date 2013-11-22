@@ -7,13 +7,35 @@
 #
 
 describe "pushy status" do
+  let(:path) { api_url("/_status").gsub(/organizations\/.*\//, '/pushy/') }
+
+  it 'PUT /pushy/_status returns 405 ("Method Not Allowed")' do
+    put(path, admin_user, :payload => {}) do |response|
+      response.should look_like({
+          :status => 405
+        })
+    end
+  end
+
+  it 'POST /pushy/_status returns 405 ("Method Not Allowed")' do
+    post(path, admin_user, :payload => {}) do |response|
+      response.should look_like({
+          :status => 405
+        })
+    end
+  end
+
+  it 'DELETE /pushy/_status returns 405 ("Method Not Allowed")' do
+    delete(path, admin_user) do |response|
+      response.should look_like({
+          :status => 405
+        })
+    end
+  end
+
   describe 'access control' do
     context 'GET /pushy/_status' do
-
-      let(:path) { api_url("/_status").gsub(/organizations\/.*\//, '/pushy/') }
-
       it 'returns a 200 ("OK") for admin' do
-          pp path
         get(path, admin_user) do |response|
           response.should look_like({
                                       :status => 200

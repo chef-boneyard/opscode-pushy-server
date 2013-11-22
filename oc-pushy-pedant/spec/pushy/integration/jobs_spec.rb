@@ -47,6 +47,62 @@ describe "Jobs API Endpoint", :jobs do
   let(:outside_user_not_associated_msg) {
     ["'pedant-nobody' is not associated with organization '#{org}'"] }
 
+  describe 'HTTP verb validation' do
+    context '/organizations/<org>/pushy/jobs/' do
+      it 'PUT returns a 405 ("Method Not Allowed")' do
+        put(api_url("/pushy/jobs/"), admin_user, :payload => job_to_run) do |response|
+          response.should look_like({
+              :status => 405
+            })
+        end
+      end
+
+      it 'DELETE returns a 405 ("Method Not Allowed")' do
+        delete(api_url("/pushy/jobs/"), admin_user) do |response|
+          response.should look_like({
+              :status => 405
+            })
+        end
+      end
+    end # context '/organizations/<org>/pushy/jobs/'
+
+    context '/organizations/<org>/pushy/jobs/<name>' do
+      let(:job_path) {
+        # This is evaluated at runtime, so there's always a (short-lived) job to
+        # detect during the test
+
+        post(api_url("/pushy/jobs"), admin_user, :payload => job_to_run) do |response|
+          list = JSON.parse(response.body)
+          list["uri"]
+        end
+      }
+
+      it 'PUT returns a 405 ("Method Not Allowed")' do
+        put(job_path, admin_user, :payload => job_to_run) do |response|
+          response.should look_like({
+              :status => 405
+            })
+        end
+      end
+
+      it 'POST returns a 405 ("Method Not Allowed")' do
+        post(job_path, admin_user, :payload => job_to_run) do |response|
+          response.should look_like({
+              :status => 405
+            })
+        end
+      end
+
+      it 'DELETE returns a 405 ("Method Not Allowed")' do
+        delete(job_path, admin_user) do |response|
+          response.should look_like({
+              :status => 405
+            })
+        end
+      end
+    end # context '/organizations/<org>/pushy/jobs/<name>'
+  end # describe 'HTTP verb validation'
+
   describe 'access control with no pushy_job groups' do
     let(:job_path) {
       # This is evaluated at runtime, so there's always a (short-lived) job to
@@ -118,7 +174,7 @@ describe "Jobs API Endpoint", :jobs do
     end # context 'GET /jobs'
 
     context 'POST /jobs' do
-      it 'returns a 200 ("OK") for admin' do
+      it 'returns a 201 ("OK") for admin' do
         post(api_url("/pushy/jobs/"), admin_user, :payload => job_to_run) do |response|
           response.should look_like({
                                       :status => 201
@@ -343,7 +399,7 @@ describe "Jobs API Endpoint", :jobs do
     end # context 'GET /jobs with pushy_job_readers'
 
     context 'POST /jobs with pushy_job_writers' do
-      it 'returns a 200 ("OK") for member' do
+      it 'returns a 201 ("OK") for member' do
         post(api_url("/pushy/jobs/"), member, :payload => job_to_run) do |response|
           response.should look_like({
                                       :status => 201
@@ -362,7 +418,7 @@ describe "Jobs API Endpoint", :jobs do
         end
       end
 
-      it 'returns a 200 ("OK") for member client' do
+      it 'returns a 201 ("OK") for member client' do
         post(api_url("/pushy/jobs/"), member_client,
              :payload => job_to_run) do |response|
           response.should look_like({
@@ -524,7 +580,7 @@ describe "Jobs API Endpoint", :jobs do
     end # context 'GET /jobs with nested pushy_job_readers'
 
     context 'POST /jobs with nested pushy_job_writers' do
-      it 'returns a 200 ("OK") for member' do
+      it 'returns a 201 ("OK") for member' do
         post(api_url("/pushy/jobs/"), member, :payload => job_to_run) do |response|
           response.should look_like({
                                       :status => 201
@@ -543,7 +599,7 @@ describe "Jobs API Endpoint", :jobs do
         end
       end
 
-      it 'returns a 200 ("OK") for member client' do
+      it 'returns a 201 ("OK") for member client' do
         post(api_url("/pushy/jobs/"), member_client,
              :payload => job_to_run) do |response|
           response.should look_like({
@@ -785,8 +841,6 @@ describe "Jobs API Endpoint", :jobs do
 
     context 'GET /jobs/<name>' do
       it 'returns created_at' do
-        puts job_path
-        puts admin_user
         get(job_path, admin_user) do |response|
           response.should look_like({
                                       :status => 200
