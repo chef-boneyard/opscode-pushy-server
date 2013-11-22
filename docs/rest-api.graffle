@@ -678,9 +678,9 @@ Otherwise org users or clients}</string>
 			<integer>115</integer>
 			<key>Points</key>
 			<array>
-				<string>{217.99912424476935, 457.85827141491654}</string>
-				<string>{141.5419806415166, 435.25903693821772}</string>
-				<string>{97.631824599507965, 404.28754997253418}</string>
+				<string>{223.62158495061581, 458.70020469612984}</string>
+				<string>{151.7433643197561, 436.10915945101488}</string>
+				<string>{107.83320827774745, 405.13767248533134}</string>
 				<string>{91.314425533229354, 344.53455771590728}</string>
 			</array>
 			<key>Style</key>
@@ -737,7 +737,7 @@ Otherwise org users or clients}</string>
 			<integer>114</integer>
 			<key>Points</key>
 			<array>
-				<string>{265.57781982553144, 480.76877498626709}</string>
+				<string>{266.47615832445229, 481.63333231351737}</string>
 				<string>{331.11991547674432, 383.25516562865704}</string>
 			</array>
 			<key>Style</key>
@@ -794,7 +794,7 @@ Otherwise org users or clients}</string>
 			<integer>113</integer>
 			<key>Points</key>
 			<array>
-				<string>{274.96412547776595, 399.95627498626709}</string>
+				<string>{275.77920256242533, 400.13073635101318}</string>
 				<string>{331.119911889523, 369.25516704125073}</string>
 			</array>
 			<key>Style</key>
@@ -845,7 +845,7 @@ Otherwise org users or clients}</string>
 			<key>Points</key>
 			<array>
 				<string>{213.89714781546743, 346.25229879809035}</string>
-				<string>{213.32127219288969, 361.75548734925735}</string>
+				<string>{214.08052570226198, 361.49240235452191}</string>
 			</array>
 			<key>Style</key>
 			<dict>
@@ -889,9 +889,9 @@ Otherwise org users or clients}</string>
 			<key>Points</key>
 			<array>
 				<string>{269.82764576795654, 305.50358455798727}</string>
-				<string>{125.20190913485577, 337.53455771590728}</string>
-				<string>{103.0989111653369, 438.65949816429759}</string>
-				<string>{131.80163740407613, 471.76710442938463}</string>
+				<string>{135.40329281309528, 338.38468022870444}</string>
+				<string>{113.30029484357638, 439.50962067709474}</string>
+				<string>{142.33054804634099, 472.99501801596193}</string>
 			</array>
 			<key>Style</key>
 			<dict>
@@ -917,7 +917,7 @@ Otherwise org users or clients}</string>
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{230.00441360604901, 476.4375}, {35.573406219482422, 8.6625499725341797}}</string>
+			<string>{{230.90275210496986, 477.30205732725028}, {35.573406219482422, 8.6625499725341797}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>ID</key>
@@ -932,7 +932,7 @@ Otherwise org users or clients}</string>
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{200.69191360604901, 458}, {35.573406219482422, 8.6625499725341797}}</string>
+			<string>{{206.31187729575475, 458.85012251279716}, {35.573406219482422, 8.6625499725341797}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>ID</key>
@@ -949,7 +949,7 @@ Otherwise org users or clients}</string>
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{239.39071925828355, 395.625}, {35.573406219482422, 8.6625499725341797}}</string>
+			<string>{{240.20579634294288, 395.79946136474609}, {35.573406219482422, 8.6625499725341797}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>ID</key>
@@ -1166,7 +1166,7 @@ Otherwise org users or clients}</string>
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{110.08993646529613, 438.65949095802029}, {21, 14}}</string>
+			<string>{{120.29132014353561, 439.50961347081744}, {21, 14}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>FitText</key>
@@ -1214,7 +1214,7 @@ Otherwise org users or clients}</string>
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{110.08993219433435, 362.25514908789711}, {21, 14}}</string>
+			<string>{{120.29131587257383, 361.99237628571137}, {21, 14}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>FitText</key>
@@ -1262,7 +1262,7 @@ Otherwise org users or clients}</string>
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{132.1291643681015, 438.65949816429759}, {159.85942077636719, 66.970794677734375}}</string>
+			<string>{{142.33054804634099, 439.50962067709474}, {144.27346801757812, 66.970794677734375}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>FontInfo</key>
@@ -1316,15 +1316,15 @@ Otherwise org users or clients}</string>
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
 
 \f0\fs16 \cf0 \{\
-  "status": &lt;        &gt;,\
+  "status":         ,\
   "node_name": &lt;name&gt;,\
-  "availability": &lt;        &gt;\
+  "availability": \
 \}}</string>
 			</dict>
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{132.12916579131786, 362.25514277958848}, {159.85942077636719, 66.970794677734375}}</string>
+			<string>{{142.33054946955735, 361.99236997740275}, {144.27346801757812, 66.970794677734375}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>FontInfo</key>
@@ -1375,7 +1375,7 @@ Otherwise org users or clients}</string>
 \f0\fs16 \cf0 [\
   \{\
     "node_name": &lt;name&gt;,\
-    "availability": &lt;        &gt;\
+    "availability":\
   \}...\
 ]}</string>
 			</dict>
@@ -1643,7 +1643,7 @@ Otherwise org users or clients}</string>
 			<integer>94</integer>
 			<key>Points</key>
 			<array>
-				<string>{354.04539830659564, 450.20725735150046}</string>
+				<string>{348.6899245514374, 450.50518776888606}</string>
 				<string>{296.55880632517773, 515.78320934111366}</string>
 				<string>{91.314422144168617, 523.72479304810849}</string>
 			</array>
@@ -1699,7 +1699,7 @@ Otherwise org users or clients}</string>
 			<integer>93</integer>
 			<key>Points</key>
 			<array>
-				<string>{428.82340621948242, 484.95627498626709}</string>
+				<string>{423.22600145366516, 485.33127498626709}</string>
 				<string>{658.40052379238591, 522.78320934111366}</string>
 			</array>
 			<key>Style</key>
@@ -1832,7 +1832,7 @@ Otherwise org users or clients}</string>
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{393.25, 480.625}, {35.573406219482422, 8.6625499725341797}}</string>
+			<string>{{387.65259523418274, 481}, {35.573406219482422, 8.6625499725341797}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>ID</key>
@@ -1847,7 +1847,7 @@ Otherwise org users or clients}</string>
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{354.375, 445.5}, {35.573406219482422, 8.6625499725341797}}</string>
+			<string>{{349.00193877611463, 445.78321195013496}, {35.573406219482422, 8.6625499725341797}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>ID</key>
@@ -1919,11 +1919,11 @@ Otherwise org users or clients}</string>
 
 \f0\fs16 \cf0 \{\
   "nodes": \{\
-    &lt;        &gt;: [&lt;nodes&gt;...]...\
+            : [&lt;nodes&gt;...]...\
   \}\
   "id": &lt;id&gt;,\
   "command": &lt;command&gt;,\
-  "status": &lt;        &gt;,\
+  "status":         ,\
   "run_timeout": &lt;seconds&gt;,\
   "created_at": &lt;datetime&gt;,\
   "updated_at": &lt;datetime&gt;\
@@ -1932,7 +1932,7 @@ Otherwise org users or clients}</string>
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{474.06185805853863, 351.63403999156787}, {21, 14}}</string>
+			<string>{{472.48420211916164, 351.6340533430083}, {21, 14}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>FitText</key>
@@ -1980,7 +1980,7 @@ Otherwise org users or clients}</string>
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{573.23865954235885, 391.40926412415251}, {35.573406219482422, 8.6625499725341797}}</string>
+			<string>{{567.40227409406066, 391.50001335144043}, {35.573406219482422, 8.6625499725341797}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>ID</key>
@@ -2012,7 +2012,7 @@ Otherwise org users or clients}</string>
 			<integer>85</integer>
 			<key>Points</key>
 			<array>
-				<string>{609.24351499386069, 395.99322780498716}</string>
+				<string>{603.41885915434432, 396.06278892140421}</string>
 				<string>{658.40051431413792, 424.78321528266918}</string>
 			</array>
 			<key>Style</key>
@@ -2069,10 +2069,10 @@ Otherwise org users or clients}</string>
 			<integer>84</integer>
 			<key>Points</key>
 			<array>
-				<string>{341.16487162896334, 224.00614584601777}</string>
-				<string>{506.11222938234704, 256.49655250495141}</string>
-				<string>{439.37817782053042, 334.52037311560292}</string>
-				<string>{495.06186333953519, 400.63405553884991}</string>
+				<string>{341.65526761186504, 224.10367415927877}</string>
+				<string>{504.53457344297004, 256.49656585639184}</string>
+				<string>{437.80052188115343, 334.52038646704335}</string>
+				<string>{493.48420740015831, 400.63406889029034}</string>
 			</array>
 			<key>Style</key>
 			<dict>
@@ -2098,7 +2098,7 @@ Otherwise org users or clients}</string>
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{495.06186333953525, 351.63405172415264}, {152.55574035644531, 98.000007629394531}}</string>
+			<string>{{493.48420740015825, 351.63406507559307}, {152.55574035644531, 98.000007629394531}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>FontInfo</key>
@@ -2155,7 +2155,7 @@ Otherwise org users or clients}</string>
   \{\
     "id": &lt;id&gt;,\
     "command": &lt;command&gt;,\
-    "status": &lt;        &gt;,\
+    "status":         ,\
     "run_timeout": &lt;seconds&gt;,\
     "created_at": &lt;datetime&gt;,\
     "updated_at": &lt;datetime&gt;\
@@ -5012,7 +5012,7 @@ Otherwise org users or clients}</string>
 	<key>MasterSheets</key>
 	<array/>
 	<key>ModificationDate</key>
-	<string>2013-11-22 22:43:07 +0000</string>
+	<string>2013-11-22 22:55:34 +0000</string>
 	<key>Modifier</key>
 	<string>Douglas Triggs</string>
 	<key>NotesVisible</key>
