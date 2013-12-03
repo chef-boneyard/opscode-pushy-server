@@ -67,39 +67,79 @@ describe "Jobs API Endpoint", :jobs do
     end # context '/organizations/<org>/pushy/jobs/'
 
     context '/organizations/<org>/pushy/jobs/<name>' do
-      let(:job_path) {
-        # This is evaluated at runtime, so there's always a (short-lived) job to
-        # detect during the test
+      context 'with job <name>' do
+        let(:job_path) {
+          # This is evaluated at runtime, so there's always a (short-lived) job to
+          # detect during the test
 
-        post(api_url("/pushy/jobs"), admin_user, :payload => job_to_run) do |response|
-          list = JSON.parse(response.body)
-          list["uri"]
-        end
-      }
+          post(api_url("/pushy/jobs"), admin_user, :payload => job_to_run) do |response|
+            list = JSON.parse(response.body)
+            list["uri"]
+          end
+        }
 
-      it 'PUT returns a 405 ("Method Not Allowed")' do
-        put(job_path, admin_user, :payload => job_to_run) do |response|
-          response.should look_like({
-              :status => 405
-            })
+        it 'PUT returns a 405 ("Method Not Allowed")' do
+          put(job_path, admin_user, :payload => job_to_run) do |response|
+            response.should look_like({
+                :status => 405
+              })
+          end
         end
-      end
 
-      it 'POST returns a 405 ("Method Not Allowed")' do
-        post(job_path, admin_user, :payload => job_to_run) do |response|
-          response.should look_like({
-              :status => 405
-            })
+        it 'POST returns a 405 ("Method Not Allowed")' do
+          post(job_path, admin_user, :payload => job_to_run) do |response|
+            response.should look_like({
+                :status => 405
+              })
+          end
         end
-      end
 
-      it 'DELETE returns a 405 ("Method Not Allowed")' do
-        delete(job_path, admin_user) do |response|
-          response.should look_like({
-              :status => 405
-            })
+        it 'DELETE returns a 405 ("Method Not Allowed")' do
+          delete(job_path, admin_user) do |response|
+            response.should look_like({
+                :status => 405
+              })
+          end
         end
-      end
+      end # context with job <name>
+
+      context 'where <name> does not exist' do
+        let(:job_path) {
+          api_url("/pushy/jobs/name-does-not-exist")
+        }
+
+        it 'GET returns a 404 ("Not Found")' do
+          get(job_path, admin_user) do |response|
+            response.should look_like({
+                :status => 404
+              })
+          end
+        end
+
+        it 'PUT returns a 405 ("Method Not Allowed")' do
+          put(job_path, admin_user, :payload => job_to_run) do |response|
+            response.should look_like({
+                :status => 405
+              })
+          end
+        end
+
+        it 'POST returns a 405 ("Method Not Allowed")' do
+          post(job_path, admin_user, :payload => job_to_run) do |response|
+            response.should look_like({
+                :status => 405
+              })
+          end
+        end
+
+        it 'DELETE returns a 405 ("Method Not Allowed")' do
+          delete(job_path, admin_user) do |response|
+            response.should look_like({
+                :status => 405
+              })
+          end
+        end
+      end # where <name> does not exist
     end # context '/organizations/<org>/pushy/jobs/<name>'
   end # describe 'HTTP verb validation'
 
