@@ -239,7 +239,7 @@ Gets a list of all nodes and their availability.
 
 #+end_example
 
-availability: available | unavailable
+Availability is either "available" or "unavailable".
 
 Error Codes:
 
@@ -263,8 +263,7 @@ Gets an individual node's availability or status.
   }
 #+end_example
 
-status: online | offline
-availability: available | unavailable
+Status is either "online" or "offline".  Availability is either "available" or "unavailable".
 
 Error Codes:
 
