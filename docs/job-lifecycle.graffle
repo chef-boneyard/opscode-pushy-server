@@ -132,7 +132,7 @@
 {\colortbl;\red255\green255\blue255;}
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\qc
 
-\f0\fs24 \cf0 job_status}</string>
+\f0\fs24 \cf0 job_state}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -950,7 +950,7 @@
 {\colortbl;\red255\green255\blue255;}
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
 
-\f0\fs24 \cf0 Key: node in 'old_state' sends 'signal' to a job with current 'job_status', which if expected should result in the node getting set to 'new_state' for current job.}</string>
+\f0\fs24 \cf0 Key: node in 'old_state' sends 'signal' to a job with current 'job_state', which if expected should result in the node getting set to 'new_state' for current job.}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -2875,7 +2875,7 @@
 	<key>MasterSheets</key>
 	<array/>
 	<key>ModificationDate</key>
-	<string>2013-12-06 22:30:33 +0000</string>
+	<string>2013-12-06 22:34:40 +0000</string>
 	<key>Modifier</key>
 	<string>Douglas Triggs</string>
 	<key>NotesVisible</key>
