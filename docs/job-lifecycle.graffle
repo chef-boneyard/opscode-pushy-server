@@ -53,7 +53,7 @@
 	<array>
 		<dict>
 			<key>Bounds</key>
-			<string>{{99.894570371411334, 129.96483874491156}, {93, 14}}</string>
+			<string>{{99.894587138789973, 129.96483874491156}, {85, 14}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>FitText</key>
@@ -92,7 +92,7 @@
 {\colortbl;\red255\green255\blue255;}
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\qc
 
-\f0\fs24 \cf0 Node control flow}</string>
+\f0\fs24 \cf0 Node command}</string>
 				<key>VerticalPad</key>
 				<integer>0</integer>
 			</dict>
@@ -2987,7 +2987,7 @@
 	<key>MasterSheets</key>
 	<array/>
 	<key>ModificationDate</key>
-	<string>2013-12-06 21:59:34 +0000</string>
+	<string>2013-12-06 22:04:10 +0000</string>
 	<key>Modifier</key>
 	<string>Douglas Triggs</string>
 	<key>NotesVisible</key>
