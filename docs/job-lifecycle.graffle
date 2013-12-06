@@ -281,7 +281,7 @@
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{445.33194348472659, 401.79811007426514}, {229.53387451171875, 81.219680786132812}}</string>
+			<string>{{359.96036245920317, 404.68578127287452}, {314.90545654296875, 73.513519287109375}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>ID</key>
@@ -311,7 +311,7 @@
 {\colortbl;\red255\green255\blue255;}
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
 
-\f0\fs24 \cf0 *Terminal status (any unxpected/out-of-order signal also result in terminal status, including: aborted, unavailable, crashed, was_ready, or timed_out.  Any nodes with terminal status are sent to rehab).}</string>
+\f0\fs24 \cf0 *Terminal status (any unxpected/out-of-order signal also results in terminal status, which include the following status types: aborted, unavailable, crashed, was_ready, or timed_out.  Any nodes with terminal status are sent to rehab and unavailable for the current job).}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -2322,7 +2322,7 @@
 	<key>MasterSheets</key>
 	<array/>
 	<key>ModificationDate</key>
-	<string>2013-12-06 21:22:11 +0000</string>
+	<string>2013-12-06 21:26:58 +0000</string>
 	<key>Modifier</key>
 	<string>Douglas Triggs</string>
 	<key>NotesVisible</key>
