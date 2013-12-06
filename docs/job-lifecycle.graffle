@@ -53,7 +53,7 @@
 	<array>
 		<dict>
 			<key>Bounds</key>
-			<string>{{571.33851625602074, 518.42023994170836}, {125, 14}}</string>
+			<string>{{438.75385723823672, 148.27252077276302}, {125, 28}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>FitText</key>
@@ -92,7 +92,8 @@
 {\colortbl;\red255\green255\blue255;}
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\qc
 
-\f0\fs24 \cf0 *plus nacked and failed}</string>
+\f0\fs24 \cf0 *plus nacked and failed\
+as below}</string>
 				<key>VerticalPad</key>
 				<integer>0</integer>
 			</dict>
@@ -113,8 +114,8 @@
 			<integer>66</integer>
 			<key>Points</key>
 			<array>
-				<string>{633.83851290607004, 143.96442356151721}</string>
-				<string>{633.83848458173111, 175.22481333058224}</string>
+				<string>{633.83850870173467, 162.27252076618566}</string>
+				<string>{633.83848037739574, 193.53291053525078}</string>
 			</array>
 			<key>Style</key>
 			<dict>
@@ -149,7 +150,7 @@
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{588.86928225421457, 122.08749904674669}, {89.938461303710938, 21.876924514770508}}</string>
+			<string>{{588.8692780498792, 140.39559625141516}, {89.938461303710938, 21.876924514770508}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>ID</key>
@@ -191,7 +192,7 @@
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{588.86926434964221, 100.21057026473729}, {89.938461303710938, 21.876924514770508}}</string>
+			<string>{{588.86926014530684, 118.51866746940556}, {89.938461303710938, 21.876924514770508}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>ID</key>
@@ -233,7 +234,7 @@
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{588.86929066288508, 78.333645512620464}, {89.938461303710938, 21.876924514770508}}</string>
+			<string>{{588.86928645854971, 96.641742717288736}, {89.938461303710938, 21.876924514770508}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>ID</key>
@@ -275,7 +276,7 @@
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{588.86926434964221, 56.456717420499032}, {89.938461303710938, 21.876924514770508}}</string>
+			<string>{{588.86926014530684, 74.764814625167318}, {89.938461303710938, 21.876924514770508}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>ID</key>
@@ -317,7 +318,7 @@
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{588.86926434964244, 34.579791758879196}, {89.938461303710938, 21.876924514770508}}</string>
+			<string>{{588.86926014530707, 52.887888963547482}, {89.938461303710938, 21.876924514770508}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>ID</key>
@@ -374,8 +375,8 @@
 			<integer>60</integer>
 			<key>Points</key>
 			<array>
-				<string>{357.98768600390497, 437.98056776824058}</string>
-				<string>{254.94231883675462, 469.07432601595872}</string>
+				<string>{357.9876817995696, 456.28866497290852}</string>
+				<string>{254.94231463241925, 487.38242322062661}</string>
 			</array>
 			<key>Style</key>
 			<dict>
@@ -412,7 +413,7 @@
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{165.00385753304369, 458.13586375857346}, {89.938461303710938, 21.876924514770508}}</string>
+			<string>{{165.00385332870832, 476.44396096324135}, {89.938461303710938, 21.876924514770508}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>ID</key>
@@ -454,7 +455,7 @@
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{588.86924811065728, 20.579789480669277}, {51, 14}}</string>
+			<string>{{588.86926072366305, 38.887886685337556}, {48, 14}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>FitText</key>
@@ -493,7 +494,7 @@
 {\colortbl;\red255\green255\blue255;}
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\qc
 
-\f0\fs24 \cf0 Terminal*}</string>
+\f0\fs24 \cf0 terminal*}</string>
 				<key>VerticalPad</key>
 				<integer>0</integer>
 			</dict>
@@ -502,7 +503,7 @@
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{290.22999557421747, 416.10364325347007}, {135.515380859375, 21.876924514770508}}</string>
+			<string>{{290.2299913698821, 434.41174045813796}, {135.515380859375, 21.876924514770508}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>ID</key>
@@ -553,7 +554,7 @@
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{256.45004844431514, 412.54134311812913}, {29, 14}}</string>
+			<string>{{256.45004423997977, 430.84944032279702}, {29, 14}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>FitText</key>
@@ -634,10 +635,10 @@
 			<integer>43</integer>
 			<key>Points</key>
 			<array>
-				<string>{210.42641993852112, 410.201998086505}</string>
-				<string>{246.11924478511173, 426.81024435143598}</string>
-				<string>{435.11155906300621, 426.81024435143598}</string>
-				<string>{480.04986915523409, 484.86554219637645}</string>
+				<string>{210.42641573418575, 428.51009529117289}</string>
+				<string>{246.11924058077636, 445.11834155610387}</string>
+				<string>{435.11155485867084, 445.11834155610387}</string>
+				<string>{480.04986495089861, 503.17363940104434}</string>
 			</array>
 			<key>Style</key>
 			<dict>
@@ -674,7 +675,7 @@
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{480.04986915523403, 473.9270799389912}, {89.938461303710938, 21.876924514770508}}</string>
+			<string>{{480.04986495089867, 492.23517714365909}, {89.938461303710938, 21.876924514770508}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>ID</key>
@@ -716,7 +717,7 @@
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{54.403853245331717, 396.16789813258077}, {93, 42}}</string>
+			<string>{{54.403849040996349, 414.47599533724866}, {93, 42}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>FitText</key>
@@ -799,11 +800,11 @@ ack_commit\
 			<integer>40</integer>
 			<key>Points</key>
 			<array>
-				<string>{164.64869130700609, 398.70066978408971}</string>
-				<string>{95.411547225890146, 330.09567886071028}</string>
-				<string>{190.81924285813938, 221.79865313339556}</string>
-				<string>{557.86540949430787, 224.22942244886687}</string>
-				<string>{633.83848458173111, 197.10173784535274}</string>
+				<string>{165.00385818650591, 417.36069526809587}</string>
+				<string>{95.411543021554778, 348.40377606537817}</string>
+				<string>{190.81923865380401, 240.1067503380641}</string>
+				<string>{557.8654052899725, 242.53751965353541}</string>
+				<string>{633.83848037739574, 215.40983505002129}</string>
 			</array>
 			<key>Style</key>
 			<dict>
@@ -855,8 +856,8 @@ ack_commit\
 			<integer>39</integer>
 			<key>Points</key>
 			<array>
-				<string>{358.01493034123877, 330.09763153406334}</string>
-				<string>{254.94232304108976, 361.06789383160327}</string>
+				<string>{358.27186389526628, 348.40362458205533}</string>
+				<string>{254.9423188367544, 379.37599103627116}</string>
 			</array>
 			<key>Style</key>
 			<dict>
@@ -893,7 +894,7 @@ ack_commit\
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{165.00386173737883, 350.12943157421802}, {89.938461303710938, 21.876924514770508}}</string>
+			<string>{{165.00385753304346, 368.43752877888591}, {89.938461303710938, 21.876924514770508}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>ID</key>
@@ -935,7 +936,7 @@ ack_commit\
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{569.98833402107493, 360.42173892901729}, {93, 42}}</string>
+			<string>{{569.98832981673957, 378.72983613368518}, {93, 42}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>FitText</key>
@@ -1014,8 +1015,8 @@ ack_commit\
 			<integer>36</integer>
 			<key>Points</key>
 			<array>
-				<string>{569.98835941797051, 359.12947358341802}</string>
-				<string>{633.83848458173111, 197.10173784535274}</string>
+				<string>{569.98835521363526, 377.43757078808591}</string>
+				<string>{633.83848037739574, 215.40983505002129}</string>
 			</array>
 			<key>Style</key>
 			<dict>
@@ -1067,8 +1068,8 @@ ack_commit\
 			<integer>35</integer>
 			<key>Points</key>
 			<array>
-				<string>{569.98834992207094, 287.96789582117191}</string>
-				<string>{633.83848458173111, 197.10173784535274}</string>
+				<string>{569.98834571773546, 306.2759930258398}</string>
+				<string>{633.83848037739574, 215.40983505002129}</string>
 			</array>
 			<key>Style</key>
 			<dict>
@@ -1115,8 +1116,8 @@ ack_commit\
 			<integer>34</integer>
 			<key>Points</key>
 			<array>
-				<string>{357.98768600390497, 437.98056776824058}</string>
-				<string>{357.92424703896012, 473.42707805655419}</string>
+				<string>{357.98678694614154, 456.78866416539609}</string>
+				<string>{357.92424283462475, 491.73517526122203}</string>
 			</array>
 			<key>Style</key>
 			<dict>
@@ -1159,8 +1160,8 @@ ack_commit\
 			<integer>33</integer>
 			<key>Points</key>
 			<array>
-				<string>{357.92681275555265, 385.83177802003144}</string>
-				<string>{357.98768600390497, 416.10364325347007}</string>
+				<string>{357.92680855121728, 404.13987522469927}</string>
+				<string>{357.9876817995696, 434.4117404581379}</string>
 			</array>
 			<key>Style</key>
 			<dict>
@@ -1184,7 +1185,7 @@ ack_commit\
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{223.45004815513622, 429.62942960619256}, {59, 14}}</string>
+			<string>{{223.45004395080085, 447.93752681086045}, {59, 14}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>FitText</key>
@@ -1263,9 +1264,9 @@ ack_commit\
 			<integer>31</integer>
 			<key>Points</key>
 			<array>
-				<string>{210.39419672615699, 410.26063723506189}</string>
-				<string>{240.6500138253013, 429.62942960619256}</string>
-				<string>{479.54987179807529, 429.62942960619256}</string>
+				<string>{210.39419252182162, 428.56873443972978}</string>
+				<string>{240.65000962096593, 447.93752681086045}</string>
+				<string>{480.04986759668145, 447.93752105902325}</string>
 			</array>
 			<key>Style</key>
 			<dict>
@@ -1302,7 +1303,7 @@ ack_commit\
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{423.58079002281647, 383.26788959884101}, {43, 14}}</string>
+			<string>{{423.5807858184811, 401.5759868035089}, {43, 14}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>FitText</key>
@@ -1381,9 +1382,9 @@ ack_commit\
 			<integer>29</integer>
 			<key>Points</key>
 			<array>
-				<string>{525.01912876611505, 370.06793584080327}</string>
-				<string>{480.04987180101676, 398.63712083393324}</string>
-				<string>{254.94232369455221, 399.05259806342798}</string>
+				<string>{525.01912456177979, 388.37603304547116}</string>
+				<string>{480.04986759668139, 416.94521803860113}</string>
+				<string>{254.94231949021685, 417.36069526809587}</string>
 			</array>
 			<key>Style</key>
 			<dict>
@@ -1420,7 +1421,7 @@ ack_commit\
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{480.04987180101676, 418.69096159697011}, {89.938461303710938, 21.876924514770508}}</string>
+			<string>{{480.04986759668139, 436.999058801638}, {89.938461303710938, 21.876924514770508}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>ID</key>
@@ -1462,7 +1463,7 @@ ack_commit\
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{165.00386239084128, 388.11413580604273}, {89.938461303710938, 21.876924514770508}}</string>
+			<string>{{165.00385818650591, 406.42223301071061}, {89.938461303710938, 21.876924514770508}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>ID</key>
@@ -1504,7 +1505,7 @@ ack_commit\
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{566.08079415204361, 175.22481333058224}, {135.515380859375, 21.876924514770508}}</string>
+			<string>{{566.08078994770824, 193.53291053525078}, {135.515380859375, 21.876924514770508}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>ID</key>
@@ -1556,8 +1557,8 @@ ack_commit\
 			<integer>23</integer>
 			<key>Points</key>
 			<array>
-				<string>{358.01493034123877, 330.09763153406334}</string>
-				<string>{357.93250555109836, 362.95485607512785}</string>
+				<string>{358.26770969150755, 348.90360734157326}</string>
+				<string>{357.99884565741365, 381.26296896862226}</string>
 			</array>
 			<key>Style</key>
 			<dict>
@@ -1600,8 +1601,8 @@ ack_commit\
 			<integer>22</integer>
 			<key>Points</key>
 			<array>
-				<string>{357.9267087473263, 264.09870341314542}</string>
-				<string>{358.01493034123877, 308.22070701929283}</string>
+				<string>{357.97960417896655, 282.40679067548643}</string>
+				<string>{358.27186389526628, 326.52670006728482}</string>
 			</array>
 			<key>Style</key>
 			<dict>
@@ -1625,7 +1626,7 @@ ack_commit\
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{290.25723991155127, 308.22070701929283}, {135.515380859375, 21.876924514770508}}</string>
+			<string>{{290.51417346557878, 326.52670006728482}, {135.515380859375, 21.876924514770508}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>ID</key>
@@ -1676,7 +1677,7 @@ ack_commit\
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{220.45004956909935, 320.021661347666}, {65, 14}}</string>
+			<string>{{220.45004536476398, 338.32975855233389}, {65, 14}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>FitText</key>
@@ -1736,7 +1737,7 @@ ack_commit\
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{263.45001825346816, 272.798655886213}, {71, 14}}</string>
+			<string>{{263.45001404913279, 291.10675309088089}, {71, 14}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>FitText</key>
@@ -1815,10 +1816,10 @@ ack_commit\
 			<integer>15</integer>
 			<key>Points</key>
 			<array>
-				<string>{209.97308775113214, 298.9063615036153}</string>
-				<string>{263.45002292912426, 319.6371180811156}</string>
-				<string>{426.60386645885666, 318.42168920556486}</string>
-				<string>{479.65213563318235, 358.82651321738575}</string>
+				<string>{209.97308354679677, 317.21445870828319}</string>
+				<string>{263.45001872478889, 337.94521528578349}</string>
+				<string>{426.60386225452129, 336.72978641023275}</string>
+				<string>{480.04989390992432, 377.43757078808591}</string>
 			</array>
 			<key>Style</key>
 			<dict>
@@ -1865,8 +1866,8 @@ ack_commit\
 			<integer>14</integer>
 			<key>Points</key>
 			<array>
-				<string>{254.94231840298761, 287.96789924623005}</string>
-				<string>{480.04988861836, 287.96789582117191}</string>
+				<string>{254.94231419865224, 306.27599645089794}</string>
+				<string>{480.04988441402452, 306.2759930258398}</string>
 			</array>
 			<key>Style</key>
 			<dict>
@@ -1909,8 +1910,8 @@ ack_commit\
 			<integer>13</integer>
 			<key>Points</key>
 			<array>
-				<string>{357.90381966260406, 197.60172751057922}</string>
-				<string>{357.90381966260406, 241.22177991293557}</string>
+				<string>{357.9038154582687, 215.90982471524779}</string>
+				<string>{357.9038154582687, 259.52987711760397}</string>
 			</array>
 			<key>Style</key>
 			<dict>
@@ -1934,7 +1935,7 @@ ack_commit\
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{480.04988861835994, 277.02943356378665}, {89.938461303710938, 21.876924514770508}}</string>
+			<string>{{480.04988441402458, 295.33753076845454}, {89.938461303710938, 21.876924514770508}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>ID</key>
@@ -1976,7 +1977,7 @@ ack_commit\
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{480.04989811425963, 348.19101132603276}, {89.938461303710938, 21.876924514770508}}</string>
+			<string>{{480.04989390992426, 366.49910853070065}, {89.938461303710938, 21.876924514770508}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>ID</key>
@@ -2018,7 +2019,7 @@ ack_commit\
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{165.00386376725191, 263.02943642926647}, {67, 14}}</string>
+			<string>{{165.00385956291655, 281.33753363393436}, {67, 14}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>FitText</key>
@@ -2066,7 +2067,7 @@ ack_commit\
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{165.00385709927667, 277.02943698884479}, {89.938461303710938, 21.876924514770508}}</string>
+			<string>{{165.0038528949413, 295.33753419351268}, {89.938461303710938, 21.876924514770508}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>ID</key>
@@ -2108,7 +2109,7 @@ ack_commit\
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{312.93461633486203, 161.22480102152545}, {57, 14}}</string>
+			<string>{{312.93461213052666, 179.53289822619399}, {57, 14}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>FitText</key>
@@ -2156,7 +2157,7 @@ ack_commit\
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{312.93454486116207, 473.92707724904176}, {89.938461303710938, 21.876924514770508}}</string>
+			<string>{{312.9345406568267, 492.23517445370965}, {89.938461303710938, 21.876924514770508}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>ID</key>
@@ -2191,7 +2192,7 @@ ack_commit\
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{312.93458067030645, 363.45485452347231}, {89.938461303710938, 21.876924514770508}}</string>
+			<string>{{312.93457646597108, 381.76295172814019}, {89.938461303710938, 21.876924514770508}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>ID</key>
@@ -2226,7 +2227,7 @@ ack_commit\
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{312.9346069835492, 241.7217799136773}, {89.938461303710938, 21.876924514770508}}</string>
+			<string>{{312.93460277921383, 260.02987711834572}, {89.938461303710938, 21.876924514770508}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>ID</key>
@@ -2261,7 +2262,7 @@ ack_commit\
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{312.93459081967239, 175.22480299506699}, {89.938461303710938, 21.876924514770508}}</string>
+			<string>{{312.93458661533703, 193.53290019973554}, {89.938461303710938, 21.876924514770508}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>ID</key>
@@ -2342,7 +2343,7 @@ ack_commit\
 	<key>MasterSheets</key>
 	<array/>
 	<key>ModificationDate</key>
-	<string>2013-12-06 17:46:16 +0000</string>
+	<string>2013-12-06 17:49:40 +0000</string>
 	<key>Modifier</key>
 	<string>Douglas Triggs</string>
 	<key>NotesVisible</key>
