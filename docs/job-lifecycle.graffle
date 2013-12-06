@@ -1612,7 +1612,7 @@
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{488.76321325770687, 353.9280965695587}, {29, 14}}</string>
+			<string>{{408.12785119357284, 339.57818553881987}, {29, 14}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>FitText</key>
@@ -1674,7 +1674,7 @@
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{473.76320389958448, 321.29193759572576}, {59, 14}}</string>
+			<string>{{438.581298828125, 326.48346328735352}, {59, 14}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>FitText</key>
@@ -2875,7 +2875,7 @@
 	<key>MasterSheets</key>
 	<array/>
 	<key>ModificationDate</key>
-	<string>2013-12-06 22:28:59 +0000</string>
+	<string>2013-12-06 22:30:33 +0000</string>
 	<key>Modifier</key>
 	<string>Douglas Triggs</string>
 	<key>NotesVisible</key>
