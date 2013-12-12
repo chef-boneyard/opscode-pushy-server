@@ -1,0 +1,286 @@
+* REST Endpoints
+
+The Pushy REST API allows you to create jobs and retrieve status. 
+
+All requests will be signed using the Chef API signing protocol and a
+Chef client key.
+
+** /_status
+
+*** GET
+
+Gets current server status.
+
+Response:
+
+#+begin_example
+{
+  "status": "it's alive"
+  "incarnation_id": "e0d96969-db1a-4df5-aabd-a029de131ca3",
+  "node_fsm_count:" 0,
+  "job_processes:" []
+}
+#+end_example
+
+Error Codes:
+
++ 200 :: OK
++ 500 :: Your server is broked
+
+Those are the only codes you should ever get from this endpoint (and technically,
+you shouldn't ever get the 500, either).
+
+** /organizations/ORGNAME/pushy/config/<id>
+
+*** GET
+
+    Gets the the configuration information for a single node
+
+Response:
+
+The response includes all of the node's configuration information.
+
+#+begin_example
+{
+  "type":"config",
+  "host":"api.opscode.piab",
+  "push_jobs":{
+    "heartbeat":{
+      "out_addr":"tcp:\/\/api.opscode.piab:10000",
+      "command_addr":"tcp:\/\/api.opscode.piab:10002",
+      "interval":1.0,
+      "offline_threshold":3,
+      "online_threshold":2
+    }
+  },
+  "node":"DONKEY",
+  "organization":"pedant-testorg-2165",
+  "public_key":"-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwtTVwuLHYSSNOKBdb4+6\nZRfHW7d8mXEYxfm+h\/20tTNV1qiH18HVe6ViAXbii4\/wb7BxBSJNPShOmZOsv5Ug\nRkTC7WT77zmq6\/Z\/VWWM3CUhYJKpUmnwefnqAyHWtMqSkwS9IqwaglTfOeWtm9px\nhPsqKYnb\/bmCMYlc\/yg28LHT97Iu34BwcFuRPNFpuIk+KjSbiHuWlPzueoxIfs5A\n9RrYEQPXU7wZ58KCAItk88OD5LaKKmeM5si9AMgNDAgdGiygNZcPzJVuzUFC8WGo\n9C7I3aB+7Nf6hrW9XiGzod7\/2dRicAKeJfgUWFX4Seyri\/Qr2nGZ9h1sUT+Ah8uB\n7wIDAQAB\n-----END PUBLIC KEY-----\n\n",
+  "encoded_session_key":{
+    "method":"hmac_sha256",
+    "key":"HdaCjUwS19b5EJ9qCRIjEncbZ3ihQyrOLcq+4hFa3E0toppeIC2nqg44xbMXlPfBCJ\/MIHavc1PuWlbsd4zAACrp8NYepe2LnpAWSmXZlm3mTPo6+S66qBgi5xwaXOLp0BAH7GEw\/GPOrDEyBmnZx7iSxX1NZbPrQ1wzDCR9Dvy+iwlP3e0dT9fI+JvpDWEZbxbMJCV7B7gF8IcytUePHdUCvq8PhoIsLM1KGNhUOGnaoGqEv096xJ3V7LB86XW9aWqbVl0NpWENDPlXdBEyj0\/JLmZ8qhbjM3fHSXouIBre1eqcHFB3AJzhZMswQl7zm1l7Zv+UiHKhbglrLUV3eg=="
+  },
+  "lifetime":3600,
+  "max_message_skew":300,
+  "incarnation_id":"e0d96969-db1a-4df5-aabd-a029de131ca3"
+}
+#+end_example
+
+Error Codes:
+
++ 200 :: OK
++ 400 :: Bad signature headers
++ 401 :: Unknown or non-authenticated user
++ 403 :: User not authorized to read node config
++ 404 :: Organization does not exist
+
+** /organizations/ORGNAME/pushy/jobs
+
+*** POST
+
+Starts a new job.
+
+POST body:
+
+#+begin_example
+{
+  "command": "chef-client",
+  "run_timeout": 300,
+  "quorum": 99,
+  "nodes": ["NODE1", "NODE2", "NODE3", "NODE4", "NODE5", "NODE6"]
+}
+#+end_example
+
+Response:
+
+#+begin_example
+{
+  "id": "aaaaaaaaaaaa25fd67fa8715fd547d3d"
+}
+#+end_example
+
+Error Codes:
+
++ 201 :: Job created.
++ 400 :: Bad signature headers or bad JSON body
++ 401 :: Unknown or non-authenticated user
++ 403 :: User not authorized to create jobs
++ 404 :: Organization does not exist
+
+*** GET
+
+Gets a list of all current jobs.
+
+#+begin_example
+[
+  {
+    "id": "aaaaaaaaaaaa25fd67fa8715fd547d3d",
+    "command": "chef-client",
+    "run_timeout": 300,
+    "status": "running",
+    "created_at": "Tue, 04 Sep 2012 23:01:02 GMT",
+    "updated_at": "Tue, 04 Sep 2012 23:17:56 GMT"
+  },
+  {
+    "id": "aaaaaaaaaaaa25fd67fa8715deadbeef",
+    "command": "chef-client",
+    "run_timeout": 300,
+    "status": "voting",
+    "created_at": "Tue, 04 Sep 2012 23:01:02 GMT",
+    "updated_at": "Tue, 04 Sep 2012 23:17:56 GMT"
+  }
+]
+#+end_example
+
+See next section for a list of possible status values.
+
+Error Codes:
+
++ 200 :: Success
++ 400 :: Bad signature headers or bad JSON body
++ 401 :: Unknown or non-authenticated user
++ 403 :: User not authorized to read jobs
++ 404 :: Organization does not exist
+
+** /organizations/ORGNAME/pushy/jobs/<id>
+
+*** GET
+
+    Gets the status of an individual job. This may include aggregated
+    breakdown of node state, (n nodes completed, m nodes failed, etc)
+
+Response:
+
+The response includes the current status of the job, as well as every
+node in the job, organized by its status.
+
+#+begin_example
+{
+  "id": "aaaaaaaaaaaa25fd67fa8715fd547d3d",
+  "command": "chef-client",
+  "run_timeout": 300,
+  "status": "running",
+  "created_at": "Tue, 04 Sep 2012 23:01:02 GMT",
+  "updated_at": "Tue, 04 Sep 2012 23:17:56 GMT",
+  "nodes": {
+    "running": ["NODE1", "NODE5"],
+    "succeeded": ["NODE2", "NODE3", "NODE4"],
+    "failed": ["NODE6"],
+    "crashed": ["NODE7"]
+  }
+}
+#+end_example
+
+"updated_at":
+
+updated_at represents when the job entered its present state (voting, running,
+complete, etc.). updated_at is *not* updated when node statuses update.
+
+Job Statuses ("status"):
+
+The job status represents the progress of the overall job.  complete,
+quorum_failed, timed_out and aborted are terminal states: job and node states
+will not change after that.
+
+- new           :: New job status
+- voting        :: Waiting for nodes to commit or refuse to run the command.
+- running       :: Running the command on the nodes.
+- complete      :: Ran the command.  Check individual node statuses to see
+                   if they completed or had issues.
+- quorum_failed :: Did not run the command on any nodes.
+- crashed       :: Crashed while running the job.
+- timed_out     :: Timed out while running the job.
+- aborted       :: Job aborted by user.
+
+Node Statuses ("nodes"):
+
+These statuses represent the progress of a node running a job.  All states
+except new, ready and running are *terminal states*--the node's state will not
+change after that.
+
++ new         :: Node has neither committed nor refused to run the command.
++ ready       :: Node has committed to run the command but has not yet run it.
++ running     :: Node is presently running the command.
++ succeeded   :: Node successfully ran the command (an exit code of 0 was returned).
++ failed      :: Node failed to run the command (an exit code of nonzero was returned).
++ aborted     :: Node ran the command but stopped before completion.
++ crashed     :: Node went down after it started running
++ nacked      :: Node was busy when asked to be part of the job.
++ unavailable :: Node went down before it started running
++ was_ready   :: Node was ready but quorum failed
++ timed_out   :: Node timed out
+
+Error Codes:
+
++ 200 :: OK
++ 400 :: Bad signature headers
++ 401 :: Unknown or non-authenticated user
++ 403 :: User not authorized to read jobs
++ 404 :: Organization or job does not exist
+
+** /organizations/ORGNAME/pushy/node_states
+
+*** GET
+
+Gets a list of all nodes and their availability.
+
+#+begin_example
+[
+  {
+    "node_name": "FARQUAD",
+    "availability": "unavailable",
+  },
+  {
+    "node_name": "DONKEY",
+    "availability": "unavailable",
+  },
+  {
+    "node_name": "FIONA",
+    "availability": "available",
+  }
+]
+
+#+end_example
+
+Nodes are either available or unavailable.
+
+Error Codes:
+
++ 200 :: OK
++ 400 :: Bad signature headers or bad JSON body
++ 401 :: Unknown or non-authenticated user
++ 403 :: User not authorized to read jobs
++ 404 :: Organization does not exist
+
+** /organizations/ORGNAME/pushy/node_states/<node_name>
+
+*** GET
+
+Gets an individual node's availability or status.
+
+#+begin_example
+  {
+    "node_name": "FIONA",
+    "status": "offline",
+    "availability": "unavailable"
+  }
+#+end_example
+
+Status:
+
++ offline :: node is offline
++ online  :: node is online
+
+Availability (this seems a bit redundant):
+
++ available   :: node is available
++ unavailable :: node is unavailable
+
+Error Codes:
+
++ 200 :: OK
++ 400 :: Bad signature headers or bad JSON body
++ 401 :: Unknown or non-authenticated user
++ 403 :: User not authorized to read jobs
++ 404 :: Organization does not exist
+
