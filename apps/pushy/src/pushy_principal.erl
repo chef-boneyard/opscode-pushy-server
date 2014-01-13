@@ -24,13 +24,15 @@ fetch_principal(OrgName, Requestor) ->
 -spec request_principal(OrgName :: binary(),
                         Requestor :: binary()) -> #pushy_principal{}.
 request_principal(OrgName, Requestor) ->
+    ChefVersion = envy:get(pushy, chef_version, string),
     Headers = [{"Accept", "application/json"},
                {"Content-Type", "application/json"},
                {"User-Agent", "opscode-pushy-server pushy pubkey"},
                {"X-Ops-UserId", ""},
                {"X-Ops-Content-Hash", ""},
                {"X-Ops-Sign", ""},
-               {"X-Ops-Timestamp", ""}],
+               {"X-Ops-Timestamp", ""},
+               {"X-Chef-Version", ChefVersion}],
     Url = api_url(OrgName, Requestor),
     case ibrowse:send_req(Url, Headers, get) of
         {ok, Code, ResponseHeaders, ResponseBody} ->
