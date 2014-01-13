@@ -96,6 +96,7 @@
 
           %% Used for service to service calls
           {erchef_root_url, "https://<%= node['private_chef']['lb']['api_fqdn'] %>"},
+          {chef_api_version, "<%= @chef_api_version %>"}, %% x-chef-version HTTP header value
 
           %% Zeromq tunings
           {zmq_io_processes, <%= @zmq_io_processes %> }
