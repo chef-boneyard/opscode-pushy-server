@@ -301,12 +301,12 @@ describe "pushy config" do
   end # describe 'access control with pushy_job groups'
 
   context 'invalid request' do
-    it "returns 403 (\"Forbidden\") when organization doesn't exist" do
+    it "returns 404 (\"Not Found\") when organization doesn't exist" do
       # This should be un-pended when OC-5484 is done
       path = api_url("/pushy/config/#{config_name}").gsub(org, "bogus-org")
       get(path, admin_user) do |response|
         response.should look_like({
-                                    :status => 403
+                                    :status => 404
                                   })
       end
     end

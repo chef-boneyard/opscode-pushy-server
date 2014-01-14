@@ -479,20 +479,20 @@ describe "Node_States API Endpoint", :node_states do
   end # describe 'access control with pushy_job_readers and nested groups'
 
   context 'invalid request' do
-    it 'returns 403 ("Forbidden") with bogus org for /node_states' do
+    it 'returns 404 ("Not Found") with bogus org for /node_states' do
       path = api_url("/pushy/node_states").gsub(org, "bogus-org")
       get(path, admin_user) do |response|
         response.should look_like({
-                                    :status => 403
+                                    :status => 404
                                   })
       end
     end
 
-    it 'returns 403 ("Forbidden") with bogus org for /node_states/<name>' do
+    it 'returns 404 ("Not Found") with bogus org for /node_states/<name>' do
       path = api_url("/pushy/node_states/#{node_name}").gsub(org, "bogus-org")
       get(path, admin_user) do |response|
         response.should look_like({
-                                    :status => 403
+                                    :status => 404
                                   })
       end
     end
