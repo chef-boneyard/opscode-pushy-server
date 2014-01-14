@@ -15,6 +15,8 @@ fetch_principal(OrgName, Requestor) ->
     try
         request_principal(OrgName, Requestor)
     catch
+        throw:{error, {not_found, {"404", _, _}}} ->
+            {not_found, org};
         throw:{error, {not_found, Why}} ->
             {not_found, Why};
         throw:{error, {conn_failed, Why}} ->
@@ -36,10 +38,12 @@ request_principal(OrgName, Requestor) ->
     Url = api_url(OrgName, Requestor),
     case ibrowse:send_req(Url, Headers, get) of
         {ok, Code, ResponseHeaders, ResponseBody} ->
+            io:format("got ~p, ~p, ~p~n", [Code, ResponseHeaders, ResponseBody]),
             ok = pushy_http_common:check_http_response(Code, ResponseHeaders,
                                                        ResponseBody),
             parse_json_response(ResponseBody);
         {error, Reason} ->
+            io:format("got error ~p~n", [Reason]),
             throw({error, Reason})
     end.
 

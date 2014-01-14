@@ -124,6 +124,8 @@ is_authorized(Req, State) ->
             {"X-Ops-Sign version=\"1.0\" version=\"1.1\"", ReqOther, StateOther};
         {conn_failed, ReqFailure, StateFailure} ->
             {{halt, 502}, ReqFailure, StateFailure};
+        {{not_found, org}, ReqNotFound, StateNotFound} ->
+            {{halt, 404}, ReqNotFound, StateNotFound};
         {not_associated_with_org, ReqForbid, StateForbid} ->
             {{halt, 403}, ReqForbid, StateForbid}
     end.
@@ -145,6 +147,10 @@ verify_request_signature(Req, State) ->
                                                  UserName, OrgName),
             Req1 = wrq:set_resp_body(jiffy:encode(NotFoundMsg), Req),
             {not_associated_with_org, Req1, State1};
+        {not_found, org} ->
+            NotFoundMsg = verify_request_message({not_found, org},
+                                                 UserName, OrgName),
+            {{not_found, org}, wrq:set_resp_body(jiffy:encode(NotFoundMsg), Req), State1};
         {not_found, What} ->
             NotFoundMsg = verify_request_message({not_found, What},
                                                  UserName, OrgName),
