@@ -33,7 +33,7 @@ simple_test_() ->
              application:set_env(chef_authn, keyring,
                                  [{pivotal, "../test/testkey.pem"}]),
              application:set_env(chef_authn, keyring_dir, "../test"),
-             application:set_env(pushy, chef_version, "11.0.0"),
+             application:set_env(pushy, chef_api_version, "11.0.0"),
              chef_keyring:start_link()
              %%meck:expect(chef_keyring, get_key,
              %%            fun(_) -> {ok, <<"FOO">>} end)
