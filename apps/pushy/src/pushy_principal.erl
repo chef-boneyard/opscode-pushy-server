@@ -15,8 +15,6 @@ fetch_principal(OrgName, Requestor) ->
     try
         request_principal(OrgName, Requestor)
     catch
-        throw:{error, {not_found, {"404", _, _}}} ->
-            {not_found, org};
         throw:{error, {not_found, Why}} ->
             {not_found, Why};
         throw:{error, {conn_failed, Why}} ->
@@ -37,8 +35,17 @@ request_principal(OrgName, Requestor) ->
                {"X-Chef-Version", ChefApiVersion}],
     Url = api_url(OrgName, Requestor),
     case ibrowse:send_req(Url, Headers, get) of
+        {ok, "404", _Headers, ResponseBody} ->
+            %% A 404 can mean either the org doesn't exist, or the principal doesn't (or
+            %% isn't in the given org). We need to parse the JSON response body to find out
+            %% which is the case.
+            EJson = jiffy:decode(ResponseBody),
+            Reason = case ej:get({"not_found"}, EJson) of
+                         <<"org">> -> org;
+                         <<"principal">> -> principal
+                     end,
+            throw({error, {not_found, Reason}});
         {ok, Code, ResponseHeaders, ResponseBody} ->
-            io:format("got ~p, ~p, ~p~n", [Code, ResponseHeaders, ResponseBody]),
             ok = pushy_http_common:check_http_response(Code, ResponseHeaders,
                                                        ResponseBody),
             parse_json_response(ResponseBody);
