@@ -10,9 +10,11 @@
 
 fetch_authenticated(Path) ->
     {ok, Key} = chef_keyring:get_key(pivotal),
+    ChefApiVersion = envy:get(pushy, chef_api_version, string),
     Headers = chef_authn:sign_request(Key, <<"pivotal">>,
                                       <<"GET">>, now, list_to_binary(Path)),
-    FullHeaders = [{"Accept", "application/json"}|Headers],
+    FullHeaders = [{"Accept", "application/json"},
+                   {"X-Chef-Version", ChefApiVersion} | Headers],
     fetch_authenticated(Path, FullHeaders).
 
 fetch_authenticated(Path, Headers) ->

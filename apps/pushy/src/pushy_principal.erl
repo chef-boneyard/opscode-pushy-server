@@ -24,20 +24,33 @@ fetch_principal(OrgName, Requestor) ->
 -spec request_principal(OrgName :: binary(),
                         Requestor :: binary()) -> #pushy_principal{}.
 request_principal(OrgName, Requestor) ->
+    ChefApiVersion = envy:get(pushy, chef_api_version, string),
     Headers = [{"Accept", "application/json"},
                {"Content-Type", "application/json"},
                {"User-Agent", "opscode-pushy-server pushy pubkey"},
                {"X-Ops-UserId", ""},
                {"X-Ops-Content-Hash", ""},
                {"X-Ops-Sign", ""},
-               {"X-Ops-Timestamp", ""}],
+               {"X-Ops-Timestamp", ""},
+               {"X-Chef-Version", ChefApiVersion}],
     Url = api_url(OrgName, Requestor),
     case ibrowse:send_req(Url, Headers, get) of
+        {ok, "404", _Headers, ResponseBody} ->
+            %% A 404 can mean either the org doesn't exist, or the principal doesn't (or
+            %% isn't in the given org). We need to parse the JSON response body to find out
+            %% which is the case.
+            EJson = jiffy:decode(ResponseBody),
+            Reason = case ej:get({"not_found"}, EJson) of
+                         <<"org">> -> org;
+                         <<"principal">> -> principal
+                     end,
+            throw({error, {not_found, Reason}});
         {ok, Code, ResponseHeaders, ResponseBody} ->
             ok = pushy_http_common:check_http_response(Code, ResponseHeaders,
                                                        ResponseBody),
             parse_json_response(ResponseBody);
         {error, Reason} ->
+            io:format("got error ~p~n", [Reason]),
             throw({error, Reason})
     end.
 
