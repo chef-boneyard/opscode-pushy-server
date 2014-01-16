@@ -16,7 +16,7 @@
 #
 
 name "oc-pushy-pedant"
-version "1.0.0"
+version "1.0.1"
 
 dependency "libzmq"
 dependency "ruby"
