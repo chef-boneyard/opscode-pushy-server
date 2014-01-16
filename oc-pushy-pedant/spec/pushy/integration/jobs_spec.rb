@@ -716,20 +716,20 @@ describe "Jobs API Endpoint", :jobs do
     }
 
     context 'invalid GET request' do
-      it 'returns 403 ("Forbidden") with bogus org for /jobs' do
+      it 'returns 404 ("Not Found") with bogus org for /jobs' do
         path = api_url("/pushy/jobs").gsub(org, "bogus-org")
         get(path, admin_user) do |response|
           response.should look_like({
-                                      :status => 403
+                                      :status => 404
                                     })
         end
       end
 
-      it 'returns 403 ("Forbidden") with bogus org for /jobs/<name>' do
+      it 'returns 404 ("Not Found") with bogus org for /jobs/<name>' do
         path = job_path.gsub(org, "bogus-org")
         get(path, admin_user) do |response|
           response.should look_like({
-                                      :status => 403
+                                      :status => 404
                                     })
         end
       end
@@ -738,11 +738,11 @@ describe "Jobs API Endpoint", :jobs do
     context 'invalid POST request' do
       include_context "job_body_util"
 
-      it "returns 403 (\"Forbidden\") when organization doesn't exist" do
+      it "returns 404 (\"Not Found\") when organization doesn't exist" do
         path = api_url("/pushy/jobs").gsub(org, "bogus-org")
         post(path, admin_user, :payload => job_to_run) do |response|
           response.should look_like({
-                                      :status => 403
+                                      :status => 404
                                     })
         end
       end
