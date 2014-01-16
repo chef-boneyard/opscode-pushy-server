@@ -16,7 +16,7 @@
 #
 
 name "opscode-pushy-server"
-version "1.0.0"
+version "1.0.1"
 
 dependency "erlang"
 dependency "rebar"
