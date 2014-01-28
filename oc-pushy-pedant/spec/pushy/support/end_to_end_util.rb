@@ -214,6 +214,26 @@ shared_context "end_to_end_util" do
     job
   end
 
+  # Retrieves the job denoted by `uri`.  Removes the `id`,
+  # `created_at`, and `updated_at` keys (as these are volatile and
+  # change with each invocation of the tests) and sorts the lists of
+  # nodes for each status.  Returns the JSON body as a Hash.
+  #
+  # If the HTTP GET to retrieve the job is not successful, an RSpec
+  # matcher error will be raised, and your test will fail.
+  #
+  # @example Sample Return Value
+  #  {
+  #    "nodes"=>{
+  #      "succeeded"=>["FARQUAD", "FIONA"],
+  #      "nacked"=>["DONKEY"]
+  #    },
+  #    "command"=>"sh /do/this/thing --right-now",
+  #    "status"=>"complete",
+  #    "run_timeout"=>3600
+  #  }
+  #
+  # @return [Hash]
   def get_job(uri)
     job = get(uri, admin_user) do |response|
       response.should look_like({:status => 200})
