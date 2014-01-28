@@ -608,7 +608,7 @@ describe "end-to-end-test" do
     context 'when running one job on DONKEY' do
       before(:each) do
         File.delete('/tmp/pushytest') if File.exist?('/tmp/pushytest')
-        @job1 = start_job('sleep 1', ['DONKEY'])
+        @job1 = start_job(make_node_busy, ['DONKEY'])
       end
 
       context 'and simultaneous job on FARQUAD and FIONA' do
@@ -617,7 +617,7 @@ describe "end-to-end-test" do
         end
 
         it 'both jobs complete successfully' do
-          job_should_complete('sleep 1', %w{DONKEY}, @job1['uri'])
+          job_should_complete(make_node_busy, %w{DONKEY}, @job1['uri'])
           job_should_complete(echo_yahoo, %w{FARQUAD FIONA}, @job2['uri'])
           IO.read('/tmp/pushytest').should == "YAHOO\n"*2
         end
@@ -639,7 +639,7 @@ describe "end-to-end-test" do
             },
             'status' => 'complete'
           }
-          job_should_complete('sleep 1', %w{DONKEY}, @job1['uri'])
+          job_should_complete(make_node_busy, %w{DONKEY}, @job1['uri'])
         end
       end
 
@@ -659,7 +659,7 @@ describe "end-to-end-test" do
             },
             'status' => 'quorum_failed'
           }
-          job_should_complete('sleep 1', %w{DONKEY}, @job1['uri'])
+          job_should_complete(make_node_busy, %w{DONKEY}, @job1['uri'])
         end
       end
 
