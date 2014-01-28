@@ -1,4 +1,7 @@
+require 'pushy/support/end_to_end_util'
+
 shared_context "job_body_util" do
+  include_context "end_to_end_util"
   let(:valid_datetime) { ->(v) { Time.parse(v) } }
 
   let(:default_payload) {
@@ -75,6 +78,17 @@ shared_context "job_body_util" do
                                     :body_exact => {
                                       "uri" => new_job_uri
                                     }})
+
+        # Sometimes if the test host is experiencing excessive load
+        # (or is underpowered), it may take longer for voting to
+        # happen and the quorum to fail.  In these cases, tests would
+        # fail because the job was still voting when we checked its
+        # status.  We aren't really interested in checking transitions
+        # here, but the end status, so we'll just wait for the job to
+        # reach a terminal state before proceeding with the tests
+        wait_for_job_status(new_job_uri, 'quorum_failed')
+
+        # Now we'll get the job and do the comparisons
         response = get(new_job_uri, admin_user)
         response.
           should look_like({
