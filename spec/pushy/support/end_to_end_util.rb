@@ -8,6 +8,16 @@ shared_context "end_to_end_util" do
     'sh ' + File.expand_path('../../support/echo_yahoo_to_tmp_pushytest', __FILE__)
   end
 
+  # Command to use to tie up a node while we test the behavior of jobs
+  # when some of their target nodes are busy (e.g., to test quorum
+  # checking, job refusal, etc.)
+  #
+  # @note Depending on the load the test machine is experiencing, this
+  # sleep may need to be lengthened.
+  def make_node_busy
+    'sleep 2'
+  end
+
   # Method to start up a new client that will be reaped when
   # the test finishes
   def start_new_clients(*names)
