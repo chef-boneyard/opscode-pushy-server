@@ -83,7 +83,10 @@ describe "end-to-end-test" do
 
     context 'when running a job and a client goes down and quickly back up' do
       before :each do
-        @job = start_job('sleep 1', %w{DONKEY})
+        # Here we do a longer-running job since we want to capture it
+        # in the running state.  We want to ensure that we catch it
+        # there, regardless of system load.
+        @job = start_job(make_node_busy, %w{DONKEY})
         wait_for_job_status(@job['uri'], 'running')
         stop_client('DONKEY')
         start_client('DONKEY')
@@ -91,7 +94,7 @@ describe "end-to-end-test" do
 
       it 'should be marked as unavailable immediatly' do
         get_job(@job['uri']).should == {
-          'command' => 'sleep 1',
+          'command' => make_node_busy,
           'run_timeout' => 3600,
           'nodes' => { 'crashed' => [ 'DONKEY' ] },
           'status' => 'complete'
