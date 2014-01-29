@@ -14,6 +14,7 @@ require 'pushy/support/authorization_groups_util'
 
 describe "Jobs API Endpoint", :jobs do
   include_context "authorization_groups_util"
+  include_context "end_to_end_util"
 
   def self.ruby?
     # Needed for pedant header checking
@@ -848,6 +849,11 @@ describe "Jobs API Endpoint", :jobs do
         include_context "validation_util"
         let(:url) { job_path }
         let(:response_should_be_successful) do
+
+          # Not interested in catching a transition through the
+          # 'voting' state... just wait for quorum failure
+          wait_for_job_status(url, 'quorum_failed')
+
           response.should look_like({
                                       :status => 200,
                                       :body_exact => {
