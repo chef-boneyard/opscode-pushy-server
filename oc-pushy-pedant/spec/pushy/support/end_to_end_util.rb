@@ -8,6 +8,16 @@ shared_context "end_to_end_util" do
     'sh ' + File.expand_path('../../support/echo_yahoo_to_tmp_pushytest', __FILE__)
   end
 
+  # Command to use to tie up a node while we test the behavior of jobs
+  # when some of their target nodes are busy (e.g., to test quorum
+  # checking, job refusal, etc.)
+  #
+  # @note Depending on the load the test machine is experiencing, this
+  # sleep may need to be lengthened.
+  def make_node_busy
+    'sleep 2'
+  end
+
   # Method to start up a new client that will be reaped when
   # the test finishes
   def start_new_clients(*names)
@@ -214,6 +224,26 @@ shared_context "end_to_end_util" do
     job
   end
 
+  # Retrieves the job denoted by `uri`.  Removes the `id`,
+  # `created_at`, and `updated_at` keys (as these are volatile and
+  # change with each invocation of the tests) and sorts the lists of
+  # nodes for each status.  Returns the JSON body as a Hash.
+  #
+  # If the HTTP GET to retrieve the job is not successful, an RSpec
+  # matcher error will be raised, and your test will fail.
+  #
+  # @example Sample Return Value
+  #  {
+  #    "nodes"=>{
+  #      "succeeded"=>["FARQUAD", "FIONA"],
+  #      "nacked"=>["DONKEY"]
+  #    },
+  #    "command"=>"sh /do/this/thing --right-now",
+  #    "status"=>"complete",
+  #    "run_timeout"=>3600
+  #  }
+  #
+  # @return [Hash]
   def get_job(uri)
     job = get(uri, admin_user) do |response|
       response.should look_like({:status => 200})
@@ -242,6 +272,7 @@ shared_context "end_to_end_util" do
     job_id = @response["uri"].split("/").last
     # Wait until all have started
     begin
+      uncommitted_nodes = node_names # assume nothing is committed to start
       Timeout::timeout(5) do
         while true
           uncommitted_nodes = node_names.select do |name|
