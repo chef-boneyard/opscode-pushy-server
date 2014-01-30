@@ -272,6 +272,7 @@ shared_context "end_to_end_util" do
     job_id = @response["uri"].split("/").last
     # Wait until all have started
     begin
+      uncommitted_nodes = node_names # assume nothing is committed to start
       Timeout::timeout(5) do
         while true
           uncommitted_nodes = node_names.select do |name|
