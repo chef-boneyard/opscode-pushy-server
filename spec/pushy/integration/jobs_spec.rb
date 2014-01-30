@@ -14,6 +14,7 @@ require 'pushy/support/authorization_groups_util'
 
 describe "Jobs API Endpoint", :jobs do
   include_context "authorization_groups_util"
+  include_context "end_to_end_util"
 
   def self.ruby?
     # Needed for pedant header checking
@@ -748,7 +749,7 @@ describe "Jobs API Endpoint", :jobs do
       end
 
       context "for command" do
-        succeeds_with_value("command", "", nil, true) # pend this for transient mystery failures on CentOS :(
+        succeeds_with_value("command", "", nil)
         succeeds_with_value("command", "sleep 2")
         fails_with_value("command", :delete)
         fails_with_value("command", [])
@@ -759,9 +760,9 @@ describe "Jobs API Endpoint", :jobs do
       end
 
       context "for nodes" do
-        succeeds_with_value("nodes", ["DONKEY"], {"unavailable" => ["DONKEY"]}, true) # pend this for transient mystery failures on CentOS :(
+        succeeds_with_value("nodes", ["DONKEY"], {"unavailable" => ["DONKEY"]})
         succeeds_with_value("nodes", ["DONKEY", "FIONA"],
-                            {"unavailable" => ["DONKEY", "FIONA"]}, true) # pend this for transient mystery failures on CentOS :(
+                            {"unavailable" => ["DONKEY", "FIONA"]})
         fails_with_value("nodes", :delete)
         fails_with_value("nodes", "")
         fails_with_value("nodes", "DONKEY")
@@ -848,6 +849,11 @@ describe "Jobs API Endpoint", :jobs do
         include_context "validation_util"
         let(:url) { job_path }
         let(:response_should_be_successful) do
+
+          # Not interested in catching a transition through the
+          # 'voting' state... just wait for quorum failure
+          wait_for_job_status(url, 'quorum_failed')
+
           response.should look_like({
                                       :status => 200,
                                       :body_exact => {

@@ -83,7 +83,10 @@ describe "end-to-end-test" do
 
     context 'when running a job and a client goes down and quickly back up' do
       before :each do
-        @job = start_job('sleep 1', %w{DONKEY})
+        # Here we do a longer-running job since we want to capture it
+        # in the running state.  We want to ensure that we catch it
+        # there, regardless of system load.
+        @job = start_job(make_node_busy, %w{DONKEY})
         wait_for_job_status(@job['uri'], 'running')
         stop_client('DONKEY')
         start_client('DONKEY')
@@ -91,7 +94,7 @@ describe "end-to-end-test" do
 
       it 'should be marked as unavailable immediatly' do
         get_job(@job['uri']).should == {
-          'command' => 'sleep 1',
+          'command' => make_node_busy,
           'run_timeout' => 3600,
           'nodes' => { 'crashed' => [ 'DONKEY' ] },
           'status' => 'complete'
@@ -608,7 +611,7 @@ describe "end-to-end-test" do
     context 'when running one job on DONKEY' do
       before(:each) do
         File.delete('/tmp/pushytest') if File.exist?('/tmp/pushytest')
-        @job1 = start_job('sleep 1', ['DONKEY'])
+        @job1 = start_job(make_node_busy, ['DONKEY'])
       end
 
       context 'and simultaneous job on FARQUAD and FIONA' do
@@ -617,7 +620,7 @@ describe "end-to-end-test" do
         end
 
         it 'both jobs complete successfully' do
-          job_should_complete('sleep 1', %w{DONKEY}, @job1['uri'])
+          job_should_complete(make_node_busy, %w{DONKEY}, @job1['uri'])
           job_should_complete(echo_yahoo, %w{FARQUAD FIONA}, @job2['uri'])
           IO.read('/tmp/pushytest').should == "YAHOO\n"*2
         end
@@ -639,7 +642,7 @@ describe "end-to-end-test" do
             },
             'status' => 'complete'
           }
-          job_should_complete('sleep 1', %w{DONKEY}, @job1['uri'])
+          job_should_complete(make_node_busy, %w{DONKEY}, @job1['uri'])
         end
       end
 
@@ -659,7 +662,7 @@ describe "end-to-end-test" do
             },
             'status' => 'quorum_failed'
           }
-          job_should_complete('sleep 1', %w{DONKEY}, @job1['uri'])
+          job_should_complete(make_node_busy, %w{DONKEY}, @job1['uri'])
         end
       end
 
@@ -667,7 +670,7 @@ describe "end-to-end-test" do
 
     context 'with one tied up in a long-running job' do
       before(:each) do
-        @job1 = start_job('sleep 1', [ 'DONKEY' ])
+        @job1 = start_job(make_node_busy, [ 'DONKEY' ])
       end
 
       context 'and we try to run a new job on all three nodes' do
@@ -688,7 +691,7 @@ describe "end-to-end-test" do
             },
             'status' => 'quorum_failed'
           }
-          job_should_complete('sleep 1', %w{DONKEY}, @job1['uri'])
+          job_should_complete(make_node_busy, %w{DONKEY}, @job1['uri'])
         end
       end
 
@@ -698,7 +701,7 @@ describe "end-to-end-test" do
           @nack_job_2 = start_job(echo_yahoo, ['DONKEY'])
         end
 
-        it 'nacks them both, and old job still completes', :pending do  # pend this for transient mystery failures on CentOS :(
+        it 'nacks them both, and old job still completes' do
 
           nack_job = get_job(@nack_job['uri'])
           nack_job.should == {
@@ -719,7 +722,7 @@ describe "end-to-end-test" do
             },
             'status' => 'quorum_failed'
           }
-          job_should_complete('sleep 1', [ 'DONKEY' ], @job1['uri'])
+          job_should_complete(make_node_busy, [ 'DONKEY' ], @job1['uri'])
         end
       end
     end
