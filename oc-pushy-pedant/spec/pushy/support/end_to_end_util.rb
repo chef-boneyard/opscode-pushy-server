@@ -3,6 +3,7 @@ require 'timeout'
 
 shared_context "end_to_end_util" do
   SLEEP_TIME = 0.2
+  JOB_START_TIMEOUT = 10
 
   def echo_yahoo
     'sh ' + File.expand_path('../../support/echo_yahoo_to_tmp_pushytest', __FILE__)
@@ -273,7 +274,7 @@ shared_context "end_to_end_util" do
     # Wait until all have started
     begin
       uncommitted_nodes = node_names # assume nothing is committed to start
-      Timeout::timeout(5) do
+      Timeout::timeout(JOB_START_TIMEOUT) do
         while true
           uncommitted_nodes = node_names.select do |name|
             !@clients[name][:states].any? do |state|
