@@ -4,7 +4,7 @@
 %%% @doc
 %%% REST resource for monitoring status of pushy. Extracted from work done by Seth Falcon and Kevin Smith for erchef
 %%% @end
-%% @copyright Copyright 2014 Chef Software, Inc. All Rights Reserved.
+%% @copyright Copyright 2012-2012 Chef Software, Inc. All Rights Reserved.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
