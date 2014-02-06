@@ -37,3 +37,4 @@
   {included_applications, []},
   {mod, { pushy_app, []}},
   {env, []}
+ ]}.

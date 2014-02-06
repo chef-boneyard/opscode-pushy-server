@@ -38,3 +38,4 @@ safe_sync_send_all_state_event(Pid, Message) ->
             not_found;
         Else ->
             Else
+    end.
