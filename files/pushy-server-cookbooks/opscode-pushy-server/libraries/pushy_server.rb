@@ -85,9 +85,10 @@ module PushJobsServer
 
     def generate_config(node_name)
       generate_secrets(node_name)
-      case node['private_chef']['topology']
-      when "ha"
-        PushJobsServer['opscode_pushy_server']['ha'] = true
+      topology = node['private_chef']['topology']
+      case topology
+      when "ha", "tier"
+        PushJobsServer['opscode_pushy_server']['ha'] = (topology == 'ha')
         PushJobsServer['opscode_pushy_server']['vip'] = node['private_chef']['backend_vips']['ipaddress']
         PushJobsServer['postgresql']['vip']           = node['private_chef']['backend_vips']['ipaddress']
         case node['private_chef']['servers'][node_name]['role']
