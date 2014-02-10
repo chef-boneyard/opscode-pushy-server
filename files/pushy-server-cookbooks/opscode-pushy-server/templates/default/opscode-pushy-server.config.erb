@@ -56,7 +56,7 @@
             {error_logger_redirect, true}
         ]},
  {sqerl, [
-          {db_type, pgsql},
+          {db_driver_mod, sqerl_pgsql_client},
 
           %% Database connection parameters
           {db_host, "<%= node['pushy']['postgresql']['vip'] %>"},
@@ -65,7 +65,7 @@
           {db_pass, "<%= node['pushy']['postgresql']['sql_password'] %>"},
           {db_name,   "opscode_pushy" },
           {idle_check, 10000},
-          {prepared_statements, {pushy_sql, statements, [pgsql]} },
+          {prepared_statements, {pushy_sql, statements, []} },
           {column_transforms, []}
          ]},
  {ibrowse, [
