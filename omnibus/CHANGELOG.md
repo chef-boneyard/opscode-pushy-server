@@ -1,4 +1,4 @@
-# 1.1.0 - 2014-02-11
+# 1.1.0 - 2014-02-12
 
 - Add X-Chef-Version HTTP header information for compatibility with EC
   11.1.0
@@ -10,6 +10,9 @@
 - Integration tests made more robust to timing issues
 
 # 1.0.3 - 2014-02-11
+
+Unpublished, following extended discussions on what our release
+support policy should be.
 
 Security release for a `libyaml` vulnerability.  Not compatible with
 Enterprise Chef 11.1.0; users that are upgrading their Enterprise Chef
