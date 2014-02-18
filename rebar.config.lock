@@ -9,10 +9,10 @@
                    "30a9f7867d615af45783235faa52742d11a9348e"}},
        {goldrush,".*",
                  {git,"git://github.com/DeadZen/goldrush.git",
-                      "1d883423ac360b3536ca52dc733a0164bacf3109"}},
+                      "71e63212f12c25827e0c1b4198d37d5d018a7fec"}},
        {lager,".*",
               {git,"https://github.com/basho/lager.git",
-                   "d65b91a6bc7f49879a8b38d67f8fd7a2bf30b698"}},
+                   "e118ae7a7100961ebc511e1614a9c0c5f5fc9b38"}},
        {erlzmq,".*",
                {git,"git://github.com/jamesc/erlzmq2.git",
                     "af8d9ef57250bcbc2dd86c5019c0a3c6ef311ef8"}},
@@ -24,7 +24,7 @@
                    "781e0d093e50bd4783ace80ffc0d2eea4555a2b5"}},
        {proper,".*",
                {git,"https://github.com/manopapad/proper.git",
-                    "c37cab86f5e9dd5c5e751248cf1566a5d4f9535c"}},
+                    "da31c4be95557717cd7a56add0a24541a91c038c"}},
        {jiffy,".*",
               {git,"git://github.com/davisp/jiffy.git",
                    "6f589d457673a3bbdf4329103fbe2b10b302ec87"}},
@@ -60,7 +60,7 @@
                     "de939f5a937e3ace126090a2f6cd837bd2f5bc26"}},
        {pushy_common,".*",
                      {git,"git@github.com:opscode/pushy_common.git",
-                          "080e327b1b07985bed0c71a0b213361776fda2c8"}},
+                          "8563301397948fdb7174d247b906e25fae2903e8"}},
        {mochiweb,".*",
                  {git,"git://github.com/basho/mochiweb",
                       "05b5b7eb7b830afbd9ba349a40bf40ba0462aa11"}},
@@ -72,9 +72,9 @@
                              "3bd850835571ac41d87da036b00d279609260f60"}},
        {rebar_lock_deps_plugin,".*",
                                {git,"git://github.com/seth/rebar_lock_deps_plugin.git",
-                                    "c190c077deb3dce235ea5f282c99b0dec6f3c4e2"}},
+                                    "911481ee8a20f59fc9092e370e2b0d116bec19df"}},
        {eper,".*",
              {git,"git://github.com/massemanet/eper.git",
-                  "69364c7dc8387c937bf76d260cfa9bd1163c9b6a"}}]}.
+                  "8a74f4e2161500eb26bdd490c2d5440e386216ad"}}]}.
 {plugins,[rebar_lock_deps_plugin]}.
 
