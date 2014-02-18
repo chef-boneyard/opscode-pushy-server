@@ -35,7 +35,7 @@
          update_job/1,
          update_job_node/1,
 
-         statements/1,
+         statements/0,
 
          sql_date/1
         ]).
@@ -309,24 +309,11 @@ is_undefined(undefined) ->
 is_undefined(_) ->
     false.
 
-
 %% CHEF_DB CARGO_CULT
-%% chef_sql:parse_error/1
-parse_error(Reason) ->
-    DbType = envy:get(sqerl, db_type, atom),
-    parse_error(DbType, Reason).
-%% chef_sql:parse_error/2
-parse_error(mysql, Reason) ->
-    case string:str(Reason, "Duplicate entry") of
-        0 ->
-            {error, Reason};
-        _ ->
-            {conflict, Reason}
-    end;
-parse_error(pgsql, {error,                      % error from sqerl
-                    {error,                     % error record marker from epgsql
-                     error,                     % Severity
-                     Code, Message, _Extra}}) ->
+parse_error({error,                      % error from sqerl
+             {error,                     % error record marker from epgsql
+              error,                     % Severity
+              Code, Message, _Extra}}) ->
     %% See http://www.postgresql.org/docs/current/static/errcodes-appendix.html
     case Code of
         <<"23505">> -> % unique constraint violation
@@ -335,11 +322,11 @@ parse_error(pgsql, {error,                      % error from sqerl
             {error, Message}
     end;
 %% TODO: we don't actually handle these errors anywhere...
-parse_error(_, no_connections) ->
+parse_error(no_connections) ->
     catch throw(no_connections), % hack to capture the stack
     error_logger:info_msg("Pooler had no connections for me, oh woe!~n~p~n", [erlang:get_stacktrace()] ),
     {error, "Pooler out of connections"};
-parse_error(_, no_members) ->
+parse_error(no_members) ->
     catch throw(no_members), % hack to capture the stack
     error_logger:info_msg("Pooler had no members for me, oh woe!~n~p~n", [erlang:get_stacktrace()]),
     {error, "Pooler had no members"}.
@@ -365,9 +352,8 @@ safe_get(Key, Proplist) ->
     Value.
 
 %% CHEF_DB CARGO_CULT
-%% chef_sql:statements/1
-statements(DbType) ->
-    File = atom_to_list(DbType) ++ "_statements.config",
+statements() ->
+    File = "pgsql_statements.config",
     Path = filename:join([filename:dirname(code:which(?MODULE)), "..", "priv", File]),
     Rv = case file:consult(Path) of
              {ok, Statements} -> Statements;
