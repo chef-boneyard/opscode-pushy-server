@@ -40,8 +40,11 @@ shared_context "end_to_end_util" do
   #
   # @note Depending on the load the test machine is experiencing, this
   # sleep may need to be lengthened.
+  #
+  # @note Whatever the command is, it must be in the push-job client's
+  # whitelist
   def make_node_busy
-    'sleep 3'
+    'sleep 5'
   end
 
   # Method to start up a new client that will be reaped when
