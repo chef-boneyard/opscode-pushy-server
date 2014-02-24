@@ -59,7 +59,7 @@ export PATH=/opt/opscode/bin:/opt/opscode/embedded/bin:$PATH
 sudo "private-chef-ctl" reconfigure
 sleep 120
 sudo "${project_name}-ctl" reconfigure
-sleep 10
+sleep 20
 sudo "${project_name}-ctl" test --all -J $WORKSPACE/pedant.xml --client-debug
 
 # when build succeeds, nuke the packages
