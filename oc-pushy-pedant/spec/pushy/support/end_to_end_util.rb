@@ -41,7 +41,7 @@ shared_context "end_to_end_util" do
   # @note Depending on the load the test machine is experiencing, this
   # sleep may need to be lengthened.
   def make_node_busy
-    'sleep 2'
+    'sleep 3'
   end
 
   # Method to start up a new client that will be reaped when
