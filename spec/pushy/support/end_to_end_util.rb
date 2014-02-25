@@ -74,7 +74,14 @@ shared_context "end_to_end_util" do
 
       # Create chef client and save key for pushy client
       response = post(api_url("/clients"), superuser, :payload => {"name" => name})
+
+      require 'pp'
+      puts "Got a #{response.code} response to a POST to /clients for client #{name}:"
+      pp response
+
       key = parse(response)["private_key"]
+      puts "Private Key for client #{name}:"
+      pp key
 
       @clients[name][:key_file] = file = Tempfile.new([name, '.pem'])
       key_path = file.path
