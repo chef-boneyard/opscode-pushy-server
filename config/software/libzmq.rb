@@ -17,7 +17,7 @@
 
 # We use the version in util-linux, and only build the libuuid subdirectory
 name "libzmq"
-version "v2.1.11"
+default_version "v2.1.11"
 
 dependency "autoconf"
 dependency "automake"
