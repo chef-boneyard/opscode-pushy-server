@@ -16,7 +16,7 @@
 #
 
 name "chef-gem-windows"
-version "11.2.0"
+default_version "11.2.0"
 
 dependency "ruby-windows" #includes rubygems
 dependency "ruby-windows-devkit"
@@ -37,4 +37,3 @@ build do
        "-n #{install_dir}/bin",
        "--no-rdoc --no-ri"].join(" ")
 end
-
