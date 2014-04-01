@@ -17,7 +17,7 @@
 
 # We use the version in util-linux, and only build the libuuid subdirectory
 name "libuuid"
-version "2.21"
+default_version "2.21"
 
 dependency "autoconf"
 dependency "automake"

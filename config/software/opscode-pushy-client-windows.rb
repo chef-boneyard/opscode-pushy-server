@@ -16,7 +16,7 @@
 #
 
 name "opscode-pushy-client-windows"
-version "master"
+default_version "master"
 
 # TODO - use public GIT URL when repo made public
 source :git => "git@github.com:opscode/opscode-pushy-client.git"
