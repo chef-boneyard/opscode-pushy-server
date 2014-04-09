@@ -1,6 +1,6 @@
 # Push Jobs Server Changelog
 
-## 1.1.1 (Unreleased)
+## 1.1.1 (2014-04-09)
 
 ### berkshelf
 * new dep: libffi

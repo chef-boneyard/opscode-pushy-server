@@ -1,6 +1,6 @@
 # Push Jobs Server Release Notes
 
-## 1.1.1 (Unreleased)
+## 1.1.1 (2014-04-09)
 
 ### What's New:
 
