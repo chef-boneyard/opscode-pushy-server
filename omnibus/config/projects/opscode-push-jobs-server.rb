@@ -24,7 +24,7 @@ install_path    "/opt/opscode-push-jobs-server"
 build_version   Omnibus::BuildVersion.new.semver
 build_iteration 1
 
-override :berkshelf, version: "v2.0.12"
+override :berkshelf, version: "v2.0.15"
 
 runtime_dependency "private-chef"
 
