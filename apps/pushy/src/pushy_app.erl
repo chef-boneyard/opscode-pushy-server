@@ -52,6 +52,7 @@ start(_StartType, _StartArgs) ->
             IoProcesses = envy:get(pushy, zmq_io_processes, 1, integer),
             case erlzmq:context(IoProcesses) of
                 {ok, Ctx} ->
+                    ok = erlzmq:ctx_set(Ctx, max_sockets, 51200),
                     case pushy_sup:start_link(#pushy_state{ctx=Ctx, incarnation_id=IncarnationId}) of
                         {ok, Pid} -> {ok, Pid, Ctx};
                         Error ->
