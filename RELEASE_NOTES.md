@@ -1,5 +1,15 @@
 # Push Jobs Server Release Notes
 
+## 1.1.2 (2014-06-06)
+
+### What's New:
+
+* This is a security fix release, and has no new features.
+
+### Security Fixes:
+
+* [openssl] Patch for man in the middle attack, other vulnerabilities (CVE-2014-0224)
+
 ## 1.1.1 (2014-04-09)
 
 ### What's New:
