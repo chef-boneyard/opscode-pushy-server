@@ -1,5 +1,13 @@
 # Push Jobs Server Changelog
 
+## 1.1.2 (2014-06-06)
+
+### openssl 1.0.1f
+* Upgrade to address CVE-2014-0224 and other vulnerabilites
+
+### berkshelf
+* Upgrade to version 2.0.15
+
 ## 1.1.1 (2014-04-09)
 
 ### berkshelf
