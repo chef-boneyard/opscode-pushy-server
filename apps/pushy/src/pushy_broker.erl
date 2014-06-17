@@ -42,7 +42,7 @@
 start_link(PushyState) ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [PushyState], []).
 
-init([#pushy_state{ctx=Ctx}]) ->
+init([#pushy_state{ctx=Ctx, curve_secret_key=Sec}]) ->
     %% Let the broker run more often
     erlang:process_flag(priority, high),
     CommandAddress = pushy_util:make_zmq_socket_addr(command_port),
@@ -50,6 +50,14 @@ init([#pushy_state{ctx=Ctx}]) ->
     {ok, BEO} = erlzmq:socket(Ctx, [pull, {active, true}]),
     {ok, BEI} = erlzmq:socket(Ctx, [push, {active, false}]),
     [erlzmq:setsockopt(Sock, linger, 0) || Sock <- [FE, BEO, BEI]],
+    case envy:get(pushy, disable_curve_encryption, false, boolean) of
+        false ->
+            %% Configure front-end socket as Curve-encrypted
+            pushy_zap:wait_for_start(),     % Make sure ZAP-handler is started before we create any servers that depend on it
+            ok = erlzmq:setsockopt(FE, curve_server, 1),
+            ok = erlzmq:setsockopt(FE, curve_secretkey, Sec);
+        _ -> ok
+    end,
     ok = erlzmq:bind(FE, CommandAddress),
     ok = erlzmq:bind(BEO, ?PUSHY_BROKER_OUT),
     ok = erlzmq:bind(BEI, ?PUSHY_BROKER_IN),

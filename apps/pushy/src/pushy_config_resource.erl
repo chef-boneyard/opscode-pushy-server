@@ -55,7 +55,23 @@ malformed_request(Req, State) ->
     pushy_wm_base:malformed_request(Req, State).
 
 is_authorized(Req, State) ->
-    pushy_wm_base:is_authorized(Req, State).
+    CcpkCheck = case {envy:get(pushy, disable_curve_encryption, false, boolean), wrq:get_qs_value("ccpk", Req)} of
+        {true, _} ->
+            ok;
+        {_, undefined} ->
+            {400, <<"Missing ccpk">>};
+        {_, Key} when length(Key) /= 40 ->
+            {401, <<"Bad ccpk">>};
+        {_, Key} -> 
+            add_curve_public_key(Key),
+            ok
+    end,
+    case CcpkCheck of
+        ok ->
+            pushy_wm_base:is_authorized(Req, State);
+        {Code, Msg} ->
+            {{halt, Code}, wrq:set_resp_body(jiffy:encode({[{<<"error">>, [Msg]}]}), Req), State}
+    end.
 
 forbidden(Req, State) ->
     forbidden(wrq:method(Req), Req, State).
@@ -77,6 +93,7 @@ to_json(Req, #config_state{organization_name = OrgName,
                            organization_guid = OrgGuid,
                            node_name = NodeName,
                            incarnation_id = IncarnationId,
+                           curve_public_key = CurvePublicKey,
                            requestor_key = ClientKey } = State) ->
     Host = envy:get(pushy, server_name, string),
     ConfigLifetime = envy:get(pushy, config_lifetime, ?DEFAULT_CONFIG_LIFETIME, integer),
@@ -117,6 +134,7 @@ to_json(Req, #config_state{organization_name = OrgName,
           {<<"node">>, NodeName},
           {<<"organization">>, OrgName},
           {<<"public_key">>, PublicKey},
+          {<<"curve_public_key">>, CurvePublicKey},
           {<<"encoded_session_key">>, EKeyStruct},
           {<<"lifetime">>, ConfigLifetime},
           {<<"max_message_skew">>, pushy_messaging:get_max_message_skew()},
@@ -137,3 +155,7 @@ validate_requestor(Req, #config_state{requestor = ClientName,
             Req1 = wrq:set_resp_body(jiffy:encode({[{<<"error">>, [Msg]}]}), Req),
             {true, Req1, State}
     end.
+
+add_curve_public_key(Z85Key) ->
+    {ok, DecKey} = erlzmq:z85_decode(Z85Key),
+    pushy_zap:add_key(DecKey).
