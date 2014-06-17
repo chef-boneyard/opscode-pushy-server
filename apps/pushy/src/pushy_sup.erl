@@ -69,6 +69,10 @@ init([#pushy_state{ctx=_Ctx} = PushyState]) ->
                         {port, Port},
                         {log_dir, LogDir},
                         {dispatch, Dispatch2}],
+    MaybeZap = case envy:get(pushy, disable_curve_encryption, false, boolean) of
+                   true -> [];
+                   false -> [?WORKER(pushy_zap, [PushyState])]
+               end,
     Workers1 = [?WORKER(pushy_node_stats_scanner, []),
                 ?WORKER(chef_keyring, []),
                 ?WORKER(pushy_heartbeat_generator, [PushyState]),
@@ -80,7 +84,7 @@ init([#pushy_state{ctx=_Ctx} = PushyState]) ->
                 ?WORKER(pushy_job_monitor, []),
                 ?WORKERNL(webmachine_mochiweb, [WebMachineConfig])  %% FIXME start or start_link here?
                ],
-    Workers = Workers1 ++ Switches ++ Workers2,
+    Workers = MaybeZap ++ Workers1 ++ Switches ++ Workers2,
     pushy_node_stats:init(),
     {ok, {{one_for_one, 60, 120},
          maybe_run_graphite(EnableGraphite, Workers)}}.
@@ -90,6 +94,11 @@ maybe_run_graphite(true, Workers) ->
 maybe_run_graphite(false, Workers) ->
     Workers.
 
+add_init_params({["organizations"|_Tail]=Route,
+                 pushy_config_resource=Resource, []},
+                #pushy_state{incarnation_id = IncarnationId,
+                             curve_public_key = CurvePublicKey}) ->
+    {Route, Resource, [{incarnation_id, IncarnationId}, {curve_public_key, CurvePublicKey}]};
 add_init_params({["organizations"|_Tail]=Route, Resource, []},
                 #pushy_state{incarnation_id = IncarnationId}) ->
     {Route, Resource, [{incarnation_id, IncarnationId}]};

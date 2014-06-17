@@ -40,7 +40,9 @@
                        %% TODO: Why isn't this just an embedded #pushy_principal{} record instead?
                        requestor_id :: binary(),
                        requestor_type :: pushy_requestor_type(),
-                       requestor_key :: any()
+                       requestor_key :: any(),
+
+                       curve_public_key :: binary()
                       }).
 
 -record(chef_api_response, { response_api_version :: integer(),

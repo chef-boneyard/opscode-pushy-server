@@ -30,7 +30,11 @@
 -include("pushy_wm.hrl").
 
 init([{incarnation_id, IncarnationId}]) ->
-    {ok, #config_state{incarnation_id = IncarnationId}}.
+    {ok, #config_state{incarnation_id = IncarnationId,
+                       curve_public_key = undefined}};
+init([{incarnation_id, IncarnationId}, {curve_public_key, CurvePublicKey}]) ->
+    {ok, #config_state{incarnation_id = IncarnationId,
+                       curve_public_key = CurvePublicKey}}.
 
 malformed_request(Req, State) ->
     GetHeader = get_header_fun(Req),
