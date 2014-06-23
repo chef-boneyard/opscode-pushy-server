@@ -17,7 +17,7 @@
 
 name "pushy-server-cookbooks"
 
-dependency 'berkshelf'
+dependency 'berkshelf2'
 
 cookbook_name = "opscode-pushy-server"
 cookbook_dir = "#{install_dir}/embedded/cookbooks"
