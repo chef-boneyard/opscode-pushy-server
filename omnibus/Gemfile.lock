@@ -1,6 +1,6 @@
 GIT
   remote: git://github.com/opscode/omnibus-ruby.git
-  revision: 2a6d99ed6aaa6c334db787f938cd0ce9358e95fb
+  revision: 0ba833567fd2e80215d99fd54d2b9d741c4a37fd
   branch: 2.0-stable
   specs:
     omnibus (2.0.1)
@@ -30,7 +30,6 @@ GEM
       ffi (~> 1.0, >= 1.0.11)
     clamp (0.6.3)
     ffi (1.9.3)
-    ffi (1.9.3-x86-mingw32)
     fpm (0.4.42)
       arr-pm (~> 0.0.8)
       backports (>= 2.6.2)
@@ -45,7 +44,6 @@ GEM
       cabin (> 0)
       http_parser.rb (= 0.5.3)
     http_parser.rb (0.5.3)
-    http_parser.rb (0.5.3-x86-mingw32)
     ipaddress (0.8.0)
     json (1.8.1)
     mime-types (1.25.1)
@@ -53,9 +51,6 @@ GEM
     mixlib-config (2.1.0)
     mixlib-log (1.6.0)
     mixlib-shellout (1.4.0)
-    mixlib-shellout (1.4.0-x86-mingw32)
-      win32-process (~> 0.7.1)
-      windows-pr (~> 1.2.2)
     ohai (6.22.0)
       ipaddress
       mixlib-cli
@@ -69,19 +64,10 @@ GEM
     thor (0.19.1)
     uber-s3 (0.2.4)
       mime-types (~> 1.17)
-    win32-api (1.5.1-x86-mingw32)
-    win32-process (0.7.4)
-      ffi (>= 1.0.0)
-    windows-api (0.4.2)
-      win32-api (>= 1.4.5)
-    windows-pr (1.2.3)
-      win32-api (>= 1.4.5)
-      windows-api (>= 0.4.0)
     yajl-ruby (1.2.1)
 
 PLATFORMS
   ruby
-  x86-mingw32
 
 DEPENDENCIES
   omnibus!
