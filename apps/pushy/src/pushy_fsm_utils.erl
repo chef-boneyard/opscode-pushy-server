@@ -18,7 +18,8 @@
 %%
 -module(pushy_fsm_utils).
 
--export([safe_sync_send_all_state_event/2
+-export([safe_sync_send_all_state_event/2,
+         intersperse/2
         ]).
 
 
@@ -39,3 +40,14 @@ safe_sync_send_all_state_event(Pid, Message) ->
         Else ->
             Else
     end.
+
+%% Some list functions
+prependToAll(_, []) -> [];
+prependToAll(E, [X|Xs]) -> [E|[X|prependToAll(E,Xs)]].
+
+intersperse(_, []) -> [];
+intersperse(E, [X|Xs]) -> [X|prependToAll(E,Xs)].
+
+% Note -- lists:concat doesn't work if there are binaries in the list!
+%intercalate(Xs, Xss) -> lists:concat(intersperse(Xs, Xss)).
+

@@ -62,7 +62,7 @@
                     'job_nodes' = [] ::[#pushy_job_node{}],
                     'last_updated_by'::object_id(),     % authz guid of last actor to update
                     'created_at'::binary(),  % time created at
-                    'updated_at'::binary()  % time updated at
+                    'updated_at'::binary()   % time updated at
                     }).
 
 -type pushy_object() :: #pushy_job{}.
