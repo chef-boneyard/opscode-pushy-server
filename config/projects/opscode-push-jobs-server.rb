@@ -16,8 +16,8 @@
 #
 
 name       "opscode-push-jobs-server"
-maintainer "Opscode, Inc."
-homepage   "http://www.opscode.com"
+maintainer "Chef Software, Inc."
+homepage   "http://www.getchef.com"
 
 replaces        "opscode-push-jobs-server"
 install_path    "/opt/opscode-push-jobs-server"
