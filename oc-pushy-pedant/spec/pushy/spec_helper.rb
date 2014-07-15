@@ -28,6 +28,7 @@ require 'tempfile'
 
 require 'pushy/support/end_to_end_util'
 require 'pushy/support/validation_util'
+require 'pushy/support/sse_util'
 
 WATCH = lambda { |x| puts x } unless defined?(WATCH)
 
