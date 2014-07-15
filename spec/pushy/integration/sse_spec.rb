@@ -19,23 +19,19 @@
 # under the License.
 #
 
-require 'httpclient'
 require 'pushy/spec_helper'
 require 'time'
 
-def d(s)
-    p "#{Time.now}: #{s}"
-end
-
-describe "sse-test" do
-#describe "sse-test", :focus=>true do
+#describe "sse-test" do
+describe "sse-test", :focus=>true do
   include_context "end_to_end_util"     # to start clients
+  include_context "sse_support"
   SUMMARY_WAIT_TIME = 5
   JOB_WAITING_AROUND_TIME = 60
   let(:command) { 'sleep 1' }
   let(:quorum) { 1 }
   let(:run_timeout) { 2 }
-  def job_to_run                        # use "def", because "let" caches, and we want to always get the latest version
+  def job_to_run                        # use "def", because "let" caches, but we want to always get the latest version
     {
       'command' => command,
       'nodes' => nodes,
@@ -100,47 +96,14 @@ describe "sse-test" do
     @id
   end
 
-  def start_event_stream
+  def start_event_stream(last_id = nil, receive_timeout = nil)
     feed_url = api_url("#{feed_path}/#{@id}")
+    # XXXX Remove this when Mark deals with nginx buffering issue
     feed_url.sub!("https://api.opscode.piab", "http://api.opscode.piab:10003")
-    host = URI.parse(feed_url).host
-    @evs = []
-    c = HTTPClient.new
-    # Certificate is self-signing -- if we don't disable certificate verification, this won't work
-    c.ssl_config.verify_mode = OpenSSL::SSL::VERIFY_NONE
-    @piper, @pipew = IO.pipe
-
-    auth_headers = admin_user.signing_headers(:GET, feed_url, "")
-    require 'chef/version'
-    headers =
-      {
-        'Accept' => 'text/event-stream',
-        'User-Agent' => 'chef-pedant rspec tests',
-        'X-Chef-Version' => Chef::VERSION,
-        'Host' => host
-      }
-    headers = headers.merge(auth_headers)
-    
-    @ep = EventParser.new
-    Thread.new {
-      conn = c.get_async(feed_url, :header => headers)
-      resp = conn.pop
-      content_io = resp.content
-      while ! conn.finished?
-        str = content_io.readpartial(4096)
-        if str
-          @pipew.write(str)
-        end
-      end
-      @pipew.close
-    }
-  end
-
-  def get_streaming_events
-    evstr = @piper.readpartial(65536)
-    @ep.feed(evstr)
-    @evs += @ep.events_so_far
-    @evs
+    stream = EventStream.new(feed_url, admin_user, last_id, receive_timeout)
+    # Give some time for the first events to come in
+    sleep 0.25
+    stream
   end
 
   def check_node(e, node)
@@ -149,154 +112,6 @@ describe "sse-test" do
       jnode.should == node
     end
     jnode
-  end
-
-  def expect_start(e, command, run_timeout, quorum, username)
-    e.name.should == :start
-    e.json['command'].should == command
-    e.json['run_timeout'].should == run_timeout
-    e.json['quorum'].should == quorum
-    e.json['user'].should == username
-  end
-
-  def expect_quorum_vote(e, node, status)
-    e.name.should == :quorum_vote
-    e.json['status'].should == status
-    check_node(e, node)
-  end
-
-  def expect_quorum_succeeded(e)
-    e.name.should == :quorum_succeeded
-  end
-
-  def expect_run_start(e, node)
-    e.name.should == :run_start
-    check_node(e, node)
-  end
-
-  def expect_run_complete(e, node, status)
-    e.name.should == :run_complete
-    e.json['status'].should == status
-    check_node(e, node)
-  end
-
-  def expect_job_complete(e, status)
-    e.name.should == :job_complete
-    e.json['status'].should == status
-  end
-
-  def expect_summary(e, command, status, run_timeout, succeeded, failed)
-    e.name.should == :summary
-    e.json['command'].should == command
-    e.json['status'].should == status
-    e.json['run_timeout'].should == run_timeout
-    created_at = Time.parse(e.json['created_at'])
-    updated_at = Time.parse(e.json['updated_at'])
-    updated_at.should >= created_at
-    e.json['nodes']['succeeded'].should == succeeded
-    e.json['nodes']['failed'].should == failed
-  end
-
-  # Adapted from github.com/conjurinc/sse-client-ruby -- should really just use that package;
-  # but based on code inspection, it will miss the last event if it doesn't end with a "\n\n".
-  # I suspect it was assuming an infinite stream.
-  class Event < Struct.new(:data, :name, :id, :json); end
-  class EventParser
-    def initialize
-      @buffer = ''
-      @events = []
-    end
-
-    attr_reader :events
-
-    def feed(chunk, final = false)
-      @buffer << chunk
-      process_events(final)
-    end
-
-    def process_events(final)
-      while i = @buffer.index("\n\n")
-        process_event(@buffer.slice!(0..i))
-      end
-      if final
-        process_event(@buffer)
-      end
-    end
-
-    def process_event(evstr)
-      data, id, name = [], nil, nil
-      evstr.lines.map(&:chomp).each do |l|
-        field, value = case l
-          when /^:/ then
-            next # comment, do nothing
-          when /^(.*?):(.*)$/ then
-            [$1, $2]
-          else
-            [l, ''] # this is what the spec says, I swear!
-        end
-        # spec allows one optional space after the colon
-        value = value[1..-1] if value.start_with? ' '
-        case field
-          when 'data' then
-            data << value
-          when 'id' then
-            id = value
-          when 'event' then
-            name = value.to_sym
-          when 'retry' then
-            @retry = value.to_i
-        end
-      end
-      @last_event_id = id
-      @events << Event.new(data.join("\n"), name, id)
-    end
-
-    def events_so_far
-      evs = @events
-      @events = []
-      evs
-    end
-  end
-
-  def parse_stream(s)
-    ep = EventParser.new()
-    ep.feed(s, true)
-    ep.events
-  end
-
-  # Validate standard events; as a side-effect, save the parsed json field
-  def validate_events(numEvents, evs)
-    d evs
-    evs.length.should == numEvents
-    # All ids are unique
-    evs.map(&:id).uniq.length.should == evs.length
-    # All events have (parsable) json for data
-    evs.each do |e|
-      e.json = JSON.parse(e.data)
-    end
-    require 'pp'
-    pp evs
-    # All events have (parsable) timestamps
-    ts = evs.map {|e| Time.parse(e.json['timestamp'])}
-    # All timestamps are unique
-    ts.uniq.length.should == ts.length
-    # All timestamps are in increasing order
-    ts.sort.should == ts
-    # All timestamps are in (roughly) increasing order -- since pushy-server
-    # is multi-threaded, there may be some events showing up before others,
-    # but that's okay as long as delta is very small.
-    #ts.each_index do |i|
-      #next if i == 0
-      ## Check that time is forward, or no more than 1ms backward
-      #(ts[i] - ts[i-1]).should > -0.001
-    #end
-  end
-
-  def expect_valid_response(numEvents, response)
-    response.should look_like({ :status => 200 })
-    evs = parse_stream(response.body)
-    validate_events(numEvents, evs)
-    evs
   end
 
   context 'with no job,' do
@@ -327,12 +142,13 @@ describe "sse-test" do
       do_complete_job(job_to_run)
     end
 
-    it "the events should be: start,quorum_vote(down),job_complete(quorum_failed)" do
+    it "the events should be: start,quorum_vote(down),rehab,job_complete(quorum_failed)" do
       get_feed(@id) do |response|
-        evs = expect_valid_response(3, response)
-        expect_start(evs[0], command, run_timeout, quorum, admin_user.name)
+        evs = expect_valid_response(4, response)
+        expect_start(evs[0], command, run_timeout, quorum, 1, admin_user.name)
         expect_quorum_vote(evs[1], node, 'down')
-        expect_job_complete(evs[2], "quorum_failed")
+        expect_rehab(evs[2], node)
+        expect_job_complete(evs[3], "quorum_failed")
       end
     end
   end
@@ -347,10 +163,17 @@ describe "sse-test" do
         do_complete_job(job_to_run)
       end
 
+      it 'should respond to an non-event-stream request with a 406' do
+        # default is application/json
+        get(api_url("#{feed_path}/#{@id}"), admin_user) do |response|
+          response.should look_like({ :status => 406 })
+        end
+      end
+
       it "the events should be: start,quorum_vote(success),quorum_succeeded,run_start,run_complete(success),job_complete(complete)" do
         get_feed(@id) do |response|
           evs = expect_valid_response(6, response)
-          expect_start(evs[0], command, run_timeout, quorum, admin_user.name)
+          expect_start(evs[0], command, run_timeout, quorum, 1, admin_user.name)
           expect_quorum_vote(evs[1], node, 'success')
           expect_quorum_succeeded(evs[2])
           expect_run_start(evs[3], node)
@@ -370,7 +193,7 @@ describe "sse-test" do
       it "the events should be: start,quorum_vote(success),quorum_succeeded,run_start,run_complete(failure),job_complete(complete)" do
         get_feed(@id) do |response|
           evs = expect_valid_response(6, response)
-          expect_start(evs[0], command, run_timeout, quorum, admin_user.name)
+          expect_start(evs[0], command, run_timeout, quorum, 1, admin_user.name)
           expect_quorum_vote(evs[1], node, 'success')
           expect_quorum_succeeded(evs[2])
           expect_run_start(evs[3], node)
@@ -390,7 +213,7 @@ describe "sse-test" do
       it "the events should be: start,quorum_vote(failure),job_complete(quorum_failed)" do
         get_feed(@id) do |response|
           evs = expect_valid_response(3, response)
-          expect_start(evs[0], command, run_timeout, quorum, admin_user.name)
+          expect_start(evs[0], command, run_timeout, quorum, 1, admin_user.name)
           expect_quorum_vote(evs[1], node, 'failure')
           expect_job_complete(evs[2], "quorum_failed")
         end
@@ -406,7 +229,7 @@ describe "sse-test" do
           def commit(job_id, command); nil; end
         end
         start_new_clients(node)
-        do_complete_job(job_to_run, {:timeout => JOB_WAITING_AROUND_TIME+1})
+        do_complete_job(job_to_run, {:timeout => JOB_WAITING_AROUND_TIME+5})
       end
 
       after :each do
@@ -419,7 +242,7 @@ describe "sse-test" do
       it "the events should be: start,quorum_vote(voting_timeout),job_complete(quorum_failed)" do
         get_feed(@id) do |response|
           evs = expect_valid_response(3, response)
-          expect_start(evs[0], command, run_timeout, quorum, admin_user.name)
+          expect_start(evs[0], command, run_timeout, quorum, 1, admin_user.name)
           expect_quorum_vote(evs[1], node, 'voting_timeout')
           expect_job_complete(evs[2], "quorum_failed")
         end
@@ -444,14 +267,15 @@ describe "sse-test" do
         end
       end
 
-      it "the events should be: start,quorum_vote(success),quorum_succeeded,run_complete(run_nacked),job_complete(complete)" do
+      it "the events should be: start,quorum_vote(success),quorum_succeeded,rehab,run_complete(run_nacked),job_complete(complete)" do
         get_feed(@id) do |response|
-          evs = expect_valid_response(5, response)
-          expect_start(evs[0], command, run_timeout, quorum, admin_user.name)
+          evs = expect_valid_response(6, response)
+          expect_start(evs[0], command, run_timeout, quorum, 1, admin_user.name)
           expect_quorum_vote(evs[1], node, 'success')
           expect_quorum_succeeded(evs[2])
-          expect_run_complete(evs[3], node, 'run_nacked')
-          expect_job_complete(evs[4], "complete")
+          expect_rehab(evs[3], node)
+          expect_run_complete(evs[4], node, 'run_nacked')
+          expect_job_complete(evs[5], "complete")
         end
       end
     end
@@ -475,13 +299,48 @@ describe "sse-test" do
       it "the events should be: start,quorum_vote(success),quorum_succeeded,job_complete(timed_out)" do
         get_feed(@id) do |response|
           evs = expect_valid_response(4, response)
-          expect_start(evs[0], command, run_timeout, quorum, admin_user.name)
+          expect_start(evs[0], command, run_timeout, quorum, 1, admin_user.name)
           expect_quorum_vote(evs[1], node, 'success')
           expect_quorum_succeeded(evs[2])
           expect_job_complete(evs[3], "timed_out")
         end
       end
     end
+
+    context "when a buggy client sends a nack_run when already running," do
+      before :each do
+        class PushyClient
+          alias old_run run
+          def run(job_id)
+            p "RUN #{job_id}"
+            self.send_command(:ack_run, job_id)
+            self.send_command(:nack_run, job_id)
+          end
+        end
+        start_new_clients(node)
+        do_complete_job(job_to_run)
+      end
+
+      after :each do
+        class PushyClient
+          alias run old_run
+        end
+      end
+
+      it "the events should be: start,quorum_vote(success),quorum_succeeded,run_start,rehab,run_complete(run_nacked_while_running),job_complete(complete)" do
+        get_feed(@id) do |response|
+          evs = expect_valid_response(7, response)
+          expect_start(evs[0], command, run_timeout, quorum, 1, admin_user.name)
+          expect_quorum_vote(evs[1], node, 'success')
+          expect_quorum_succeeded(evs[2])
+          expect_run_start(evs[3], node)
+          expect_rehab(evs[4], node)
+          expect_run_complete(evs[5], node, 'run_nacked_while_running')
+          expect_job_complete(evs[6], "complete")
+        end
+      end
+    end
+
   end
 
   context 'with a job with two nodes,' do
@@ -497,7 +356,7 @@ describe "sse-test" do
       it "the events should be: start,quorum_vote(A,success),quorum_vote(B,success),quorum_succeeded,run_start(A),run_start(B),run_complete(A,success),run_complete(B,success),job_complete(complete)" do
         get_feed(@id) do |response|
           evs = expect_valid_response(9, response)
-          expect_start(evs[0], command, run_timeout, quorum, admin_user.name)
+          expect_start(evs[0], command, run_timeout, quorum, 2, admin_user.name)
           n1 = expect_quorum_vote(evs[1], :any, 'success')
           n2 = expect_quorum_vote(evs[2], :any, 'success')
           [n1, n2].sort.should == nodes.sort
@@ -522,7 +381,7 @@ describe "sse-test" do
       it "the events should be: start,quorum_vote(A,success),quorum_vote(B,success),quorum_succeeded,run_start(A),run_start(B),run_complete(A,failure),run_complete(B,failure),job_complete(complete)" do
         get_feed(@id) do |response|
           evs = expect_valid_response(9, response)
-          expect_start(evs[0], command, run_timeout, quorum, admin_user.name)
+          expect_start(evs[0], command, run_timeout, quorum, 2, admin_user.name)
           n1 = expect_quorum_vote(evs[1], :any, 'success')
           n2 = expect_quorum_vote(evs[2], :any, 'success')
           [n1, n2].sort.should == nodes.sort
@@ -541,7 +400,7 @@ describe "sse-test" do
     context "when the command fails on one" do
       before :each do
         start_new_clients(*nodes)
-        # Do some ugly object hacking to get the clients to behave differently
+        # Do some ugly object hacking to get one client to behave differently
         donkey = @clients['DONKEY'][:client]
         jr = donkey.instance_variable_get('@job_runner')
         class <<jr
@@ -557,7 +416,7 @@ describe "sse-test" do
       it "the events should be: start,quorum_vote(A,success),quorum_vote(B,success),quorum_succeeded,run_start(A),run_start(B),run_complete(A,failure),run_complete(B,success),job_complete(complete)" do
         get_feed(@id) do |response|
           evs = expect_valid_response(9, response)
-          expect_start(evs[0], command, run_timeout, quorum, admin_user.name)
+          expect_start(evs[0], command, run_timeout, quorum, 2, admin_user.name)
           n1 = expect_quorum_vote(evs[1], :any, 'success')
           n2 = expect_quorum_vote(evs[2], :any, 'success')
           [n1, n2].sort.should == nodes.sort
@@ -580,7 +439,7 @@ describe "sse-test" do
     context "when the one rejects the quorum," do
       before :each do
         start_new_clients(*nodes)
-        # Do some ugly object hacking to get the clients to behave differently
+        # Do some ugly object hacking to get one client to behave differently
         donkey = @clients['DONKEY'][:client]
         jr = donkey.instance_variable_get('@job_runner')
         class <<jr
@@ -597,7 +456,7 @@ describe "sse-test" do
         it "the events should be: start,quorum_vote(A,success),quorum_vote(B,failure),job_complete(quorum_failed)" do
           get_feed(@id) do |response|
             evs = expect_valid_response(4, response)
-            expect_start(evs[0], command, run_timeout, quorum, admin_user.name)
+            expect_start(evs[0], command, run_timeout, quorum, 2, admin_user.name)
             if (evs[1].json['node'] == 'DONKEY') then
               de, fe = evs[1], evs[2]
             else
@@ -615,7 +474,7 @@ describe "sse-test" do
         it "the events should be: start,quorum_vote(A,success),quorum_vote(B,failure),quorum_succeeded,run_complete(A,success),job_complete(success)" do
           get_feed(@id) do |response|
             evs = expect_valid_response(7, response)
-            expect_start(evs[0], command, run_timeout, quorum, admin_user.name)
+            expect_start(evs[0], command, run_timeout, quorum, 2, admin_user.name)
             if (evs[1].json['node'] == 'DONKEY') then
               de, fe = evs[1], evs[2]
             else
@@ -628,6 +487,42 @@ describe "sse-test" do
             expect_run_complete(evs[5], 'FIONA', 'success')
             expect_job_complete(evs[6], "complete")
           end
+        end
+      end
+    end
+
+    context "when a buggy client sends an unrecognized message (e.g. nack_run) during a vote, after committing," do
+      before :each do
+        start_new_clients(*nodes)
+        # Do some ugly object hacking to get one client to behave differently
+        donkey = @clients['DONKEY'][:client]
+        jr = donkey.instance_variable_get('@job_runner')
+        class <<jr
+          def commit(job_id, command)
+            client.send_command(:ack_commit, job_id)
+            client.send_command(:nack_run, job_id)
+            true
+          end
+        end
+        fiona = @clients['FIONA'][:client]
+        jr = fiona.instance_variable_get('@job_runner')
+        class <<jr
+          def commit(job_id, command)
+            sleep 1
+            client.send_command(:ack_commit, job_id)
+          end
+        end
+        do_complete_job(job_to_run)
+      end
+
+      it "there should be a rehab event, and the job should fail" do
+        get_feed(@id) do |response|
+          evs = expect_valid_response(5, response)
+          expect_start(evs[0], command, run_timeout, quorum, 2, admin_user.name)
+          expect_quorum_vote(evs[1], 'DONKEY', 'success')
+          expect_rehab(evs[2], 'DONKEY')
+          expect_quorum_vote(evs[3], 'FIONA', 'success')
+          expect_job_complete(evs[4], "quorum_failed")
         end
       end
     end
@@ -664,7 +559,7 @@ describe "sse-test" do
     it "the events should be cleanly encoded" do
       get_feed(@id) do |response|
         evs = expect_valid_response(6, response)
-        expect_start(evs[0], command, run_timeout, quorum, admin_user.name)
+        expect_start(evs[0], command, run_timeout, quorum, 1, admin_user.name)
         expect_quorum_vote(evs[1], node, 'success')
         expect_quorum_succeeded(evs[2])
         expect_run_start(evs[3], node)
@@ -674,30 +569,86 @@ describe "sse-test" do
     end
   end
 
-  context "with when reading an event stream,", :focus=>true do
+  context "when reading an event stream," do
     let(:node) { 'DONKEY' }
-  let(:command) { 'sleep 5' }
-  let(:run_timeout) { 10 }
     let(:nodes) { [node] }
     before :each do
       start_new_clients(node)
       @id = start_new_job(job_to_run)
-      start_event_stream
+      @stream = start_event_stream
     end
 
     it "the events become available as they happen" do
-      evs = get_streaming_events
+      evs = @stream.get_streaming_events
       validate_events(4, evs)
-      expect_start(evs[0], command, run_timeout, quorum, admin_user.name)
+      expect_start(evs[0], command, run_timeout, quorum, 1, admin_user.name)
       expect_quorum_vote(evs[1], node, 'success')
       expect_quorum_succeeded(evs[2])
       expect_run_start(evs[3], node)
-      sleep 5
-      evs = get_streaming_events
+      sleep 2
+      evs = @stream.get_streaming_events
       validate_events(6, evs)
-      expect_run_start(evs[3], node)
       expect_run_complete(evs[4], node, 'success')
       expect_job_complete(evs[5], "complete")
+      @stream.complete.should == true
+    end
+
+    it "an additional stream also works" do
+      another_stream = start_event_stream
+      stream_evs = [@stream.get_streaming_events, another_stream.get_streaming_events]
+      stream_evs.each do |evs|
+        validate_events(4, evs)
+        expect_start(evs[0], command, run_timeout, quorum, 1, admin_user.name)
+        expect_quorum_vote(evs[1], node, 'success')
+        expect_quorum_succeeded(evs[2])
+        expect_run_start(evs[3], node)
+      end
+      sleep 2
+      stream_evs = [@stream.get_streaming_events, another_stream.get_streaming_events]
+      stream_evs.each do |evs|
+        validate_events(6, evs)
+        expect_run_complete(evs[4], node, 'success')
+        expect_job_complete(evs[5], "complete")
+      end
+    end
+
+    it "the stream can be resumed" do
+      old_evs = @stream.get_streaming_events
+      last_id = old_evs[3].id
+      sleep 1
+      another_stream = start_event_stream(last_id)
+      new_evs = another_stream.get_streaming_events
+      all_evs = @stream.get_streaming_events
+      all_evs.should == old_evs+new_evs
+    end
+
+    it "an invalid LastEventId produces the entire stream" do
+      another_stream = start_event_stream("bleah")
+      evs = another_stream.get_streaming_events
+      validate_events(4, evs)
+    end
+  end
+
+  context "when reading an event stream with a slow-running client,", :slow => true do
+    let(:command) { "sleep 21"}
+    let(:run_timeout) { 25 }
+    let(:node) { 'DONKEY' }
+    let(:nodes) { [node] }
+    before :each do
+      start_new_clients(node)
+      donkey = @clients[node][:client]
+      donkey.instance_variable_get('@whitelist').instance_variable_set('@whitelist', {command => command})
+      @id = start_new_job(job_to_run)
+      @stream = start_event_stream(nil, 20) # receive timeout of 20 seconds
+    end
+
+    it "keepalives don't corrupt the stream" do
+      # Ideally, this would also validate that keepalives are being sent at all (hence the timeout, above),
+      # but I can't get the receive timeout to work -- no matter how long the connection is idle, there is never
+      # a failure.  So this test passes even when there is no keep-alive data.
+      sleep 21
+      evs = @stream.get_streaming_events
+      validate_events(6, evs)
     end
   end
 end
