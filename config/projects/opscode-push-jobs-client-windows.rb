@@ -16,8 +16,8 @@
 #
 
 name       "opscode-push-jobs-client-windows"
-maintainer "Opscode, Inc."
-homepage   "http://www.opscode.com"
+maintainer "Chef Software, Inc."
+homepage   "http://www.getchef.com"
 
 package_name    "opscode-push-jobs-client"
 install_path    "c:\\opscode_pushy_build"
