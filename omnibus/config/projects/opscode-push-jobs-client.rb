@@ -16,8 +16,8 @@
 #
 
 name       "opscode-push-jobs-client"
-maintainer "Opscode, Inc."
-homepage   "http://www.opscode.com"
+maintainer "Chef Software, Inc."
+homepage   "http://www.getchef.com"
 
 install_path    "/opt/opscode-push-jobs-client"
 build_version   Omnibus::BuildVersion.new.semver
