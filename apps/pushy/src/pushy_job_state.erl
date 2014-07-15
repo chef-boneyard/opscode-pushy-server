@@ -27,7 +27,7 @@
          stop_job/1,
          get_job_state/1,
          send_node_event/3,
-         get_events/1,
+         get_events/2,
          make_job_summary_event/1
         ]).
 
@@ -53,15 +53,21 @@
 
 -compile([{parse_transform, lager_transform}]).
 
+-record(event, {
+                name :: binary(),
+                id   :: binary(),
+                data :: [{binary(), binary()}]
+        }).
+
 %% This is Erlang not C/C++
--record(state, {job_host        :: binary(),
+-record(state, {
+                job_host        :: binary(),
                 job             :: #pushy_job{},
                 job_nodes       :: dict(),
                 voting_timeout  :: integer(),
-                term_timeout    :: integer(),
                 term_reason     :: atom(),
                 next_event_id   :: integer(),
-                rev_events      :: [iolist()],
+                rev_events      :: [#event{}],
                 subscribers     :: [pid()],
                 done            :: boolean()
         }).
@@ -101,12 +107,12 @@ init({#pushy_job{id = JobId, job_nodes = JobNodeList} = Job, Requestor}) ->
                            job_nodes = JobNodes,
                            job_host = Host,
                            voting_timeout = envy:get(pushy, voting_timeout, 60, integer),
-                           term_timeout = envy:get(pushy, term_timeout, 60, integer),
                            next_event_id = 1,
                            rev_events = [],
                            subscribers = [],
                            done = false},
-            State = add_start_event(State0, Job#pushy_job.command, Job#pushy_job.run_timeout, Job#pushy_job.quorum, Requestor),
+            NodeCount = length(JobNodeList),
+            State = add_start_event(State0, Job#pushy_job.command, Job#pushy_job.run_timeout, Job#pushy_job.quorum, NodeCount, Requestor),
             listen_for_down_nodes(dict:fetch_keys(JobNodes)),
 
             lager:debug([{job_id,Job#pushy_job.id}],
@@ -148,17 +154,19 @@ voting({nack_commit, NodeRef}, State) ->
     State2 = add_quorum_vote_event(State1, NodeName, Status),
     maybe_finished_voting(State2);
 voting({Response, NodeRef}, State) ->
-    Status = case Response of
-                 down -> down;
-                 _ -> {"bad response: ~p", [Response]}
-             end,
-    State1 = case get_node_state(NodeRef, State) of
-        new      -> send_to_rehab(NodeRef, unavailable, State);
-        ready    -> send_to_rehab(NodeRef, unavailable, State);
-        terminal -> send_to_rehab(NodeRef, State)
+    State1 = case Response of
+        down ->
+                {_, NodeName} = NodeRef,
+                add_quorum_vote_event(State, NodeName, down);
+        _ ->
+                lager:error("bad response while voting: ~p", [Response]),
+                State
     end,
-    {_, NodeName} = NodeRef,
-    State2 = add_quorum_vote_event(State1, NodeName, Status),
+    State2 = case get_node_state(NodeRef, State1) of
+        new      -> send_to_rehab(NodeRef, unavailable, State1);
+        ready    -> send_to_rehab(NodeRef, unavailable, State1);
+        terminal -> send_to_rehab(NodeRef, State1)
+    end,
     maybe_finished_voting(State2).
 
 % Nodes can never be "new" when running--only ready, running or terminal.
@@ -232,8 +240,8 @@ handle_sync_event(get_job_status, _From, StateName,
     {reply, Job2, StateName, State};
 handle_sync_event(stop_job, _From, _StateName, State) ->
     {stop, shutdown, ok, State};
-handle_sync_event(get_events, {Pid, _}, StateName, State = #state{subscribers = Ss}) ->
-    Response = build_event_response(State),
+handle_sync_event({get_events, LastEventId}, {Pid, _}, StateName, State = #state{subscribers = Ss}) ->
+    Response = build_event_response(LastEventId, State),
     State1 = case Response of
                  {true, _} -> State;
                  % Automatically subscribe to events immediately, to avoid race conditions
@@ -248,6 +256,9 @@ handle_sync_event(Event, From, StateName, State) ->
         {'next_state', job_status(), #state{}}.
 handle_info({state_change, NodeRef, _Current, shutdown}, StateName, State) ->
     pushy_job_state:StateName({down,NodeRef}, State);
+handle_info({state_change, _NodeRef, _Old, _New}, StateName, State) ->
+    % Ignore any other state-change messages
+    {next_state, StateName, State};
 handle_info(voting_timeout, voting,
         #state{job = Job, voting_timeout = VotingTimeout} = State) ->
     lager:debug([{job_id,Job#pushy_job.id}],
@@ -276,9 +287,7 @@ handle_info(Info, StateName, State) ->
     {next_state, StateName, State}.
 
 -spec terminate(any(), job_status(), #state{}) -> 'ok'.
-terminate(_Reason, _StateName, State) ->
-    % Shouldn't be any waiting, but just in case..
-    post_to_subscribers(State, done),
+terminate(_Reason, _StateName, _State) ->
     ok.
 
 -spec code_change(any(), job_status(), #state{}, any()) ->
@@ -307,15 +316,19 @@ set_node_state(NodeRef, NewNodeState, #state{job_nodes = JobNodes} = State) ->
     State#state{job_nodes = JobNodes2}.
 
 send_to_rehab(NodeRef, NewNodeState, State) ->
-    State2 = set_node_state(NodeRef, NewNodeState, State),
-    send_to_rehab(NodeRef, State2).
+    State1 = set_node_state(NodeRef, NewNodeState, State),
+    send_to_rehab(NodeRef, State1).
 
 send_to_rehab(NodeRef, State) ->
     case get_node_state(NodeRef, State) of
-        terminal -> pushy_node_state:rehab(NodeRef);
-        _ -> error("Attempt to send node ~p to rehab even though it is in non-terminal state ~p")
-    end,
-    State.
+        terminal ->
+            pushy_node_state:rehab(NodeRef),
+            {_, NodeName} = NodeRef,
+            add_rehab_event(State, NodeName);
+        _ ->
+            error("Attempt to send node ~p to rehab even though it is in non-terminal state ~p"),
+            State
+    end.
 
 send_matching_to_rehab(OldNodeState, NewNodeState, #state{job_nodes = JobNodes} = State) ->
     JobNodes2 = dict:map(
@@ -390,7 +403,8 @@ finish_job(Reason, #state{job = Job} = State) ->
     State2 = State1#state{job = Job2, term_reason = Reason, subscribers = [], done = true},
     pushy_object:update_object(update_job, Job2, Job2#pushy_job.id),
     % Wait around for a while, in case someone wants to get events describing this job
-    gen_fsm:start_timer(5000, wait_complete),  % XXXX Change this to use an envy variable
+    WaitCompleteTime = envy:get(pushy, wait_complete_time, 5, integer),
+    gen_fsm:start_timer(WaitCompleteTime*1000, wait_complete),
     {next_state, waiting_around, State2}.
 
 waiting_around({timeout, _Ref, wait_complete}, State) ->
@@ -477,18 +491,21 @@ terminalize(ready) -> ready;
 terminalize(running) -> running.
 
 %% Event-handling
--spec get_events(object_id()) -> not_found | {boolean(), iolist()}.
-get_events(JobId) ->
-    case pushy_job_state_sup:get_process(JobId) of
-        not_found -> not_found;
-        Pid -> pushy_fsm_utils:safe_sync_send_all_state_event(Pid, get_events)
-    end.
+-spec get_events(pid(), string()) -> {boolean(), iolist()}.
+get_events(JobPid, LastEventId) ->
+    pushy_fsm_utils:safe_sync_send_all_state_event(JobPid, {get_events, LastEventId}).
 
 %% event utility functions
 -type status() :: atom() | binary() | {string(), [any()]} | iolist().
 
-build_event_response(State = #state{done = Done}) ->
-    Evs = pushy_fsm_utils:intersperse("\n\n", lists:reverse(State#state.rev_events)),
+build_event_response(LastEventId, State = #state{done = Done}) ->
+    RevEvs = case LastEventId of
+                 undefined -> State#state.rev_events;
+                 % The events are in reverse order, so we want the beginning of the list, not the end.
+                 % Happily, this does the right thing if the LastEventId doesn't exist.
+                 S -> lists:takewhile(fun(E) -> E#event.id /= list_to_binary(S) end, State#state.rev_events)
+             end,
+    Evs = pushy_fsm_utils:intersperse("\n\n", [encode_event(E) || E <- lists:reverse(RevEvs)]),
     case Done of
         true -> {true, Evs};
         false -> {false, [Evs, "\n\n"]}
@@ -504,24 +521,24 @@ get_time_as_iso8601() ->
 get_time_as_gmt() ->
     list_to_binary(get_time_as_iso8601()).
 
-encode_event(Event, Id, PropList) ->
-    pushy_fsm_utils:intersperse("\n", [[<<"event: ">>, Event], [<<"id: ">>, integer_to_list(Id)], [<<"data: ">>, jiffy:encode({PropList})]]).
+encode_event(#event{name = Name, id = Id, data = Data}) ->
+    pushy_fsm_utils:intersperse("\n", [[<<"event: ">>, Name], [<<"id: ">>, Id], [<<"data: ">>, jiffy:encode({Data})]]).
 
-make_event(Event, Id, Props) ->
+make_event(Name, Id, Props) ->
     Data = [{<<"timestamp">>, get_time_as_gmt()} | Props],
-    encode_event(Event, Id, Data).
+    #event{name = list_to_binary(Name), id = list_to_binary(integer_to_list(Id)), data = Data}.
 
 add_event(State = #state{next_event_id = Id, rev_events = RevEvents}, EventName, PropList) ->
     Ev = make_event(EventName, Id, PropList),
-    post_to_subscribers(State, {ev, [Ev, "\n\n"]}),
+    post_to_subscribers(State, {ev, [encode_event(Ev), "\n\n"]}),
     State#state{next_event_id = Id + 1, rev_events = [Ev | RevEvents]}.
 
 post_to_subscribers(#state{subscribers = Subscribers}, Msg) ->
     lists:foreach(fun(W) -> W ! Msg end, Subscribers).
 
--spec add_start_event(#state{}, binary(), non_neg_integer(), non_neg_integer(), binary()) -> #state{}.
-add_start_event(State, Command, RunTimeout, Quorum, User) ->
-    add_event(State, "start", [{<<"command">>, Command}, {<<"run_timeout">>, RunTimeout}, {<<"quorum">>, Quorum}, {<<"user">>, User}]).
+-spec add_start_event(#state{}, binary(), non_neg_integer(), non_neg_integer(), non_neg_integer(), binary()) -> #state{}.
+add_start_event(State, Command, RunTimeout, Quorum, NodeCount, User) ->
+    add_event(State, "start", [{<<"command">>, Command}, {<<"run_timeout">>, RunTimeout}, {<<"quorum">>, Quorum}, {<<"node_count">>, NodeCount}, {<<"user">>, User}]).
 
 -spec add_quorum_vote_event(#state{}, binary(), status()) -> #state{}.
 add_quorum_vote_event(State, Node, Status) ->
@@ -543,6 +560,10 @@ add_run_complete_event(State, Node, Status) ->
 add_job_complete_event(State, Status) ->
     add_event(State, "job_complete", [{<<"status">>, status_to_binary(Status)}]).
 
+-spec add_rehab_event(#state{}, binary()) -> #state{}.
+add_rehab_event(State, Node) ->
+    add_event(State, "rehab", [{<<"node">>, Node}]).
+
 atom_to_binary(A) -> list_to_binary(atom_to_list(A)).
 
 status_to_binary(S) when is_binary(S) -> S;
@@ -552,4 +573,4 @@ status_to_binary({F, A}) when is_list(F) -> iolist_to_binary(io_lib:format(F, A)
 
 make_job_summary_event(Job) ->
     {PL} = pushy_object:assemble_job_ejson_with_nodes(Job),
-    make_event("summary", 1, PL).
+    encode_event(make_event("summary", 1, PL)).

@@ -36,9 +36,9 @@
 -include("pushy_sql.hrl").
 -include("pushy_wm.hrl").
 
--include_lib("webmachine/include/webmachine.hrl").
+-compile([{parse_transform, lager_transform}]).
 
--include_lib("eunit/include/eunit.hrl").
+-include_lib("webmachine/include/webmachine.hrl").
 
 init(Config) ->
     pushy_wm_base:init(Config).
@@ -69,36 +69,37 @@ resource_exists(Req, State) ->
                 {ok, not_found} -> {false, Req, State};
                 {ok, Job} -> {true, Req, State#config_state{pushy_job = Job}}
             end;
-        _JobPid -> {true, Req, State}
+        JobPid -> {true, Req, State#config_state{job_pid = JobPid}}
     end.
 
-% XXXX Hack until there's a way for Ruby to watch the stream, and for us to feed a stream.
-await_job_complete(JobId) ->
-    Evs = pushy_job_state:get_events(JobId),
-    case string:str(binary_to_list(iolist_to_binary(Evs)), "job_complete") of 
-        0 -> timer:sleep(100), await_job_complete(JobId);
-        _ -> Evs
-    end.
-
-stream_events(JobId) ->
+stream_events(JobId, KeepAliveTime) ->
     receive
-            {ev, Ev} -> {Ev, fun() -> stream_events(JobId) end};
-            done -> {<<>>, done}
+            {ev, Ev} -> {Ev, fun() -> stream_events(JobId, KeepAliveTime) end};
+            done -> {<<>>, done};
+            {'DOWN', _MonitorRef, process, JobPid, Info} ->
+                case Info of
+                    normal -> ok;
+                    _ -> lager:error("Job ~p exited: ~p", [JobPid, Info])
+                end,
+                {<<>>, done}
+    after
+            KeepAliveTime -> {<<":keepalive\n">>, fun() -> stream_events(JobId, KeepAliveTime) end}
     end.
 
 to_event_stream(Req, State) ->
     Res = case State#config_state.pushy_job of 
         undefined -> 
             JobId = list_to_binary(wrq:path_info(job_id, Req)),
-            % XXX Does second look-up -- should store pid in state
-            {Evs, Next} = case pushy_job_state:get_events(JobId) of
-                not_found ->
-                    {io_lib:format("error: could not find ~s", [JobId]), done};
+            LastEventId = wrq:get_req_header("Last-Event-ID",Req),
+            JobPid = State#config_state.job_pid,
+            {Evs, Next} = case pushy_job_state:get_events(JobPid, LastEventId) of
                 {true, Events} ->
                     {Events, done};
                 {false, Events} ->
                     % We've automatically been subscribed to events
-                    {Events, fun() -> stream_events(JobId) end}
+                    KeepAliveTime = envy:get(pushy, keep_alive_time, 15, integer),
+                    erlang:monitor(process, JobPid),
+                    {Events, fun() -> stream_events(JobId, KeepAliveTime * 1000) end}
             end,
             {stream, {Evs, Next}};
         Job ->
