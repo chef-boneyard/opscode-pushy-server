@@ -16,7 +16,7 @@
 #
 
 name "chef-gem-windows"
-default_version "11.2.0"
+default_version "11.12.8"
 
 dependency "ruby-windows" #includes rubygems
 dependency "ruby-windows-devkit"
