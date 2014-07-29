@@ -32,6 +32,7 @@ runtime_dependency "private-chef"
 dependency "preparation"
 
 # global
+dependency "libffi"
 dependency "chef-gem"
 dependency "pushy-server-cookbooks"
 dependency "pushy-server-scripts"
