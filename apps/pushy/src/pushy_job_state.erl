@@ -25,7 +25,6 @@
 %% API
 -export([start_link/2,
          stop_job/1,
-         get_job_state/1,
          send_node_event/3,
          get_events/2,
          make_job_summary_event/1
@@ -50,14 +49,9 @@
 
 -include("pushy.hrl").
 -include("pushy_sql.hrl").
+-include("pushy_event.hrl").
 
 -compile([{parse_transform, lager_transform}]).
-
--record(event, {
-                name :: binary(),
-                id   :: binary(),
-                data :: [{binary(), binary()}]
-        }).
 
 %% This is Erlang not C/C++
 -record(state, {
@@ -79,12 +73,6 @@
 start_link(Job, Requestor) ->
     gen_fsm:start_link(?MODULE, {Job, Requestor}, []).
 
-get_job_state(JobId) ->
-    case pushy_job_state_sup:get_process(JobId) of
-        not_found -> not_found;
-        Pid -> pushy_fsm_utils:safe_sync_send_all_state_event(Pid, get_job_status)
-    end.
-
 stop_job(JobId) ->
     case pushy_job_state_sup:get_process(JobId) of
         not_found -> not_found;
@@ -103,14 +91,18 @@ init({#pushy_job{id = JobId, job_nodes = JobNodeList} = Job, Requestor}) ->
             JobNodes = dict:from_list([{{OrgId, NodeName}, JobNode} ||
                                           #pushy_job_node{org_id = OrgId, node_name = NodeName} =
                                               JobNode <- JobNodeList]),
+            % All jobs are in the same org.. right?
+            [#pushy_job_node{org_id = OrgId}|_] = JobNodeList,
+            OrgEvents = pushy_org_events_sup:get_or_create_process(OrgId),
             State0 = #state{job = Job#pushy_job{},
                            job_nodes = JobNodes,
                            job_host = Host,
                            voting_timeout = envy:get(pushy, voting_timeout, 60, integer),
                            next_event_id = 1,
                            rev_events = [],
-                           subscribers = [],
+                           subscribers = [OrgEvents],   % Start by subscribing the org to the feed
                            done = false},
+            % XXX monitor the OrgEvents; update it if need be
             NodeCount = length(JobNodeList),
             State = add_start_event(State0, Job#pushy_job.command, Job#pushy_job.run_timeout, Job#pushy_job.quorum, NodeCount, Requestor),
             listen_for_down_nodes(dict:fetch_keys(JobNodes)),
@@ -233,19 +225,17 @@ handle_event(Event, StateName, State) ->
                                {'next_state', job_status(), #state{}}|
                                {'reply', #pushy_job{}, job_status(), #state{}} |
                                {'stop', 'shutdown', 'ok', #state{}}.
-handle_sync_event(get_job_status, _From, StateName,
-        #state{job = Job, job_nodes = JobNodes} = State) ->
-    JobNodesList = [ JobNode || {_,JobNode} <- dict:to_list(JobNodes) ],
-    Job2 = Job#pushy_job{job_nodes = JobNodesList},
-    {reply, Job2, StateName, State};
+handle_sync_event(get_subscribers, _From, StateName, State) ->
+    % Just for unit tests
+    {reply, {ok, State#state.subscribers}, StateName, State};
 handle_sync_event(stop_job, _From, _StateName, State) ->
     {stop, shutdown, ok, State};
-handle_sync_event({get_events, LastEventId}, {Pid, _}, StateName, State = #state{subscribers = Ss}) ->
-    Response = build_event_response(LastEventId, State),
+handle_sync_event({get_events, LastEventID}, {Pid, _}, StateName, State) ->
+    Response = build_event_response(LastEventID, State),
     State1 = case Response of
                  {true, _} -> State;
                  % Automatically subscribe to events immediately, to avoid race conditions
-                 {false, _} -> State#state{subscribers = [Pid | Ss]}
+                 {false, _} -> add_subscriber(Pid, State)
              end,
     {reply, Response, StateName, State1};
 handle_sync_event(Event, From, StateName, State) ->
@@ -282,6 +272,15 @@ handle_info(_, waiting_around, State) ->
     % ignore anything other than the timeout -- if we exited instead of waiting around, these would be
     % ignored anyway.
     {next_state, waiting_around, State};
+handle_info(ping, StateName, State) ->
+    %?debugFmt("~p: PING", [iolist_to_binary(pushy_event:get_time_as_iso8601(erlang:now()))]),
+    % Solely for testing -- force a message to go out so we ca detect if the connection has gone down.
+    post_to_subscribers(State, ping),
+    {next_state, StateName, State};
+handle_info({'DOWN', _MonitorRef, process, Pid, _Info}, StateName, State) ->
+    %?debugFmt("~p: DOWN", [iolist_to_binary(pushy_event:get_time_as_iso8601(erlang:now()))]),
+    State1 = remove_subscriber(Pid, State),
+    {next_state, StateName, State1};
 handle_info(Info, StateName, State) ->
     lager:error("Unknown message handle_info(~p, ~p)", [Info, StateName]),
     {next_state, StateName, State}.
@@ -492,45 +491,26 @@ terminalize(running) -> running.
 
 %% Event-handling
 -spec get_events(pid(), string()) -> {boolean(), iolist()}.
-get_events(JobPid, LastEventId) ->
-    pushy_fsm_utils:safe_sync_send_all_state_event(JobPid, {get_events, LastEventId}).
+get_events(JobPid, LastEventID) ->
+    pushy_fsm_utils:safe_sync_send_all_state_event(JobPid, {get_events, LastEventID}).
 
 %% event utility functions
 -type status() :: atom() | binary() | {string(), [any()]} | iolist().
 
-build_event_response(LastEventId, State = #state{done = Done}) ->
-    RevEvs = case LastEventId of
+build_event_response(LastEventID, State = #state{done = Done}) ->
+    RevEvs = case LastEventID of
                  undefined -> State#state.rev_events;
                  % The events are in reverse order, so we want the beginning of the list, not the end.
-                 % Happily, this does the right thing if the LastEventId doesn't exist.
+                 % Happily, this does the right thing if the LastEventID doesn't exist.
                  S -> lists:takewhile(fun(E) -> E#event.id /= list_to_binary(S) end, State#state.rev_events)
              end,
-    Evs = pushy_fsm_utils:intersperse("\n\n", [encode_event(E) || E <- lists:reverse(RevEvs)]),
-    case Done of
-        true -> {true, Evs};
-        false -> {false, [Evs, "\n\n"]}
-    end.
-
-get_time_as_iso8601() ->
-    Now = erlang:now(),
-    {_, _, Micros} = Now,
-    {{YY, MM, DD}, {Hour, Min, Sec}} = calendar:now_to_universal_time(Now),
-    io_lib:format("~4..0w-~2..0w-~2..0w ~2..0w:~2..0w:~2..0w.~6..0BZ",
-                  [YY, MM, DD, Hour, Min, Sec, Micros]). 
-
-get_time_as_gmt() ->
-    list_to_binary(get_time_as_iso8601()).
-
-encode_event(#event{name = Name, id = Id, data = Data}) ->
-    pushy_fsm_utils:intersperse("\n", [[<<"event: ">>, Name], [<<"id: ">>, Id], [<<"data: ">>, jiffy:encode({Data})]]).
-
-make_event(Name, Id, Props) ->
-    Data = [{<<"timestamp">>, get_time_as_gmt()} | Props],
-    #event{name = list_to_binary(Name), id = list_to_binary(integer_to_list(Id)), data = Data}.
+    {Done, lists:reverse(RevEvs)}.
 
 add_event(State = #state{next_event_id = Id, rev_events = RevEvents}, EventName, PropList) ->
-    Ev = make_event(EventName, Id, PropList),
-    post_to_subscribers(State, {ev, [encode_event(Ev), "\n\n"]}),
+    IdStr = iolist_to_binary(io_lib:format("job-~B", [Id])), 
+    Ev = pushy_event:make_event(EventName, IdStr, PropList),
+    JobId = State#state.job#pushy_job.id,
+    post_to_subscribers(State, {job_ev, JobId, Ev}),
     State#state{next_event_id = Id + 1, rev_events = [Ev | RevEvents]}.
 
 post_to_subscribers(#state{subscribers = Subscribers}, Msg) ->
@@ -573,4 +553,14 @@ status_to_binary({F, A}) when is_list(F) -> iolist_to_binary(io_lib:format(F, A)
 
 make_job_summary_event(Job) ->
     {PL} = pushy_object:assemble_job_ejson_with_nodes(Job),
-    encode_event(make_event("summary", 1, PL)).
+    pushy_event:make_event("summary", 1, PL).
+
+add_subscriber(Pid, State = #state{subscribers = Ss}) ->
+    % Given how webmachine works, there is no way of knowing that an HTTP request has closed,
+    % except that the process went down.  Not a bad backup to watch for the subscriber exit
+    % anyway.
+    monitor(process, Pid),
+    State#state{subscribers = [Pid | Ss]}.
+
+remove_subscriber(Pid, State = #state{subscribers = Ss}) ->
+    State#state{subscribers = [P || P <- Ss, P /= Pid]}.

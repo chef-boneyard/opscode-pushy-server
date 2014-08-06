@@ -55,6 +55,7 @@ basic_setup() ->
     meck:expect(pushy_node_state, watch, fun(_) -> ok end),
     meck:expect(pushy_node_state, status, fun(_) -> {online, {available, none}} end),
     meck:expect(pushy_node_state, send_msg, fun(_, _) -> ok end),
+    pushy_org_events_sup:start_link(),
     application:set_env(pushy, heartbeat_interval, ?HB_INTERVAL),
     application:set_env(pushy, decay_window, ?DECAY_WINDOW),
     application:set_env(pushy, down_threshold, ?DOWN_THRESHOLD),
@@ -80,16 +81,13 @@ init_test_() ->
      [fun(_) ->
               {"Make sure that when a job dies, the feed gets notified",
                fun() ->
-                       %dbg:start(),
-                       %dbg:tracer(),
-                       %dbg:p(all, c),
-                       %dbg:tpl(pushy_job_state, [{'_', [], [{return_trace}]}]),
                        JobNodes = [#pushy_job_node{org_id= <<"org">>, node_name= <<"node1">>, status=new}],
                        {ok, JobPid} = pushy_job_state:start_link(#pushy_job{id=?ID, job_nodes=JobNodes}, requestor),
                        erlang:unlink(JobPid),
                        {{stream, {_Evs, Fun}}, _R, _S} = pushy_feed_resource:to_event_stream(req, #config_state{job_pid = JobPid}),
                        timer:send_after(100, too_late),
                        exit(JobPid, test_kill),
+                       % Note: webmachine won't work if you return an empty iolist; it _has_ to be an empty binary
                        ?assertEqual({<<>>, done}, Fun()),
                        % Make sure that this happened before the timer
                        receive

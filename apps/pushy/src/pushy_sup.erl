@@ -81,6 +81,7 @@ init([#pushy_state{ctx=_Ctx} = PushyState]) ->
     Workers2 = [?WORKER(pushy_process_monitor, [pushy_command_switch, pushy_command_switch:switch_processes_fun(), 1000]),
                 ?SUP(pushy_node_state_sup, []),
                 ?SUP(pushy_job_state_sup, []),
+                ?SUP(pushy_org_events_sup, []),
                 ?WORKER(pushy_job_monitor, []),
                 ?WORKERNL(webmachine_mochiweb, [WebMachineConfig])  %% FIXME start or start_link here?
                ],
