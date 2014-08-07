@@ -22,8 +22,8 @@
 require 'pushy/spec_helper'
 require 'time'
 
-#describe "sse-test" do
-describe "sse-test", :focus=>true do
+describe "sse-test" do
+#describe "sse-test", :focus=>true do
   include_context "end_to_end_util"     # to start clients
   include_context "sse_support"
   SUMMARY_WAIT_TIME = 5
@@ -48,20 +48,24 @@ describe "sse-test", :focus=>true do
     end
   end
 
-  let(:feed_path) { "/pushy/job_status_feed"}
+  let(:job_feed_path) { "/pushy/job_status_feed"}
 
-  def get_feed(id, &block)
+  # job feed URL is ".../job_status_feed/<job_id>"
+  def get_job_feed(id, &block)
     # SLG - things included via chef-pedant/lib/pedant/rspec/common.rb
     # SLG - "get" defined in chef-pedant/lib/pedant/request.rb
     # SLG - "api_url" defined in oc-chef-pedant/lib/pedant/multitenant/platform.rb
     # SLG = admin_user defined in rspec/common.rb
-    feed_url = api_url("#{feed_path}/#{id}")
+    job_feed_url = api_url("#{job_feed_path}/#{id}")
     headers = {'Accept' => 'text/event-stream'}
-    get(feed_url, admin_user, :headers => headers, &block)
+    get(job_feed_url, admin_user, :headers => headers, &block)
   end
 
-  def uri_from_id(id)
-    api_url("/pushy/jobs/#{id}")
+  # job feed URL is just ".../job_status_feed", without a specific job id
+  def get_org_feed(&block)
+    org_feed_url = api_url(job_feed_path)
+    headers = {'Accept' => 'text/event-stream'}
+    get(org_feed_url, admin_user, :headers => headers, &block)
   end
 
   def start_new_job(job)
@@ -92,15 +96,14 @@ describe "sse-test", :focus=>true do
 
   def do_complete_job(job, options = {})
     @id = start_new_job(job)
-    wait_for_job_done(uri_from_id(@id), options)
-    @id
+    wait_for_job_done(api_url("/pushy/jobs/#{@id}"), options)
   end
 
   def start_event_stream(last_id = nil, receive_timeout = nil)
-    feed_url = api_url("#{feed_path}/#{@id}")
+    job_feed_url = api_url("#{job_feed_path}/#{@id}")
     # XXXX Remove this when Mark deals with nginx buffering issue
-    feed_url.sub!("https://api.opscode.piab", "http://api.opscode.piab:10003")
-    stream = EventStream.new(feed_url, admin_user, last_id, receive_timeout)
+    job_feed_url.sub!("https://api.opscode.piab", "http://api.opscode.piab:10003")
+    stream = EventStreamOld.new(job_feed_url, admin_user, last_id, receive_timeout)
     # Give some time for the first events to come in
     sleep 0.25
     stream
@@ -116,19 +119,19 @@ describe "sse-test", :focus=>true do
 
   context 'with no job,' do
     it "should respond to a non-existent job with a 404" do
-      get_feed('nonexistent') do |response|
+      get_job_feed('nonexistent') do |response|
         response.should look_like({ :status => 404 })
       end
     end
 
     it "should respond to a POST with a 405" do
-      post(api_url("#{feed_path}/nonexistent"), admin_user) do |response|
+      post(api_url("#{job_feed_path}/nonexistent"), admin_user) do |response|
         response.should look_like({ :status => 405 })
       end
     end
 
     it 'should respond to an invalid user with a 401' do
-      get(api_url("#{feed_path}/nonexistent"), invalid_user) do |response|
+      get(api_url("#{job_feed_path}/nonexistent"), invalid_user) do |response|
       response.should look_like({ :status => 401 })
       end
     end
@@ -142,8 +145,8 @@ describe "sse-test", :focus=>true do
       do_complete_job(job_to_run)
     end
 
-    it "the events should be: start,quorum_vote(down),rehab,job_complete(quorum_failed)" do
-      get_feed(@id) do |response|
+    it "the job events should be: start,quorum_vote(down),rehab,job_complete(quorum_failed)" do
+      get_job_feed(@id) do |response|
         evs = expect_valid_response(4, response)
         expect_start(evs[0], command, run_timeout, quorum, 1, admin_user.name)
         expect_quorum_vote(evs[1], node, 'down')
@@ -151,6 +154,18 @@ describe "sse-test", :focus=>true do
         expect_job_complete(evs[3], "quorum_failed")
       end
     end
+
+    ## XX can't easily write org-feed test, because neither httpclient nor typhoeus provides
+    # any reasonable way to close a connection; and since the org feed never closes, things
+    # # would be ugly.  Instead, the org-feed tests are written in the Erlang eunit suite for
+    # pushy-server.
+    #it "the org events should be: start,job_complete(quorum_failed)" do
+      #get_org_feed do |response|
+        #evs = expect_valid_response(2, response)
+        #expect_start(evs[0], command, run_timeout, quorum, 1, admin_user.name, @id)
+        #expect_job_complete(evs[2], "quorum_failed", @id)
+      #end
+    #end
   end
 
   context 'with a job with one node,' do
@@ -165,13 +180,13 @@ describe "sse-test", :focus=>true do
 
       it 'should respond to an non-event-stream request with a 406' do
         # default is application/json
-        get(api_url("#{feed_path}/#{@id}"), admin_user) do |response|
+        get(api_url("#{job_feed_path}/#{@id}"), admin_user) do |response|
           response.should look_like({ :status => 406 })
         end
       end
 
       it "the events should be: start,quorum_vote(success),quorum_succeeded,run_start,run_complete(success),job_complete(complete)" do
-        get_feed(@id) do |response|
+        get_job_feed(@id) do |response|
           evs = expect_valid_response(6, response)
           expect_start(evs[0], command, run_timeout, quorum, 1, admin_user.name)
           expect_quorum_vote(evs[1], node, 'success')
@@ -191,7 +206,7 @@ describe "sse-test", :focus=>true do
       end
 
       it "the events should be: start,quorum_vote(success),quorum_succeeded,run_start,run_complete(failure),job_complete(complete)" do
-        get_feed(@id) do |response|
+        get_job_feed(@id) do |response|
           evs = expect_valid_response(6, response)
           expect_start(evs[0], command, run_timeout, quorum, 1, admin_user.name)
           expect_quorum_vote(evs[1], node, 'success')
@@ -211,7 +226,7 @@ describe "sse-test", :focus=>true do
       end
 
       it "the events should be: start,quorum_vote(failure),job_complete(quorum_failed)" do
-        get_feed(@id) do |response|
+        get_job_feed(@id) do |response|
           evs = expect_valid_response(3, response)
           expect_start(evs[0], command, run_timeout, quorum, 1, admin_user.name)
           expect_quorum_vote(evs[1], node, 'failure')
@@ -240,7 +255,7 @@ describe "sse-test", :focus=>true do
 
       # It would be nice if pushy-server sent something different here, maybe "commit_timeout" or something
       it "the events should be: start,quorum_vote(voting_timeout),job_complete(quorum_failed)" do
-        get_feed(@id) do |response|
+        get_job_feed(@id) do |response|
           evs = expect_valid_response(3, response)
           expect_start(evs[0], command, run_timeout, quorum, 1, admin_user.name)
           expect_quorum_vote(evs[1], node, 'voting_timeout')
@@ -268,7 +283,7 @@ describe "sse-test", :focus=>true do
       end
 
       it "the events should be: start,quorum_vote(success),quorum_succeeded,rehab,run_complete(run_nacked),job_complete(complete)" do
-        get_feed(@id) do |response|
+        get_job_feed(@id) do |response|
           evs = expect_valid_response(6, response)
           expect_start(evs[0], command, run_timeout, quorum, 1, admin_user.name)
           expect_quorum_vote(evs[1], node, 'success')
@@ -297,7 +312,7 @@ describe "sse-test", :focus=>true do
       end
 
       it "the events should be: start,quorum_vote(success),quorum_succeeded,job_complete(timed_out)" do
-        get_feed(@id) do |response|
+        get_job_feed(@id) do |response|
           evs = expect_valid_response(4, response)
           expect_start(evs[0], command, run_timeout, quorum, 1, admin_user.name)
           expect_quorum_vote(evs[1], node, 'success')
@@ -328,7 +343,7 @@ describe "sse-test", :focus=>true do
       end
 
       it "the events should be: start,quorum_vote(success),quorum_succeeded,run_start,rehab,run_complete(run_nacked_while_running),job_complete(complete)" do
-        get_feed(@id) do |response|
+        get_job_feed(@id) do |response|
           evs = expect_valid_response(7, response)
           expect_start(evs[0], command, run_timeout, quorum, 1, admin_user.name)
           expect_quorum_vote(evs[1], node, 'success')
@@ -354,7 +369,7 @@ describe "sse-test", :focus=>true do
       end
 
       it "the events should be: start,quorum_vote(A,success),quorum_vote(B,success),quorum_succeeded,run_start(A),run_start(B),run_complete(A,success),run_complete(B,success),job_complete(complete)" do
-        get_feed(@id) do |response|
+        get_job_feed(@id) do |response|
           evs = expect_valid_response(9, response)
           expect_start(evs[0], command, run_timeout, quorum, 2, admin_user.name)
           n1 = expect_quorum_vote(evs[1], :any, 'success')
@@ -379,7 +394,7 @@ describe "sse-test", :focus=>true do
       end
 
       it "the events should be: start,quorum_vote(A,success),quorum_vote(B,success),quorum_succeeded,run_start(A),run_start(B),run_complete(A,failure),run_complete(B,failure),job_complete(complete)" do
-        get_feed(@id) do |response|
+        get_job_feed(@id) do |response|
           evs = expect_valid_response(9, response)
           expect_start(evs[0], command, run_timeout, quorum, 2, admin_user.name)
           n1 = expect_quorum_vote(evs[1], :any, 'success')
@@ -414,7 +429,7 @@ describe "sse-test", :focus=>true do
       end
 
       it "the events should be: start,quorum_vote(A,success),quorum_vote(B,success),quorum_succeeded,run_start(A),run_start(B),run_complete(A,failure),run_complete(B,success),job_complete(complete)" do
-        get_feed(@id) do |response|
+        get_job_feed(@id) do |response|
           evs = expect_valid_response(9, response)
           expect_start(evs[0], command, run_timeout, quorum, 2, admin_user.name)
           n1 = expect_quorum_vote(evs[1], :any, 'success')
@@ -454,7 +469,7 @@ describe "sse-test", :focus=>true do
 
       context "when the quorum is 100%" do
         it "the events should be: start,quorum_vote(A,success),quorum_vote(B,failure),job_complete(quorum_failed)" do
-          get_feed(@id) do |response|
+          get_job_feed(@id) do |response|
             evs = expect_valid_response(4, response)
             expect_start(evs[0], command, run_timeout, quorum, 2, admin_user.name)
             if (evs[1].json['node'] == 'DONKEY') then
@@ -472,7 +487,7 @@ describe "sse-test", :focus=>true do
       context "when the quorum is 50%" do
         let(:quorum) { 1 }
         it "the events should be: start,quorum_vote(A,success),quorum_vote(B,failure),quorum_succeeded,run_complete(A,success),job_complete(success)" do
-          get_feed(@id) do |response|
+          get_job_feed(@id) do |response|
             evs = expect_valid_response(7, response)
             expect_start(evs[0], command, run_timeout, quorum, 2, admin_user.name)
             if (evs[1].json['node'] == 'DONKEY') then
@@ -516,7 +531,7 @@ describe "sse-test", :focus=>true do
       end
 
       it "there should be a rehab event, and the job should fail" do
-        get_feed(@id) do |response|
+        get_job_feed(@id) do |response|
           evs = expect_valid_response(5, response)
           expect_start(evs[0], command, run_timeout, quorum, 2, admin_user.name)
           expect_quorum_vote(evs[1], 'DONKEY', 'success')
@@ -537,7 +552,7 @@ describe "sse-test", :focus=>true do
     end
 
     it "the response to a feed request should just be the summary of the job" do
-      get_feed(@id) do |response|
+      get_job_feed(@id) do |response|
         evs = expect_valid_response(1, response)
         expect_summary(evs[0], command, 'complete', run_timeout, ['DONKEY'], nil)
       end
@@ -557,7 +572,7 @@ describe "sse-test", :focus=>true do
     end
 
     it "the events should be cleanly encoded" do
-      get_feed(@id) do |response|
+      get_job_feed(@id) do |response|
         evs = expect_valid_response(6, response)
         expect_start(evs[0], command, run_timeout, quorum, 1, admin_user.name)
         expect_quorum_vote(evs[1], node, 'success')
@@ -585,6 +600,7 @@ describe "sse-test", :focus=>true do
       expect_quorum_vote(evs[1], node, 'success')
       expect_quorum_succeeded(evs[2])
       expect_run_start(evs[3], node)
+      @stream.close
       sleep 2
       evs = @stream.get_streaming_events
       validate_events(6, evs)

@@ -21,6 +21,7 @@
 
 require 'httpclient'
 require 'thread'
+require 'typhoeus'
 
 shared_context "sse_support" do
   class Event < Struct.new(:name, :id, :json); end
@@ -85,15 +86,15 @@ shared_context "sse_support" do
     end
   end
 
-  class EventStream
+  class EventStreamOld
     def initialize(url, user, last_id, receive_timeout)
       host = URI.parse(url).host
       @evs = []
       @complete = false
-      c = HTTPClient.new
-      c.receive_timeout = receive_timeout
+      @client = HTTPClient.new
+      @client.receive_timeout = receive_timeout
       # Certificate is self-signing -- if we don't disable certificate verification, this won't work
-      c.ssl_config.verify_mode = OpenSSL::SSL::VERIFY_NONE
+      @client.ssl_config.verify_mode = OpenSSL::SSL::VERIFY_NONE
       @queue = Queue.new
 
       auth_headers = user.signing_headers(:GET, url, "")
@@ -113,7 +114,7 @@ shared_context "sse_support" do
       
       @ep = EventParser.new
       Thread.new {
-        conn = c.get_async(url, :header => headers)
+        conn = @client.get_async(url, :header => headers)
         resp = conn.pop
         content_io = resp.content
         while ! conn.finished?
@@ -149,15 +150,84 @@ shared_context "sse_support" do
       @evs += @ep.events_so_far
       @evs
     end
+
+    def close
+        @client.reset_all
+    end
+
   end
 
-  def expect_start(e, command, run_timeout, quorum, node_count, username)
+  class EventStream
+    def initialize(url, user, last_id, receive_timeout)
+      host = URI.parse(url).host
+      @evs = []
+      @complete = false
+      # XXX May need to disable SSL verification, if possible
+      @queue = Queue.new
+
+      auth_headers = user.signing_headers(:GET, url, "")
+      require 'chef/version'
+      headers =
+        {
+          'Accept' => 'text/event-stream',
+          'User-Agent' => 'chef-pedant rspec tests',
+          'X-Chef-Version' => Chef::VERSION,
+          'Host' => host,
+          'Cache-Control' => 'no-cache'   # spec says clients should always set this
+        }
+      headers.merge!(auth_headers)
+      if last_id then
+          headers.merge!({'Last-Event-ID' => last_id})
+      end
+      
+      @ep = EventParser.new
+      Thread.new {
+        req = Typhoeus::Request.new(
+          url,
+          headers: headers,
+          timeout: receive_timeout,
+          verbose: true
+        )
+        req.on_body do |chunk|
+          @queue << chunk
+        end
+        req.on_complete do |response|
+          @queue << :done
+        end
+        req.run
+      }
+    end
+
+    attr_reader :complete
+
+    def get_streaming_events
+      while ! @queue.empty?
+        el = @queue.pop
+        if el == :done
+          @ep.feed("", true)
+          @complete = true
+        else
+          @ep.feed(el)
+        end
+      end
+      @evs += @ep.events_so_far
+      @evs
+    end
+
+    def close
+        @client.reset_all
+    end
+
+  end
+
+  def expect_start(e, command, run_timeout, quorum, node_count, username, job = nil)
     e.name.should == :start
     e.json['command'].should == command
     e.json['run_timeout'].should == run_timeout
     e.json['quorum'].should == quorum
     e.json['node_count'].should == node_count
     e.json['user'].should == username
+    e.json['job'].should == job if job
   end
 
   def expect_quorum_vote(e, node, status)
@@ -181,9 +251,10 @@ shared_context "sse_support" do
     check_node(e, node)
   end
 
-  def expect_job_complete(e, status)
+  def expect_job_complete(e, status, job = nil)
     e.name.should == :job_complete
     e.json['status'].should == status
+    e.json['job'].should == job if job
   end
 
   def expect_rehab(e, node)
@@ -222,14 +293,6 @@ shared_context "sse_support" do
     ts.uniq.length.should == ts.length
     # All timestamps are in increasing order
     ts.sort.should == ts
-    # All timestamps are in (roughly) increasing order -- since pushy-server
-    # is multi-threaded, there may be some events showing up before others,
-    # but that's okay as long as delta is very small.
-    #ts.each_index do |i|
-      #next if i == 0
-      ## Check that time is forward, or no more than 1ms backward
-      #(ts[i] - ts[i-1]).should > -0.001
-    #end
   end
 
   def expect_valid_response(numEvents, response)
