@@ -73,7 +73,7 @@ CREATE TABLE job_status (
 --
 
 CREATE TABLE job_options (
-    job_id character(32),
+    job_id character(32) NOT NULL,
     job_user character(32),
     dir character(256),
     env text,
@@ -144,7 +144,7 @@ ALTER TABLE ONLY job_nodes
 --
 
 ALTER TABLE ONLY job_options
-    ADD CONSTRAINT job_options_pkey PRIMARY KEY (job_id);
+    ADD CONSTRAINT job_options_fkey FOREIGN KEY (job_id) REFERENCES jobs(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 --
 -- PostgreSQL database dump complete
