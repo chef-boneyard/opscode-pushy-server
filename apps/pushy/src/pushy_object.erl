@@ -22,7 +22,6 @@
 %%
 -module(pushy_object).
 
--include_lib("eunit/include/eunit.hrl").
 -include("pushy_sql.hrl").
 
 -export([
