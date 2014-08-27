@@ -23,7 +23,6 @@ require 'pushy/spec_helper'
 require 'time'
 
 describe "sse-test" do
-#describe "sse-test", :focus=>true do
   include_context "end_to_end_util"     # to start clients
   include_context "sse_support"
   SUMMARY_WAIT_TIME = 5
@@ -49,71 +48,6 @@ describe "sse-test" do
   end
 
   let(:job_feed_path) { "/pushy/job_status_feed"}
-
-  # job feed URL is ".../job_status_feed/<job_id>"
-  def get_job_feed(id, &block)
-    # SLG - things included via chef-pedant/lib/pedant/rspec/common.rb
-    # SLG - "get" defined in chef-pedant/lib/pedant/request.rb
-    # SLG - "api_url" defined in oc-chef-pedant/lib/pedant/multitenant/platform.rb
-    # SLG = admin_user defined in rspec/common.rb
-    job_feed_url = api_url("#{job_feed_path}/#{id}")
-    headers = {'Accept' => 'text/event-stream'}
-    get(job_feed_url, admin_user, :headers => headers, &block)
-  end
-
-  # job feed URL is just ".../job_status_feed", without a specific job id
-  def get_org_feed(&block)
-    org_feed_url = api_url(job_feed_path)
-    headers = {'Accept' => 'text/event-stream'}
-    get(org_feed_url, admin_user, :headers => headers, &block)
-  end
-
-  def start_new_job(job)
-    uri = post(api_url("/pushy/jobs"), admin_user, :payload => job) do |response|
-      list = JSON.parse(response.body)
-      list["uri"]
-    end
-    job_info_js = get(uri, admin_user)
-    job_info = JSON.parse(job_info_js)
-    job_info['id']
-  end
-
-  # Modified from end_to_end_util:wait_for_job_status
-  def wait_for_job_done(uri, options = {})
-    job = nil
-    begin
-      Timeout::timeout(options[:timeout] || JOB_STATUS_TIMEOUT_DEFAULT) do
-        begin
-          sleep(SLEEP_TIME) if job
-          job = get_job(uri)
-        end until ['complete', 'timed_out', 'quorum_failed'].include?(job['status'])
-      end
-    rescue Timeout::Error
-      raise "Job never got a status -- actual job reported as #{job}"
-    end
-    job
-  end
-
-  def do_complete_job(job, options = {})
-    @id = start_new_job(job)
-    wait_for_job_done(api_url("/pushy/jobs/#{@id}"), options)
-  end
-
-  def start_event_stream(last_id = nil, receive_timeout = nil)
-    job_feed_url = api_url("#{job_feed_path}/#{@id}")
-    stream = EventStreamOld.new(job_feed_url, admin_user, last_id, receive_timeout)
-    # Give some time for the first events to come in
-    sleep 0.25
-    stream
-  end
-
-  def check_node(e, node)
-    jnode = e.json['node']
-    if (node != :any)
-      jnode.should == node
-    end
-    jnode
-  end
 
   context 'with no job,' do
     it "should respond to a non-existent job with a 404" do
@@ -172,7 +106,7 @@ describe "sse-test" do
 
     context "when the command succeeds" do
       before :each do
-        start_new_clients(node)
+        start_new_clients([node])
         do_complete_job(job_to_run)
       end
 
@@ -199,7 +133,7 @@ describe "sse-test" do
     context "when the command fails" do
       let(:command) { 'this_oughta_fail' }
       before :each do
-        start_new_clients(node)
+        start_new_clients([node])
         do_complete_job(job_to_run)
       end
 
@@ -219,7 +153,7 @@ describe "sse-test" do
     context "when the node nacks the quorum" do
       let(:command) { 'bad command' }
       before :each do
-        start_new_clients(node)
+        start_new_clients([node])
         do_complete_job(job_to_run)
       end
 
@@ -239,9 +173,9 @@ describe "sse-test" do
       before :each do
         class PushyClient
           alias old_commit commit
-          def commit(job_id, command); nil; end
+          def commit(job_id, command, opts); nil; end
         end
-        start_new_clients(node)
+        start_new_clients([node])
         do_complete_job(job_to_run, {:timeout => JOB_WAITING_AROUND_TIME+5})
       end
 
@@ -270,7 +204,7 @@ describe "sse-test" do
             self.send_command(:nack_run, job_id)
           end
         end
-        start_new_clients(node)
+        start_new_clients([node])
         do_complete_job(job_to_run)
       end
 
@@ -299,7 +233,7 @@ describe "sse-test" do
           alias old_run run
           def run(job_id); nil; end
         end
-        start_new_clients(node)
+        start_new_clients([node])
         do_complete_job(job_to_run)
       end
 
@@ -330,7 +264,7 @@ describe "sse-test" do
             self.send_command(:nack_run, job_id)
           end
         end
-        start_new_clients(node)
+        start_new_clients([node])
         do_complete_job(job_to_run)
       end
 
@@ -362,7 +296,7 @@ describe "sse-test" do
 
     context "when the command succeeds on both" do
       before :each do
-        start_new_clients(*nodes)
+        start_new_clients(nodes)
         do_complete_job(job_to_run)
       end
 
@@ -387,7 +321,7 @@ describe "sse-test" do
     context "when the command fails on both" do
       let(:command) { 'this_oughta_fail' }
       before :each do
-        start_new_clients(*nodes)
+        start_new_clients(nodes)
         do_complete_job(job_to_run)
       end
 
@@ -412,7 +346,7 @@ describe "sse-test" do
 
     context "when the command fails on one" do
       before :each do
-        start_new_clients(*nodes)
+        start_new_clients(nodes)
         # Do some ugly object hacking to get one client to behave differently
         donkey = @clients['DONKEY'][:client]
         jr = donkey.instance_variable_get('@job_runner')
@@ -451,12 +385,12 @@ describe "sse-test" do
 
     context "when the one rejects the quorum," do
       before :each do
-        start_new_clients(*nodes)
+        start_new_clients(nodes)
         # Do some ugly object hacking to get one client to behave differently
         donkey = @clients['DONKEY'][:client]
         jr = donkey.instance_variable_get('@job_runner')
         class <<jr
-          def commit(job_id, command)
+          def commit(job_id, command, opts)
             client.send_command(:nack_commit, job_id)
             return false
           end
@@ -506,12 +440,12 @@ describe "sse-test" do
 
     context "when a buggy client sends an unrecognized message (e.g. nack_run) during a vote, after committing," do
       before :each do
-        start_new_clients(*nodes)
+        start_new_clients(nodes)
         # Do some ugly object hacking to get one client to behave differently
         donkey = @clients['DONKEY'][:client]
         jr = donkey.instance_variable_get('@job_runner')
         class <<jr
-          def commit(job_id, command)
+          def commit(job_id, command, opts)
             client.send_command(:ack_commit, job_id)
             client.send_command(:nack_run, job_id)
             true
@@ -520,7 +454,7 @@ describe "sse-test" do
         fiona = @clients['FIONA'][:client]
         jr = fiona.instance_variable_get('@job_runner')
         class <<jr
-          def commit(job_id, command)
+          def commit(job_id, command, opts)
             sleep 1
             client.send_command(:ack_commit, job_id)
           end
@@ -544,7 +478,7 @@ describe "sse-test" do
   context "with a job that has been complete for a while," do
     let(:nodes) { ['DONKEY'] }
     before :each do
-      start_new_clients(*nodes)
+      start_new_clients(nodes)
       do_complete_job(job_to_run)
       sleep(SUMMARY_WAIT_TIME + 1)
     end
@@ -563,7 +497,7 @@ describe "sse-test" do
     let(:nodes) { [node] }
 
     before :each do
-      start_new_clients(node)
+      start_new_clients([node])
       donkey = @clients['DONKEY'][:client]
       donkey.instance_variable_get('@whitelist').instance_variable_set('@whitelist', {command => command})
       do_complete_job(job_to_run)
@@ -586,7 +520,7 @@ describe "sse-test" do
     let(:node) { 'DONKEY' }
     let(:nodes) { [node] }
     before :each do
-      start_new_clients(node)
+      start_new_clients([node])
       @id = start_new_job(job_to_run)
       @stream = start_event_stream
     end
@@ -649,7 +583,7 @@ describe "sse-test" do
     let(:node) { 'DONKEY' }
     let(:nodes) { [node] }
     before :each do
-      start_new_clients(node)
+      start_new_clients([node])
       donkey = @clients[node][:client]
       donkey.instance_variable_get('@whitelist').instance_variable_set('@whitelist', {command => command})
       @id = start_new_job(job_to_run)
@@ -664,5 +598,31 @@ describe "sse-test" do
       evs = @stream.get_streaming_events
       validate_events(6, evs)
     end
+  end
+
+  context "when creating a job with optional parameters," do
+    let(:node) { 'DONKEY' }
+    def param_job(user, dir, env, file)
+      {'command' => 'ruby-opts', 'nodes' => [node], 'user' => user, 'dir' => dir, 'env' => env, 'file' => file}
+    end
+    before :each do
+      start_new_clients([node])
+    end
+
+    it 'the job event should include the parameters (with "file_specified" instead of "file")' do
+      env = {'ENV1' => 'myenv1', 'ENV2' => 'myenv2'}
+      @id = start_new_job(param_job('root', '/tmp', env, 'raw:foo'))
+      @stream = start_event_stream
+      evs = @stream.get_streaming_events
+      js = evs[0].json
+      js['job_user'].should == 'root'
+      js['dir'].should == '/tmp'
+      js['env'].should == env
+      js['file'].should == nil
+      js['file_specified'].should == true
+    end
+
+    # As above, there is no org feed test here, because it can't easily be written in Ruby.
+    # There is an Erlang test, however.
   end
 end

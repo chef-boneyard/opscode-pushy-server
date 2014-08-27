@@ -52,7 +52,7 @@ shared_context "end_to_end_util" do
 
   # Method to start up a new client that will be reaped when
   # the test finishes
-  def start_new_clients(*names)
+  def start_new_clients(names, opts = {})
     @clients = {} if !@clients
     names.each do |name|
       raise "Client #{name} already created" if @clients[name]
@@ -61,14 +61,14 @@ shared_context "end_to_end_util" do
       }
     end
 
-    start_clients(*names)
+    start_clients(names, opts)
   end
 
-  def start_client(name)
-    start_clients(name)
+  def start_client(name, opts = {})
+    start_clients([name], opts)
   end
 
-  def start_clients(*names)
+  def start_clients(names, opts = {})
     names.each do |name|
       raise "Client #{name} already started" if @clients[name][:client]
 
@@ -93,8 +93,8 @@ shared_context "end_to_end_util" do
       end
 
       key = parse(response)["private_key"]
-      puts "Private Key for client #{name}:"
-      pp key
+      #puts "Private Key for client #{name}:"
+      #pp key
 
       @clients[name][:key_file] = file = Tempfile.new([name, '.pem'])
       key_path = file.path
@@ -103,7 +103,7 @@ shared_context "end_to_end_util" do
       file.flush
 
       # Create pushy client
-      new_client = PushyClient.new(
+      default_opts = {
         :chef_server_url => "#{Pedant.config[:chef_server]}/organizations/#{org}",
         :client_key      => key_path,
         :node_name       => name,
@@ -122,9 +122,14 @@ shared_context "end_to_end_util" do
           'sleep 10' => 'sleep 10',
           'sleep 20' => 'sleep 20',
           'this_oughta_succeed' => 'echo true',
-          'this_oughta_fail' => 'ruby -e "exit 1"'
+          'this_oughta_fail' => 'ruby -e "exit 1"',
+          'ruby-opts' => {
+              :command_line => %q!ruby -e '$,="\n";p=Process;File.open(ENV["OUT"],"w"){|f|f.print p.uid,p.euid,Dir.getwd,ENV.to_a}'!
+          }
         }
-      )
+      }
+      all_opts = default_opts.merge(opts)
+      new_client = PushyClient.new(all_opts)
       @clients[name][:client] = new_client
       @clients[name][:client].start
     end
@@ -381,5 +386,18 @@ shared_context "end_to_end_util" do
     @clients[node_name][:client].define_singleton_method(:send_command) do |message, job_id|
       block.call(old_send_command, message, job_id)
     end
+  end
+
+  def prep_tmp_path
+    require 'tmpdir'
+    path = Dir::Tmpname.create('pushypedant'){|p| p}
+    ENV['OUT']=path
+  end
+
+  def read_tmp_path
+    path = ENV['OUT']
+    lines = IO.read(path).split($/)
+    File.delete(path)
+    lines
   end
 end
