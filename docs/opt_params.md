@@ -345,6 +345,15 @@ However, the above checks are not implemented, so it is clearly the
 case that the file could be sent at the run stage given the current
 semantics of the client.  So this change should remain under consideration.
 
+#### More RESTful API for files
+Instead of a query-string specifying whether to return a "file_included"
+attribute or a "file" attribute, it would probably be cleaner to have
+the file attribute be a URI of the file contents.  Then any REST client
+that wanted to view the file would do an additional get for the file.
+
+This possibility was considered after the implementation was complete.  It
+is worth considering as a future improvement.
+
 ### Windows
 There has been no attempt to implement or validate cross-platform
 functionality in the client.  The system has only been tested on
