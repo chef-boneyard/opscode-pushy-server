@@ -82,7 +82,7 @@ stop_job(JobId) ->
 %%%
 %%% Initialization
 %%%
-init({#pushy_job{id = JobId, job_nodes = JobNodeList} = Job, Requestor}) ->
+init({#pushy_job{id = JobId, job_nodes = JobNodeList, opts = Opts} = Job, Requestor}) ->
     Host = list_to_binary(envy:get(pushy, server_name, string)),
     case pushy_job_state_sup:register_process(JobId) of
         true ->
@@ -102,9 +102,11 @@ init({#pushy_job{id = JobId, job_nodes = JobNodeList} = Job, Requestor}) ->
                            rev_events = [],
                            subscribers = [OrgEvents],   % Start by subscribing the org to the feed
                            done = false},
+            #pushy_job_opts{user = OptUser, dir = OptDir, env = OptEnv, file = OptFile} = Opts,
             % XXX monitor the OrgEvents; update it if need be
             NodeCount = length(JobNodeList),
-            State = add_start_event(State0, Job#pushy_job.command, Job#pushy_job.run_timeout, Job#pushy_job.quorum, NodeCount, Requestor),
+            State = add_start_event(State0, Job#pushy_job.command, Job#pushy_job.run_timeout, Job#pushy_job.quorum,
+                                    NodeCount, Requestor, OptUser, OptDir, OptEnv, OptFile),
             listen_for_down_nodes(dict:fetch_keys(JobNodes)),
 
             lager:info([{job_id,Job#pushy_job.id}],
@@ -212,7 +214,7 @@ running({Failure,NodeRef}, State) ->
     NodeState = get_node_state(NodeRef, State),
     {State1, Status} = case NodeState of
         ready    -> {send_to_rehab(NodeRef, crashed, State), crashed};
-        running  -> {send_to_rehab(NodeRef, crashed, State), failure};
+        running  -> {send_to_rehab(NodeRef, crashed, State), crashed};
         terminal -> {send_to_rehab(NodeRef, State), client_died_while_running}
     end,
     {_, NodeName} = NodeRef,
@@ -351,7 +353,7 @@ send_matching_to_rehab(OldNodeState, NewNodeState, #state{job_nodes = JobNodes} 
         end, JobNodes),
     State#state{job_nodes = JobNodes2}.
 
--spec do_on_matching_state(atom, fun((#pushy_job_node{}, #state{}) -> #state{}), #state{}) -> #state{}.
+-spec do_on_matching_state(atom(), fun((#pushy_job_node{}, #state{}) -> #state{}), #state{}) -> #state{}.
 do_on_matching_state(NodeState, Fun, #state{job_nodes = JobNodes} = State) ->
     Nodes = [N || {_,N} <- dict:to_list(dict:filter(fun(_, Node) -> Node#pushy_job_node.status =:= NodeState end, JobNodes))],
     % "Fun" takes the node and the state, and returns a new state.
@@ -384,7 +386,7 @@ start_voting(#state{job = Job, voting_timeout = VotingTimeout} = State) ->
     Job2 = Job#pushy_job{status = voting},
     State2 = State#state{job = Job2},
     pushy_object:update_object(update_job, Job2, Job2#pushy_job.id),
-    send_command_to_all(<<"commit">>, State2),
+    send_commit(State2),
     {ok, _} = timer:send_after(VotingTimeout*1000, voting_timeout),
     maybe_finished_voting(State2).
 
@@ -394,7 +396,7 @@ start_running(#state{job = Job} = State) ->
     Job2 = Job#pushy_job{status = running},
     State2 = State#state{job = Job2},
     pushy_object:update_object(update_job, Job2, Job2#pushy_job.id),
-    send_command_to_ready(<<"run">>, State2),
+    send_run(State2),
     {ok, _} = timer:send_after(Job2#pushy_job.run_timeout*1000, running_timeout),
     maybe_finished_running(State2).
 
@@ -452,26 +454,35 @@ listen_for_down_nodes([NodeRef|JobNodes]) ->
     end,
     listen_for_down_nodes(JobNodes).
 
--spec send_command_to_ready(binary(), #state{}) -> 'ok'.
-send_command_to_ready(Type, #state{job_host = Host,
-                                   job = Job} = State) ->
-    lager:debug([{job_id,Job#pushy_job.id}],
-                "Sending ~p to nodes in ready state", [Type]),
+-spec send_run(#state{}) -> 'ok'.
+send_run(#state{job = Job} = State) ->
+    lager:debug([{job_id,Job#pushy_job.id}], "Sending run to nodes in ready state"),
     ReadyNodeRefs = nodes_in_state([ready], State),
-    send_command_to_nodes(Type, Host, Job, ReadyNodeRefs).
+    send_msg_to_nodes(<<"run">>, [], Job, ReadyNodeRefs).
 
--spec send_command_to_all(binary(), #state{}) -> 'ok'.
-send_command_to_all(Type, #state{job_host=Host, job = Job, job_nodes = JobNodes}) ->
-    lager:debug([{job_id,Job#pushy_job.id}],
-                "Sending ~p to all nodes", [Type]),
+get_attr_list(_Name, undefined) -> [];
+get_attr_list(Name, Val) -> [{Name, Val}].
+
+-spec send_commit(#state{}) -> 'ok'.
+send_commit(#state{job_host=Host, job = Job, job_nodes = JobNodes}) ->
+    lager:debug([{job_id,Job#pushy_job.id}], "Sending commit to all nodes"),
     NodeRefs = dict:fetch_keys(JobNodes),
-    send_command_to_nodes(Type, Host, Job, NodeRefs).
+    Opts = Job#pushy_job.opts,
+    User = get_attr_list(user, Opts#pushy_job_opts.user),
+    Dir = get_attr_list(dir, Opts#pushy_job_opts.dir),
+    Env = get_attr_list(env, Opts#pushy_job_opts.env),
+    % XX Consider attaching file in separate frame
+    File = get_attr_list(file, Opts#pushy_job_opts.file),
+    Attrs = [{server, Host},
+             {command, Job#pushy_job.command}] ++
+            User ++
+            Dir ++
+            Env ++
+            File,
+    send_msg_to_nodes(<<"commit">>, Attrs, Job, NodeRefs).
 
-send_command_to_nodes(Type, Host, Job, NodeRefs) ->
-    Message = [{type, Type},
-               {job_id, Job#pushy_job.id},
-               {server, Host},
-               {command, Job#pushy_job.command}],
+send_msg_to_nodes(Type, MoreAttrs, Job, NodeRefs) ->
+    Message = [{type, Type}, {job_id, Job#pushy_job.id} | MoreAttrs],
     pushy_node_state:send_msg(NodeRefs, {Message}).
 
 -spec send_node_event(object_id(), node_ref(), job_event()) -> ok | not_found.
@@ -515,6 +526,7 @@ build_event_response(LastEventID, State = #state{done = Done}) ->
              end,
     {Done, lists:reverse(RevEvs)}.
 
+-spec add_event(#state{}, string(), [{binary(), integer() | binary()}]) -> #state{}.
 add_event(State = #state{next_event_id = Id, rev_events = RevEvents}, EventName, PropList) ->
     IdStr = iolist_to_binary(io_lib:format("job-~B", [Id])),
     Ev = pushy_event:make_event(EventName, IdStr, PropList),
@@ -525,9 +537,20 @@ add_event(State = #state{next_event_id = Id, rev_events = RevEvents}, EventName,
 post_to_subscribers(#state{subscribers = Subscribers}, Msg) ->
     lists:foreach(fun(W) -> W ! Msg end, Subscribers).
 
--spec add_start_event(#state{}, binary(), non_neg_integer(), non_neg_integer(), non_neg_integer(), binary()) -> #state{}.
-add_start_event(State, Command, RunTimeout, Quorum, NodeCount, User) ->
-    add_event(State, "start", [{<<"command">>, Command}, {<<"run_timeout">>, RunTimeout}, {<<"quorum">>, Quorum}, {<<"node_count">>, NodeCount}, {<<"user">>, User}]).
+-spec add_start_event(#state{}, binary(), non_neg_integer(), non_neg_integer(), non_neg_integer(), binary(),
+                                binary()|undefined, binary()|undefined, binary()|undefined, binary()|undefined)
+                                        -> #state{}.
+add_start_event(State, Command, RunTimeout, Quorum, NodeCount, User, JobUser, Dir, Env, File) ->
+    JobUserPL = get_attr_list(job_user, JobUser),
+    DirPL = get_attr_list(dir, Dir),
+    EnvPL = get_attr_list(env, Env),
+    FileSpecified = case File of
+                        undefined -> undefined;
+                        _ -> true
+                    end,
+    FileSpecifiedPL = get_attr_list(file_specified, FileSpecified),
+    OptPL = JobUserPL ++ DirPL ++ EnvPL ++ FileSpecifiedPL,
+    add_event(State, "start", [{<<"command">>, Command}, {<<"run_timeout">>, RunTimeout}, {<<"quorum">>, Quorum}, {<<"node_count">>, NodeCount}, {<<"user">>, User}] ++ OptPL).
 
 -spec add_quorum_vote_event(#state{}, binary(), status()) -> #state{}.
 add_quorum_vote_event(State, Node, Status) ->
@@ -545,7 +568,7 @@ add_run_start_event(State, Node) ->
 add_run_complete_event(State, Node, Status) ->
     add_event(State, "run_complete", [{<<"node">>, Node}, {<<"status">>, status_to_binary(Status)}]).
 
--spec add_job_complete_event(#state{}, binary()) -> #state{}.
+-spec add_job_complete_event(#state{}, status()) -> #state{}.
 add_job_complete_event(State, Status) ->
     add_event(State, "job_complete", [{<<"status">>, status_to_binary(Status)}]).
 
@@ -555,14 +578,14 @@ add_rehab_event(State, Node) ->
 
 atom_to_binary(A) -> list_to_binary(atom_to_list(A)).
 
-status_to_binary(S) when is_binary(S) -> S;
-status_to_binary(S) when is_atom(S) -> atom_to_binary(S);
-status_to_binary(S) when is_list(S) -> iolist_to_binary(S);
-status_to_binary({F, A}) when is_list(F) -> iolist_to_binary(io_lib:format(F, A)).
+%status_to_binary(S) when is_binary(S) -> S;
+status_to_binary(S) when is_atom(S) -> atom_to_binary(S).
+%status_to_binary(S) when is_list(S) -> iolist_to_binary(S);
+%status_to_binary({F, A}) when is_list(F) -> iolist_to_binary(io_lib:format(F, A)).
 
 make_job_summary_event(Job) ->
     {PL} = pushy_object:assemble_job_ejson_with_nodes(Job),
-    pushy_event:make_event("summary", 1, PL).
+    pushy_event:make_event("summary", <<"job-1">>, PL).
 
 add_subscriber(Pid, State = #state{subscribers = Ss}) ->
     % Given how webmachine works, there is no way of knowing that an HTTP request has closed,

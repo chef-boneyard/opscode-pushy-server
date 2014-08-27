@@ -69,6 +69,18 @@ CREATE TABLE job_status (
 );
 
 --
+-- Name: job_options; Type: TABLE; Schema: public; Owner -; Tablespace:
+--
+
+CREATE TABLE job_options (
+    job_id character(32),
+    job_user character(32),
+    dir character(256),
+    env text,
+    job_file text
+);
+
+--
 -- INSERT job statuses
 --
 
@@ -113,7 +125,6 @@ ALTER TABLE ONLY job_status
 ALTER TABLE ONLY jobs
     ADD CONSTRAINT jobs_pkey PRIMARY KEY (id);
 
-
 --
 -- Name: job_status_fkey; Type: CONSTRAINT
 --
@@ -128,6 +139,12 @@ ALTER TABLE ONLY jobs
 ALTER TABLE ONLY job_nodes
     ADD CONSTRAINT job_nodes_job_id_fkey FOREIGN KEY (job_id) REFERENCES jobs(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
+--
+-- Name: job_options_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace:
+--
+
+ALTER TABLE ONLY job_options
+    ADD CONSTRAINT job_options_pkey PRIMARY KEY (job_id);
 
 --
 -- PostgreSQL database dump complete

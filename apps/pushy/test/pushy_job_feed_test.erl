@@ -82,7 +82,10 @@ init_test_() ->
               {"Make sure that when a job dies, the feed gets notified",
                fun() ->
                        JobNodes = [#pushy_job_node{org_id= <<"org">>, node_name= <<"node1">>, status=new}],
-                       {ok, JobPid} = pushy_job_state:start_link(#pushy_job{id=?ID, job_nodes=JobNodes}, requestor),
+                        JobOpts = #pushy_job_opts{},
+                        Job = #pushy_job{id= <<"i">>, job_nodes=JobNodes, command= <<"cmd">>,
+                                         quorum=1, run_timeout=1, opts = JobOpts},
+                       {ok, JobPid} = pushy_job_state:start_link(Job, requestor),
                        erlang:unlink(JobPid),
                        {{stream, {_Evs, Fun}}, _R, _S} = pushy_feed_resource:to_event_stream(req, #config_state{job_pid = JobPid}),
                        timer:send_after(100, too_late),

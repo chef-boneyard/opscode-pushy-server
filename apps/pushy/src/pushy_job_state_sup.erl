@@ -35,6 +35,7 @@
 
 -include_lib("pushy_sql.hrl").
 
+-include_lib("eunit/include/eunit.hrl").
 -compile([{parse_transform, lager_transform}]).
 
 %% ------------------------------------------------------------------

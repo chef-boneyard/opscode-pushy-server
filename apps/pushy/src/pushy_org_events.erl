@@ -49,15 +49,15 @@
           subscribers     :: [pid()]
          }).
 
-start_link(Org) ->
-    gen_server:start_link(?MODULE, [Org], []).
+start_link(OrgId) ->
+    gen_server:start_link(?MODULE, [OrgId], []).
 
-get_events(Org, LastEventId) ->
-    Pid = pushy_org_events_sup:get_or_create_process(Org),
+get_events(OrgId, LastEventId) ->
+    Pid = pushy_org_events_sup:get_or_create_process(OrgId),
     gen_server:call(Pid, {get_events, LastEventId}).
 
-clear_events(Org) ->
-    Pid = pushy_org_events_sup:get_or_create_process(Org),
+clear_events(OrgId) ->
+    Pid = pushy_org_events_sup:get_or_create_process(OrgId),
     gen_server:call(Pid, clear_events).
 
 init(_Org) ->
@@ -71,7 +71,7 @@ init(_Org) ->
 handle_call({get_events, LastEventID}, {Pid, _}, State) ->
     State1 = expire_old_events(State),
     Response = build_event_response(LastEventID, State1),
-    State2 = add_subscriber(Pid, State),
+    State2 = add_subscriber(Pid, State1),
     {reply, Response, State2};
 handle_call(clear_events, _From, State) ->
     {reply, ok, State#state{rev_events = []}};
@@ -127,7 +127,7 @@ remove_subscriber(Pid, State = #state{subscribers = Ss}) ->
 post_to_subscribers(#state{subscribers = Subscribers}, Msg) ->
     %case Msg of
         %#event{name = Name} -> ?debugVal({Subscribers, Name});
-        %_ -> ?debugVal({Subscribers, Msg})
+        %_ -> ?debugVal({self(), Subscribers, Msg})
     %end,
     lists:foreach(fun(W) -> W ! Msg end, Subscribers).
 

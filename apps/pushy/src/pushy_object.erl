@@ -22,6 +22,7 @@
 %%
 -module(pushy_object).
 
+-include_lib("eunit/include/eunit.hrl").
 -include("pushy_sql.hrl").
 
 -export([
@@ -29,13 +30,14 @@
           create_object/3,
           update_object/2,
           update_object/3,
-          new_record/6,
+          new_record/10,
 
           make_org_prefix_id/1,
           make_org_prefix_id/2,
 
           assemble_job_ejson/1,
-          assemble_job_ejson_with_nodes/1
+          assemble_job_ejson_with_nodes/1,
+          assemble_job_ejson_with_nodes/2
 
         ]).
 
@@ -58,16 +60,27 @@ fetch_org_id(OrgName) ->
                  NodeNames :: [binary()],
                  Command :: binary(),
                  RunTimeout :: non_neg_integer(),
-                 Quorum :: non_neg_integer()) -> pushy_object().
-new_record(pushy_job, OrgId, NodeNames, Command, RunTimeout, Quorum) ->
+                 Quorum :: non_neg_integer(),
+                 User :: binary() | undefined,
+                 Dir :: binary() | undefined,
+                 Env :: [{binary(), binary()}] | undefined,
+                 File :: binary() | undefined) -> pushy_object().
+new_record(pushy_job, OrgId, NodeNames, Command, RunTimeout, Quorum, User, Dir, Env, File) ->
     Id = make_org_prefix_id(OrgId),
     Now = pushy_sql:sql_date(now),
+    Opts = #pushy_job_opts{
+                user = User,
+                dir = Dir,
+                env = Env,
+                file = File
+             },
     #pushy_job{id = Id,
                 org_id = OrgId,
                 status = new,
                 command = Command,
                 run_timeout = RunTimeout,
                 quorum = Quorum,
+                opts = Opts,
                 created_at = Now,
                 updated_at = Now,
                 job_nodes = [
@@ -170,24 +183,45 @@ make_org_prefix_id(OrgId, Name) ->
     <<ObjectPart:80, _/binary>> = crypto:hash(md5, Bin),
     iolist_to_binary(io_lib:format("~s~20.16.0b", [OrgSuffix, ObjectPart])).
 
-assemble_job_ejson_with_nodes(#pushy_job{job_nodes = Nodes} = Job) ->
-    {NodePropList} = assemble_job_ejson(Job),
+assemble_job_ejson_with_nodes(Job) -> assemble_job_ejson_with_nodes(Job, false).
+
+assemble_job_ejson_with_nodes(#pushy_job{job_nodes = Nodes} = Job, IncludeFile) ->
+    {NodePropList} = assemble_job_ejson(Job, IncludeFile),
     NodesJson = job_nodes_json_by_status(Nodes),
     {[ {<<"nodes">>, NodesJson} | NodePropList]}.
+
+get_attr_list(_Name, undefined) -> [];
+get_attr_list(Name, Val) -> [{Name, Val}].
+
+assemble_job_ejson(Job) -> assemble_job_ejson(Job, false).
 
 assemble_job_ejson(#pushy_job{id = Id,
                               command = Command,
                               status = Status,
                               run_timeout = RunTimeout,
                               created_at = CreatedAt,
-                              updated_at = UpdatedAt}) ->
+                              updated_at = UpdatedAt,
+                              opts = Opts},
+                  IncludeFile) ->
+    % XXX This code is copied from pushy_job_state.erl
+    UserPL = get_attr_list(user, Opts#pushy_job_opts.user),
+    DirPL = get_attr_list(dir, Opts#pushy_job_opts.dir),
+    EnvPL = get_attr_list(env, Opts#pushy_job_opts.env),
+    FilePL = case Opts#pushy_job_opts.file of
+                undefined -> [];
+                File -> case IncludeFile of
+                            true -> [{file, File}];
+                            false -> [{file_specified, true}]
+                        end
+             end,
+    OptsPL = UserPL ++ DirPL ++ EnvPL ++ FilePL,
     {[ {<<"id">>, Id},
        {<<"command">>, Command},
        {<<"status">>, Status},
        {<<"run_timeout">>, RunTimeout},
        {<<"created_at">>, CreatedAt},
        {<<"updated_at">>, UpdatedAt}
-    ]}.
+    ] ++ OptsPL}.
 
 job_nodes_json_by_status(Nodes) ->
     NodesByStatus = job_nodes_by_status(Nodes, dict:new()),

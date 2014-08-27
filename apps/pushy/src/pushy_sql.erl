@@ -72,7 +72,16 @@ fetch_jobs(OrgId) ->
         {ok, none} ->
             {ok, []};
         {ok, Rows} ->
-            {ok, [prepare_pushy_job_record(Row) || Row <- Rows]};
+            % Note that we are not including node information here.  I'm not sure whether
+            % that's an oversight, or because it's easier (since the node information results
+            % in multiple rows too, meaning you can't simply invoke job_join_rows_to_record/1
+            % -- SLG
+            Jobs = lists:map(fun(R) ->
+                        Job = prepare_pushy_job_record(R),
+                        O = proplist_to_job_options(R),
+                        Job#pushy_job{opts = O}
+                             end, Rows),
+            {ok, Jobs};
         {error, Error} ->
             {error, Error}
     end.
@@ -101,8 +110,22 @@ create_job(#pushy_job{job_nodes = JobNodes}=Job) ->
         {ok, 1} ->
             case insert_job_nodes(JobNodes) of
                 ok ->
-                    %% (Remember, create_object/1 should return {ok, Number})
-                    {ok, 1};
+                    case insert_job_options(Job) of
+                        {ok, _} -> 
+                            %% (Remember, create_object/1 should return {ok, Number})
+                            {ok, 1};
+                        {error, Reason1} ->
+                            %% We could have potentially inserted some job node rows before the
+                            %% error was thrown. If we had transactions, we could just bail out here, but
+                            %% instead we need to do a little cleanup. Fortunately, this just means
+                            %% deleting all rows with the given job id.
+
+                            % delete_job_nodes(JobId),
+
+                            %% Finally, we'll pass the root cause of
+                            %% the failure back up
+                            parse_error(Reason1)
+                    end;
                 {error, Reason} ->
                     %% We could have potentially inserted some job node rows before the
                     %% error was thrown. If we had transactions, we could just bail out here, but
@@ -153,12 +176,15 @@ create_object(QueryName, Args) ->
 %% @doc removes any lists from the list of #pushy_job{} values; in other words, remove the
 %% 'job_nodes' field.  We don't use that to insert new rows into the jobs table (that data's
 %% joined).
+%% Similarly, remove any tuples (i.e. records); in other words, remove the optional fields
+%% record, "opts".  Those fields are potentially undefined, and will go into a separate table,
+%% "job_options", in the database.
 %% @end
 %%
 %% TODO: There is a better, less opaque way to achieve this.
 job_fields_for_insert(JobFields) ->
     Pred = fun(Elem) ->
-                   not(is_list(Elem))
+                   not(is_list(Elem)) andalso not(is_tuple(Elem))
            end,
     lists:filter(Pred, JobFields).
 
@@ -186,6 +212,35 @@ insert_job_nodes([#pushy_job_node{job_id=JobId,
             {error, Reason}
     end.
 
+-spec insert_job_options(#pushy_job{}) -> ok | {error, no_connections | {_,_}}.
+%% @doc Inserts job_options records into the database.
+%%
+%% Returns 'ok' if all records are inserted without issue. Returns an error tuple on the
+%% first checksum that fails to insert into the database for whatever reason. Further
+%% processing of the list is abandoned at that point.
+insert_job_options(#pushy_job{opts = #pushy_job_opts{user = undefined,
+                              dir = undefined,
+                              env = undefined,
+                              file = undefined}}) ->
+    {ok, 0};
+insert_job_options(#pushy_job{id = Id, opts = #pushy_job_opts{
+                              user = User,
+                              dir = Dir,
+                              env = Env,
+                              file = File}}) ->
+    %?debugVal({Id, User, Dir, Env, File}),
+    EncUser = undef_to_null(User),
+    EncDir = undef_to_null(Dir),
+    EncEnv = case Env of
+                 undefined -> null;
+                 _ -> jiffy:encode(Env)
+             end,
+    EncFile = undef_to_null(File),
+    sqerl:statement(insert_job_options, [Id, EncUser, EncDir, EncEnv, EncFile]).
+
+undef_to_null(undefined) -> null;
+undef_to_null(O) -> O.
+
 %% sequel returns seconds as float, while many erlang functions want integer
 %% we trunc instead of rounding because if it's 59.6 we don't want to round to 60!
 %% TODO: Move this fn to some common code
@@ -206,8 +261,10 @@ job_join_rows_to_record(Rows) ->
 -spec job_join_rows_to_record(Rows :: [proplists:proplist()], [#pushy_job_node{}]) -> #pushy_job{}.
 job_join_rows_to_record([LastRow|[]], JobNodes) ->
     C = proplist_to_job_node(LastRow),
+    O = proplist_to_job_options(LastRow),
     Job = prepare_pushy_job_record(LastRow),
-    Job#pushy_job{job_nodes = lists:flatten(lists:reverse([C|JobNodes]))};
+    Job#pushy_job{job_nodes = lists:flatten(lists:reverse([C|JobNodes])),
+                  opts = O};
 job_join_rows_to_record([Row|Rest], JobNodes ) ->
     C = proplist_to_job_node(Row),
     job_join_rows_to_record(Rest, [C|JobNodes]).
@@ -263,6 +320,18 @@ proplist_to_job_node(Proplist) ->
                 created_at = date_time_to_sql_date(safe_get(<<"created_at">>, Proplist)),
                 updated_at = date_time_to_sql_date(safe_get(<<"updated_at">>, Proplist))}
     end.
+
+-spec proplist_to_job_options(proplists:proplist()) -> #pushy_job_opts{}.
+%% @doc Convenience function for assembling a job_options tuple from a proplist
+proplist_to_job_options(Proplist) ->
+    DecEnv = case safe_get(<<"env">>, Proplist) of
+                 null -> undefined;
+                 O -> jiffy:decode(O)
+             end,
+    #pushy_job_opts{user = null_get(<<"job_user">>, Proplist),
+                    dir = null_get(<<"dir">>, Proplist),
+                    env = DecEnv,
+                    file = null_get(<<"job_file">>, Proplist)}.
 
 %% Job Node Status translators
 job_node_status(new) -> 0;
@@ -350,6 +419,15 @@ do_update(QueryName, UpdateFields) ->
 safe_get(Key, Proplist) ->
     {Key, Value} = lists:keyfind(Key, 1, Proplist),
     Value.
+
+%% @doc Safely retrieves a value from a proplist. Throws an error if the specified key does
+%% not exist in the list.  Returns 'undefined' if the value is 'null'.
+-spec null_get(Key::binary(), proplists:proplist()) -> term().
+null_get(Key, Proplist) ->
+    case safe_get(Key, Proplist) of
+        null -> undefined;
+        Other -> Other
+    end.
 
 %% CHEF_DB CARGO_CULT
 statements() ->
