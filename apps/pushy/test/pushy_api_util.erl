@@ -235,7 +235,11 @@ async_http_request(Method, Url, Headers, Body, Receiver) ->
 
 receive_async_headers(ReqId) ->
     Res = receive
-        {ibrowse_async_headers, ReqId, C, Headers} -> {C, Headers}
+            {ibrowse_async_headers, ReqId, C, Headers} -> {C, Headers}
+          after
+            100 -> 
+                  ?debugVal({no_async_header, ReqId}),
+                  {error, no_async_header, ReqId}
     end,
     ibrowse:stream_next(ReqId),
     Res.
