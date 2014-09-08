@@ -123,6 +123,11 @@ shared_context "end_to_end_util" do
           'sleep 20' => 'sleep 20',
           'this_oughta_succeed' => 'echo true',
           'this_oughta_fail' => 'ruby -e "exit 1"',
+          'capture_test' => %q!ruby -e 'puts "testout"; $stderr.puts "testerr"'!,
+          'capture_test_fail' => %q!ruby -e 'puts "testout"; $stderr.puts "testerr"; exit 1'!,
+          'capture_test_empty' => '/bin/true',
+          'capture_test_no_out' => %q!ruby -e '$stderr.puts "testerr"'!,
+          'capture_test_no_err' => 'echo testout',
           'ruby-opts' => {
               :command_line => %q!ruby -e '$,="\n";p=Process;File.open(ENV["OUT"],"w"){|f|f.print p.uid,p.euid,Dir.getwd,ENV.to_a}'!
           }
@@ -383,8 +388,8 @@ shared_context "end_to_end_util" do
 
   def override_send_command(node_name, &block)
     old_send_command = @clients[node_name][:client].method(:send_command)
-    @clients[node_name][:client].define_singleton_method(:send_command) do |message, job_id|
-      block.call(old_send_command, message, job_id)
+    @clients[node_name][:client].define_singleton_method(:send_command) do |message, job_id, params={}|
+      block.call(old_send_command, message, job_id, params)
     end
   end
 
