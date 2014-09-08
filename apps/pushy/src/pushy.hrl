@@ -27,5 +27,17 @@
           curve_secret_key :: binary()
          }).
 
+-record(job_create_desc, {
+          command     :: binary(),
+          node_names  :: [binary()],
+          run_timeout :: non_neg_integer(),
+          quorum      :: non_neg_integer(),
+          user        :: binary() | undefined,
+          dir         :: binary() | undefined,
+          env         :: [{binary(), binary()}] | undefined,
+          file        :: binary() | undefined,
+          capture     :: boolean | undefined
+         }).
+
 -define(PUSHY_BROKER_OUT, "inproc://pushy_broker_out").
 -define(PUSHY_BROKER_IN, "inproc://pushy_broker_in").

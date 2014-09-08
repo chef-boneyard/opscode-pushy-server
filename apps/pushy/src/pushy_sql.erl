@@ -34,6 +34,8 @@
          create_job/1,
          update_job/1,
          update_job_node/1,
+         insert_job_output/4,
+         fetch_job_output/3,
 
          statements/0,
 
@@ -214,21 +216,19 @@ insert_job_nodes([#pushy_job_node{job_id=JobId,
 
 -spec insert_job_options(#pushy_job{}) -> ok | {error, no_connections | {_,_}}.
 %% @doc Inserts job_options records into the database.
-%%
-%% Returns 'ok' if all records are inserted without issue. Returns an error tuple on the
-%% first checksum that fails to insert into the database for whatever reason. Further
-%% processing of the list is abandoned at that point.
 insert_job_options(#pushy_job{opts = #pushy_job_opts{user = undefined,
                               dir = undefined,
                               env = undefined,
+                              capture = false,
                               file = undefined}}) ->
     {ok, 0};
 insert_job_options(#pushy_job{id = Id, opts = #pushy_job_opts{
                               user = User,
                               dir = Dir,
                               env = Env,
+                              capture = Capture,
                               file = File}}) ->
-    %?debugVal({Id, User, Dir, Env, File}),
+    %?debugVal({Id, User, Dir, Env, Capture, File}),
     EncUser = undef_to_null(User),
     EncDir = undef_to_null(Dir),
     EncEnv = case Env of
@@ -236,7 +236,8 @@ insert_job_options(#pushy_job{id = Id, opts = #pushy_job_opts{
                  _ -> jiffy:encode(Env)
              end,
     EncFile = undef_to_null(File),
-    sqerl:statement(insert_job_options, [Id, EncUser, EncDir, EncEnv, EncFile]).
+    sqerl:statement(insert_job_options,
+                    [Id, EncUser, EncDir, EncEnv, Capture, EncFile]).
 
 undef_to_null(undefined) -> null;
 undef_to_null(O) -> O.
@@ -331,7 +332,39 @@ proplist_to_job_options(Proplist) ->
     #pushy_job_opts{user = null_get(<<"job_user">>, Proplist),
                     dir = null_get(<<"dir">>, Proplist),
                     env = DecEnv,
+                    % Even though capture is a boolean, it still could be null because we are
+                    % doing an outer join with a row that may not exist
+                    capture = null_get(<<"capture">>, Proplist, false),
                     file = null_get(<<"job_file">>, Proplist)}.
+
+-spec insert_job_output(object_id(), binary(),
+                        undefined | binary(), undefined | binary()) -> ok.
+%% @doc Inserts captured stdout/stderr records into the database.
+insert_job_output(_JobId, _NodeName, undefined, undefined) ->
+    ok;
+insert_job_output(JobId, NodeName, Stdout, Stderr) ->
+    EncOut = undef_to_null(Stdout),
+    EncErr = undef_to_null(Stderr),
+    case sqerl:statement(insert_job_output, [JobId, NodeName, EncOut, EncErr]) of
+        {error, Error} -> lager:error("Could not insert job output ~p: ~p",
+                                      [{JobId, NodeName, EncOut, EncErr}, Error]);
+        {ok, _} -> ok
+    end,
+    ok.
+
+-spec fetch_job_output(binary(), binary(), stdout | stderr) -> {ok, binary()} | not_found.
+%% @doc Retrieves the output of the specified job/node/channel, if any
+fetch_job_output(JobId, NodeName, Channel) ->
+    Query = case Channel of
+                    stdout -> fetch_job_stdout;
+                    stderr -> fetch_job_stderr
+                end,
+    case sqerl:select(Query, [JobId, NodeName]) of
+        {ok, none} -> not_found;
+        % Row might exist, but column might be null
+        {ok, [[{_, null}]]} -> not_found;
+        {ok, [[{_, Data}]]} -> {ok, Data}
+    end.
 
 %% Job Node Status translators
 job_node_status(new) -> 0;
@@ -358,6 +391,14 @@ job_node_status(8) -> faulty;
 job_node_status(9) -> was_ready;
 job_node_status(10) -> crashed;
 job_node_status(11) -> timed_out.
+
+null_get(Key, Proplist) -> null_get(Key, Proplist, undefined).
+
+null_get(Key, Proplist, Default) ->
+    case safe_get(Key, Proplist) of
+        null -> Default;
+        Other -> Other
+    end.
 
 %% CHEF_DB CARGO_CULT
 %% chef_sql:flatten_record/1
@@ -419,15 +460,6 @@ do_update(QueryName, UpdateFields) ->
 safe_get(Key, Proplist) ->
     {Key, Value} = lists:keyfind(Key, 1, Proplist),
     Value.
-
-%% @doc Safely retrieves a value from a proplist. Throws an error if the specified key does
-%% not exist in the list.  Returns 'undefined' if the value is 'null'.
--spec null_get(Key::binary(), proplists:proplist()) -> term().
-null_get(Key, Proplist) ->
-    case safe_get(Key, Proplist) of
-        null -> undefined;
-        Other -> Other
-    end.
 
 %% CHEF_DB CARGO_CULT
 statements() ->

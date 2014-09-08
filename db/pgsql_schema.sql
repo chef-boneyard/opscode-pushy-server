@@ -77,7 +77,19 @@ CREATE TABLE job_options (
     job_user character(32),
     dir character(256),
     env text,
+    capture boolean,
     job_file text
+);
+
+--
+-- Name: job_output; Type: TABLE; Schema: public; Owner -; Tablespace:
+--
+
+CREATE TABLE job_output (
+    job_id character(32) NOT NULL,
+    node_name text NOT NULL,
+    stdout text NOT NULL,
+    stderr text NOT NULL
 );
 
 --
@@ -140,11 +152,32 @@ ALTER TABLE ONLY job_nodes
     ADD CONSTRAINT job_nodes_job_id_fkey FOREIGN KEY (job_id) REFERENCES jobs(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 --
+-- Name: job_options_pkey; Type: CONSTRAINT
+--
+
+ALTER TABLE ONLY job_options
+    ADD CONSTRAINT job_options_pkey PRIMARY KEY (job_id);
+
+--
 -- Name: job_options_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY job_options
     ADD CONSTRAINT job_options_fkey FOREIGN KEY (job_id) REFERENCES jobs(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+--
+-- Name: job_output_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace:
+--
+
+ALTER TABLE ONLY job_output
+    ADD CONSTRAINT job_output_fkey FOREIGN KEY (job_id) REFERENCES jobs(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+--
+-- Name: job_output_pkey; Type: CONSTRAINT
+--
+
+ALTER TABLE ONLY job_output
+    ADD CONSTRAINT job_output_pkey PRIMARY KEY (job_id, node_name);
 
 --
 -- PostgreSQL database dump complete

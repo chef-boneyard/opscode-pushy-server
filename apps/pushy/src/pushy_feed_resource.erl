@@ -2,7 +2,7 @@
 %% ex: ts=4 sw=4 et
 %% @author Steven Grady <steven.grady@erlang-solutions.com>
 %%% @doc
-%%% REST resource provide server-sent event stream for jobs
+%%% REST resource providing server-sent event stream for jobs
 %%% @end
 %% @copyright Copyright 2014 Chef Software, Inc. All Rights Reserved.
 %%

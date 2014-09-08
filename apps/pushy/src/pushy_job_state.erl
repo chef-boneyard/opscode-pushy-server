@@ -102,11 +102,14 @@ init({#pushy_job{id = JobId, job_nodes = JobNodeList, opts = Opts} = Job, Reques
                            rev_events = [],
                            subscribers = [OrgEvents],   % Start by subscribing the org to the feed
                            done = false},
-            #pushy_job_opts{user = OptUser, dir = OptDir, env = OptEnv, file = OptFile} = Opts,
+            #pushy_job_opts{user = OptUser, dir = OptDir, env = OptEnv,
+                            file = OptFile, capture = OptCapture} = Opts,
             % XXX monitor the OrgEvents; update it if need be
             NodeCount = length(JobNodeList),
-            State = add_start_event(State0, Job#pushy_job.command, Job#pushy_job.run_timeout, Job#pushy_job.quorum,
-                                    NodeCount, Requestor, OptUser, OptDir, OptEnv, OptFile),
+            State = add_start_event(
+                      State0, Job#pushy_job.command, Job#pushy_job.run_timeout,
+                      Job#pushy_job.quorum, NodeCount, Requestor, OptUser,
+                      OptDir, OptEnv, OptFile, OptCapture),
             listen_for_down_nodes(dict:fetch_keys(JobNodes)),
 
             lager:info([{job_id,Job#pushy_job.id}],
@@ -127,7 +130,7 @@ init({#pushy_job{id = JobId, job_nodes = JobNodeList, opts = Opts} = Job, Reques
 %%%
 
 % Nodes can only be new, ready or terminal while we're voting.
-voting({ack_commit, NodeRef}, State) ->
+voting({ack_commit, _Event, NodeRef}, State) ->
     % Node from new -> ready
     {State1, Status} = case get_node_state(NodeRef, State) of
         new      -> {set_node_state(NodeRef, ready, State), success};
@@ -137,7 +140,7 @@ voting({ack_commit, NodeRef}, State) ->
     {_, NodeName} = NodeRef,
     State2 = add_quorum_vote_event(State1, NodeName, Status),
     maybe_finished_voting(State2);
-voting({nack_commit, NodeRef}, State) ->
+voting({nack_commit, _Event, NodeRef}, State) ->
     % Node from new -> nacked.
     {State1, Status} = case get_node_state(NodeRef, State) of
         new      -> {set_node_state(NodeRef, nacked, State), failure};
@@ -147,9 +150,7 @@ voting({nack_commit, NodeRef}, State) ->
     {_, NodeName} = NodeRef,
     State2 = add_quorum_vote_event(State1, NodeName, Status),
     maybe_finished_voting(State2);
-voting({Response, NodeRef},
-       #state{job = Job} = State) ->
-
+voting({Response, _Event, NodeRef}, #state{job = Job} = State) ->
     JobId = Job#pushy_job.id,
     {_, NodeName} = NodeRef,
     State1 = case Response of
@@ -167,7 +168,7 @@ voting({Response, NodeRef},
     maybe_finished_voting(State2).
 
 % Nodes can never be "new" when running--only ready, running or terminal.
-running({ack_run, NodeRef}, State) ->
+running({ack_run, _Event, NodeRef}, State) ->
     {_, NodeName} = NodeRef,
     % Node from ready -> running
     State2 = case get_node_state(NodeRef, State) of
@@ -180,7 +181,7 @@ running({ack_run, NodeRef}, State) ->
                     send_to_rehab(NodeRef, State1)
     end,
     maybe_finished_running(State2);
-running({nack_run, NodeRef}, State) ->
+running({nack_run, _Event, NodeRef}, State) ->
     % Node from ready -> running
     {State1, Status} = case get_node_state(NodeRef, State) of
         % A client should never send a "nack_run", it turns out; so if we get one, we tell
@@ -192,7 +193,9 @@ running({nack_run, NodeRef}, State) ->
     {_, NodeName} = NodeRef,
     State2 = add_run_complete_event(State1, NodeName, Status),
     maybe_finished_running(State2);
-running({succeeded, NodeRef}, State) ->
+running({succeeded, Event, NodeRef}, State) ->
+    JobId = State#state.job#pushy_job.id,
+    capture_any_output(JobId, NodeRef, Event),
     {State1, Status} = case get_node_state(NodeRef, State) of
         ready    -> {send_to_rehab(NodeRef, crashed, State), crashed};
         running  -> {set_node_state(NodeRef, succeeded, State), success};
@@ -201,7 +204,9 @@ running({succeeded, NodeRef}, State) ->
     {_, NodeName} = NodeRef,
     State2 = add_run_complete_event(State1, NodeName, Status),
     maybe_finished_running(State2);
-running({failed, NodeRef}, State) ->
+running({failed, Event, NodeRef}, State) ->
+    JobId = State#state.job#pushy_job.id,
+    capture_any_output(JobId, NodeRef, Event),
     {State1, Status} = case get_node_state(NodeRef, State) of
         ready    -> {send_to_rehab(NodeRef, crashed, State), crashed};
         running  -> {set_node_state(NodeRef, failed, State), failure};
@@ -210,7 +215,7 @@ running({failed, NodeRef}, State) ->
     {_, NodeName} = NodeRef,
     State2 = add_run_complete_event(State1, NodeName, Status),
     maybe_finished_running(State2);
-running({Failure,NodeRef}, State) ->
+running({_Failure, _Event, NodeRef}, State) ->
     NodeState = get_node_state(NodeRef, State),
     {State1, Status} = case NodeState of
         ready    -> {send_to_rehab(NodeRef, crashed, State), crashed};
@@ -254,7 +259,7 @@ handle_sync_event(Event, From, StateName, State) ->
 -spec handle_info(any(), job_status(), #state{}) ->
         {'next_state', job_status(), #state{}}.
 handle_info({state_change, NodeRef, _Current, shutdown}, StateName, State) ->
-    pushy_job_state:StateName({down,NodeRef}, State);
+    pushy_job_state:StateName({down, no_event, NodeRef}, State);
 handle_info({state_change, _NodeRef, _Old, _New}, StateName, State) ->
     % Ignore any other state-change messages
     {next_state, StateName, State};
@@ -449,7 +454,7 @@ listen_for_down_nodes([NodeRef|JobNodes]) ->
     pushy_node_state:watch(NodeRef),
     case pushy_node_state:status(NodeRef) of
         {_, {unavailable, _}} ->
-            gen_fsm:send_event(self(), {down, NodeRef});
+            gen_fsm:send_event(self(), {down, no_event, NodeRef});
         _ -> ok
     end,
     listen_for_down_nodes(JobNodes).
@@ -468,17 +473,14 @@ send_commit(#state{job_host=Host, job = Job, job_nodes = JobNodes}) ->
     lager:debug([{job_id,Job#pushy_job.id}], "Sending commit to all nodes"),
     NodeRefs = dict:fetch_keys(JobNodes),
     Opts = Job#pushy_job.opts,
-    User = get_attr_list(user, Opts#pushy_job_opts.user),
-    Dir = get_attr_list(dir, Opts#pushy_job_opts.dir),
-    Env = get_attr_list(env, Opts#pushy_job_opts.env),
     % XX Consider attaching file in separate frame
-    File = get_attr_list(file, Opts#pushy_job_opts.file),
+    #pushy_job_opts{user = User, dir = Dir, env = Env, file = File,
+                    capture = Capture} = Opts,
+    OptKVs = [{user, User}, {dir, Dir}, {env, Env}, {file, File},
+              {capture, Capture}],
+    OptsPL = [{K, V} || {K, V} <- OptKVs, V /= undefined],
     Attrs = [{server, Host},
-             {command, Job#pushy_job.command}] ++
-            User ++
-            Dir ++
-            Env ++
-            File,
+             {command, Job#pushy_job.command}] ++ OptsPL,
     send_msg_to_nodes(<<"commit">>, Attrs, Job, NodeRefs).
 
 send_msg_to_nodes(Type, MoreAttrs, Job, NodeRefs) ->
@@ -486,11 +488,11 @@ send_msg_to_nodes(Type, MoreAttrs, Job, NodeRefs) ->
     pushy_node_state:send_msg(NodeRefs, {Message}).
 
 -spec send_node_event(object_id(), node_ref(), job_event()) -> ok | not_found.
-send_node_event(JobId, NodeRef, Event) ->
-    lager:debug("---------> job:node_event(~p, ~p, ~p)", [JobId, NodeRef, Event]),
+send_node_event(JobId, NodeRef, {Type, Event}) ->
+    lager:debug("---------> job:node_event(~p, ~p, ~p, ~p)", [JobId, NodeRef, Type, Event]),
     case pushy_job_state_sup:get_process(JobId) of
         Pid when is_pid(Pid) ->
-            gen_fsm:send_event(Pid, {Event, NodeRef});
+            gen_fsm:send_event(Pid, {Type, Event, NodeRef});
         not_found ->
             not_found
     end.
@@ -537,10 +539,11 @@ add_event(State = #state{next_event_id = Id, rev_events = RevEvents}, EventName,
 post_to_subscribers(#state{subscribers = Subscribers}, Msg) ->
     lists:foreach(fun(W) -> W ! Msg end, Subscribers).
 
--spec add_start_event(#state{}, binary(), non_neg_integer(), non_neg_integer(), non_neg_integer(), binary(),
-                                binary()|undefined, binary()|undefined, binary()|undefined, binary()|undefined)
-                                        -> #state{}.
-add_start_event(State, Command, RunTimeout, Quorum, NodeCount, User, JobUser, Dir, Env, File) ->
+-spec add_start_event(#state{}, binary(), non_neg_integer(), non_neg_integer(),
+                      non_neg_integer(), binary(), binary()|undefined,
+                      binary()|undefined, binary()|undefined,
+                      binary()|undefined, boolean|undefined) -> #state{}.
+add_start_event(State, Command, RunTimeout, Quorum, NodeCount, User, JobUser, Dir, Env, File, Capture) ->
     JobUserPL = get_attr_list(job_user, JobUser),
     DirPL = get_attr_list(dir, Dir),
     EnvPL = get_attr_list(env, Env),
@@ -549,8 +552,13 @@ add_start_event(State, Command, RunTimeout, Quorum, NodeCount, User, JobUser, Di
                         _ -> true
                     end,
     FileSpecifiedPL = get_attr_list(file_specified, FileSpecified),
-    OptPL = JobUserPL ++ DirPL ++ EnvPL ++ FileSpecifiedPL,
-    add_event(State, "start", [{<<"command">>, Command}, {<<"run_timeout">>, RunTimeout}, {<<"quorum">>, Quorum}, {<<"node_count">>, NodeCount}, {<<"user">>, User}] ++ OptPL).
+    CapturePL = get_attr_list(capture, Capture),
+    OptPL = JobUserPL ++ DirPL ++ EnvPL ++ FileSpecifiedPL ++ CapturePL,
+    add_event(State, "start", [{<<"command">>, Command},
+                               {<<"run_timeout">>, RunTimeout},
+                               {<<"quorum">>, Quorum},
+                               {<<"node_count">>, NodeCount},
+                               {<<"user">>, User}] ++ OptPL).
 
 -spec add_quorum_vote_event(#state{}, binary(), status()) -> #state{}.
 add_quorum_vote_event(State, Node, Status) ->
@@ -596,3 +604,9 @@ add_subscriber(Pid, State = #state{subscribers = Ss}) ->
 
 remove_subscriber(Pid, State = #state{subscribers = Ss}) ->
     State#state{subscribers = [P || P <- Ss, P /= Pid]}.
+
+capture_any_output(JobId, NodeRef, Event) ->
+    Stdout = ej:get({<<"stdout">>}, Event),
+    Stderr = ej:get({<<"stderr">>}, Event),
+    {_, NodeName} = NodeRef,
+    pushy_sql:insert_job_output(JobId, NodeName, Stdout, Stderr).

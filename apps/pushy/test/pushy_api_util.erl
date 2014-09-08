@@ -110,61 +110,82 @@ send_msg(NodeRef, JobId, Type) ->
     Msg = [{<<"job_id">>, JobId},
            {<<"type">>, TBin},
            {<<"timestamp">>, list_to_binary(httpd_util:rfc1123_date())}],
-    FullMsg = [get_addr(NodeRef), <<"Version:2.0;SigningMethod:hmac_sha256">>, jiffy:encode({Msg})],
+    FullMsg = [get_addr(NodeRef), <<"Version:2.0;SigningMethod:hmac_sha256">>,
+               jiffy:encode({Msg})],
     pushy_node_state:recv_msg(FullMsg).
 
 send_msg(NodeRef, NodePid, JobId, Type) ->
+    send_msg(NodeRef, NodePid, JobId, Type, []).
+
+send_msg(NodeRef, NodePid, JobId, Type, MoreParams) ->
     TBin = list_to_binary(atom_to_list(Type)),
     Msg = [{<<"job_id">>, JobId},
            {<<"type">>, TBin},
-           {<<"timestamp">>, list_to_binary(httpd_util:rfc1123_date())}],
-    NodePid ! {raw_message, [get_addr(NodeRef), <<"Version:2.0;SigningMethod:hmac_sha256">>, jiffy:encode({Msg})]}.
+           {<<"timestamp">>, list_to_binary(httpd_util:rfc1123_date())}] ++
+           MoreParams,
+    NodePid ! {raw_message, [get_addr(NodeRef),
+                             <<"Version:2.0;SigningMethod:hmac_sha256">>,
+                             jiffy:encode({Msg})]}.
 
-run_job(NodePid) ->
-    JobId = pushy_object:make_org_prefix_id(?ORGID),
-    JobPid = run_job(NodePid, JobId),
+run_default_job(NodePid) ->
+    NodeRef = make_node_ref(?ORGID, ?NODE),
+    run_default_job_with_ref(NodePid, NodeRef).
+
+run_default_job_with_ref(NodePid, NodeRef) ->
+    Opts = #pushy_job_opts{},
+    run_default_job_like_this(NodePid, NodeRef, Opts, {succeeded, []}).
+
+run_default_job_like_this(NodePid, NodeRef, Opts, Result) ->
+    {OrgId, Node} = NodeRef,
+    JobId = pushy_object:make_org_prefix_id(OrgId),
+    Now = pushy_sql:sql_date(now),
+    JobNodes = [#pushy_job_node{job_id=JobId, org_id=OrgId, node_name=Node,
+                                status=new, created_at=Now, updated_at=Now}],
+    Job = #pushy_job{id=JobId, org_id=?ORGID, job_nodes=JobNodes,
+                     command=?COMMAND, quorum=1, run_timeout=1, status=new,
+                     opts=Opts, last_updated_by= <<"updater">>,
+                     created_at=Now, updated_at=Now},
+    JobPid = run_job_with_result(NodePid, Job, NodeRef, Result),
     {JobPid, JobId}.
 
-run_job(NodePid, JobId) -> run_job(NodePid, JobId, make_node_ref(?ORGID, ?NODE)).
-
-run_job(NodePid, JobId, NodeRef) ->
-    {OrgName, Node} = NodeRef,
-    Now = pushy_sql:sql_date(now),
-    JobNodes = [#pushy_job_node{job_id=JobId, org_id=OrgName, node_name=Node, status=new,
-                                created_at=Now, updated_at=Now}],
-    JobOpts = #pushy_job_opts{},
-    Job = #pushy_job{id=JobId, org_id=?ORGID, job_nodes=JobNodes, command=?COMMAND,
-                     quorum=1, run_timeout=1, status=new, opts=JobOpts,
-                     last_updated_by= <<"updater">>, created_at=Now, updated_at=Now},
+run_job_with_result(NodePid, Job, NodeRef, Result) ->
     {ok, JobPid} = pushy_job_state:start_link(Job, ?REQUESTOR),
+    JobId = Job#pushy_job.id,
     erlang:unlink(JobPid),
     % "respond" to the commit messsage we know is sent
     send_msg(NodeRef, NodePid, JobId, ack_commit),
     % "respond" to the run messsage we know is sent
     send_msg(NodeRef, NodePid, JobId, ack_run),
     % claim to have succeeded at running the command
-    % XX Note that 500ms is too small, as the delay between ibrowse:send_req and the
-    %    webmachine code initializing the resource can be 250ms, and the processing
-    %    after that can be another 250ms.  I'm currently unclear where all the delays
-    %    are (although there's definitely some poor code in webmachine, e.g. a single
-    %    resource request will call content_types_provided/2 multiple times.  But some
-    %    may also be in mochiweb, or even ibrowse.
-    timer:apply_after(750, ?MODULE, send_msg, [NodeRef, NodePid, JobId, succeeded]),
+    % XX Note that 500ms is too small, as the delay between ibrowse:send_req
+    % and the webmachine code initializing the resource can be 250ms, and the
+    % processing after that can be another 250ms.  I'm currently unclear where
+    % all the delays are (although there's definitely some poor code in
+    % webmachine, e.g. a single resource request will call
+    % content_types_provided/2 multiple times.  But some may also be in
+    % mochiweb, or even ibrowse.
+    {ResultType, ResultParams} = Result,
+    timer:apply_after(750, ?MODULE, send_msg, [NodeRef, NodePid, JobId,
+                                               ResultType, ResultParams]),
     wait_for_gproc_exists({n, l, {pushy_job, JobId}}),
     JobPid.
 
 get_full_path(OrgName, Path) ->
-    iolist_to_binary(io_lib:format("/organizations/~s/pushy/~s", [OrgName, Path])).
+    iolist_to_binary(io_lib:format("/organizations/~s/pushy/~s",
+                                   [OrgName, Path])).
 
-get_feed(CreatorName, OrgName, Path, AsyncReceiver, LastEventId) when is_binary(LastEventId) ->
-    get_feed(CreatorName, OrgName, Path, AsyncReceiver, binary_to_list(LastEventId));
+get_feed(CreatorName, OrgName, Path, AsyncReceiver, LastEventId) when
+                                                    is_binary(LastEventId) ->
+    get_feed(CreatorName, OrgName, Path, AsyncReceiver,
+             binary_to_list(LastEventId));
 get_feed(CreatorName, OrgName, Path, AsyncReceiver, LastEventId) ->
     LEHeader = case LastEventId of
                    no_last_event_id -> [];
                    _ -> [{"Last-Event-ID", LastEventId}]
                end,
     Headers = [{"Accept", "text/event-stream"} | LEHeader],
-    api_request(get, CreatorName, OrgName, Path, AsyncReceiver, Headers, <<"">>).
+    api_request(get, CreatorName, OrgName, Path, AsyncReceiver,
+                Headers, <<"">>).
 
 api_request(Method, CreatorName, OrgName, Path, AsyncReceiver, ExtraHeaders, Body) ->
     BMethod = case Method of
@@ -208,6 +229,17 @@ get_job_subscribers(JobId) ->
                          end, Subs)
     end.
     
+get_job(JobId, Org) ->
+    Path = iolist_to_binary(io_lib:format("~s/~s", ["jobs", JobId])),
+    {ok, Code, _ResHeaders, ResBody} = api_request(get, <<"creator_name">>, Org, Path, synchronous, [], <<"">>),
+    ?assertEqual("200", Code),
+    jiffy:decode(ResBody).
+
+get_org_jobs(Org) ->
+    {ok, Code, _ResHeaders, ResBody} = api_request(get, <<"creator_name">>, Org, "jobs", synchronous, [], <<"">>),
+    ?assertEqual("200", Code),
+    jiffy:decode(ResBody).
+
 post_job(Command, Nodes, OptFields) ->
     JsonObj = [{command, Command}, {nodes, Nodes}] ++ OptFields,
     Headers = [{"Content-Type", "application/json"}],
@@ -244,11 +276,11 @@ receive_async_headers(ReqId) ->
     ibrowse:stream_next(ReqId),
     Res.
 
-make_node_ref(OrgName, NodeName) -> {OrgName, NodeName}.
+make_node_ref(OrgId, NodeName) -> {OrgId, NodeName}.
 
 start_node_and_job() ->
     NodePid = start_node(),
-    {JobPid, JobId} = run_job(NodePid),
+    {JobPid, JobId} = run_default_job(NodePid),
     {NodePid, JobId, JobPid}.
 
 stop_node_and_job(NodePid, JobId) ->

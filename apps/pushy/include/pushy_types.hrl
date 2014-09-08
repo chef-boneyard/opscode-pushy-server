@@ -18,7 +18,9 @@
 -type org_id() :: binary().
 -type node_ref() :: {org_id(), node_name()}.
 -type node_addr() :: binary().
--type job_event() :: ack_commit | nack_commit | ack_run | nack_run | succeeded | failed | aborted.
+-type job_event_type() :: ack_commit | nack_commit | ack_run | nack_run | succeeded | failed | aborted.
+% Second part of tuple is decoded JSON from the node
+-type job_event() :: {job_event_type(), any()}.
 -type node_event() :: heartbeat | job_event().
 
 % node status

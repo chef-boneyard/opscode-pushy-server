@@ -63,7 +63,8 @@
                     'user'::binary(),                   % user on client to setuid to
                     'dir'::binary(),                    % dir on client to chdir to
                     'env'::[{binary(),binary()}],       % additional environment vars
-                    'file'::binary()                    % data to be stored in external file
+                    'file'::binary(),                   % data to be stored in external file
+                    'capture'=false::boolean()          % whether to capture output
          }).
 
 -record(pushy_job, {'id'::object_id(),                  % guid for object (unique)

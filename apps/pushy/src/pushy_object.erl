@@ -22,6 +22,7 @@
 %%
 -module(pushy_object).
 
+-include("pushy.hrl").
 -include("pushy_sql.hrl").
 
 -export([
@@ -29,7 +30,7 @@
           create_object/3,
           update_object/2,
           update_object/3,
-          new_record/10,
+          new_job_record/2,
 
           make_org_prefix_id/1,
           make_org_prefix_id/2,
@@ -54,24 +55,19 @@ fetch_org_id(OrgName) ->
             Guid
     end.
 
--spec new_record(atom(),
-                 OrgId :: object_id(),
-                 NodeNames :: [binary()],
-                 Command :: binary(),
-                 RunTimeout :: non_neg_integer(),
-                 Quorum :: non_neg_integer(),
-                 User :: binary() | undefined,
-                 Dir :: binary() | undefined,
-                 Env :: [{binary(), binary()}] | undefined,
-                 File :: binary() | undefined) -> pushy_object().
-new_record(pushy_job, OrgId, NodeNames, Command, RunTimeout, Quorum, User, Dir, Env, File) ->
+-spec new_job_record(object_id(), #job_create_desc{}) -> pushy_object().
+new_job_record(OrgId, Desc) ->
+    #job_create_desc{command = Command, node_names = NodeNames,
+       run_timeout = RunTimeout, quorum = Quorum, user = User,
+       dir = Dir, env = Env, file = File, capture = Capture} = Desc,
     Id = make_org_prefix_id(OrgId),
     Now = pushy_sql:sql_date(now),
     Opts = #pushy_job_opts{
                 user = User,
                 dir = Dir,
                 env = Env,
-                file = File
+                file = File,
+                capture = Capture
              },
     #pushy_job{id = Id,
                 org_id = OrgId,
@@ -189,8 +185,10 @@ assemble_job_ejson_with_nodes(#pushy_job{job_nodes = Nodes} = Job, IncludeFile) 
     NodesJson = job_nodes_json_by_status(Nodes),
     {[ {<<"nodes">>, NodesJson} | NodePropList]}.
 
-get_attr_list(_Name, undefined) -> [];
-get_attr_list(Name, Val) -> [{Name, Val}].
+get_attr_list(Name, Val) -> get_attr_list(Name, Val, undefined).
+
+get_attr_list(_Name, Default, Default) -> [];
+get_attr_list(Name, Val, _Default) -> [{Name, Val}].
 
 assemble_job_ejson(Job) -> assemble_job_ejson(Job, false).
 
@@ -206,6 +204,7 @@ assemble_job_ejson(#pushy_job{id = Id,
     UserPL = get_attr_list(user, Opts#pushy_job_opts.user),
     DirPL = get_attr_list(dir, Opts#pushy_job_opts.dir),
     EnvPL = get_attr_list(env, Opts#pushy_job_opts.env),
+    CapturePL = get_attr_list(capture_output, Opts#pushy_job_opts.capture, false),
     FilePL = case Opts#pushy_job_opts.file of
                 undefined -> [];
                 File -> case IncludeFile of
@@ -213,7 +212,7 @@ assemble_job_ejson(#pushy_job{id = Id,
                             false -> [{file_specified, true}]
                         end
              end,
-    OptsPL = UserPL ++ DirPL ++ EnvPL ++ FilePL,
+    OptsPL = UserPL ++ DirPL ++ EnvPL ++ CapturePL ++ FilePL,
     {[ {<<"id">>, Id},
        {<<"command">>, Command},
        {<<"status">>, Status},
