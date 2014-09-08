@@ -116,10 +116,10 @@ The complete list of valid platform names can be viewed with the
 
 ## License
 
-See the LICENSE file for details.
+All files in the repository are licensed under the Apache 2.0 license. If any
+file is missing the License header it should assume the following is attached;
 
-Copyright (c) 2012 Opscode, Inc.
-License: Apache License, Version 2.0
+Copyright 2014 Chef Software Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
