@@ -22,7 +22,9 @@
 
 -record(pushy_state, {
           ctx :: any(),
-          incarnation_id :: incarnation_id()
+          incarnation_id :: incarnation_id(),
+          curve_public_key :: binary(),
+          curve_secret_key :: binary()
          }).
 
 -define(PUSHY_BROKER_OUT, "inproc://pushy_broker_out").
