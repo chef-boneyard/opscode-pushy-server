@@ -13,6 +13,11 @@ function error_exit
 
 ln -sf /opt/opscode-push-jobs-server/bin/opscode-push-jobs-server-ctl /usr/bin || error_exit "Cannot link opscode-push-jobs-server-ctl in /usr/bin"
 
+# Ensure all files/directories in $INSTALLER_DIR are owned by root. This
+# has been fixed on new installs but upgrades from old installs need to
+# be manually fixed.
+chown -Rh 0:0 /opt/opscode-push-jobs-server
+
 if [ -e /etc/opscode-push-jobs-server/opscode-push-jobs-server-running.json ]; then
   echo -e "\033[1mYou have upgraded the Push Jobs Server!\033[0m"
   echo
