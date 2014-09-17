@@ -1,5 +1,16 @@
 # Push Jobs Server Release Notes
 
+## 1.1.3 (2014-09-17)
+
+### What's New:
+
+* Remove hard dependency on `chef-server-core`
+
+### Security Fixes:
+
+* Updated Omnibus with default package user/group fix
+* Ensure contents of install dir are owned by root
+
 ## 1.1.2 (2014-06-06)
 
 ### What's New:

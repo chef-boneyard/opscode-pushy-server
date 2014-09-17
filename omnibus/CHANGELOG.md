@@ -1,5 +1,12 @@
 # Push Jobs Server Changelog
 
+## 1.1.3 (2014-09-17)
+
+* Updated Omnibus with default package user/group fix
+* Ensure contents of install dir are owned by root
+* Remove hard dependency on `chef-server-core`
+* Remove opscode-push-jobs-client
+
 ## 1.1.2 (2014-06-06)
 
 ### openssl 1.0.1f
