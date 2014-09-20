@@ -92,6 +92,7 @@ process_job_msg(Msg, MonitorRef) ->
         {'DOWN', MonitorRef, process, JobPid, Info} ->
             case Info of
                 normal -> ok;
+                shutdown -> ok;
                 _ -> lager:error("Job ~p exited: ~p", [JobPid, Info])
             end,
             % XXX Post a job-complete, if one wasn't provided?
