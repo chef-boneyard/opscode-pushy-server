@@ -129,9 +129,16 @@ init([NodeRef, NodeAddr, IncarnationId]) ->
         %% assigned before anyone else tries to start things up gproc:reg can only return
         %% true or throw
         true = gproc:reg({n, l, GprocName}),
-        true = gproc:reg({n, l, GprocAddr}),
-        %% We then move to a post_init state that handles the rest of the setup process
-        {ok, post_init, State, 0}
+        try
+            true = gproc:reg({n, l, GprocAddr}),
+            %% We then move to a post_init state that handles the rest of the setup process
+            {ok, post_init, State, 0}
+        catch
+            error:badarg ->
+                lager:error("Failed to register addr:~p(~p) for ~p (already exists as ~p?)",
+                            [NodeRef, NodeAddr, self(), gproc:lookup_pid({n,l,GprocName}) ]),
+                {stop, state_transition(init, shutdown, State), State}
+        end
     catch
         error:badarg ->
             %% When we start up from a previous run, we have two ways that the FSM might be started;
@@ -140,8 +147,8 @@ init([NodeRef, NodeAddr, IncarnationId]) ->
             %% We may also want to *not* automatically reanimate FSMs for nodes that aren't
             %% actively reporting; but rather keep them in a 'limbo' waiting for the first
             %% packet, and if one doesn't arrive within a certain time mark them down.
-            lager:error("Failed to register:~p for ~p (already exists as ~p?)",
-                        [NodeRef,self(), gproc:lookup_pid({n,l,GprocName}) ]),
+            lager:error("Failed to register name:~p(~p) for ~p (already exists as ~p?)",
+                        [NodeRef, NodeAddr, self(), gproc:lookup_pid({n,l,GprocName}) ]),
             {stop, state_transition(init, shutdown, State), State}
     end.
 
@@ -208,7 +215,10 @@ handle_info({heartbeat, IncarnationId}, CurrentState,
         true ->
             case pushy_node_stats:heartbeat(self()) of
                 ok -> {next_state, CurrentState, State};
-                should_die -> {stop, state_transition(CurrentState, shutdown, State), State}
+                should_die -> 
+                    NodeInfo = {State#state.node_ref, State#state.node_addr},
+                    lager:debug("no heartbeat from ~p, shutting down", [NodeInfo]),
+                    {stop, state_transition(CurrentState, shutdown, State), State}
             end
     end;
 handle_info(should_die, CurrentState, State) ->

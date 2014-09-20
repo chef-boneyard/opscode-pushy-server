@@ -122,6 +122,7 @@ init({#pushy_job{id = JobId, job_nodes = JobNodeList, opts = Opts} = Job, Reques
                 {stop, Reason, _State} -> {stop, Reason}
             end;
         false ->
+            lager:error("couldn't register job_state process: ~p", [JobId]),
             {stop, shutdown}
     end.
 
