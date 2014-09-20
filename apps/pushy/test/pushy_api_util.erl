@@ -262,7 +262,11 @@ async_http_request(Method, Url, Headers, Body, Receiver) ->
     % _have_ to use {stream_to, {Pid, once}} if we don't want the data to be accumulated in chunks of some byte-size,
     % but want to handle the data as it comes in.
     % Since we're turning on active-once, we have to remember to reset the "active-once" flag after every chunk of data
-    {ibrowse_req_id, ReqId} = ibrowse:send_req(Url, Headers, Method, Body, [{stream_to, {Receiver, once}}, {response_format, ?RESPONSE_FORMAT}]),
+    % With long-lasting connections, we can't have the request in ibrowse's load-balancing pool.  So we will
+    % spawn a worker process that we'll talk to directly.
+    {ok, Worker} = ibrowse:spawn_link_worker_process(Url),
+    {ibrowse_req_id, ReqId} = ibrowse:send_req_direct(Worker, Url, Headers, Method, Body,
+                                                      [{stream_to, {Receiver, once}}, {response_format, ?RESPONSE_FORMAT}]),
     ReqId.
 
 receive_async_headers(ReqId) ->
