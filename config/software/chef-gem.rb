@@ -1,25 +1,8 @@
 #
-# Copyright:: Copyright (c) 2012 Opscode, Inc.
-# License:: Apache License, Version 2.0
+# Copyright 2014 Chef Software, Inc.
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+# All Rights Reserved.
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
-
-# NOTE:
-# Although the contents of this definition are identical to the 'chef'
-# definition, we have created them seperately to prepare for the event
-# that the versions of OSS chef-client and OSC server-embedded chef-client
-# are tracked differently.
 
 name "chef-gem"
 default_version "11.12.8"
@@ -29,14 +12,21 @@ dependency "rubygems"
 dependency "yajl"
 
 build do
-  gem ["install chef",
-      "-v #{version}",
-      "-n #{install_dir}/bin",
-      "--no-rdoc --no-ri"].join(" ")
+  gem "install chef" \
+      " -v #{version}" \
+      " -n #{install_dir}/bin" \
+      " --no-rdoc" \
+      " --no-ri"
 
-  gem ["install highline net-ssh-multi", # TODO: include knife gems?
-       "-n #{install_dir}/bin",
-       "--no-rdoc --no-ri"].join(" ")
+  gem "install highline" \
+      " -n #{install_dir}/bin" \
+      " --no-rdoc" \
+      " --no-ri"
+
+  gem "install net-ssh-multi" \
+      " -n #{install_dir}/bin" \
+      " --no-rdoc" \
+      " --no-ri"
 
   # clean up
   ["docs",
@@ -46,6 +36,6 @@ build do
    "ssl/man",
    "man",
    "info"].each do |dir|
-    command "rm -rf #{install_dir}/embedded/#{dir}"
+    delete "#{install_dir}/embedded/#{dir}"
   end
 end
