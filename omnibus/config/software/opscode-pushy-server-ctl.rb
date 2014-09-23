@@ -6,9 +6,9 @@
 
 name "opscode-pushy-server-ctl"
 
-dependency "omnibus-ctl"
-
 source path: "#{project.files_path}/pushy-server-ctl-commands"
+
+dependency "omnibus-ctl"
 
 build do
     block do
