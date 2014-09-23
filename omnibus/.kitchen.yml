@@ -5,7 +5,7 @@ driver:
     cpus: 2
     memory: 2048
   synced_folders:
-    - ['.', '/home/vagrant/opscode-push-jobs-server']
+    - ['.', '/home/vagrant/omnibus-pushy']
     - ['../omnibus', '/home/vagrant/omnibus']
     - ['../omnibus-software', '/home/vagrant/omnibus-software']
 
@@ -28,5 +28,5 @@ suites:
     attributes:
       omnibus:
         build_user:  vagrant
-        build_dir:   /home/vagrant/opscode-push-jobs-server
+        build_dir:   /home/vagrant/omnibus-pushy
         install_dir: /opt/opscode-push-jobs-server
