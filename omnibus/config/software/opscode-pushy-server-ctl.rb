@@ -22,5 +22,5 @@ build do
     end
 
   # additional omnibus-ctl commands
-  sync "#{project_dir}", "#{install_dir}/embedded/service/omnibus-ctl/"
+  sync project_dir, "#{install_dir}/embedded/service/omnibus-ctl/"
 end

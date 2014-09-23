@@ -13,5 +13,5 @@ default_version "1.0.0"
 source git: "git@github.com:opscode/pushy-server-schema.git"
 
 build do
-  sync "#{project_dir}", "#{install_dir}/embedded/service/#{name}/"
+  sync project_dir, "#{install_dir}/embedded/service/#{name}/"
 end

@@ -19,5 +19,5 @@ relative_path "oc-pushy-pedant"
 build do
   bundle "install" \
          " --path=#{install_dir}/embedded/service/gem"
-  sync "#{project_dir}", "#{install_dir}/embedded/service/oc-pushy-pedant/"
+  sync project_dir, "#{install_dir}/embedded/service/oc-pushy-pedant/"
 end
