@@ -27,6 +27,7 @@ suites:
       - omnibus::default
     attributes:
       omnibus:
-        build_user:  vagrant
+        build_user:          vagrant
+        build_user_group:    vagrant
+        build_user_password: vagrant
         build_dir:   /home/vagrant/omnibus-pushy
-        install_dir: /opt/opscode-push-jobs-server
