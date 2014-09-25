@@ -17,7 +17,7 @@
 name "opscode-pushy-server"
 default_version "1.1.0"
 
-source git: "git://opscode/opscode-pushy-server"
+source git:  "git://github.com/opscode/opscode-pushy-server"
 
 dependency "erlang"
 dependency "rebar"
