@@ -6,7 +6,7 @@ GIT
 
 GIT
   remote: git://github.com/opscode/omnibus.git
-  revision: f8ef742776a6deba33147a3f813c8b75bec1f2e3
+  revision: ed8ced249c5a67a1697676590bbfd5d366a3c0f4
   specs:
     omnibus (4.0.0.rc.1)
       chef-sugar (~> 2.2)
@@ -19,9 +19,9 @@ GIT
 GEM
   remote: https://rubygems.org/
   specs:
-    chef-sugar (2.2.0)
+    chef-sugar (2.3.0)
     cleanroom (1.0.0)
-    ffi (1.9.3)
+    ffi (1.9.4)
     ffi-yajl (1.1.0)
       ffi (~> 1.5)
       libyajl2 (~> 1.0)
