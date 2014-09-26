@@ -1,0 +1,33 @@
+driver:
+  name: vagrant
+  forward_agent: true
+  customize:
+    cpus: 2
+    memory: 2048
+  synced_folders:
+    - ['.', '/home/vagrant/omnibus-pushy']
+    - ['../omnibus', '/home/vagrant/omnibus']
+    - ['../omnibus-software', '/home/vagrant/omnibus-software']
+
+provisioner:
+  name: chef_zero
+  require_chef_omnibus: 11.10.4
+
+platforms:
+  - name: ubuntu-12.04
+    run_list: apt::default
+  - name: ubuntu-10.04
+    run_list: apt::default
+  - name: centos-5.10
+  - name: centos-6.5
+
+suites:
+  - name: default
+    run_list:
+      - omnibus::default
+    attributes:
+      omnibus:
+        build_user:          vagrant
+        build_user_group:    vagrant
+        build_user_password: vagrant
+        install_dir:         /opt/opscode-push-jobs-server

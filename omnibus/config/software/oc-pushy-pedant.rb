@@ -1,6 +1,5 @@
 #
-# Copyright:: Copyright (c) 2012 Opscode, Inc.
-# License:: Apache License, Version 2.0
+# Copyright 2012-2014 Chef Software, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,18 +17,17 @@
 name "oc-pushy-pedant"
 default_version "1.0.6"
 
+# TODO: use the public git:// uri once this repo is public
+source git: "git@github.com:opscode/oc-pushy-pedant"
+
 dependency "libzmq"
 dependency "ruby"
 dependency "bundler"
-dependency "rsync"
-
-# TODO: use the public git:// uri once this repo is public
-source :git => "git@github.com:opscode/oc-pushy-pedant"
 
 relative_path "oc-pushy-pedant"
 
 build do
-  bundle "install --path=#{install_dir}/embedded/service/gem"
-  command "mkdir -p #{install_dir}/embedded/service/oc-pushy-pedant"
-  command "#{install_dir}/embedded/bin/rsync -a --delete --exclude=.git/*** --exclude=.gitignore ./ #{install_dir}/embedded/service/oc-pushy-pedant/"
+  bundle "install" \
+         " --path=#{install_dir}/embedded/service/gem"
+  sync project_dir, "#{install_dir}/embedded/service/oc-pushy-pedant/"
 end

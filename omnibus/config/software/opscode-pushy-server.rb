@@ -1,6 +1,5 @@
 #
-# Copyright:: Copyright (c) 2012 Opscode, Inc.
-# License:: Apache License, Version 2.0
+# Copyright 2012-2014 Chef Software, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,9 +17,10 @@
 name "opscode-pushy-server"
 default_version "1.1.0"
 
+source git:  "git://github.com/opscode/opscode-pushy-server"
+
 dependency "erlang"
 dependency "rebar"
-dependency "rsync"
 dependency "curl"
 dependency "automake"
 dependency "autoconf"
@@ -28,23 +28,12 @@ dependency "libuuid"
 dependency "libtool"
 dependency "bundler"
 
-# TODO - use public GIT URL when repo made public
-source :git => "git@github.com:opscode/opscode-pushy-server.git"
-
 relative_path "opscode-pushy-server"
 
-env = {
-  "PATH" => "#{install_dir}/embedded/bin:#{ENV["PATH"]}",
-  "LDFLAGS" => "-L#{install_dir}/embedded/lib -I#{install_dir}/embedded/include",
-  "CFLAGS" => "-L#{install_dir}/embedded/lib -I#{install_dir}/embedded/include",
-  "CXXFLAGS" => "-L#{install_dir}/embedded/lib -I#{install_dir}/embedded/include",
-  "LD_RUN_PATH" => "#{install_dir}/embedded/lib"
-}
-
 build do
-  command "make distclean", :env => env
-  command "make rel", :env => env
-  command "mkdir -p #{install_dir}/embedded/service/opscode-pushy-server"
-  command "#{install_dir}/embedded/bin/rsync -a --delete --exclude=.git/*** --exclude=.gitignore ./rel/opscode-pushy-server/ #{install_dir}/embedded/service/opscode-pushy-server/"
-  command "rm -rf #{install_dir}/embedded/service/opscode-pushy-server/log"
+  env = with_standard_compiler_flags(with_embedded_path)
+  make "distclean", env: env
+  make "rel", env: env
+  sync "#{project_dir}/rel/opscode-pushy-server/", "#{install_dir}/embedded/service/opscode-pushy-server/"
+  delete "#{install_dir}/embedded/service/opscode-pushy-server/log"
 end

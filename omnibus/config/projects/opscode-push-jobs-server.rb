@@ -1,6 +1,5 @@
 #
-# Copyright:: Copyright (c) 2012 Opscode, Inc.
-# License:: Apache License, Version 2.0
+# Copyright 2012-2014 Chef Software, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,8 +18,8 @@ name       "opscode-push-jobs-server"
 maintainer "Chef Software, Inc."
 homepage   "http://www.getchef.com"
 
-replaces        "opscode-push-jobs-server"
-install_path    "/opt/opscode-push-jobs-server"
+replace         "opscode-push-jobs-server"
+install_dir    "/opt/opscode-push-jobs-server"
 build_version   Omnibus::BuildVersion.new.semver
 build_iteration 1
 
@@ -43,6 +42,3 @@ dependency "oc-pushy-pedant"
 
 # version manifest file
 dependency "version-manifest"
-
-exclude "\.git*"
-exclude "bundler\/git"

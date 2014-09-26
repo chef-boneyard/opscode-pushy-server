@@ -1,6 +1,5 @@
 #
-# Copyright:: Copyright (c) 2012 Opscode, Inc.
-# License:: Apache License, Version 2.0
+# Copyright 2012-2014 Chef Software, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,11 +16,8 @@
 
 name "pushy-server-scripts"
 
-dependency "rsync"
-
-source :path => File.expand_path("files/pushy-server-scripts", Omnibus.project_root)
+source path: "#{project.files_path}/pushy-server-scripts"
 
 build do
-  command "mkdir -p #{install_dir}/embedded/bin"
-  command "#{install_dir}/embedded/bin/rsync -a ./ #{install_dir}/bin/"
+  sync project_dir, "#{install_dir}/bin/"
 end
