@@ -21,7 +21,7 @@ GEM
   specs:
     chef-sugar (2.3.0)
     cleanroom (1.0.0)
-    ffi (1.9.4)
+    ffi (1.9.5)
     ffi-yajl (1.1.0)
       ffi (~> 1.5)
       libyajl2 (~> 1.0)
