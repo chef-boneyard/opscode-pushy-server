@@ -1,6 +1,5 @@
 #
-# Copyright:: Copyright (c) 2012 Opscode, Inc.
-# License:: Apache License, Version 2.0
+# Copyright 2012-2014 Chef Software, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,33 +16,35 @@
 
 name "pushy-server-cookbooks"
 
+source path: "#{project.files_path}/pushy-server-cookbooks"
+
 dependency 'berkshelf2'
 
-cookbook_name = "opscode-pushy-server"
-cookbook_dir = "#{install_dir}/embedded/cookbooks"
-
-source :path => File.expand_path("files/pushy-server-cookbooks", Omnibus.project_root)
-
 build do
-  command "mkdir -p #{cookbook_dir}"
-  command "cd #{cookbook_name} && #{install_dir}/embedded/bin/berks install --berksfile=./Berksfile --path=#{cookbook_dir}",
-          :env => { "RUBYOPT"         => nil,
-                    "BUNDLE_BIN_PATH" => nil,
-                    "BUNDLE_GEMFILE"  => nil,
-                    "GEM_PATH"        => nil,
-                    "GEM_HOME"        => nil } # Manual "bundler buster" needed, because #command doesn't do it for us
+  env = with_standard_compiler_flags(with_embedded_path)
+  command "berks install" \
+        " --path=#{install_dir}/embedded/cookbooks", env: env, cwd: "#{project_dir}/opscode-pushy-server"
   block do
-    File.open("#{cookbook_dir}/dna.json", "w") do |f|
-      f.puts "{\"run_list\": [ \"recipe[#{cookbook_name}]\" ]}"
+    File.open("#{install_dir}/embedded/cookbooks/dna.json", "w") do |f|
+      f.write JSON.fast_generate(
+        run_list: [
+          'recipe[opscode-pushy-server::default]',
+        ]
+      )
     end
-    File.open("#{cookbook_dir}/show-config.json", "w") do |f|
-      f.puts "{\"run_list\": [ \"recipe[#{cookbook_name}::show_config]\" ]}"
+    File.open("#{install_dir}/embedded/cookbooks/show-config.json", "w") do |f|
+      f.write JSON.fast_generate(
+        run_list: [
+          'recipe[opscode-pushy-server::show_config]',
+        ]
+      )
     end
-    File.open("#{cookbook_dir}/solo.rb", "w") do |f|
-      f.puts "CURRENT_PATH = File.expand_path(File.dirname(__FILE__))"
-      f.puts "file_cache_path \"\#\{CURRENT_PATH\}/cache\""
-      f.puts "cookbook_path CURRENT_PATH"
-      f.puts "verbose_logging true"
+    File.open("#{install_dir}/embedded/cookbooks/solo.rb", "w") do |f|
+      f.write <<-EOH.gsub(/^ {8}/, '')
+        cookbook_path   "#{install_dir}/embedded/cookbooks"
+        file_cache_path "#{install_dir}/embedded/cookbooks/cache"
+        verbose_logging true
+      EOH
     end
   end
 end

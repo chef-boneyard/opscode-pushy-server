@@ -18,11 +18,11 @@ $ bundle install --binstubs
 You create a platform-specific package using the `build project` command:
 
 ```shell
-$ bin/omnibus build project opscode-push-jobs-server
+$ bin/omnibus build opscode-push-jobs-server
 ```
 
 The platform/architecture type of the package created will match the platform
-where the `build project` command is invoked. So running this command on say a
+where the `build` command is invoked. So running this command on a
 MacBook Pro will generate a Mac OS X specific package. After the build
 completes packages will be available in `pkg/`.
 
@@ -57,6 +57,16 @@ Populate the S3 Cache:
 $ bin/omnibus cache populate
 ```
 
+### Publish
+
+Omnibus has a built-in mechanism for releasing to a variety of "backends", such
+as Amazon S3 and Artifactory. You must set the proper credentials in your `omnibus.rb`
+config file or specify them via the command line.
+
+```shell
+$ bundle exec omnibus publish path/to/*.deb --backend s3
+```
+
 ### Help
 
 Full help for the Omnibus command line interface can be accessed with the
@@ -66,53 +76,45 @@ Full help for the Omnibus command line interface can be accessed with the
 $ bin/omnibus help
 ```
 
-## Vagrant-based Virtualized Build Lab
-
+Kitchen-based Build Environment
+-------------------------------
 Every Omnibus project ships will a project-specific
-[Berksfile](http://berkshelf.com/) and [Vagrantfile](http://www.vagrantup.com/)
-that will allow you to build your projects on the following platforms:
+[Berksfile](http://berkshelf.com/) that will allow you to build your omnibus projects on all of the projects listed in the `.kitchen.yml`. You can add/remove additional platforms as needed by changing the list found in the `.kitchen.yml` `platforms` YAML stanza.
 
-* CentOS 5 64-bit
-* CentOS 6 64-bit
-* Ubuntu 10.04 64-bit
-* Ubuntu 11.04 64-bit
-* Ubuntu 12.04 64-bit
+This build environment is designed to get you up-and-running quickly. However,
+there is nothing that restricts you to building on other platforms. Simply use
+the [omnibus cookbook](https://github.com/opscode-cookbooks/omnibus) to setup
+your desired platform and execute the build steps listed above.
 
-Please note this build-lab is only meant to get you up and running quickly;
-there's nothing inherent in Omnibus that restricts you to just building CentOS
-or Ubuntu packages. See the Vagrantfile to add new platforms to your build lab.
+The default build environment requires Test Kitchen and VirtualBox for local
+development. Test Kitchen also exposes the ability to provision instances using
+various cloud providers like AWS, DigitalOcean, or OpenStack. For more
+information, please see the [Test Kitchen documentation](http://kitchen.ci).
 
-The only requirements for standing up this virtualized build lab are:
+Once you have tweaked your `.kitchen.yml` (or `.kitchen.local.yml`) to your
+liking, you can bring up an individual build environment using the `kitchen`
+command.
 
-* VirtualBox - native packages exist for most platforms and can be downloaded
-from the [VirtualBox downloads page](https://www.virtualbox.org/wiki/Downloads).
-* Vagrant 1.2.1+ - native packages exist for most platforms and can be downloaded
-from the [Vagrant downloads page](http://downloads.vagrantup.com/).
-
-The [vagrant-berkshelf](https://github.com/RiotGames/vagrant-berkshelf) and
-[vagrant-omnibus](https://github.com/schisamo/vagrant-omnibus) Vagrant plugins
-are also required and can be installed easily with the following commands:
+**NOTE:** Test Kitchen shoud be installed external to the local Ruby bundle.
+Please either use ChefDK or install the latest test-kitchen from Rubygems.
 
 ```shell
-$ vagrant plugin install vagrant-berkshelf
-$ vagrant plugin install vagrant-omnibus
+$ kitchen converge ubuntu-12.04
 ```
 
-Once the pre-requisites are installed you can build your package across all
-platforms with the following command:
+Then login to the instance and build the project as described in the Usage
+section:
 
 ```shell
-$ vagrant up
+$ kitchen login ubuntu-12.04
+[vagrant@ubuntu...] $ cd opscode-push-jobs-server
+[vagrant@ubuntu...] $ bundle install
+[vagrant@ubuntu...] $ ...
+[vagrant@ubuntu...] $ bundle exec omnibus build opscode-push-jobs-server
 ```
 
-If you would like to build a package for a single platform the command looks like this:
-
-```shell
-$ vagrant up PLATFORM
-```
-
-The complete list of valid platform names can be viewed with the
-`vagrant status` command.
+For a complete list of all commands and platforms, run `kitchen list` or
+`kitchen help`.
 
 ## License
 

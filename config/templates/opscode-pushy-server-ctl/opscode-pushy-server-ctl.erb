@@ -1,5 +1,6 @@
+#!/bin/bash
 #
-# Copyright:: Copyright (c) 2012-2014 Chef Software, Inc.
+# Copyright:: Copyright (c) 2012 Opscode, Inc.
 # License:: Apache License, Version 2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,16 +16,4 @@
 # limitations under the License.
 #
 
-name "berkshelf2"
-default_version "2.0.17"
-
-dependency "ruby"
-dependency "rubygems"
-dependency "nokogiri"
-dependency "libffi"
-
-build do
-  gem 'install hashie --no-rdoc --no-ri -v \'~> 2.0.0\''
-  gem 'install varia_model --no-rdoc --no-ri -v 0.3.2'
-  gem "install berkshelf --no-rdoc --no-ri -v #{version}"
-end
+<%= embedded_bin %>/omnibus-ctl opscode-push-jobs-server <%= embedded_service %>/omnibus-ctl $@
