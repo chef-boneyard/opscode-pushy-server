@@ -1,5 +1,10 @@
 # Push Jobs Server Changelog
 
+## 1.1.4 (2014-11-11)
+
+### oc-pushy-pedant 1.0.7
+* Update gem dependencies to chef-server-core current
+
 ## 1.1.3 (2014-09-17)
 
 * Updated Omnibus with default package user/group fix
