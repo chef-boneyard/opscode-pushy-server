@@ -1,6 +1,6 @@
 source :rubygems
 
-gem "chef", "~> 11.6.2"
+gem "chef"
 gem "zmq", "~> 2.1.4"
 
 gemspec
@@ -9,6 +9,6 @@ gemspec
 # is not on RubyGems, so we have to lock the dependency here, too.  It
 # should be whatever the specified version of oc-chef-pedant depends
 # on.
-gem 'chef-pedant', :git => "git@github.com:opscode/chef-pedant.git", :tag => '1.0.22'
-gem 'oc-chef-pedant', :git => "git@github.com:opscode/oc-chef-pedant.git", :tag => '1.0.20'
+gem 'chef-pedant', :git => "git@github.com:opscode/chef-pedant.git", :tag => '1.0.36'
+gem 'oc-chef-pedant', :git => "git@github.com:opscode/oc-chef-pedant.git", :tag => '1.0.65'
 gem 'opscode-pushy-client', :git => "git@github.com:opscode/opscode-pushy-client.git", :tag => '1.0.0'
