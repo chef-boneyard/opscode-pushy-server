@@ -10,5 +10,5 @@ gemspec
 # should be whatever the specified version of oc-chef-pedant depends
 # on.
 gem 'chef-pedant', :git => "git@github.com:opscode/chef-pedant.git", :tag => '1.0.36'
-gem 'oc-chef-pedant', :git => "git@github.com:opscode/oc-chef-pedant.git", :tag => '1.0.65'
+gem 'oc-chef-pedant', :git => "git@github.com:opscode/oc-chef-pedant.git", :tag => '1.0.66'
 gem 'opscode-pushy-client', :git => "git@github.com:opscode/opscode-pushy-client.git", :tag => '1.0.0'
