@@ -1,5 +1,13 @@
 # Push Jobs Server Changelog
 
+## 1.1.5 (2014-11-14)
+* Update gem depenencies
+
+### oc-pushy-pedant 1.0.8
+* Do not test org creation by default. This fixes some backward
+  compatibilty issues with Push Server and EC 11 which slipped in
+  1.0.7
+
 ## 1.1.4 (2014-11-11)
 
 ### oc-pushy-pedant 1.0.7
