@@ -17,10 +17,10 @@ GIT
 
 GIT
   remote: git@github.com:opscode/oc-chef-pedant.git
-  revision: 25cc6adad62ff6d5d031bdd90c25db7f43846d2b
-  tag: 1.0.65
+  revision: 8c99006907fd6db878b65ef267d7484ae9970002
+  tag: 1.0.66
   specs:
-    oc-chef-pedant (1.0.65)
+    oc-chef-pedant (1.0.66)
       chef-pedant (>= 1.0.0)
 
 GIT
@@ -36,7 +36,7 @@ GIT
 PATH
   remote: .
   specs:
-    oc-pushy-pedant (0.0.1)
+    oc-pushy-pedant (0.0.8)
 
 GEM
   remote: http://rubygems.org/
