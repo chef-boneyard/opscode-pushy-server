@@ -1,5 +1,9 @@
 # Push Jobs Server Changelog
 
+## 1.1.6 (2014-12-04)
+* Sign packages with Omnibus 4
+* Update mixlib-shellout to 1.6.1
+
 ## 1.1.5 (2014-11-14)
 * Update gem depenencies
 
