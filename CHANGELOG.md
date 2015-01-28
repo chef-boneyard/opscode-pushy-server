@@ -1,5 +1,8 @@
 # Push Jobs Server Changelog
 
+## Next
+* Remove replaces line for RPM build 
+
 ## 1.1.6 (2014-12-04)
 * Sign packages with Omnibus 4
 * Update mixlib-shellout to 1.6.1
