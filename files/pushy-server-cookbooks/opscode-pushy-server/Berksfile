@@ -1,4 +1,4 @@
 
 metadata
 
-cookbook 'enterprise', :git => 'git@github.com:opscode-cookbooks/enterprise-chef-common.git', :tag => '0.3.0'
+cookbook 'enterprise', :git => 'git@github.com:opscode-cookbooks/enterprise-chef-common.git', :tag => '0.5.1'
