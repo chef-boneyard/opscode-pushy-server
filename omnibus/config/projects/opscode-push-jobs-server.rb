@@ -18,7 +18,6 @@ name       "opscode-push-jobs-server"
 maintainer "Chef Software, Inc."
 homepage   "http://www.getchef.com"
 
-replace         "opscode-push-jobs-server"
 install_dir    "/opt/opscode-push-jobs-server"
 build_version   Omnibus::BuildVersion.new.semver
 build_iteration 1
