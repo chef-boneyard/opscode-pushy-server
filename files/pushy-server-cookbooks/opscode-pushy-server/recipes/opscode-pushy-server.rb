@@ -36,6 +36,10 @@ link "#{node['pushy']['install_path']}/embedded/service/opscode-pushy-server/log
   to pushy_log_dir
 end
 
+# If we don't set the advertised name, we use the VIP as default.  This might not be routable in
+# some configurations, and eventually we will need to protect against that.
+node.default['pushy']['opscode-pushy-server']['server_name_advertised'] ||=  node['pushy']['opscode-pushy-server']['vip']
+
 template "#{node['pushy']['install_path']}/embedded/service/opscode-pushy-server/bin/opscode-pushy-server" do
   source "opscode-pushy-server.erb"
   owner "root"
