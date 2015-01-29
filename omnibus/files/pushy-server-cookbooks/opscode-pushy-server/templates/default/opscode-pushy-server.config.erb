@@ -80,7 +80,7 @@
            {metrics_module, folsom_metrics}
           ]},
  {pushy, [
-          {server_name, "<%= node['pushy']['opscode-pushy-server']['vip'] %>" },
+          {server_name, "<%= @server_name_advertised %>" },
           {heartbeat_interval, <%= @heartbeat_interval %> },
           {zeromq_listen_address, "<%= @zeromq_listen_address %>" },
           {server_heartbeat_port, <%= @server_heartbeat_port %> },
