@@ -3,6 +3,10 @@
 ## Next
 * Remove replaces line for RPM build 
 
+* Update enterprise-chef-common to 0.5.1 (from 0.3.0)
+  Includes many HA improvments and refactoring for reusability, along
+  with updates for systemd and runit
+
 ## 1.1.6 (2014-12-04)
 * Sign packages with Omnibus 4
 * Update mixlib-shellout to 1.6.1
