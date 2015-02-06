@@ -23,6 +23,7 @@ build_version   Omnibus::BuildVersion.new.semver
 build_iteration 1
 
 override :berkshelf, version: "v2.0.15"
+override :erlang, version: "R16B03-1"
 
 # creates required build directories
 dependency "preparation"
