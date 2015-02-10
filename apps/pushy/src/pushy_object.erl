@@ -167,7 +167,7 @@ make_org_prefix_id(OrgId, Name) ->
     %% assume couchdb guid where trailing part has uniqueness
     <<_:20/binary, OrgSuffix:12/binary>> = OrgId,
     Bin = iolist_to_binary([OrgId, Name, crypto:rand_bytes(6)]),
-    <<ObjectPart:80, _/binary>> = crypto:md5(Bin),
+    <<ObjectPart:80, _/binary>> = crypto:hash(md5, Bin),
     iolist_to_binary(io_lib:format("~s~20.16.0b", [OrgSuffix, ObjectPart])).
 
 assemble_job_ejson_with_nodes(#pushy_job{job_nodes = Nodes} = Job) ->
