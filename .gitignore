@@ -4,6 +4,5 @@ pkg/*
 .vagrant
 bin/*
 files/pushy-server-cookbooks/cache/
-omnibus.rb
 vendor/bundle
 vendor/cookbooks
