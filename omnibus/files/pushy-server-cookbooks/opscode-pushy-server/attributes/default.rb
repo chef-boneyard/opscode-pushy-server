@@ -45,6 +45,10 @@ default['pushy']['opscode-pushy-server']['heartbeat_interval'] = '1000'
 default['pushy']['opscode-pushy-server']['zeromq_listen_address'] = 'tcp://*'
 default['pushy']['opscode-pushy-server']['zmq_io_processes'] = '1'
 
+# server_name_advertised is the name the push server provides to clients to use for zeromq connections, and
+# must be and address clients can reach. This server may lie on the back end, so in HA configurations it will
+# eventually need to route to the backend VIP.  nil defaults to using node['pushy']['opscode-pushy-server']['vip']
+default['pushy']['opscode-pushy-server']['server_name_advertised'] = nil
 default['pushy']['opscode-pushy-server']['vip'] = '127.0.0.1'
 default['pushy']['opscode-pushy-server']['server_heartbeat_port'] = '10000'
 default['pushy']['opscode-pushy-server']['command_port'] = '10002'
