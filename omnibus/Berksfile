@@ -7,3 +7,5 @@ cookbook 'omnibus', '~> 2.5'
 
 # Uncomment to use the latest version of the Omnibus cookbook from GitHub
 # cookbook 'omnibus', github: 'opscode-cookbooks/omnibus'
+
+cookbook 'yum-epel', '~> 0.6'

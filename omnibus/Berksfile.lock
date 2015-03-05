@@ -1,6 +1,7 @@
 DEPENDENCIES
   apt (~> 2.0)
   omnibus (~> 2.5)
+  yum-epel (~> 0.6)
 
 GRAPH
   7-zip (1.0.2)
@@ -11,7 +12,7 @@ GRAPH
   chef_handler (1.1.6)
   homebrew (1.12.0)
     build-essential (>= 2.1.2)
-  omnibus (2.5.2)
+  omnibus (2.5.5)
     7-zip (~> 1.0)
     build-essential (~> 2.0)
     chef-sugar (~> 2.0)
@@ -22,3 +23,6 @@ GRAPH
     chef_handler (>= 0.0.0)
   wix (1.1.0)
     windows (>= 1.2.2)
+  yum (3.5.3)
+  yum-epel (0.6.0)
+    yum (~> 3.0)
