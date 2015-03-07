@@ -29,6 +29,8 @@ override :berkshelf, version: "2.0.18"
 override :erlang, version: "R16B03-1"
 override :ruby, version: "2.1.4"
 
+override :libzmq, version: "4.0.5"
+
 # creates required build directories
 dependency "preparation"
 

@@ -74,3 +74,13 @@ default['pushy']['postgresql']['sql_ro_user'] = "opscode_pushy_ro"
 default['pushy']['postgresql']['sql_ro_password'] = "shmunzeltazzen"
 default['pushy']['postgresql']['vip'] = "127.0.0.1"
 default['pushy']['postgresql']['port'] = 5432
+
+####
+# Chef Pedant
+####
+default['pushy']['oc-chef-pedant']['dir'] = "/var/opt/opscode/oc-chef-pedant"
+default['pushy']['oc-chef-pedant']['log_directory'] = "/var/log/opscode/oc-chef-pedant"
+default['pushy']['oc-chef-pedant']['log_http_requests'] = true
+default['private_chef']['oc-chef-pedant']['log_rotation']['file_maxbytes'] = 104857600
+default['private_chef']['oc-chef-pedant']['log_rotation']['num_to_keep'] = 10
+default['private_chef']['oc-chef-pedant']['debug_org_creation'] = false
