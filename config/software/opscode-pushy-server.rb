@@ -32,6 +32,8 @@ relative_path "opscode-pushy-server"
 
 build do
   env = with_standard_compiler_flags(with_embedded_path)
+  # erlzmq2 needs to know where to find the embedded zeromq, or it tries to build its own.
+  env['ZEROMQ_PREFIX']="#{install_dir}/embedded"
   make "distclean", env: env
   make "rel", env: env
   sync "#{project_dir}/rel/opscode-pushy-server/", "#{install_dir}/embedded/service/opscode-pushy-server/"
