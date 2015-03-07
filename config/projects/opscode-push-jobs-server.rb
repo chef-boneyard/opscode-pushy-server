@@ -27,6 +27,7 @@ build_iteration 1
 override :cacerts, version: '2014.08.20'
 override :berkshelf, version: "2.0.18"
 override :erlang, version: "R16B03-1"
+override :ruby, version: "2.1.4"
 
 # creates required build directories
 dependency "preparation"
