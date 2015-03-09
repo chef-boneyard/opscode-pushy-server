@@ -4,12 +4,10 @@ require 'bundler/setup' # so we don't need to type 'bundle exec' to run it
 
 require 'rspec/core'
 require 'pedant'
-require 'pedant/opensource/platform'
-require 'pedant/multitenant'
+require 'pedant/platform'
 require 'pedant/organization'
 require 'pedant/pushy_command_line'
 
-Pedant.config.platform_class = Pedant::MultiTenantPlatform
 Pedant.config.suite = "pushy"
 Pedant.setup(ARGV, ["core_options", "pushy_options"])
 puts Pedant::UI.new.info_banner
