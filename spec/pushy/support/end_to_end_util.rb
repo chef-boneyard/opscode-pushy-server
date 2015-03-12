@@ -28,8 +28,11 @@ shared_context "end_to_end_util" do
   JOB_STATUS_TIMEOUT_DEFAULT = 20
   NODE_AVAILABILITY_TIMEOUT  = 10
   NODE_STATUS_TIMEOUT        = 10
-  SERVER_RESTART_TIMEOUT     = 30
+  SERVER_RESTART_TIMEOUT     = 45 # increasing this makes failing tests take longer, but salvages some slow runs
 
+  CLIENT_CREATION_RETRIES    = 5  # how many times to retry a client creation
+  CLIENT_CREATION_SLEEP      = 10 # how long to wait between retries
+  
   def echo_yahoo
     'sh ' + File.expand_path('../../support/echo_yahoo_to_tmp_pushytest', __FILE__)
   end
@@ -72,12 +75,22 @@ shared_context "end_to_end_util" do
       # Delete chef client if it exists
       delete(api_url("/clients/#{name}"), admin_user)
 
-      # Create chef client and save key for pushy client
-      response = post(api_url("/clients"), superuser, :payload => {"name" => name})
-
       require 'pp'
-      puts "Got a #{response.code} response to a POST to /clients for client #{name}:"
-      pp response
+
+      # Create chef client and save key for pushy client
+      #
+      # Keygen can be slow, and fail
+      retry_count = 1
+      while (retry_count <= CLIENT_CREATION_RETRIES)
+        response = post(api_url("/clients"), superuser, :payload => {"name" => name})
+
+        puts "Got a #{response.code} response to a POST to /clients for client #{name}: (try #{retry_count})"
+        pp response
+        # 500 happens when keygen is behind; generating a key can take almost a sec on a slow box
+        break if response.code < 500 
+        sleep CLIENT_CREATION_SLEEP
+        retry_count+=1
+      end
 
       key = parse(response)["private_key"]
       puts "Private Key for client #{name}:"
