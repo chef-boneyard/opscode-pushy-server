@@ -96,6 +96,6 @@ include_recipe "opscode-pushy-server::oc-pushy-pedant"
 file "/etc/opscode-push-jobs-server/opscode-push-jobs-server-running.json" do
   owner node['private_chef']['user']['username']
   group "root"
-  mode "0644"
+  mode "0600"
   content Chef::JSONCompat.to_json_pretty({ "pushy" => node['pushy'].to_hash, "run_list" => node.run_list })
 end
