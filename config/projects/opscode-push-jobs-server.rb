@@ -22,7 +22,10 @@ install_dir    "/opt/opscode-push-jobs-server"
 build_version   Omnibus::BuildVersion.new.semver
 build_iteration 1
 
-override :berkshelf, version: "v2.0.15"
+# Pin cacerts to an earlier version because the latest is missing some certs
+# https://github.com/opscode/opscode-omnibus/commit/8efcebf946e2662a6fd52ed1ee66f198dbca3a8d
+override :cacerts, version: '2014.08.20'
+override :berkshelf, version: "2.0.18"
 override :erlang, version: "R16B03-1"
 
 # creates required build directories
