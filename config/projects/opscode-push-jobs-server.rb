@@ -15,7 +15,7 @@
 #
 
 name       "opscode-push-jobs-server"
-maintainer "Chef Software, Inc."
+maintainer "Chef Software, Inc. <maintainers@chef.io>"
 homepage   "http://www.getchef.com"
 
 install_dir    "/opt/opscode-push-jobs-server"
