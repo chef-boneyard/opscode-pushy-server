@@ -47,7 +47,7 @@
                     "de939f5a937e3ace126090a2f6cd837bd2f5bc26"}},
        {pushy_common,".*",
                      {git,"https://github.com/chef/pushy_common",
-                          "e7dce1d3cab8ea577f1aa8d3d104af2949c6f29e"}},
+                          "ba2f9aec18f6144fd0ac3c513af16ce94bcf23e1"}},
        {gen_leader,".*",
                    {git,"git://github.com/abecciu/gen_leader_revival.git",
                         "a119cb9a39f94254247962bce4616b6f607cca80"}},
