@@ -17,7 +17,7 @@
                   "69664df5d0e01a0ae27efb62831d6eea45cc1cd4"}},
        {erlzmq,".*",
                {git,"https://github.com/chef/erlzmq2",
-                    "438665d379a784900918f5a4b8ee333ae91e4915"}},
+                    "7b926a9567284ad364437db1880ba36e4736ce7d"}},
        {proper,".*",
                {git,"https://github.com/manopapad/proper.git",
                     "b0e75bc0db5cbbd7df142924482694bd9373c0cd"}},
