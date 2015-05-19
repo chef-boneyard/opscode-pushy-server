@@ -68,7 +68,7 @@ shared_context "job_body_util" do
 
   def self.fails_with_value(variable, value, bogus = false, pending = false)
     if (pending)
-      it "with #{variable} = #{value} it reports 400", :validation, :pending do
+      it "with #{variable} = #{value} it reports 400", :validation, :skip do
       end
     else
       it "with #{variable} = #{value} it reports 400", :validation do
@@ -82,7 +82,7 @@ shared_context "job_body_util" do
   def self.succeeds_with_value(variable, value, expected_value = nil, pending = false)
     expected_value ||= value
     if (pending)
-      it "with #{variable} = #{value} it succeeds", :pending do
+      it "with #{variable} = #{value} it succeeds", :skip do
       end
     else
       it "with #{variable} = #{value} it succeeds" do

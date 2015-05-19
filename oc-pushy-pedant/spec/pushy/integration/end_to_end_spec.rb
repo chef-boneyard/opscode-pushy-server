@@ -770,7 +770,7 @@ describe "end-to-end-test" do
       @long_job = start_job('sleep 20', [ 'DONKEY' ])
     end
 
-    context 'and the server goes down and comes back up', :pending => (not (!!Pedant.config[:running_from_backend])) do
+    context 'and the server goes down and comes back up', :skip => (not (!!Pedant.config[:running_from_backend])) do
       # This should only run on a maching that runs backend services
       # because we currently shut down the pushy server by shelling
       # out; this doesn't work on frontend machines because there's no
