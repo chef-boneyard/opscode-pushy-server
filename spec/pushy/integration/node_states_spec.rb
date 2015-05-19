@@ -234,7 +234,7 @@ describe "Node_States API Endpoint", :node_states do
         end
       end
 
-      it 'returns a 404 ("Not Found") for missing node_state for admin', :pending do
+      it 'returns a 404 ("Not Found") for missing node_state for admin', :skip do
         get(api_url("/pushy/node_states/#{non_existent_node_name}"),
             admin_user) do |response|
           response.should look_like({
@@ -246,7 +246,7 @@ describe "Node_States API Endpoint", :node_states do
         end
       end
 
-      it 'returns a 404 ("Not Found") for missing node_state for normal user', :pending do
+      it 'returns a 404 ("Not Found") for missing node_state for normal user', :skip do
 
         get(api_url("/pushy/node_states/#{non_existent_node_name}"),
             normal_user) do |response|

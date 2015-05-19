@@ -832,7 +832,7 @@ describe "Jobs API Endpoint", :jobs do
       let(:success_user) { admin_user }
       let(:failure_user) { invalid_user }
 
-      context 'GET /jobs', :pending do # pend for transient failures until we can fix it for real :(
+      context 'GET /jobs', :skip do # pend for transient failures until we can fix it for real :(
         let(:url) { api_url("/pushy/jobs") }
         let(:response_should_be_successful) do
           response.should look_like({
