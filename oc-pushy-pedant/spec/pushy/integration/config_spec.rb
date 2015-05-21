@@ -240,10 +240,10 @@ describe "pushy config" do
     let(:non_member_client) { platform.admin_client }
 
     before(:all) do
-      setup_group("pushy_job_readers", [member.name, outside_user.name],
-                  [member_client.name], [])
-      setup_group("pushy_job_writers", [member.name, outside_user.name],
-                  [member_client.name], [])
+      setup_group("pushy_job_readers", [normal_user.name, outside_user.name],
+                  [platform.non_admin_client.name], [])
+      setup_group("pushy_job_writers", [normal_user.name, outside_user.name],
+                  [platform.non_admin_client.name], [])
     end
 
     after(:all) do
