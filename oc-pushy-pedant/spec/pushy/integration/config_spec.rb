@@ -279,7 +279,7 @@ describe "pushy config" do
       end
 
       it 'returns a 200 ("OK") for member client' do
-        pending 'something weird going on for clients here' do
+        skip 'something weird going on for clients here' do
           get(api_url("/pushy/config/#{config_name}"), member_client) do |response|
             response.should look_like({
                 :status => 200
@@ -289,7 +289,7 @@ describe "pushy config" do
       end
 
       it 'returns a 403 ("Forbidden") for non-member client' do
-        pending 'something weird going on for clients here' do
+        skip 'something weird going on for clients here' do
           get(api_url("/pushy/config/#{config_name}"), non_member_client) do |response|
             response.
               should look_like({
