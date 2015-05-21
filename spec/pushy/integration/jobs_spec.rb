@@ -394,10 +394,10 @@ describe "Jobs API Endpoint", :jobs do
       @member = normal_user
       @member_client = platform.non_admin_client
 
-      setup_group("pushy_job_readers", [member.name, outside_user.name],
-                  [member_client.name], [])
-      setup_group("pushy_job_writers", [member.name, outside_user.name],
-                  [member_client.name], [])
+      setup_group("pushy_job_readers", [@member.name, outside_user.name],
+                  [@member_client.name], [])
+      setup_group("pushy_job_writers", [@member.name, outside_user.name],
+                  [@member_client.name], [])
     end
 
     after(:all) do
@@ -588,8 +588,8 @@ describe "Jobs API Endpoint", :jobs do
       @member = normal_user
       @member_client = platform.non_admin_client
 
-      setup_group("nested_pushy_job_readers", [member.name], [member_client.name], [])
-      setup_group("nested_pushy_job_writers", [member.name], [member_client.name], [])
+      setup_group("nested_pushy_job_readers", [@member.name], [@member_client.name], [])
+      setup_group("nested_pushy_job_writers", [@member.name], [@member_client.name], [])
       setup_group("pushy_job_readers", [], [], ["nested_pushy_job_readers"])
       setup_group("pushy_job_writers", [], [], ["nested_pushy_job_writers"])
     end
