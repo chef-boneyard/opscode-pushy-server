@@ -44,7 +44,7 @@ describe "Node_States API Endpoint", :node_states do
     ["User or client 'pedant_admin_client' does not have access to that action on this server."] }
   let(:outside_user_not_associated_msg) {
     ["'pedant-nobody' is not associated with organization '#{org}'"] }
-  let(:cannot_load_nonexistent_msg) { 
+  let(:cannot_load_nonexistent_msg) {
     ["Cannot load client #{non_existent_node_name}"] }
   let(:node_state_status) {
     {
@@ -270,6 +270,9 @@ describe "Node_States API Endpoint", :node_states do
     let(:non_member_client) { platform.admin_client }
 
     before(:all) do
+      @member = normal_user
+      @member_client = platform.non_admin_client
+
       setup_group("pushy_job_readers", [member.name, outside_user.name],
                   [member_client.name], [])
     end
@@ -398,6 +401,9 @@ describe "Node_States API Endpoint", :node_states do
     let(:non_member_client) { platform.admin_client }
 
     before(:all) do
+      @member = normal_user
+      @member_client = platform.non_admin_client
+
       setup_group("nested_pushy_job_readers", [member.name], [member_client.name], [])
       setup_group("pushy_job_readers", [], [], ["nested_pushy_job_readers"])
     end
