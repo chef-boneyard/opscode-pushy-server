@@ -183,7 +183,7 @@ describe "end-to-end-test" do
           job_id = @response["uri"].split("/").last
 
           @expired_time = Time.now - (1000)
-          PushyClient::ProtocolHandler::TimeSendWrapper.stub!(:now).and_return(@expired_time, Time.now())
+          PushyClient::ProtocolHandler::TimeSendWrapper.stub(:now).and_return(@expired_time, Time.now())
 
           client.send_command(:nack_commit, job_id)
         end
@@ -200,7 +200,7 @@ describe "end-to-end-test" do
           job_id = @response["uri"].split("/").last
 
           @expired_time = Time.now - (100) # assumes timeout is 500 s.
-          PushyClient::ProtocolHandler::TimeSendWrapper.stub!(:now).and_return(@expired_time, Time.now())
+          PushyClient::ProtocolHandler::TimeSendWrapper.stub(:now).and_return(@expired_time, Time.now())
 
           client.send_command(:nack_commit, job_id)
         end
