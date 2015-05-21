@@ -273,8 +273,8 @@ describe "Node_States API Endpoint", :node_states do
       @member = normal_user
       @member_client = platform.non_admin_client
 
-      setup_group("pushy_job_readers", [member.name, outside_user.name],
-                  [member_client.name], [])
+      setup_group("pushy_job_readers", [@member.name, outside_user.name],
+                  [@member_client.name], [])
     end
 
     after(:all) do
@@ -404,7 +404,7 @@ describe "Node_States API Endpoint", :node_states do
       @member = normal_user
       @member_client = platform.non_admin_client
 
-      setup_group("nested_pushy_job_readers", [member.name], [member_client.name], [])
+      setup_group("nested_pushy_job_readers", [@member.name], [@member_client.name], [])
       setup_group("pushy_job_readers", [], [], ["nested_pushy_job_readers"])
     end
 
