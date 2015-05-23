@@ -24,7 +24,8 @@
          is_authorized/2,
          malformed_request/2,
          read_forbidden/2,
-         write_forbidden/2]).
+         write_forbidden/2,
+         extract_header/2]).
 
 -include("pushy_wm.hrl").
 
@@ -94,19 +95,20 @@ bin_str_join([H], _Sep, Acc) ->
 bin_str_join([H | T], Sep, Acc) ->
     bin_str_join(T, Sep, [Sep, <<"'">>, H, <<"'">> | Acc]).
 
+extract_header(Req, Header) ->
+    Name = case is_binary(Header) of
+               true -> binary_to_list(Header);
+               false -> Header
+           end,
+    case wrq:get_req_header(string:to_lower(Name), Req) of
+        B when is_binary(B) -> B;
+        "" -> undefined; %% We want to treat empty header values as missing
+        S when is_list(S) -> iolist_to_binary(S);
+        undefined -> undefined
+    end.
+
 get_header_fun(Req) ->
-    GetHeader = fun(H) ->
-                        Name = case is_binary(H) of
-                                   true -> binary_to_list(H);
-                                   false -> H
-                               end,
-                        case wrq:get_req_header(string:to_lower(Name), Req) of
-                            B when is_binary(B) -> B;
-                            S when is_list(S) -> iolist_to_binary(S);
-                            undefined -> undefined
-                        end
-                end,
-    GetHeader.
+    fun(H) -> extract_header(Req, H) end.
 
 body_not_too_big(Req) ->
     body_not_too_big(wrq:method(Req), wrq:set_max_recv_body(?MAX_SIZE, Req)).
