@@ -45,7 +45,7 @@ malformed_request(Req, State) ->
         throw:{bad_headers, Headers} ->
             Msg1 = malformed_request_message({bad_headers, Headers}, Req, State),
             Req3 = wrq:set_resp_body(jiffy:encode(Msg1), Req),
-            {{halt, 401}, Req3, State};
+            {{halt, 400}, Req3, State};
         throw:bad_sign_desc ->
             Msg1 = malformed_request_message(bad_sign_desc, Req, State),
             Req3 = wrq:set_resp_body(jiffy:encode(Msg1), Req),
@@ -94,19 +94,20 @@ bin_str_join([H], _Sep, Acc) ->
 bin_str_join([H | T], Sep, Acc) ->
     bin_str_join(T, Sep, [Sep, <<"'">>, H, <<"'">> | Acc]).
 
+extract_header(Req, Header) ->
+    Name = case is_binary(Header) of
+               true -> binary_to_list(Header);
+               false -> Header
+           end,
+    case wrq:get_req_header(string:to_lower(Name), Req) of
+        B when is_binary(B) -> B;
+        "" -> undefined; %% We want to treat empty header values as missing
+        S when is_list(S) -> iolist_to_binary(S);
+        undefined -> undefined
+    end.
+
 get_header_fun(Req) ->
-    GetHeader = fun(H) ->
-                        Name = case is_binary(H) of
-                                   true -> binary_to_list(H);
-                                   false -> H
-                               end,
-                        case wrq:get_req_header(string:to_lower(Name), Req) of
-                            B when is_binary(B) -> B;
-                            S when is_list(S) -> iolist_to_binary(S);
-                            undefined -> undefined
-                        end
-                end,
-    GetHeader.
+    fun(H) -> extract_header(Req, H) end.
 
 body_not_too_big(Req) ->
     body_not_too_big(wrq:method(Req), wrq:set_max_recv_body(?MAX_SIZE, Req)).
