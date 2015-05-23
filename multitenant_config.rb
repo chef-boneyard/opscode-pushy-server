@@ -3,6 +3,8 @@
 # actual Pedant::Config class because not all settings have sane
 # defaults, and not all settings are appropriate in all settings.
 
+internal_server localhost:8000
+server_api_version 0
 ################################################################################
 
 # Specify a testing organization if you are testing a multi-tenant
@@ -40,7 +42,9 @@ chef_server "https://#{`hostname -f`.strip}"
 # frontends / API
 #
 # Note: This default value assumes a standalone topology
-pushy_server `hostname -f`.strip
+
+#pushy_server `hostname -f`.strip
+pushy_server "api.opscode.piab"
 
 # Pushy runs on the backend servers, and we need to expose this
 # address for ZeroMQ interactions, which cannot go through the
