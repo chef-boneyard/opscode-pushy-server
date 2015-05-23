@@ -280,7 +280,7 @@ describe "end-to-end-test" do
           'status' => 'timed_out'
         }
         sleep(1.2)
-        File.exist?('/tmp/pushytest').should be_false
+        expect(File.exist?('/tmp/pushytest')).to be_falsey
       end
     end
 
