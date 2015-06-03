@@ -52,17 +52,17 @@ describe "Jobs API Endpoint", :jobs do
 
   let(:non_existent_job) { 'not_a_number' }
   let(:non_admin_authorization_failed_msg) {
-    ["User or client 'pedant_user' does not have access to that action on this server."] }
+    ["User or client '#{platform.non_admin_user.name}' does not have access to that action on this server."] }
   let(:non_admin_client_authorization_failed_msg) {
-    ["User or client 'pedant_non_admin_client' does not have access to that action on this server."] }
+    ["User or client '#{platform.non_admin_client.name}' does not have access to that action on this server."] }
   let(:non_member_authorization_failed_msg) {
-    ["User or client 'pedant_admin_user' does not have access to that action on this server."] }
+    ["User or client '#{admin_user.name}' does not have access to that action on this server."] }
   let(:non_member_client_authorization_failed_msg) {
-    ["User or client 'pedant_admin_client' does not have access to that action on this server."] }
+    ["User or client '#{admin_client.name}' does not have access to that action on this server."] }
   let(:failed_to_authenticate_as_invalid_msg) {
     ["Failed to authenticate as 'invalid'. Ensure that your node_name and client key are correct."] }
   let(:outside_user_not_associated_msg) {
-    ["'pedant-nobody' is not associated with organization '#{org}'"] }
+    ["'#{outside_user.name}' is not associated with organization '#{org}'"] }
 
   describe 'HTTP verb validation' do
     context '/organizations/<org>/pushy/jobs/' do
