@@ -24,7 +24,8 @@
          is_authorized/2,
          malformed_request/2,
          read_forbidden/2,
-         write_forbidden/2]).
+         write_forbidden/2,
+         extract_header/2]).
 
 -include("pushy_wm.hrl").
 
@@ -45,7 +46,7 @@ malformed_request(Req, State) ->
         throw:{bad_headers, Headers} ->
             Msg1 = malformed_request_message({bad_headers, Headers}, Req, State),
             Req3 = wrq:set_resp_body(jiffy:encode(Msg1), Req),
-            {{halt, 400}, Req3, State};
+            {{halt, 401}, Req3, State};
         throw:bad_sign_desc ->
             Msg1 = malformed_request_message(bad_sign_desc, Req, State),
             Req3 = wrq:set_resp_body(jiffy:encode(Msg1), Req),
