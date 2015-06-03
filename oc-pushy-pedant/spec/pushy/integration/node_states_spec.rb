@@ -38,12 +38,12 @@ describe "Node_States API Endpoint", :node_states do
 
   let(:failed_to_authenticate_as_invalid_msg) {
     ["Failed to authenticate as 'invalid'. Ensure that your node_name and client key are correct."] }
-  let(:non_member_authorization_failed_msg) {
-    ["User or client 'pedant_admin_user' does not have access to that action on this server."] }
-  let(:non_member_client_authorization_failed_msg) {
-    ["User or client 'pedant_admin_client' does not have access to that action on this server."] }
   let(:outside_user_not_associated_msg) {
-    ["'pedant-nobody' is not associated with organization '#{org}'"] }
+    ["'#{outside_user.name}' is not associated with organization '#{org}'"] }
+  let(:non_member_authorization_failed_msg) {
+    ["User or client '#{admin_user.name}' does not have access to that action on this server."] }
+  let(:non_member_client_authorization_failed_msg) {
+    ["User or client '#{admin_client.name}' does not have access to that action on this server."] }
   let(:cannot_load_nonexistent_msg) {
     ["Cannot load client #{non_existent_node_name}"] }
   let(:node_state_status) {
