@@ -22,6 +22,10 @@
 
 -include("pushy_wm.hrl").
 
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
+
 -export([fetch_principal/2]).
 
 -spec fetch_principal(OrgName :: binary(),
