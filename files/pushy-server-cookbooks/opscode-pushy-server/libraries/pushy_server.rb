@@ -27,6 +27,7 @@ module PushJobsServer
   opscode_pushy_server Mash.new
   postgresql Mash.new
   bootstrap Mash.new
+  oc_chef_pedant Mash.new
 
   class << self
 
@@ -79,6 +80,8 @@ module PushJobsServer
         rkey = key.gsub('_', '-')
         results['pushy'][rkey] = PushJobsServer[key]
       end
+
+      results['pushy']['oc-chef-pedant'] = PushJobsServer['oc_chef_pedant']
 
       results
     end
