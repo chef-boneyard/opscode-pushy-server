@@ -34,3 +34,13 @@ WATCH = lambda { |x| puts x } unless defined?(WATCH)
 # Load everything from spec/support
 # Do not change the gsub.
 Dir["pushy/support/**/*.rb"].map { |f| f.gsub(%r{.rb$}, '') }.each { |f| require f }
+
+#
+# Hack to work around the inability to pass chef client config into
+# push client startup. Long term we need to modify push client config
+# and Chef::HTTP::DefaultSSLPolicy and APISSLPolicy to accept options
+# from other sources.
+#
+puts "="*10 + "SSL verify mode hardcoded to verify_none" + "="*10
+Chef::Config[:ssl_verify_mode] = :verify_none
+Chef::Config[:verify_api_cert] = false

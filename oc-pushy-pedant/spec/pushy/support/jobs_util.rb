@@ -66,12 +66,12 @@ shared_context "job_body_util" do
     return result
   end
 
-  def self.fails_with_value(variable, value, bogus = false, pending = false)
+  def self.fails_with_value(variable, value, bogus = false, pending = false, code = 400)
     if (pending)
-      it "with #{variable} = #{value} it reports 400", :validation, :pending do
+      it "with #{variable} = #{value} it reports #{code}", :validation, :skip do
       end
     else
-      it "with #{variable} = #{value} it reports 400", :validation do
+      it "with #{variable} = #{value} it reports #{code}", :validation do
         response = post(api_url("/pushy/jobs"), admin_user,
                         :payload => make_payload(default_payload, variable => value,
                                                  :bogus_value => bogus))
@@ -82,7 +82,7 @@ shared_context "job_body_util" do
   def self.succeeds_with_value(variable, value, expected_value = nil, pending = false)
     expected_value ||= value
     if (pending)
-      it "with #{variable} = #{value} it succeeds", :pending do
+      it "with #{variable} = #{value} it succeeds", :skip do
       end
     else
       it "with #{variable} = #{value} it succeeds" do

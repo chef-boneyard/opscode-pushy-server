@@ -25,6 +25,10 @@
 require 'pushy/spec_helper'
 require 'fileutils'
 
+def is_backend
+  !!Pedant.config[:running_from_backend]
+end
+
 describe "end-to-end-test" do
   include_context "end_to_end_util"
 
@@ -179,7 +183,7 @@ describe "end-to-end-test" do
           job_id = @response["uri"].split("/").last
 
           @expired_time = Time.now - (1000)
-          PushyClient::ProtocolHandler::TimeSendWrapper.stub!(:now).and_return(@expired_time, Time.now())
+          PushyClient::ProtocolHandler::TimeSendWrapper.stub(:now).and_return(@expired_time, Time.now())
 
           client.send_command(:nack_commit, job_id)
         end
@@ -196,7 +200,7 @@ describe "end-to-end-test" do
           job_id = @response["uri"].split("/").last
 
           @expired_time = Time.now - (100) # assumes timeout is 500 s.
-          PushyClient::ProtocolHandler::TimeSendWrapper.stub!(:now).and_return(@expired_time, Time.now())
+          PushyClient::ProtocolHandler::TimeSendWrapper.stub(:now).and_return(@expired_time, Time.now())
 
           client.send_command(:nack_commit, job_id)
         end
@@ -276,7 +280,7 @@ describe "end-to-end-test" do
           'status' => 'timed_out'
         }
         sleep(1.2)
-        File.exist?('/tmp/pushytest').should be_false
+        expect(File.exist?('/tmp/pushytest')).to be_falsey
       end
     end
 
@@ -770,7 +774,7 @@ describe "end-to-end-test" do
       @long_job = start_job('sleep 20', [ 'DONKEY' ])
     end
 
-    context 'and the server goes down and comes back up', :pending => (not (!!Pedant.config[:running_from_backend])) do
+    context 'and the server goes down and comes back up', :skip => !is_backend do
       # This should only run on a maching that runs backend services
       # because we currently shut down the pushy server by shelling
       # out; this doesn't work on frontend machines because there's no
