@@ -14,9 +14,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
+# Snag the first supported protocol version by our ruby installation
+ssl_protocols = node['private_chef']['nginx']['ssl_protocols']
+supported_versions = OpenSSL::SSL::SSLContext::METHODS
+allowed_versions = ssl_protocols.split(/ /).select do |proto|
+  supported_versions.include? proto.gsub(".", "_").to_sym
+end
+
+# In a healthy installation, we should be able to count on
+# at least one shared protocol version. Leaving failure unhandled here,
+# since it means that a pedant run is not possible.
+ssl_version = allowed_versions.first.gsub(".", "_").to_sym
+
 template "/etc/opscode-push-jobs-server/pedant_config.rb" do
   owner "root"
   group "root"
   mode  "0755"
-  variables({:running_from_backend => is_data_master?})
+  variables({
+              :api_url  => node['private_chef']['nginx']['url'],
+              :default_orgname => node['private_chef']['default_orgname'],
+              :hostname => node['hostname'],
+              :ssl_version =>  ssl_version,
+              :running_from_backend => is_data_master?})
 end
