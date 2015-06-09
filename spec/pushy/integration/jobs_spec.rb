@@ -52,17 +52,17 @@ describe "Jobs API Endpoint", :jobs do
 
   let(:non_existent_job) { 'not_a_number' }
   let(:non_admin_authorization_failed_msg) {
-    ["User or client 'pedant_user' does not have access to that action on this server."] }
+    ["User or client '#{platform.non_admin_user.name}' does not have access to that action on this server."] }
   let(:non_admin_client_authorization_failed_msg) {
-    ["User or client 'pedant_non_admin_client' does not have access to that action on this server."] }
+    ["User or client '#{platform.non_admin_client.name}' does not have access to that action on this server."] }
   let(:non_member_authorization_failed_msg) {
-    ["User or client 'pedant_admin_user' does not have access to that action on this server."] }
+    ["User or client '#{admin_user.name}' does not have access to that action on this server."] }
   let(:non_member_client_authorization_failed_msg) {
-    ["User or client 'pedant_admin_client' does not have access to that action on this server."] }
+    ["User or client '#{admin_client.name}' does not have access to that action on this server."] }
   let(:failed_to_authenticate_as_invalid_msg) {
     ["Failed to authenticate as 'invalid'. Ensure that your node_name and client key are correct."] }
   let(:outside_user_not_associated_msg) {
-    ["'pedant-nobody' is not associated with organization '#{org}'"] }
+    ["'#{outside_user.name}' is not associated with organization '#{org}'"] }
 
   describe 'HTTP verb validation' do
     context '/organizations/<org>/pushy/jobs/' do
@@ -391,10 +391,13 @@ describe "Jobs API Endpoint", :jobs do
     }
 
     before(:all) do
-      setup_group("pushy_job_readers", [member.name, outside_user.name],
-                  [member_client.name], [])
-      setup_group("pushy_job_writers", [member.name, outside_user.name],
-                  [member_client.name], [])
+      @member = normal_user
+      @member_client = platform.non_admin_client
+
+      setup_group("pushy_job_readers", [@member.name, outside_user.name],
+                  [@member_client.name], [])
+      setup_group("pushy_job_writers", [@member.name, outside_user.name],
+                  [@member_client.name], [])
     end
 
     after(:all) do
@@ -582,8 +585,11 @@ describe "Jobs API Endpoint", :jobs do
     }
 
     before(:all) do
-      setup_group("nested_pushy_job_readers", [member.name], [member_client.name], [])
-      setup_group("nested_pushy_job_writers", [member.name], [member_client.name], [])
+      @member = normal_user
+      @member_client = platform.non_admin_client
+
+      setup_group("nested_pushy_job_readers", [@member.name], [@member_client.name], [])
+      setup_group("nested_pushy_job_writers", [@member.name], [@member_client.name], [])
       setup_group("pushy_job_readers", [], [], ["nested_pushy_job_readers"])
       setup_group("pushy_job_writers", [], [], ["nested_pushy_job_writers"])
     end
@@ -832,7 +838,7 @@ describe "Jobs API Endpoint", :jobs do
       let(:success_user) { admin_user }
       let(:failure_user) { invalid_user }
 
-      context 'GET /jobs', :pending do # pend for transient failures until we can fix it for real :(
+      context 'GET /jobs', :skip do # pend for transient failures until we can fix it for real :(
         let(:url) { api_url("/pushy/jobs") }
         let(:response_should_be_successful) do
           response.should look_like({

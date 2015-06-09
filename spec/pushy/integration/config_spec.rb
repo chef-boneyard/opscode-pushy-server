@@ -39,16 +39,18 @@ describe "pushy config" do
   # TODO: should get this from config instead of hard-coding
   let(:config_name) { 'DONKEY' }
 
+  let(:member_client) { platform.non_admin_client }
+
   let(:failed_to_authenticate_as_invalid_msg) {
     ["Failed to authenticate as 'invalid'. Ensure that your node_name and client key are correct."] }
   let(:outside_user_not_associated_msg) {
-    ["'pedant-nobody' is not associated with organization '#{org}'"] }
+    ["'#{outside_user.name}' is not associated with organization '#{org}'"] }
   let(:client_and_node_name_match_msg) {
     ["Client and node name must match"] }
   let(:non_member_authorization_failed_msg) {
-    ["User or client 'pedant_admin_user' does not have access to that action on this server."] }
+    ["User or client '#{admin_user.name}' does not have access to that action on this server."] }
   let(:non_member_client_authorization_failed_msg) {
-    ["User or client 'pedant_admin_client' does not have access to that action on this server."] }
+    ["User or client '#{admin_client.name}' does not have access to that action on this server."] }
 
   let(:config_body) {
     {
@@ -58,7 +60,7 @@ describe "pushy config" do
       "type" => "config",
       "host" => pushy_server,
       "node" => config_name,
-      "organization" => /^pedant-testorg-.*/,
+      "organization" => "#{org}",
       "public_key" => /^-----BEGIN PUBLIC KEY-----/,
       "push_jobs" => {
         "heartbeat" => {
@@ -176,8 +178,8 @@ describe "pushy config" do
       end
 
       it 'returns a 200 ("OK") for client' do
-        get(api_url("/pushy/config/pedant_non_admin_client"),
-            platform.non_admin_client) do |response|
+        get(api_url("/pushy/config/#{member_client.name}"),
+            member_client) do |response|
           response.should look_like({
                                       :status => 200
                                     })
@@ -197,7 +199,7 @@ describe "pushy config" do
       end
 
       it 'returns a 403 ("Forbidden") for outside user' do
-        get(api_url("/pushy/config/#{config_name}"),
+        get(api_url("/pushy/config/#{outside_user.name}"),
             outside_user) do |response|
           response.should look_like({
                                       :status => 403,
@@ -230,7 +232,7 @@ describe "pushy config" do
       end
     end
   end # describe 'access control'
-  
+
   describe 'access control with pushy_job groups' do
     # Doing these in reverse for extra fun; this will guarantee it doesn't
     # "accidentally" work if the groups are missing
@@ -240,10 +242,10 @@ describe "pushy config" do
     let(:non_member_client) { platform.admin_client }
 
     before(:all) do
-      setup_group("pushy_job_readers", [member.name, outside_user.name],
-                  [member_client.name], [])
-      setup_group("pushy_job_writers", [member.name, outside_user.name],
-                  [member_client.name], [])
+      setup_group("pushy_job_readers", [normal_user.name, outside_user.name],
+                  [platform.non_admin_client.name], [])
+      setup_group("pushy_job_writers", [normal_user.name, outside_user.name],
+                  [platform.non_admin_client.name], [])
     end
 
     after(:all) do
@@ -279,7 +281,7 @@ describe "pushy config" do
       end
 
       it 'returns a 200 ("OK") for member client' do
-        pending 'something weird going on for clients here' do
+        skip 'something weird going on for clients here' do
           get(api_url("/pushy/config/#{config_name}"), member_client) do |response|
             response.should look_like({
                 :status => 200
@@ -289,7 +291,7 @@ describe "pushy config" do
       end
 
       it 'returns a 403 ("Forbidden") for non-member client' do
-        pending 'something weird going on for clients here' do
+        skip 'something weird going on for clients here' do
           get(api_url("/pushy/config/#{config_name}"), non_member_client) do |response|
             response.
               should look_like({
