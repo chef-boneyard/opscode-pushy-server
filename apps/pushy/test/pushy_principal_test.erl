@@ -33,13 +33,18 @@
 %%
 %%
 
+%% v1 API Responses
+standard_principal_response_v1() ->
+    lists:flatten(io_lib:format("{\"principals\":[~s, ~s]}",
+                                [principal_record("testuser", "user", true),
+                                 principal_record("testuser", "client", true)])).
+
 %% v0 API Responses
 standard_principal_response_v0() ->
     principal_record("testuser", "user", true).
 
 not_associated_principal_response_v0() ->
     principal_record("testuser", "user", false).
-
 
 
 %% Common API Responses
@@ -57,10 +62,16 @@ not_found_org_response(Orgname) ->
 principal_record(Username, Type, OrgMember) ->
     lists:flatten(io_lib:format("{\"name\":\"~s\",\"public_key\":\"~s\",\"type\":\"~s\",\"authz_id\":\"bfb2d2454ead3593028b467c2686df8b\",\"org_member\":~s}",
                                 [Username, ?TEST_PUBLIC_KEY, Type, OrgMember])).
+
+version_header(Version) ->
+    V= lists:flatten(io_lib:format("{\"min_version\":\"0\",\"max_version\":\"1\",\"request_version\":\"1\",\"response_version\":\"~w\"}",
+                                   [Version])),
+    {"X-Ops-Server-API-Version", V}.
+
 test_url(Orgname, Username) ->
     lists:flatten(io_lib:format(?TEST_URL_FMT, [Orgname, Username])).
 
-fetch_principal_test_() ->
+fetch_principals_test_() ->
     MockedModules = [ibrowse, envy],
     {foreach,
      fun() ->
@@ -73,19 +84,19 @@ fetch_principal_test_() ->
              meck:unload()
      end,
      [
-      {"when using the v0 API, it returns a pushy_principal",
+      {"when using the v0 API, it returns an array with one pushy_principal",
        fun() ->
                meck:expect(ibrowse, send_req, [{[test_url("anorg", "testuser"), '_', get],
                                                 {ok, "200", [], standard_principal_response_v0()}}]),
-               Result = pushy_principal:fetch_principal(<<"anorg">>, <<"testuser">>),
-               ?assertMatch(#pushy_principal{}, Result)
+               Result = pushy_principal:fetch_principals(<<"anorg">>, <<"testuser">>),
+               ?assertMatch([#pushy_principal{}], Result)
        end
       },
       {"when the user isn't in the org, it returns {not_found, not_associated_with_org}",
        fun() ->
                meck:expect(ibrowse, send_req, [{[test_url("anorg", "testuser"), '_', get],
                                                 {ok, "200", [], not_associated_principal_response_v0()}}]),
-               Result = pushy_principal:fetch_principal(<<"anorg">>, <<"testuser">>),
+               Result = pushy_principal:fetch_principals(<<"anorg">>, <<"testuser">>),
                ?assertEqual(Result, {not_found, not_associated_with_org})
        end
       },
@@ -93,7 +104,7 @@ fetch_principal_test_() ->
        fun() ->
                meck:expect(ibrowse, send_req, [{[test_url("anorg", "testuser"), '_', get],
                                                 {ok, "404", [], not_found_principal_response("testuser")}}]),
-               Result = pushy_principal:fetch_principal(<<"anorg">>, <<"testuser">>),
+               Result = pushy_principal:fetch_principals(<<"anorg">>, <<"testuser">>),
                ?assertEqual(Result, {not_found, principal})
        end
       },
@@ -101,8 +112,16 @@ fetch_principal_test_() ->
        fun() ->
                meck:expect(ibrowse, send_req, [{[test_url("anorg", "testuser"), '_', get],
                                                 {ok, "404", [], not_found_org_response("anorg")}}]),
-               Result = pushy_principal:fetch_principal(<<"anorg">>, <<"testuser">>),
+               Result = pushy_principal:fetch_principals(<<"anorg">>, <<"testuser">>),
                ?assertEqual(Result, {not_found, org})
+       end
+      },
+      {"when the response is of a v1 version, it returns an array of pushy_principals",
+       fun() ->
+               meck:expect(ibrowse, send_req, [{[test_url("anorg", "testuser"), '_', get],
+                                                {ok, "200", [version_header(1)], standard_principal_response_v1()}}]),
+               Result = pushy_principal:fetch_principals(<<"anorg">>, <<"testuser">>),
+               ?assertMatch([#pushy_principal{}, #pushy_principal{}], Result)
        end
       }
 
