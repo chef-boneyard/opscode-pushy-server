@@ -1,3 +1,4 @@
+DIALYZER_OPTS =
 rel: compile test rel/opscode-pushy-server
 
 rel/opscode-pushy-server:

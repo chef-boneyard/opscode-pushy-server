@@ -158,7 +158,7 @@ verify_request_signature(Req, State) ->
     OrgName = list_to_binary(wrq:path_info(organization_id, Req)),
     State1 = State#config_state{organization_guid = pushy_object:fetch_org_id(OrgName),
                                 organization_name = OrgName},
-    case pushy_principal:fetch_principal(OrgName, UserName) of
+    case pushy_principal:fetch_principals(OrgName, UserName) of
         {not_found, not_associated_with_org} ->
             NotFoundMsg = verify_request_message(not_associated_with_org,
                                                  UserName, OrgName),
@@ -176,22 +176,23 @@ verify_request_signature(Req, State) ->
             ConnFailedMsg = verify_request_message({conn_failed, Why},
                                                    UserName, OrgName),
             {conn_failed, wrq:set_resp_body(jiffy:encode(ConnFailedMsg), Req), State1};
-        #pushy_principal{requestor_key = PublicKey,
-                         requestor_type = Type,
-                         requestor_id = RequestorId} ->
-            DecodedPubKey = chef_authn:extract_public_key(PublicKey),
+        Principals ->
+            PubKeyData = [{Principal, chef_authn:extract_public_key(Key)} ||
+                             #pushy_principal{requestor_key = Key} = Principal <- Principals],
             Body = body_or_default(Req, <<>>),
             HTTPMethod = method_as_binary(Req),
             Path = iolist_to_binary(wrq:path(Req)),
             GetHeader = get_header_fun(Req),
             case chef_authn:authenticate_user_request(GetHeader, HTTPMethod,
-                                                      Path, Body, DecodedPubKey,
+                                                      Path, Body, PubKeyData,
                                                       ?AUTH_SKEW) of
-                {name, _} ->
+                {name, _UserId, #pushy_principal{requestor_key = Key,
+                                                 requestor_type = Type,
+                                                 requestor_id = RequestorId}} ->
                     {true, Req, State1#config_state{requestor = UserName,
                                                     requestor_id = RequestorId,
                                                     requestor_type = Type,
-                                                    requestor_key = DecodedPubKey}};
+                                                    requestor_key = chef_authn:extract_public_key(Key)}};
                 {no_authn, Reason} ->
                     Msg = verify_request_message(Reason, UserName, OrgName),
                     Json = jiffy:encode(Msg),

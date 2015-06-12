@@ -19,20 +19,20 @@
 %% under the License.
 %%
 -module(pushy_principal).
-
+-compile([{parse_transform, lager_transform}]).
 -include("pushy_wm.hrl").
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
--export([fetch_principal/2]).
+-export([fetch_principals/2]).
 
--spec fetch_principal(OrgName :: binary(),
-                      Requestor :: binary()) -> #pushy_principal{} | {not_found | conn_failed, term()}.
-fetch_principal(OrgName, Requestor) ->
+-spec fetch_principals(OrgName :: binary(),
+                      Requestor :: binary()) -> [#pushy_principal{}] | {not_found | conn_failed, term()}.
+fetch_principals(OrgName, Requestor) ->
     try
-        request_principal(OrgName, Requestor)
+        request_principals(OrgName, Requestor)
     catch
         throw:{error, {not_found, Why}} ->
             {not_found, Why};
@@ -40,57 +40,71 @@ fetch_principal(OrgName, Requestor) ->
             {conn_failed, Why}
     end.
 
--spec request_principal(OrgName :: binary(),
-                        Requestor :: binary()) -> #pushy_principal{}.
-request_principal(OrgName, Requestor) ->
-    ChefApiVersion = envy:get(pushy, chef_api_version, string),
-    Headers = [{"Accept", "application/json"},
-               {"Content-Type", "application/json"},
-               {"User-Agent", "opscode-pushy-server pushy pubkey"},
-               {"X-Ops-UserId", ""},
-               {"X-Ops-Content-Hash", ""},
-               {"X-Ops-Sign", ""},
-               {"X-Ops-Timestamp", ""},
-               {"X-Chef-Version", ChefApiVersion}],
-    Url = api_url(OrgName, Requestor),
-    case ibrowse:send_req(Url, Headers, get) of
-        {ok, "404", _Headers, ResponseBody} ->
-            %% A 404 can mean either the org doesn't exist, or the principal doesn't (or
-            %% isn't in the given org). We need to parse the JSON response body to find out
-            %% which is the case.
-            EJson = jiffy:decode(ResponseBody),
-            Reason = case ej:get({"not_found"}, EJson) of
-                         <<"org">> -> org;
-                         <<"principal">> -> principal
-                     end,
-            throw({error, {not_found, Reason}});
-        {ok, Code, ResponseHeaders, ResponseBody} ->
-            ok = pushy_http_common:check_http_response(Code, ResponseHeaders,
-                                                       ResponseBody),
-            parse_json_response(ResponseBody);
+-spec request_principals(OrgName :: binary(),
+                        Requestor :: binary()) -> [#pushy_principal{}].
+request_principals(OrgName, Requestor) ->
+    Path = api_path(OrgName, Requestor),
+    Response = pushy_http_common:fetch_unauthenticated(Path),
+    case parse_principal_response(Response) of
         {error, Reason} ->
-            io:format("got error ~p~n", [Reason]),
-            throw({error, Reason})
+            lager:error("Error requesting principal ~p: ~p~n", [Requestor, Reason]),
+            throw({error, Reason});
+        [#pushy_principal{}|_Rest] = Principals ->
+            Principals
     end.
 
--spec parse_json_response(Body :: binary()) -> #pushy_principal{}.
-parse_json_response(Body) ->
-    EJson = jiffy:decode(Body),
+-spec parse_principal_response(#chef_api_response{} | {error, any()}) -> [#pushy_principal{}] | {error, any()}.
+parse_principal_response({error, Reason}) ->
+    {error, Reason};
+parse_principal_response(#chef_api_response{response_code = "404",
+                                            response_body = Body
+                                           }) ->
+    Reason = case ej:get({"not_found"}, Body) of
+                 <<"org">> -> org;
+                 <<"principal">> -> principal
+             end,
+    {error, {not_found, Reason}};
+parse_principal_response(#chef_api_response{response_api_version = 1,
+                                            response_body = EJson} = Resp) ->
+    ok = pushy_http_common:check_response(Resp),
+    Principals = ej:get({"principals"}, EJson),
+    Principals1 = [parse_ejson_response(P) || P <- Principals],
+    filter_not_associated(Principals1);
+parse_principal_response(#chef_api_response{response_api_version = 0,
+                                            response_body=EJson} = Resp) ->
+    ok = pushy_http_common:check_response(Resp),
+    filter_not_associated([parse_ejson_response(EJson)]).
+
+
+%% Filter out any not_associated_with_org error tuples from our list of principals.  If
+%% filtering results in an empty list, return an error.
+filter_not_associated(Principals) ->
+    filter_not_associated(Principals, []).
+
+filter_not_associated([], []) ->
+    {error, {not_found, not_associated_with_org}};
+filter_not_associated([], Accum) ->
+    Accum;
+filter_not_associated([{error, {not_found, not_associated_with_org}}|Rest], Accum) ->
+    filter_not_associated(Rest, Accum);
+filter_not_associated([#pushy_principal{} = Principal|Rest], Accum) ->
+    filter_not_associated(Rest, [Principal|Accum]).
+
+-spec parse_ejson_response(EJson :: ejson_term()) -> #pushy_principal{} | {error, {not_found, not_associated_with_org}}.
+parse_ejson_response(EJson) ->
     case ej:get({"org_member"}, EJson) of
         true ->
             #pushy_principal{requestor_key = ej:get({"public_key"}, EJson),
                              requestor_type = requestor_type(ej:get({"type"}, EJson)),
                              requestor_id = ej:get({"authz_id"}, EJson)};
         _ ->
-            throw({error, {not_found, not_associated_with_org}})
+            {error, {not_found, not_associated_with_org}}
     end.
 
 requestor_type(<<"user">>)   -> user;
 requestor_type(<<"client">>) -> client.
 
--spec api_url(OrgName :: binary(), Requestor :: binary()) -> list().
-api_url(OrgName, Requestor) ->
-    Hostname = envy:get(erchef, hostname, "localhost", string),
-    Port = envy:get(erchef, port, 8000, integer),
-    lists:flatten(io_lib:format("http://~s:~w/organizations/~s/principals/~s",
-                                [Hostname, Port, OrgName, Requestor])).
+-spec api_path(OrgName :: binary(), Requestor :: binary()) -> list().
+api_path(OrgName, Requestor) ->
+    lists:flatten(io_lib:format("/organizations/~s/principals/~s",
+                                [OrgName, Requestor])).

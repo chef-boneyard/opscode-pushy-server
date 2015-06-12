@@ -24,7 +24,6 @@
                           requestor_type :: pushy_requestor_type(),
                           requestor_key :: binary()}).
 
-
 -record(config_state, {organization_name :: binary(),
                        organization_guid :: <<_:256>>,
                        % TODO: probably want to split this into specific states, instead of this
@@ -43,6 +42,18 @@
                        requestor_type :: pushy_requestor_type(),
                        requestor_key :: any()
                       }).
+
+-record(chef_api_response, { response_api_version :: integer(),
+                             response_code :: string(),
+                             response_body :: ejson_term(),
+                             response_headers :: list()
+                           }).
+
+-type ibrowse_response() :: {error, any()} | {ok, undefined | string(), [any()], binary() | maybe_improper_list()}.
+-type ejson_term() :: {maybe_improper_list()}.
+-type chef_api_response() :: #chef_api_response{}.
+
+
 
 -define(AUTH_SKEW, 900).
 -define(MAX_SIZE, 1000000).
