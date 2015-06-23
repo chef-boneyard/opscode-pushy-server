@@ -9,4 +9,4 @@ gem 'rest-client', :git => "https://github.com/opscode/rest-client.git", :tag =>
 
 #
 gem 'oc-chef-pedant', :git => "https://github.com/chef/chef-server.git", :tag => '~>2.2.0'
-gem 'opscode-pushy-client', :git => "https://github.com/opscode/opscode-pushy-client.git", :branch => 'master'
+gem 'opscode-pushy-client', :git => "https://github.com/opscode/opscode-pushy-client.git", :branch => '1.3-stable'
