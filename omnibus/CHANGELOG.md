@@ -1,11 +1,21 @@
 # Push Jobs Server Changelog
 
-## Next
-* Remove replaces line for RPM build 
+## 1.3.0 (2015-06-21)
+* Push server: Add support for multiple keys and updated principals endpoint
+* Upgrade to ZeroMQ 4
 
-* Update enterprise-chef-common to 0.5.1 (from 0.3.0)
+## 1.2.0 (2015-06-09) (Unreleased)
+* Push server: bring return codes for malformed headers into sync with chef server
+* enterprise-chef-common: Update to 0.5.1 (from 0.3.0)
   Includes many HA improvments and refactoring for reusability, along
   with updates for systemd and runit
+* Remove replaces line for RPM build
+* Update openssl and other omnibus software defs.
+* Update erlang to R16B03
+* Allow client visible server name to be separate from the VIP
+(https://github.com/chef/omnibus-pushy/issues/69)
+* Fix permissions on opscode-push-jobs-server-running.json
+* Add el7 support to test kitchen
 
 ## 1.1.6 (2014-12-04)
 * Sign packages with Omnibus 4
