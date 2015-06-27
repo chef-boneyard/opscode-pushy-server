@@ -31,6 +31,8 @@ override :ruby, version: "2.1.4"
 
 override :libzmq, version: "4.0.5"
 
+override :rebar, version: "2.6.0"
+
 # creates required build directories
 dependency "preparation"
 
