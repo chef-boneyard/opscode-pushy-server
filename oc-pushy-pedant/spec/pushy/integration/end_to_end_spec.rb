@@ -54,6 +54,15 @@ describe "end-to-end-test" do
       start_new_clients('DONKEY')
     end
 
+    it "heartbeat should be received when starting up" do
+      client = @clients['DONKEY'][:client]
+      threshold = client.config['push_jobs']['heartbeat']['offline_threshold']
+      heartbeater = client.instance_variable_get(:@heartbeater)
+      heartbeater.instance_variable_set(:@online, false)
+      sleep (threshold + 1)  # need a little extra time, just in case
+      client.online?.should == true
+    end
+
     it 'node count should be 1' do
       get(status_url, admin_user) do |response|
         response.should look_like({
