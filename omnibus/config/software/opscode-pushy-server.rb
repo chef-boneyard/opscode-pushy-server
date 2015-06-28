@@ -15,7 +15,7 @@
 #
 
 name "opscode-pushy-server"
-default_version "2.0.0-alpha.0"
+default_version "2.0.0-alpha.1"
 
 source git:  "git://github.com/opscode/opscode-pushy-server"
 
