@@ -151,6 +151,8 @@ init([NodeRef, NodeAddr, IncarnationId]) ->
 %% be ignored, as they aren't relevant in post_init.
 %%
 post_init(timeout, State) ->
+    % It's important to send some message back when the connection starts, so the client knows
+    % the (encrypted) connection is working.  We could send an "ack", but the abort here will do.
     State1 = force_abort(State),
     {next_state, state_transition(init, rehab, State1), State1};
 post_init(Message, #state{node_ref=NodeRef}=State) ->
@@ -386,7 +388,10 @@ process_message(#state{node_ref=NodeRef, node_addr=CurAddr} = State, #pushy_mess
     gproc:reg({n, l, GprocNewAddr}),
     GprocCurAddr = pushy_node_state_sup:mk_gproc_addr(CurAddr),
     gproc:unreg({n, l, GprocCurAddr}),
-    process_message(State#state{node_addr=NewAddr}, Message);
+    State1 = State#state{node_addr=NewAddr},
+    % Send something back to the node, so it can be sure that the (encrypted) channel is working
+    State2 = do_send(State1, {[{type, <<"ack">>}]}),
+    process_message(State2, Message);
 process_message(#state{node_ref=NodeRef, node_addr=Address} = State, #pushy_message{address=Address, body=Data}) ->
     JobId = extract_job_id(Data),
     BinaryType = ej:get({<<"type">>}, Data),
