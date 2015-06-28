@@ -15,7 +15,7 @@
 #
 
 name "pushy-server-schema"
-default_version "1.0.0"
+default_version "2.0.0-alpha.2"
 
 # To install, we need sqitch, but we can use the one already installed
 # for Enterprise Chef
