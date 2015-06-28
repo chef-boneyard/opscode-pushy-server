@@ -80,9 +80,14 @@ describe "pushy config" do
       "incarnation_id" => /.*/,
     } }
 
+  def config_url(suffix = "")
+    # pushy config request must have a 40-character "ccpk" parameter (client curve public key)
+    api_url("/pushy/config/#{suffix}") + "?ccpk=1234567890123456789012345678901234567890"
+  end
+
   context "/organization/<name>/pushy/config/" do
     it "GET returns 404" do
-      get(api_url("pushy/config/"), admin_user) do |response|
+      get(config_url, admin_user) do |response|
         response.should look_like({
             :status => 404
           })
@@ -90,7 +95,7 @@ describe "pushy config" do
     end
 
     it "PUT returns 404" do
-      put(api_url("pushy/config/"), admin_user, :payload => config_body) do |response|
+      put(config_url, admin_user, :payload => config_body) do |response|
         response.should look_like({
             :status => 404
           })
@@ -98,7 +103,7 @@ describe "pushy config" do
     end
 
     it "POST returns 404" do
-      post(api_url("pushy/config/"), admin_user, :payload => config_body) do |response|
+      post(config_url, admin_user, :payload => config_body) do |response|
         response.should look_like({
             :status => 404
           })
@@ -106,7 +111,7 @@ describe "pushy config" do
     end
 
     it "DELETE returns 404" do
-      delete(api_url("pushy/config/"), admin_user) do |response|
+      delete(config_url, admin_user) do |response|
         response.should look_like({
             :status => 404
           })
@@ -116,7 +121,7 @@ describe "pushy config" do
 
   context "GET /organization/<name>/pushy/config/<nodename>" do
     it "returns 200 and server config" do
-      get(api_url("pushy/config/DONKEY"), admin_user) do |response|
+      get(config_url("DONKEY"), admin_user) do |response|
         # TODO: probably should grab the correct values from config instead of
         # hard-coding this, but this is proof-of-concept test only right now
         response.should look_like({
@@ -129,7 +134,7 @@ describe "pushy config" do
 
   context "PUT /organization/<name>/pushy/config/<nodename>" do
     it "returns 405" do
-      put(api_url("pushy/config/DONKEY"), admin_user,
+      put(config_url("DONKEY"), admin_user,
         :payload => config_body) do |response|
         response.should look_like({
             :status => 405
@@ -140,7 +145,7 @@ describe "pushy config" do
 
   context "POST /organization/<name>/pushy/config/<nodename>" do
     it "returns 405" do
-      post(api_url("pushy/config/DONKEY"), admin_user,
+      post(config_url("DONKEY"), admin_user,
         :payload => config_body) do |response|
         response.should look_like({
             :status => 405
@@ -151,7 +156,7 @@ describe "pushy config" do
 
   context "DELETE /organization/<name>/pushy/config/<nodename>" do
     it "returns 405" do
-      delete(api_url("pushy/config/DONKEY"), admin_user) do |response|
+      delete(config_url("DONKEY"), admin_user) do |response|
         response.should look_like({
             :status => 405
           })
@@ -162,7 +167,7 @@ describe "pushy config" do
   describe 'access control' do
     context 'GET /config/<name>' do
       it 'returns a 200 ("OK") for admin' do
-        get(api_url("/pushy/config/#{config_name}"), admin_user) do |response|
+        get(config_url(config_name), admin_user) do |response|
           response.should look_like({
                                       :status => 200
                                     })
@@ -170,7 +175,7 @@ describe "pushy config" do
       end
 
       it 'returns a 200 ("OK") for normal user' do
-        get(api_url("/pushy/config/#{config_name}"), normal_user) do |response|
+        get(config_url(config_name), normal_user) do |response|
           response.should look_like({
                                       :status => 200
                                     })
@@ -178,8 +183,8 @@ describe "pushy config" do
       end
 
       it 'returns a 200 ("OK") for client' do
-        get(api_url("/pushy/config/#{member_client.name}"),
-            member_client) do |response|
+        get(config_url(member_client.name),
+            platform.non_admin_client) do |response|
           response.should look_like({
                                       :status => 200
                                     })
@@ -187,7 +192,7 @@ describe "pushy config" do
       end
 
       it 'returns a 401 ("Unauthorized") for invalid user' do
-        get(api_url("/pushy/config/#{config_name}"),
+        get(config_url(config_name),
             invalid_user) do |response|
           response.should look_like({
                                       :status => 401,
@@ -199,7 +204,7 @@ describe "pushy config" do
       end
 
       it 'returns a 403 ("Forbidden") for outside user' do
-        get(api_url("/pushy/config/#{outside_user.name}"),
+        get(config_url(outside_user.name),
             outside_user) do |response|
           response.should look_like({
                                       :status => 403,
@@ -211,7 +216,7 @@ describe "pushy config" do
       end
 
       it 'returns a 401 ("Unauthorized") for bogus client' do
-        get(api_url("/pushy/config/#{config_name}"),
+        get(config_url(config_name),
             platform.bad_client) do |response|
           response.should look_like({
                                       :status => 401
@@ -220,7 +225,7 @@ describe "pushy config" do
       end
 
       it 'returns a 403 ("Forbidden") when client and node name do not match' do
-        get(api_url("/pushy/config/#{config_name}"),
+        get(config_url(config_name),
             platform.non_admin_client) do |response|
           response.should look_like({
                                       :status => 403,
@@ -262,7 +267,7 @@ describe "pushy config" do
       # here which probably needs to be addressed at some point.
 
       it 'returns a 200 ("OK") for member' do
-        get(api_url("/pushy/config/#{config_name}"), member) do |response|
+        get(config_url(config_name), member) do |response|
           response.should look_like({
                                       :status => 200
                                     })
@@ -270,7 +275,7 @@ describe "pushy config" do
       end
 
       it 'returns a 403 ("Forbidden") for non-member' do
-        get(api_url("/pushy/config/#{config_name}"), non_member) do |response|
+        get(config_url(config_name), non_member) do |response|
           response.should look_like({
                                       :status => 403,
                                       :body_exact => {
@@ -282,7 +287,7 @@ describe "pushy config" do
 
       it 'returns a 200 ("OK") for member client' do
         skip 'something weird going on for clients here' do
-          get(api_url("/pushy/config/#{config_name}"), member_client) do |response|
+          get(config_url(config_name), member_client) do |response|
             response.should look_like({
                 :status => 200
               })
@@ -292,7 +297,7 @@ describe "pushy config" do
 
       it 'returns a 403 ("Forbidden") for non-member client' do
         skip 'something weird going on for clients here' do
-          get(api_url("/pushy/config/#{config_name}"), non_member_client) do |response|
+          get(config_url(config_name), non_member_client) do |response|
             response.
               should look_like({
                 :status => 403,
@@ -305,7 +310,7 @@ describe "pushy config" do
       end
 
       it 'returns a 403 ("Forbidden") for outside user' do
-        get(api_url("/pushy/config/#{config_name}"),
+        get(config_url(config_name),
             outside_user) do |response|
           response.should look_like({
                                       :status => 403,
@@ -321,7 +326,7 @@ describe "pushy config" do
   context 'invalid request' do
     it "returns 404 (\"Not Found\") when organization doesn't exist" do
       # This should be un-pended when OC-5484 is done
-      path = api_url("/pushy/config/#{config_name}").gsub(org, "bogus-org")
+      path = config_url(config_name).gsub(org, "bogus-org")
       get(path, admin_user) do |response|
         response.should look_like({
                                     :status => 404
@@ -337,7 +342,7 @@ describe "pushy config" do
     let(:failure_user) { invalid_user }
 
     context 'GET /config/<name>' do
-      let(:url) { api_url("/pushy/config/#{config_name}") }
+      let(:url) { config_url(config_name) }
       let(:response_should_be_successful) do
         response.should look_like({
                                     :status => 200,
