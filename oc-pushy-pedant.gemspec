@@ -9,4 +9,7 @@ Gem::Specification.new do |s|
   s.files       = Dir['spec/**/*_spec.rb'] + Dir['lib/**/*.rb']
   s.homepage    = 'http://opscode.com'
   s.require_paths = ['spec', 'lib']
+
+  s.add_dependency "httpclient"
+  s.add_dependency "typhoeus"
 end
