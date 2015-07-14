@@ -1,7 +1,7 @@
 GIT
   remote: git://github.com/opscode/omnibus-software.git
-  revision: fc70f9fd405f838f1ea9714698d2acf5fb05f205
-  branch: ma/update_rebar
+  revision: 997d7c1cbeb4be11f13e1b8f88c2a5b40bdb7fca
+  branch: master
   specs:
     omnibus-software (4.0.0)
 
