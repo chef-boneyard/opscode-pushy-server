@@ -24,8 +24,8 @@ shared_context "end_to_end_util" do
   # A variety of timeouts are used to ensure that jobs have started,
   # nodes are available, etc.  These are set very conservatively.
   CLIENT_START_TIMEOUT       = 5
-  JOB_START_TIMEOUT          = 10
-  JOB_STATUS_TIMEOUT_DEFAULT = 20
+  JOB_START_TIMEOUT          = 15
+  JOB_STATUS_TIMEOUT_DEFAULT = 30
   NODE_AVAILABILITY_TIMEOUT  = 10
   NODE_STATUS_TIMEOUT        = 10
   SERVER_RESTART_TIMEOUT     = 45 # increasing this makes failing tests take longer, but salvages some slow runs
