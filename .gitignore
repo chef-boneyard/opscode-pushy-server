@@ -6,3 +6,6 @@ bin/*
 files/pushy-server-cookbooks/cache/
 vendor/bundle
 vendor/cookbooks
+# emacs leaves these behind.
+*~
+*#
