@@ -32,7 +32,7 @@ shared_context "end_to_end_util" do
 
   CLIENT_CREATION_RETRIES    = 5  # how many times to retry a client creation
   CLIENT_CREATION_SLEEP      = 10 # how long to wait between retries
-  
+
   def echo_yahoo
     'sh ' + File.expand_path('../../support/echo_yahoo_to_tmp_pushytest', __FILE__)
   end
@@ -87,7 +87,7 @@ shared_context "end_to_end_util" do
         puts "Got a #{response.code} response to a POST to /clients for client #{name}: (try #{retry_count})"
         pp response
         # 500 happens when keygen is behind; generating a key can take almost a sec on a slow box
-        break if response.code < 500 
+        break if response.code < 500
         sleep CLIENT_CREATION_SLEEP
         retry_count+=1
       end
@@ -253,6 +253,9 @@ shared_context "end_to_end_util" do
     get_rest("pushy/node_states/#{node}")
   end
 
+  def wait_for_job_complete_or_fail(uri)
+    wait_for_job_status(uri, ['complete', 'quorum_failed'])
+  end
 
   def wait_for_job_complete(uri)
     wait_for_job_status(uri, 'complete')
@@ -260,12 +263,13 @@ shared_context "end_to_end_util" do
 
   def wait_for_job_status(uri, status, options = {})
     job = nil
+    status_list = status.respond_to?(:member?) ? status : [status]
     begin
       Timeout::timeout(options[:timeout] || JOB_STATUS_TIMEOUT_DEFAULT) do
         begin
           sleep(SLEEP_TIME) if job
           job = get_job(uri)
-        end until job['status'] == status
+        end until status_list.member?(job['status'])
       end
     rescue Timeout::Error
       raise "Job never reached status '#{status}': actual job reported as #{job}"
@@ -334,7 +338,7 @@ shared_context "end_to_end_util" do
         end
       end
     rescue Timeout::Error
-      raise "Clients never committed to job, or job never started: #{uncommitted_nodes.map { |name| "#{name}: #{@clients[name][:states][-1]}" }}"
+      raise "Timeout of #{JOB_START_TIMEOUT} sec elapsed: Clients never committed to job, or job never started: #{uncommitted_nodes.map { |name| "#{name}: #{@clients[name][:states][-1]}" }}"
     end
   end
 
