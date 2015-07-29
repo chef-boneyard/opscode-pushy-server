@@ -154,7 +154,7 @@ voting({Response, NodeRef},
         down ->
                 add_quorum_vote_event(State, NodeName, down);
         _ ->
-                lager:error("bad response while voting on job ~p: ~p ~p", [JobId, NodeName, Response]),
+                lager:error("Job ~p bad response while voting ~p ~p", [JobId, NodeName, Response]),
                 State
     end,
     State2 = case get_node_state(NodeRef, State1) of
