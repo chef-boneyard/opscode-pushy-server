@@ -9,10 +9,10 @@
                    "30a9f7867d615af45783235faa52742d11a9348e"}},
        {goldrush,".*",
                  {git,"git://github.com/DeadZen/goldrush.git",
-                      "71e63212f12c25827e0c1b4198d37d5d018a7fec"}},
+                      "64864ba7fcf40988361340e48680b49a2c2938cf"}},
        {lager,".*",
               {git,"https://github.com/basho/lager",
-                   "d33ccf3b69de09a628fe38b4d7981bb8671b8a4f"}},
+                   "26540665e640872718d3dd9c35f2addf1279114b"}},
        {erlzmq,".*",
                {git,"https://github.com/chef/erlzmq2",
                     "fead4456ce511951855fcdc4a53959d127d9886d"}},
@@ -63,19 +63,19 @@
                    "17d8d95dbb644d20af3ab7dc19d04dab14e4bed5"}},
        {mochiweb,".*",
                  {git,"git://github.com/basho/mochiweb.git",
-                      "5e6e3e688dc9987a97e261431256e29671555c0b"}},
+                      "ade2a9b29a11034eb550c1d79b4f991bf5ca05ba"}},
        {webmachine,".*",
-                   {git,"https://github.com/chef/webmachine",
-                        "7cd6ddf592a2e050544891d151944dd3017dc517"}},
+                   {git,"https://github.com/basho/webmachine",
+                        "7677c240f4a7ed020f4bab48278224966bb42311"}},
        {folsom_graphite,".*",
                         {git,"https://github.com/chef/folsom_graphite",
                              "d4ce9bf02c025ca559d18abc084c367bf4deaf3f"}},
        {rebar_lock_deps_plugin,".*",
-                               {git,"https://github.com/seth/rebar_lock_deps_plugin.git",
+                               {git,"https://github.com/seth/rebar_lock_deps_plugin",
                                     "7a5835029c42b8138325405237ea7e8516a84800"}},
        {eper,".*",
              {git,"https://github.com/massemanet/eper",
-                  "80e7cd6446d26d2423f2acd37253826bb3152964"}}]}.
+                  "8e9eee4e1e55bea1483edb2c49df1842be6be683"}}]}.
 {plugins,[rebar_lock_deps_plugin]}.
 {port_env,[{"ZEROMQ_PREFIX","/opt/opscode-push-jobs-server/embedded"}]}.
 
