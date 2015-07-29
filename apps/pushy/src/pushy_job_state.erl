@@ -212,7 +212,7 @@ running({Failure,NodeRef}, State) ->
     NodeState = get_node_state(NodeRef, State),
     {State1, Status} = case NodeState of
         ready    -> {send_to_rehab(NodeRef, crashed, State), crashed};
-        running  -> {set_node_state(NodeRef, crashed, State), failure};
+        running  -> {send_to_rehab(NodeRef, crashed, State), failure};
         terminal -> {send_to_rehab(NodeRef, State), client_died_while_running}
     end,
     {_, NodeName} = NodeRef,
