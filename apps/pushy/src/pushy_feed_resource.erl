@@ -183,4 +183,10 @@ to_event_stream(Req, State) ->
             encode_event(pushy_job_state:make_job_summary_event(Job))
     end,
     %?debugVal(Res),
-    {Res, Req, State}.
+
+    %% Nginix buffers output, but this header disables.
+    %% Alternate approach would be to disable buffering for endpoint in nginx config...
+    %% https://stackoverflow.com/questions/27898622/server-sent-events-stopped-work-after-enabling-ssl-on-proxy
+    %% https://stackoverflow.com/questions/20106386/server-sent-events-eventsource-with-sinatra-on-elastic-beanstalk
+    Req2 = wrq:set_resp_headers([{"X-Accel-Buffering", "no"}], Req),
+    {Res, Req2, State}.
