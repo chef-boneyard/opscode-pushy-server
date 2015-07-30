@@ -101,8 +101,6 @@ describe "sse-test" do
 
   def start_event_stream(last_id = nil, receive_timeout = nil)
     job_feed_url = api_url("#{job_feed_path}/#{@id}")
-    # XXXX Remove this when Mark deals with nginx buffering issue
-    job_feed_url.sub!("https://api.opscode.piab", "http://api.opscode.piab:10003")
     stream = EventStreamOld.new(job_feed_url, admin_user, last_id, receive_timeout)
     # Give some time for the first events to come in
     sleep 0.25
