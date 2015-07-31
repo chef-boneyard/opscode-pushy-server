@@ -15,7 +15,7 @@
 #
 
 name "oc-pushy-pedant"
-default_version "2.0.0-alpha.0"
+default_version "2.0.0-alpha.1"
 
 # TODO: use the public git:// uri once this repo is public
 source git: "git@github.com:opscode/oc-pushy-pedant"
