@@ -23,7 +23,7 @@
 
 %% API
 -export([start_link/0,
-         start/1,
+         start/2,
          get_process/1,
          get_job_processes/0,
          register_process/1]).
@@ -44,8 +44,8 @@
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
-start(Job) ->
-    case supervisor:start_child(?SERVER, [Job]) of
+start(Job, Requestor) ->
+    case supervisor:start_child(?SERVER, [Job, Requestor]) of
         {ok, _Child} ->
             ok;
         %% No nodes in job, so it has shut down straight away

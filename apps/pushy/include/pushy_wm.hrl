@@ -42,7 +42,9 @@
                        requestor_type :: pushy_requestor_type(),
                        requestor_key :: any(),
 
-                       curve_public_key :: binary()
+                       curve_public_key :: binary(),
+
+                       job_pid :: pid()
                       }).
 
 -record(chef_api_response, { response_api_version :: integer(),

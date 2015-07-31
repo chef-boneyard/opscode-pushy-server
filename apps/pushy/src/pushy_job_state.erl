@@ -18,14 +18,16 @@
 %% under the License.
 %%
 -module(pushy_job_state).
+-include_lib("eunit/include/eunit.hrl").
 
 -behaviour(gen_fsm).
 
 %% API
--export([start_link/1,
+-export([start_link/2,
          stop_job/1,
-         get_job_state/1,
-         send_node_event/3
+         send_node_event/3,
+         get_events/2,
+         make_job_summary_event/1
         ]).
 
 %% gen_fsm callbacks
@@ -38,7 +40,8 @@
 
 %% fsm states
 -export([voting/2,
-         running/2]).
+         running/2,
+         waiting_around/2]).
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
@@ -46,27 +49,29 @@
 
 -include("pushy.hrl").
 -include("pushy_sql.hrl").
+-include("pushy_event.hrl").
 
 -compile([{parse_transform, lager_transform}]).
 
 %% This is Erlang not C/C++
--record(state, {job_host        :: binary(),
+-record(state, {
+                job_host        :: binary(),
                 job             :: #pushy_job{},
                 job_nodes       :: dict(),
-                voting_timeout  :: integer()}).
+                voting_timeout  :: integer(),
+                term_reason     :: atom(),
+                next_event_id   :: integer(),
+                rev_events      :: [#event{}],
+                subscribers     :: [pid()],
+                done            :: boolean()
+        }).
 
 %%%
 %%% External API
 %%%
--spec start_link(#pushy_job{}) -> 'ignore' | {'error',_} | {'ok',pid()}.
-start_link(Job) ->
-    gen_fsm:start_link(?MODULE, Job, []).
-
-get_job_state(JobId) ->
-    case pushy_job_state_sup:get_process(JobId) of
-        not_found -> not_found;
-        Pid -> pushy_fsm_utils:safe_sync_send_all_state_event(Pid, get_job_status)
-    end.
+-spec start_link(#pushy_job{}, binary()) -> 'ignore' | {'error',_} | {'ok',pid()}.
+start_link(Job, Requestor) ->
+    gen_fsm:start_link(?MODULE, {Job, Requestor}, []).
 
 stop_job(JobId) ->
     case pushy_job_state_sup:get_process(JobId) of
@@ -77,7 +82,7 @@ stop_job(JobId) ->
 %%%
 %%% Initialization
 %%%
-init(#pushy_job{id = JobId, job_nodes = JobNodeList} = Job) ->
+init({#pushy_job{id = JobId, job_nodes = JobNodeList} = Job, Requestor}) ->
     Host = list_to_binary(envy:get(pushy, server_name, string)),
     case pushy_job_state_sup:register_process(JobId) of
         true ->
@@ -86,13 +91,23 @@ init(#pushy_job{id = JobId, job_nodes = JobNodeList} = Job) ->
             JobNodes = dict:from_list([{{OrgId, NodeName}, JobNode} ||
                                           #pushy_job_node{org_id = OrgId, node_name = NodeName} =
                                               JobNode <- JobNodeList]),
-            State = #state{job = Job#pushy_job{},
+            % All jobs are in the same org.. right?
+            [#pushy_job_node{org_id = OrgId}|_] = JobNodeList,
+            OrgEvents = pushy_org_events_sup:get_or_create_process(OrgId),
+            State0 = #state{job = Job#pushy_job{},
                            job_nodes = JobNodes,
                            job_host = Host,
-                           voting_timeout = envy:get(pushy, voting_timeout, 60, integer)},
+                           voting_timeout = envy:get(pushy, voting_timeout, 60, integer),
+                           next_event_id = 1,
+                           rev_events = [],
+                           subscribers = [OrgEvents],   % Start by subscribing the org to the feed
+                           done = false},
+            % XXX monitor the OrgEvents; update it if need be
+            NodeCount = length(JobNodeList),
+            State = add_start_event(State0, Job#pushy_job.command, Job#pushy_job.run_timeout, Job#pushy_job.quorum, NodeCount, Requestor),
             listen_for_down_nodes(dict:fetch_keys(JobNodes)),
 
-            lager:debug([{job_id,Job#pushy_job.id}],
+            lager:info([{job_id,Job#pushy_job.id}],
                         "Job ~p starting '~p' on ~p nodes, with timeout ~ps",
                         [JobId, Job#pushy_job.command, length(JobNodeList), Job#pushy_job.run_timeout]),
 
@@ -112,76 +127,124 @@ init(#pushy_job{id = JobId, job_nodes = JobNodeList} = Job) ->
 % Nodes can only be new, ready or terminal while we're voting.
 voting({ack_commit, NodeRef}, State) ->
     % Node from new -> ready
-    State2 = case get_node_state(NodeRef, State) of
-        new      -> set_node_state(NodeRef, ready, State);
-        ready    -> State;
-        terminal -> send_to_rehab(NodeRef, State)
+    {State1, Status} = case get_node_state(NodeRef, State) of
+        new      -> {set_node_state(NodeRef, ready, State), success};
+        ready    -> {State, unexpected_commit};
+        terminal -> {send_to_rehab(NodeRef, State), client_died_while_voting}
     end,
+    {_, NodeName} = NodeRef,
+    State2 = add_quorum_vote_event(State1, NodeName, Status),
     maybe_finished_voting(State2);
 voting({nack_commit, NodeRef}, State) ->
     % Node from new -> nacked.
-    State2 = case get_node_state(NodeRef, State) of
-        new      -> set_node_state(NodeRef, nacked, State);
-        ready    -> send_to_rehab(NodeRef, unavailable, State);
-        terminal -> send_to_rehab(NodeRef, State)
+    {State1, Status} = case get_node_state(NodeRef, State) of
+        new      -> {set_node_state(NodeRef, nacked, State), failure};
+        ready    -> {send_to_rehab(NodeRef, unavailable, State), lost_availibility};
+        terminal -> {send_to_rehab(NodeRef, State), client_died_while_voting}
     end,
+    {_, NodeName} = NodeRef,
+    State2 = add_quorum_vote_event(State1, NodeName, Status),
     maybe_finished_voting(State2);
-voting({_, NodeRef}, State) ->
-    State2 = case get_node_state(NodeRef, State) of
-        new      -> send_to_rehab(NodeRef, unavailable, State);
-        ready    -> send_to_rehab(NodeRef, unavailable, State);
-        terminal -> send_to_rehab(NodeRef, State)
+voting({Response, NodeRef},
+       #state{job = Job} = State) ->
+
+    JobId = Job#pushy_job.id,
+    {_, NodeName} = NodeRef,
+    State1 = case Response of
+        down ->
+                add_quorum_vote_event(State, NodeName, down);
+        _ ->
+                lager:error("Job ~p bad response while voting ~p ~p", [JobId, NodeName, Response]),
+                State
+    end,
+    State2 = case get_node_state(NodeRef, State1) of
+        new      -> send_to_rehab(NodeRef, unavailable, State1);
+        ready    -> send_to_rehab(NodeRef, unavailable, State1);
+        terminal -> send_to_rehab(NodeRef, State1)
     end,
     maybe_finished_voting(State2).
 
 % Nodes can never be "new" when running--only ready, running or terminal.
 running({ack_run, NodeRef}, State) ->
+    {_, NodeName} = NodeRef,
     % Node from ready -> running
     State2 = case get_node_state(NodeRef, State) of
-        ready    -> set_node_state(NodeRef, running, State);
+        ready    ->
+                    State1 = add_run_start_event(State, NodeName),
+                    set_node_state(NodeRef, running, State1);
         running  -> State;
-        terminal -> send_to_rehab(NodeRef, State)
+        terminal ->
+                    State1 = add_run_complete_event(State, NodeName, client_died_while_running),
+                    send_to_rehab(NodeRef, State1)
     end,
+    maybe_finished_running(State2);
+running({nack_run, NodeRef}, State) ->
+    % Node from ready -> running
+    {State1, Status} = case get_node_state(NodeRef, State) of
+        % A client should never send a "nack_run", it turns out; so if we get one, we tell
+        % the client to reset.
+        ready    -> {send_to_rehab(NodeRef, failed, State), run_nacked};
+        running  -> {send_to_rehab(NodeRef, failed, State), run_nacked_while_running};
+        terminal -> {send_to_rehab(NodeRef, State), client_died_while_running}
+    end,
+    {_, NodeName} = NodeRef,
+    State2 = add_run_complete_event(State1, NodeName, Status),
     maybe_finished_running(State2);
 running({succeeded, NodeRef}, State) ->
-    State2 = case get_node_state(NodeRef, State) of
-        ready    -> send_to_rehab(NodeRef, crashed, State);
-        running  -> set_node_state(NodeRef, succeeded, State);
-        terminal -> send_to_rehab(NodeRef, State)
+    {State1, Status} = case get_node_state(NodeRef, State) of
+        ready    -> {send_to_rehab(NodeRef, crashed, State), crashed};
+        running  -> {set_node_state(NodeRef, succeeded, State), success};
+        terminal -> {send_to_rehab(NodeRef, State), client_died_while_running}
     end,
+    {_, NodeName} = NodeRef,
+    State2 = add_run_complete_event(State1, NodeName, Status),
     maybe_finished_running(State2);
 running({failed, NodeRef}, State) ->
-    State2 = case get_node_state(NodeRef, State) of
-        ready    -> send_to_rehab(NodeRef, crashed, State);
-        running  -> set_node_state(NodeRef, failed, State);
-        terminal -> send_to_rehab(NodeRef, State)
+    {State1, Status} = case get_node_state(NodeRef, State) of
+        ready    -> {send_to_rehab(NodeRef, crashed, State), crashed};
+        running  -> {set_node_state(NodeRef, failed, State), failure};
+        terminal -> {send_to_rehab(NodeRef, State), client_died_while_running}
     end,
+    {_, NodeName} = NodeRef,
+    State2 = add_run_complete_event(State1, NodeName, Status),
     maybe_finished_running(State2);
-running({_,NodeRef}, State) ->
-    State2 = case get_node_state(NodeRef, State) of
-        ready    -> send_to_rehab(NodeRef, crashed, State);
-        running  -> send_to_rehab(NodeRef, crashed, State);
-        terminal -> send_to_rehab(NodeRef, State)
+running({Failure,NodeRef}, State) ->
+    NodeState = get_node_state(NodeRef, State),
+    {State1, Status} = case NodeState of
+        ready    -> {send_to_rehab(NodeRef, crashed, State), crashed};
+        running  -> {send_to_rehab(NodeRef, crashed, State), failure};
+        terminal -> {send_to_rehab(NodeRef, State), client_died_while_running}
     end,
+    {_, NodeName} = NodeRef,
+    JobId = State#state.job#pushy_job.id,
+    lager:info("Job ~p failure type ~p from node ~p in state ~p", [JobId, Failure, NodeName, NodeState]),
+    State2 = add_run_complete_event(State1, NodeName, Status),
     maybe_finished_running(State2).
 
 -spec handle_event(any(), job_status(), #state{}) ->
         {'next_state', job_status(), #state{}}.
 handle_event(Event, StateName, State) ->
-    lager:error("Unknown message handle_event(~p)", [Event]),
+    JobId = State#state.job#pushy_job.id,
+    lager:error("Unknown message handle_event(~p) for job ~p", [Event, JobId]),
     {next_state, StateName, State}.
 
 -spec handle_sync_event(any(), any(), job_status(), #state{}) ->
                                {'next_state', job_status(), #state{}}|
                                {'reply', #pushy_job{}, job_status(), #state{}} |
                                {'stop', 'shutdown', 'ok', #state{}}.
-handle_sync_event(get_job_status, _From, StateName,
-        #state{job = Job, job_nodes = JobNodes} = State) ->
-    JobNodesList = [ JobNode || {_,JobNode} <- dict:to_list(JobNodes) ],
-    Job2 = Job#pushy_job{job_nodes = JobNodesList},
-    {reply, Job2, StateName, State};
+handle_sync_event(get_subscribers, _From, StateName, State) ->
+    % Just for unit tests
+    {reply, {ok, State#state.subscribers}, StateName, State};
 handle_sync_event(stop_job, _From, _StateName, State) ->
     {stop, shutdown, ok, State};
+handle_sync_event({get_events, LastEventID}, {Pid, _}, StateName, State) ->
+    Response = build_event_response(LastEventID, State),
+    State1 = case Response of
+                 {true, _} -> State;
+                 % Automatically subscribe to events immediately, to avoid race conditions
+                 {false, _} -> add_subscriber(Pid, State)
+             end,
+    {reply, Response, StateName, State1};
 handle_sync_event(Event, From, StateName, State) ->
     lager:error("Unknown message handle_sync_event(~p) from ~p", [Event, From]),
     {next_state, StateName, State}.
@@ -190,12 +253,16 @@ handle_sync_event(Event, From, StateName, State) ->
         {'next_state', job_status(), #state{}}.
 handle_info({state_change, NodeRef, _Current, shutdown}, StateName, State) ->
     pushy_job_state:StateName({down,NodeRef}, State);
+handle_info({state_change, _NodeRef, _Old, _New}, StateName, State) ->
+    % Ignore any other state-change messages
+    {next_state, StateName, State};
 handle_info(voting_timeout, voting,
         #state{job = Job, voting_timeout = VotingTimeout} = State) ->
     lager:debug([{job_id,Job#pushy_job.id}],
                 "Timeout occurred during voting on job ~p after ~ps", [Job#pushy_job.id, VotingTimeout]),
+    State1 = do_on_matching_state(new, fun(N, S) -> add_quorum_vote_event(S, N#pushy_job_node.node_name, voting_timeout) end, State),
     % Set all nodes that have not responded to the vote, to new, forcing voting to finish
-    State2 = send_matching_to_rehab(new, unavailable, State),
+    State2 = send_matching_to_rehab(new, unavailable, State1),
     maybe_finished_voting(State2);
 % Rather than store and cancel timers, we let them fire and ignore them if we've
 % moved on to a new state.
@@ -208,8 +275,21 @@ handle_info(running_timeout, running,
     State2 = send_matching_to_rehab(ready, timed_out, State),
     State3 = send_matching_to_rehab(running, timed_out, State2),
     finish_job(timed_out, State3);
+handle_info(_, waiting_around, State) ->
+    % ignore anything other than the timeout -- if we exited instead of waiting around, these would be
+    % ignored anyway.
+    {next_state, waiting_around, State};
+handle_info(ping, StateName, State) ->
+    %?debugFmt("~p: PING", [iolist_to_binary(pushy_event:get_time_as_iso8601(erlang:now()))]),
+    % Solely for testing -- force a message to go out so we ca detect if the connection has gone down.
+    post_to_subscribers(State, ping),
+    {next_state, StateName, State};
+handle_info({'DOWN', _MonitorRef, process, Pid, _Info}, StateName, State) ->
+    %?debugFmt("~p: DOWN", [iolist_to_binary(pushy_event:get_time_as_iso8601(erlang:now()))]),
+    State1 = remove_subscriber(Pid, State),
+    {next_state, StateName, State1};
 handle_info(Info, StateName, State) ->
-    lager:error("Unknown message handle_info(~p)", [Info]),
+    lager:error("Unknown message handle_info(~p, ~p)", [Info, StateName]),
     {next_state, StateName, State}.
 
 -spec terminate(any(), job_status(), #state{}) -> 'ok'.
@@ -242,15 +322,19 @@ set_node_state(NodeRef, NewNodeState, #state{job_nodes = JobNodes} = State) ->
     State#state{job_nodes = JobNodes2}.
 
 send_to_rehab(NodeRef, NewNodeState, State) ->
-    State2 = set_node_state(NodeRef, NewNodeState, State),
-    send_to_rehab(NodeRef, State2).
+    State1 = set_node_state(NodeRef, NewNodeState, State),
+    send_to_rehab(NodeRef, State1).
 
 send_to_rehab(NodeRef, State) ->
     case get_node_state(NodeRef, State) of
-        terminal -> pushy_node_state:rehab(NodeRef);
-        _ -> error("Attempt to send node ~p to rehab even though it is in non-terminal state ~p")
-    end,
-    State.
+        terminal ->
+            pushy_node_state:rehab(NodeRef),
+            {_, NodeName} = NodeRef,
+            add_rehab_event(State, NodeName);
+        _ ->
+            error("Attempt to send node ~p to rehab even though it is in non-terminal state ~p"),
+            State
+    end.
 
 send_matching_to_rehab(OldNodeState, NewNodeState, #state{job_nodes = JobNodes} = State) ->
     JobNodes2 = dict:map(
@@ -267,15 +351,23 @@ send_matching_to_rehab(OldNodeState, NewNodeState, #state{job_nodes = JobNodes} 
         end, JobNodes),
     State#state{job_nodes = JobNodes2}.
 
+-spec do_on_matching_state(atom, fun((#pushy_job_node{}, #state{}) -> #state{}), #state{}) -> #state{}.
+do_on_matching_state(NodeState, Fun, #state{job_nodes = JobNodes} = State) ->
+    Nodes = [N || {_,N} <- dict:to_list(dict:filter(fun(_, Node) -> Node#pushy_job_node.status =:= NodeState end, JobNodes))],
+    % "Fun" takes the node and the state, and returns a new state.
+    lists:foldl(Fun, State, Nodes).
+
 maybe_finished_voting(#state{job = Job} = State) ->
     case count_nodes_in_state([new], State) of
         0 ->
             QuorumMinimum = Job#pushy_job.quorum,
             case count_nodes_in_state([ready], State) >= QuorumMinimum of
-                true -> start_running(State);
+                true ->
+                    State1 = add_quorum_succeeded_event(State),
+                    start_running(State1);
                 _ ->
-                    State2 = send_matching_to_rehab(ready, was_ready, State),
-                    finish_job(quorum_failed, State2)
+                    State1 = send_matching_to_rehab(ready, was_ready, State),
+                    finish_job(quorum_failed, State1)
             end;
         _ -> {next_state, voting, State}
     end.
@@ -309,12 +401,26 @@ start_running(#state{job = Job} = State) ->
 finish_job(Reason, #state{job = Job} = State) ->
     % All nodes are guaranteed to be in terminal state by this point, so no
     % nodes need to be sent to rehab.
-    lager:debug([{job_id,Job#pushy_job.id}],
-                "Job ~p -> ~p", [Job#pushy_job.id, Reason]),
+    lager:info([{job_id,Job#pushy_job.id}],
+                "Job ~p completed with state ~p", [Job#pushy_job.id, Reason]),
+    State1 = add_job_complete_event(State, Reason),
+    post_to_subscribers(State1, done),
     Job2 = Job#pushy_job{status = Reason},
-    State2 = State#state{job = Job2},
+    State2 = State1#state{job = Job2, term_reason = Reason, subscribers = [], done = true},
     pushy_object:update_object(update_job, Job2, Job2#pushy_job.id),
-    {stop, {shutdown, Reason}, State2}.
+    % Wait around for a while, in case someone wants to get events describing this job
+    WaitCompleteTime = envy:get(pushy, wait_complete_time, 5, integer),
+    gen_fsm:start_timer(WaitCompleteTime*1000, wait_complete),
+    {next_state, waiting_around, State2}.
+
+waiting_around({timeout, _Ref, wait_complete}, #state{job=Job} = State) ->
+     lager:info([{job_id,Job#pushy_job.id}],
+                "Job ~p completed waiting shutting down", [Job#pushy_job.id]),
+    {stop, {shutdown, State#state.term_reason}, State};
+waiting_around(_, State) ->
+    % ignore anything other than the timeout -- if we exited instead of waiting around, these would be
+    % ignored anyway.
+    {next_state, waiting_around, State}.
 
 count_nodes_in_state(NodeStates, #state{job_nodes = JobNodes}) ->
     dict:fold(
@@ -392,3 +498,78 @@ terminalize(new) -> new;
 terminalize(ready) -> ready;
 terminalize(running) -> running.
 
+%% Event-handling
+-spec get_events(pid(), string()) -> {boolean(), iolist()}.
+get_events(JobPid, LastEventID) ->
+    pushy_fsm_utils:safe_sync_send_all_state_event(JobPid, {get_events, LastEventID}).
+
+%% event utility functions
+-type status() :: atom() | binary() | {string(), [any()]} | iolist().
+
+build_event_response(LastEventID, State = #state{done = Done}) ->
+    RevEvs = case LastEventID of
+                 undefined -> State#state.rev_events;
+                 % The events are in reverse order, so we want the beginning of the list, not the end.
+                 % Happily, this does the right thing if the LastEventID doesn't exist.
+                 S -> lists:takewhile(fun(E) -> E#event.id /= list_to_binary(S) end, State#state.rev_events)
+             end,
+    {Done, lists:reverse(RevEvs)}.
+
+add_event(State = #state{next_event_id = Id, rev_events = RevEvents}, EventName, PropList) ->
+    IdStr = iolist_to_binary(io_lib:format("job-~B", [Id])),
+    Ev = pushy_event:make_event(EventName, IdStr, PropList),
+    JobId = State#state.job#pushy_job.id,
+    post_to_subscribers(State, {job_ev, JobId, Ev}),
+    State#state{next_event_id = Id + 1, rev_events = [Ev | RevEvents]}.
+
+post_to_subscribers(#state{subscribers = Subscribers}, Msg) ->
+    lists:foreach(fun(W) -> W ! Msg end, Subscribers).
+
+-spec add_start_event(#state{}, binary(), non_neg_integer(), non_neg_integer(), non_neg_integer(), binary()) -> #state{}.
+add_start_event(State, Command, RunTimeout, Quorum, NodeCount, User) ->
+    add_event(State, "start", [{<<"command">>, Command}, {<<"run_timeout">>, RunTimeout}, {<<"quorum">>, Quorum}, {<<"node_count">>, NodeCount}, {<<"user">>, User}]).
+
+-spec add_quorum_vote_event(#state{}, binary(), status()) -> #state{}.
+add_quorum_vote_event(State, Node, Status) ->
+    add_event(State, "quorum_vote", [{<<"node">>, Node}, {<<"status">>, status_to_binary(Status)}]).
+
+-spec add_quorum_succeeded_event(#state{}) -> #state{}.
+add_quorum_succeeded_event(State) ->
+    add_event(State, "quorum_succeeded", []).
+
+-spec add_run_start_event(#state{}, binary()) -> #state{}.
+add_run_start_event(State, Node) ->
+    add_event(State, "run_start", [{<<"node">>, Node}]).
+
+-spec add_run_complete_event(#state{}, binary(), status()) -> #state{}.
+add_run_complete_event(State, Node, Status) ->
+    add_event(State, "run_complete", [{<<"node">>, Node}, {<<"status">>, status_to_binary(Status)}]).
+
+-spec add_job_complete_event(#state{}, binary()) -> #state{}.
+add_job_complete_event(State, Status) ->
+    add_event(State, "job_complete", [{<<"status">>, status_to_binary(Status)}]).
+
+-spec add_rehab_event(#state{}, binary()) -> #state{}.
+add_rehab_event(State, Node) ->
+    add_event(State, "rehab", [{<<"node">>, Node}]).
+
+atom_to_binary(A) -> list_to_binary(atom_to_list(A)).
+
+status_to_binary(S) when is_binary(S) -> S;
+status_to_binary(S) when is_atom(S) -> atom_to_binary(S);
+status_to_binary(S) when is_list(S) -> iolist_to_binary(S);
+status_to_binary({F, A}) when is_list(F) -> iolist_to_binary(io_lib:format(F, A)).
+
+make_job_summary_event(Job) ->
+    {PL} = pushy_object:assemble_job_ejson_with_nodes(Job),
+    pushy_event:make_event("summary", 1, PL).
+
+add_subscriber(Pid, State = #state{subscribers = Ss}) ->
+    % Given how webmachine works, there is no way of knowing that an HTTP request has closed,
+    % except that the process went down.  Not a bad backup to watch for the subscriber exit
+    % anyway.
+    monitor(process, Pid),
+    State#state{subscribers = [Pid | Ss]}.
+
+remove_subscriber(Pid, State = #state{subscribers = Ss}) ->
+    State#state{subscribers = [P || P <- Ss, P /= Pid]}.

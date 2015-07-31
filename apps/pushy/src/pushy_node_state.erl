@@ -30,6 +30,7 @@
 -include("pushy_sql.hrl").
 -include_lib("pushy_common/include/pushy_metrics.hrl").
 -include_lib("pushy_common/include/pushy_messaging.hrl").
+-include_lib("eunit/include/eunit.hrl").
 
 -compile([{parse_transform, lager_transform}]).
 
