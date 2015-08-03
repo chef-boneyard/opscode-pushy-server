@@ -151,8 +151,8 @@ get_job_events(JobPid, LastEventID) ->
     {Done, FinalStr}.
 
 % Also subscribes to future events from org
-get_org_events(OrgName, LastEventID) ->
-    Evs = pushy_org_events:get_events(OrgName, LastEventID),
+get_org_events(OrgId, LastEventID) ->
+    Evs = pushy_org_events:get_events(OrgId, LastEventID),
     case Evs of
         [] -> [];
         _ -> [encode_events(Evs), "\n\n"]
@@ -163,8 +163,8 @@ to_event_stream(Req, State) ->
     KeepAliveTime = envy:get(pushy, keep_alive_time, 15, integer),
     Res = case {wrq:path_info(job_id, Req), State#config_state.pushy_job} of 
         {undefined, undefined} ->
-            OrgName = list_to_binary(wrq:path_info(organization_id, Req)),
-            Events = get_org_events(OrgName, LastEventID),
+            OrgId = State#config_state.organization_guid,
+            Events = get_org_events(OrgId, LastEventID),
             Stream = {Events, fun() -> stream_events(fun process_org_msg/1, KeepAliveTime * 1000) end},
             {stream, Stream};
         {_, undefined} -> 

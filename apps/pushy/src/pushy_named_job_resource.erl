@@ -67,6 +67,10 @@ resource_exists(Req, State) ->
     end.
 
 to_json(Req, #config_state{pushy_job = Job} = State) ->
-    EJson = pushy_object:assemble_job_ejson_with_nodes(Job),
+    IncludeFile = case wrq:get_qs_value("include_file", Req) of
+                      "true" -> true;
+                      _ -> false
+                  end,
+    EJson = pushy_object:assemble_job_ejson_with_nodes(Job, IncludeFile),
     {jiffy:encode(EJson), Req, State}.
 

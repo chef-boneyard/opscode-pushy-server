@@ -53,12 +53,26 @@
                          'updated_at'::binary()   % time updated at
                          }).
 
+% Note -- this is in a separate record instead of being in pushy_job{} because it makes
+% it easier to add incrementally to the DB.  The main pushy_job is written using some
+% generic code that doesn't allow undefineds.  By putting these optional fields in a
+% separate record, we can avoid changing the generic code.  It also allows us to persist
+% the new fields in a separate table, without worrying about migrating the existing data
+% until we're ready to do so.
+-record(pushy_job_opts, {
+                    'user'::binary(),                   % user on client to setuid to
+                    'dir'::binary(),                    % dir on client to chdir to
+                    'env'::[{binary(),binary()}],       % additional environment vars
+                    'file'::binary()                    % data to be stored in external file
+         }).
+
 -record(pushy_job, {'id'::object_id(),                  % guid for object (unique)
                     'org_id'::object_id(),              % organization guid
                     'command'::binary(),                % command to execute
                     'quorum'::non_neg_integer(),        % quorum count
                     'status'::job_status(),             % job status
                     'run_timeout'::non_neg_integer(),   % max duration (in seconds) to allow execution
+                    'opts'::#pushy_job_opts{},          % optional values
                     'job_nodes' = [] ::[#pushy_job_node{}],
                     'last_updated_by'::object_id(),     % authz guid of last actor to update
                     'created_at'::binary(),  % time created at

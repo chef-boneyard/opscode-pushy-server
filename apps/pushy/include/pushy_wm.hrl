@@ -61,3 +61,4 @@
 
 -define(AUTH_SKEW, 900).
 -define(MAX_SIZE, 1000000).
+-define(MAX_FILE_SIZE, 100000).

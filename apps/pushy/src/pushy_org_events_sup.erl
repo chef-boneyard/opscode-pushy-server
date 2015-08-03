@@ -42,14 +42,14 @@ start_link() ->
     end.
 
 -spec get_or_create_process(binary()) -> pid().
-get_or_create_process(Org) ->
-    case supervisor:start_child(?SERVER, child_spec(Org)) of
+get_or_create_process(OrgId) ->
+    case supervisor:start_child(?SERVER, child_spec(OrgId)) of
         {error, {already_started, Child}} -> Child;
         {ok, Child} -> Child
     end.
 
-child_spec(Org) ->
-    {Org, {pushy_org_events, start_link, [Org]},
+child_spec(OrgId) ->
+    {OrgId, {pushy_org_events, start_link, [OrgId]},
       transient, 5000, worker, [pushy_org_events]}.
     
 %% ------------------------------------------------------------------

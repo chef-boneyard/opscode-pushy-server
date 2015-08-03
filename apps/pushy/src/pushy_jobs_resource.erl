@@ -57,8 +57,15 @@ malformed_request('GET', Req, State) ->
     pushy_wm_base:malformed_request(Req, State);
 malformed_request('POST', Req, State) ->
     try
-        validate_request(Req),
-        pushy_wm_base:malformed_request(Req, State)
+        % Note: must call pushy_wm_base:malformed_request first, because it will prevent
+        % a too-large body from being completely retrieved.
+        Resp = pushy_wm_base:malformed_request(Req, State),
+        case Resp of
+            {false, Req0, State} ->
+                validate_request(Req0),
+                Resp;
+            _ -> Resp
+        end
     catch
         throw:bad_command ->
             Msg = <<"invalid command supplied">>,
@@ -80,8 +87,24 @@ malformed_request('POST', Req, State) ->
             Msg = <<"invalid type supplied for run_timeout (expected a number)">>,
             Req1 = wrq:set_resp_body(jiffy:encode({[{<<"error">>, Msg}]}), Req),
             {{halt, 400}, Req1, State};
+        throw:dup_env_keys ->
+            Msg = <<"invalid environment value (duplicate key)">>,
+            Req1 = wrq:set_resp_body(jiffy:encode({[{<<"error">>, Msg}]}), Req),
+            {{halt, 400}, Req1, State};
+        throw:bad_file ->
+            Msg = <<"invalid file contents (expected 'base64:...' or 'raw:...')">>,
+            Req1 = wrq:set_resp_body(jiffy:encode({[{<<"error">>, Msg}]}), Req),
+            {{halt, 400}, Req1, State};
+        throw:bad_base64 ->
+            Msg = <<"invalid file contents (couldn't decode base64 string)">>,
+            Req1 = wrq:set_resp_body(jiffy:encode({[{<<"error">>, Msg}]}), Req),
+            {{halt, 400}, Req1, State};
         throw:unknown_validation_error ->
             Msg = <<"an unknown validation error has occurred">>,
+            Req1 = wrq:set_resp_body(jiffy:encode({[{<<"error">>, Msg}]}), Req),
+            {{halt, 400}, Req1, State};
+        throw:bad_file_len ->
+            Msg = io_lib:format("invalid file size (must be <= ~p bytes)", [?MAX_FILE_SIZE]),
             Req1 = wrq:set_resp_body(jiffy:encode({[{<<"error">>, Msg}]}), Req),
             {{halt, 400}, Req1, State}
     end.
@@ -116,12 +139,12 @@ post_is_create(Req, State) ->
 
 % This creates the job record
 create_path(Req, #config_state{organization_guid = OrgId} = State) ->
-    {Command, NodeNames, RunTimeout, Quorum} = parse_post_body(Req),
+    {Command, NodeNames, RunTimeout, Quorum, User, Dir, Env, File} = parse_post_body(Req),
     RunTimeout2 = case RunTimeout of
         undefined -> envy:get(pushy, default_running_timeout, 3600, integer);
         Value -> Value
     end,
-    Job = pushy_object:new_record(pushy_job, OrgId, NodeNames, Command, RunTimeout2, Quorum),
+    Job = pushy_object:new_record(pushy_job, OrgId, NodeNames, Command, RunTimeout2, Quorum, User, Dir, Env, File),
     State2 = State#config_state{pushy_job = Job},
     {binary_to_list(Job#pushy_job.id), Req, State2}.
 
@@ -142,14 +165,18 @@ to_json(Req, #config_state{organization_guid = OrgId} = State) ->
 validate_request(Req) ->
     Body = wrq:req_body(Req),
     JobJson = jiffy:decode(Body),
-
     validate_body(JobJson).
 
 validate_body(Json) ->
     Spec = {[{<<"command">>, string},
              {<<"nodes">>, {array_map, string}},
              {{opt, <<"run_timeout">>}, number},
-             {{opt, <<"quorum">>}, number}]},
+             {{opt, <<"quorum">>}, number},
+             {{opt, <<"user">>}, string},
+             {{opt, <<"dir">>}, string},
+             {{opt, <<"env">>}, {object_map, {{keys, string}, {values, string}}}},
+             {{opt, <<"file">>}, string}
+            ]},
 
     case ej:valid(Spec, Json) of
         ok ->
@@ -157,6 +184,10 @@ validate_body(Json) ->
             validate_keys(Json),
             %% Make sure there is at least one node in the array
             validate_nodes(ej:get({<<"nodes">>}, Json)),
+            %% Make sure env values are of the right form
+            validate_env(ej:get({<<"env">>}, Json)),
+            %% Make sure file is of the right form
+            validate_file(ej:get({<<"file">>}, Json)),
             ok;
         #ej_invalid{type = Type, key = Key} ->
             case {Type, Key} of
@@ -175,15 +206,38 @@ validate_nodes(Nodes) ->
     end.
 
 validate_keys({Json}) ->
-    ExpectedKeys = [<<"command">>, <<"nodes">>, <<"run_timeout">>, <<"quorum">>],
+    ExpectedKeys = [<<"command">>, <<"nodes">>, <<"run_timeout">>, <<"quorum">>,
+                    <<"user">>, <<"dir">>, <<"env">>, <<"file">>],
     Keys = proplists:get_keys(Json),
 
-    case lists:all(fun(Key) ->
-                        lists:any(fun(EKey) -> Key =:= EKey end, lists:sort(ExpectedKeys))
-                      end, lists:sort(Keys)) of
-        false -> throw(bad_key);
-        true -> true
+    case Keys -- ExpectedKeys of
+        [] -> true;
+        _ -> throw(bad_key)
     end.
+
+validate_env(undefined) -> ok;
+validate_env({Es}) ->
+    Keys = [E || {E, _K} <- Es],
+    case length(Keys) - sets:size(sets:from_list(Keys)) of
+        0 -> ok;
+        _ -> throw(dup_env_keys)
+    end.
+
+% We validate that it has a prefix of either "raw:" or "base64:", and if base64, that it is
+% a valid encoding.  Other than that, we just pass it around (in the database, and in the protocol).
+validate_file(undefined) -> ok;
+validate_file(<<"base64:", B64/binary>>) -> 
+    try
+        S = base64:decode(B64),
+        validate_file_length(S)
+    catch
+        error:_ -> throw(bad_base64)
+    end;
+validate_file(<<"raw:", S/binary>>) -> validate_file_length(S);
+validate_file(_) -> throw(bad_file).
+
+validate_file_length(S) when size(S) > ?MAX_FILE_SIZE -> throw(bad_file_len);
+validate_file_length(_) -> ok.
 
 assemble_jobs_ejson(Jobs) ->
     [ pushy_object:assemble_job_ejson(Job) || Job <- Jobs ].
@@ -195,7 +249,11 @@ parse_post_body(Req) ->
     NodeNames = ej:get({<<"nodes">>}, JobJson),
     RunTimeout = ej:get({<<"run_timeout">>}, JobJson),
     Quorum = ej:get({<<"quorum">>}, JobJson, length(NodeNames)),
-    { Command, NodeNames, RunTimeout, Quorum }.
+    User = ej:get({<<"user">>}, JobJson),
+    Dir = ej:get({<<"dir">>}, JobJson),
+    Env = ej:get({<<"env">>}, JobJson),
+    File = ej:get({<<"file">>}, JobJson),
+    { Command, NodeNames, RunTimeout, Quorum, User, Dir, Env, File }.
 
 %% TODO The below are MERCILESSLY STOLEN FROM chef_rest.  Get this in a common place, yo.
 %% @doc Sets the JSON body of a response and it's Location header to
