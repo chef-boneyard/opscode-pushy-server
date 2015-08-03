@@ -1,7 +1,7 @@
 GIT
   remote: https://github.com/chef/chef-server.git
-  revision: 
-  tag: ~>2.2.0
+  revision: c1e670513e123764e60a3f017aa6e3beed248352
+  tag: 12.1.0-rc.3
   specs:
     oc-chef-pedant (2.2.0)
       activesupport (~> 3.2.8)
@@ -18,8 +18,8 @@ GIT
 
 GIT
   remote: https://github.com/opscode/opscode-pushy-client.git
-  revision: 025e543bbbe735cb1f9509e73a58b7c0074376ba
-  branch: master
+  revision: 67ca317be0a5e6960500ddeba1d4f1c867eeaa10
+  tag: 2.0.0-alpha.2
   specs:
     opscode-pushy-client (1.9.0)
       chef (>= 12.0)
@@ -96,7 +96,7 @@ GEM
     ffi-yajl (2.2.2)
       libyajl2 (~> 1.2)
     hashie (2.1.2)
-    highline (1.7.2)
+    highline (1.7.3)
     httpclient (2.6.0.1)
     i18n (0.7.0)
     ipaddress (0.8.0)
@@ -174,7 +174,7 @@ GEM
       specinfra (~> 2.38)
     sfl (2.2)
     slop (3.6.0)
-    specinfra (2.38.1)
+    specinfra (2.40.0)
       net-scp
       net-ssh (~> 2.7)
       net-telnet
@@ -195,3 +195,6 @@ DEPENDENCIES
   oc-pushy-pedant!
   opscode-pushy-client!
   rest-client!
+
+BUNDLED WITH
+   1.10.5
