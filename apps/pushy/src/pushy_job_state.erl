@@ -216,7 +216,7 @@ running({failed, Event, NodeRef}, State) ->
     {_, NodeName} = NodeRef,
     State2 = add_run_complete_event(State1, NodeName, Status),
     maybe_finished_running(State2);
-running({_Failure, _Event, NodeRef}, State) ->
+running({Failure, _Event, NodeRef}, State) ->
     NodeState = get_node_state(NodeRef, State),
     {State1, Status} = case NodeState of
         ready    -> {send_to_rehab(NodeRef, crashed, State), crashed};
