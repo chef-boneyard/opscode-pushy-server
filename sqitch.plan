@@ -9,3 +9,4 @@ job_nodes [jobs] 2013-10-10T20:10:03Z Christopher Maier <cm@opscode.com> # Add j
 
 job_options 2015-07-31T23:11:06Z Mark Anderson <mark@chef.io> # Add job options table
 @1.1.0 2015-08-01T02:47:21Z vagrant,,, <vagrant@private-chef.opscode.piab> # Add table for optional parameters
+@2.0.0-alpha.2 2015-08-04T01:41:19Z vagrant,,, <vagrant@private-chef.opscode.piab># 2.0.0-alpha.2
