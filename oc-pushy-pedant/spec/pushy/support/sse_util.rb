@@ -280,10 +280,10 @@ shared_context "sse_support" do
     ep.events
   end
 
-  # Validate standard events; as a side-effect, save the parsed json field
+  # Validate standard events
   def validate_events(numEvents, evs)
     require 'pp'
-    pp evs
+    #pp evs
     evs.length.should == numEvents
     # All ids are unique
     evs.map(&:id).uniq.length.should == evs.length
@@ -301,4 +301,70 @@ shared_context "sse_support" do
     validate_events(numEvents, evs)
     evs
   end
+  #
+  # job feed URL is ".../job_status_feed/<job_id>"
+  def get_job_feed(id, &block)
+    # SLG - things included via chef-pedant/lib/pedant/rspec/common.rb
+    # SLG - "get" defined in chef-pedant/lib/pedant/request.rb
+    # SLG - "api_url" defined in oc-chef-pedant/lib/pedant/multitenant/platform.rb
+    # SLG = admin_user defined in rspec/common.rb
+    job_feed_url = api_url("#{job_feed_path}/#{id}")
+    headers = {'Accept' => 'text/event-stream'}
+    get(job_feed_url, admin_user, :headers => headers, &block)
+  end
+
+  # job feed URL is just ".../job_status_feed", without a specific job id
+  #def get_org_feed(&block)
+    #org_feed_url = api_url(job_feed_path)
+    #headers = {'Accept' => 'text/event-stream'}
+    #get(org_feed_url, admin_user, :headers => headers, &block)
+  #end
+
+  def start_new_job(job)
+    uri = post(api_url("/pushy/jobs"), admin_user, :payload => job) do |response|
+      list = JSON.parse(response.body)
+      list["uri"]
+    end
+    job_info_js = get(uri, admin_user)
+    job_info = JSON.parse(job_info_js)
+    job_info['id']
+  end
+
+  # Modified from end_to_end_util:wait_for_job_status
+  def wait_for_job_done(uri, options = {})
+    job = nil
+    begin
+      Timeout::timeout(options[:timeout] || JOB_STATUS_TIMEOUT_DEFAULT) do
+        begin
+          sleep(SLEEP_TIME) if job
+          job = get_job(uri)
+        end until ['complete', 'timed_out', 'quorum_failed'].include?(job['status'])
+      end
+    rescue Timeout::Error
+      raise "Job never got a status -- actual job reported as #{job}"
+    end
+    job
+  end
+
+  def do_complete_job(job, options = {})
+    @id = start_new_job(job)
+    wait_for_job_done(api_url("/pushy/jobs/#{@id}"), options)
+  end
+
+  def start_event_stream(last_id = nil, receive_timeout = nil)
+    job_feed_url = api_url("#{job_feed_path}/#{@id}")
+    stream = EventStreamOld.new(job_feed_url, admin_user, last_id, receive_timeout)
+    # Give some time for the first events to come in
+    sleep 0.25
+    stream
+  end
+
+  def check_node(e, node)
+    jnode = e.json['node']
+    if (node != :any)
+      jnode.should == node
+    end
+    jnode
+  end
+
 end

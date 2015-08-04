@@ -51,7 +51,7 @@ describe "end-to-end-test" do
 
   context 'with one client' do
     before :each do
-      start_new_clients('DONKEY')
+      start_new_clients(['DONKEY'])
     end
 
     it "heartbeat should be received when starting up" do
@@ -87,7 +87,7 @@ describe "end-to-end-test" do
         @lockfile.close
       end
 
-      it 'should nack when asked to commit to another job' do
+      it 'should nack when asked to commit to another job'  do
         job = start_job('chef-client', %w{DONKEY})
         get_job(job['uri']).should == {
           'command' => 'chef-client',
@@ -101,7 +101,7 @@ describe "end-to-end-test" do
 
     context 'when running a job' do
       before(:each) do
-        node = get_node_state("DONKEY")
+        get_node_state("DONKEY")
         start_echo_job_on_all_clients
       end
 
@@ -302,8 +302,8 @@ describe "end-to-end-test" do
 
       it 'job times out and fails to start' do
         response = start_job(echo_yahoo, ['DONKEY'])
-        get(api_url("pushy/node_states/DONKEY"), admin_user) do |response|
-          response.should look_like({
+        get(api_url("pushy/node_states/DONKEY"), admin_user) do |r|
+          r.should look_like({
                                       :status => 200,
                                       :body => {
                                         'status' => 'online'
@@ -312,8 +312,8 @@ describe "end-to-end-test" do
         # While we're waiting, let's verify that the node shows as "new".  This
         # is the only test where we're guaranteed to get this response--most
         # tests will vote immediately.
-        get(response['uri'], admin_user) do |response|
-          response.should look_like({
+        get(response['uri'], admin_user) do |r|
+          r.should look_like({
             :status => 200,
             :body => {
               'nodes' => { 'new' => ['DONKEY'] }
@@ -324,8 +324,8 @@ describe "end-to-end-test" do
         job['nodes'].should == { 'unavailable' => [ 'DONKEY' ] }
         # This verifies our assumption that this was caused by the TIMEOUT rather
         # than the node being detected as down
-        get(api_url("pushy/node_states/DONKEY"), admin_user) do |response|
-          response.should look_like({
+        get(api_url("pushy/node_states/DONKEY"), admin_user) do |r|
+          r.should look_like({
                                       :status => 200,
                                       :body => {
                                         'status' => 'online'
@@ -356,8 +356,8 @@ describe "end-to-end-test" do
 
       it 'job fails to start when down is detected' do
         response = start_job(echo_yahoo, ['DONKEY'])
-        get(api_url("pushy/node_states/DONKEY"), admin_user) do |response|
-          response.should look_like({
+        get(api_url("pushy/node_states/DONKEY"), admin_user) do |r|
+          r.should look_like({
                                       :status => 200,
                                       :body => {
                                         'status' => 'online'
@@ -382,8 +382,8 @@ describe "end-to-end-test" do
 
       it 'job marks node as crashed when down is detected' do
         response = start_job(echo_yahoo, ['DONKEY'])
-        get(api_url("pushy/node_states/DONKEY"), admin_user) do |response|
-          response.should look_like({
+        get(api_url("pushy/node_states/DONKEY"), admin_user) do |r|
+          r.should look_like({
                                       :status => 200,
                                       :body => {
                                         'status' => 'online'
@@ -405,8 +405,8 @@ describe "end-to-end-test" do
 
       it 'job marks node as crashed when down is detected' do
         response = start_job(echo_yahoo, ['DONKEY'])
-        get(api_url("pushy/node_states/DONKEY"), admin_user) do |response|
-          response.should look_like({
+        get(api_url("pushy/node_states/DONKEY"), admin_user) do |r|
+          r.should look_like({
                                       :status => 200,
                                       :body => {
                                         'status' => 'online'
@@ -459,11 +459,166 @@ describe "end-to-end-test" do
         }
       end
     end
+
+    context 'optional param tests' do
+      it 'passing in a user, directory, env that should succeed, succeeds' do
+        prep_tmp_path
+        dir = "/tmp"
+        job_env = {'E1' => 'e1', 'E2' => 'e2'}
+        job = start_job('ruby-opts', ['DONKEY'], {'user' => 'daemon', 'dir' => dir, 'env' => job_env})
+        wait_for_job_complete(job['uri'])
+        # This would be better written with Process::UID.from_name, but that's Ruby 2.0
+        require 'etc'
+        uids = Etc.getpwnam('daemon').uid.to_s
+        lines = read_tmp_path
+        lines[0].should == uids
+        lines[1].should == uids
+        lines[2].should == dir
+        envs = lines[3]
+        envs['"E1", "e1"'].should_not == nil
+        envs['"E2", "e2"'].should_not == nil
+      end
+
+      it 'passing in a bad user, fails in the commit' do
+        prep_tmp_path
+        job = start_job('ruby-opts', ['DONKEY'], {'user' => 'nonexistentuser'})
+        wait_for_job_status(job['uri'], 'quorum_failed')
+      end
+
+      it 'passing in a bad directory, fails in the commit' do
+        prep_tmp_path
+        job = start_job('ruby-opts', ['DONKEY'], {'dir' => '/nonexistentdir'})
+        wait_for_job_status(job['uri'], 'quorum_failed')
+      end
+
+      it 'PUSHY_JOB_ID is set to the job_id' do
+        prep_tmp_path
+        job = start_job('ruby-opts', ['DONKEY'])
+        wait_for_job_complete(job['uri'])
+        job_id = job["uri"].split("/").last
+        envs = read_tmp_path[3]
+        env = Hash[eval envs]
+        env['PUSHY_JOB_ID'].should == job_id
+      end
+
+      it 'passing in a file as base64 works' do
+        prep_tmp_path
+        filestr = 'test'
+        file64 = 'base64:' + Base64.strict_encode64(filestr)
+        job = start_job('ruby-opts', ['DONKEY'], {'file' => file64})
+        wait_for_job_complete(job['uri'])
+        envs = read_tmp_path[3]
+        env = Hash[eval envs]
+        path = env['PUSHY_JOB_FILE']
+        File.read(path).should == filestr
+      end
+
+      it 'passing in a file as raw works' do
+        prep_tmp_path
+        filestr = 'test'
+        file_asc = 'raw:' + filestr
+        job = start_job('ruby-opts', ['DONKEY'], {'file' => file_asc})
+        wait_for_job_complete(job['uri'])
+        envs = read_tmp_path[3]
+        env = Hash[eval envs]
+        path = env['PUSHY_JOB_FILE']
+        File.read(path).should == filestr
+      end
+
+      it 'default file directory should contain "pushy/"' do
+        prep_tmp_path
+        filestr = 'test'
+        file_asc = 'raw:' + filestr
+        job = start_job('ruby-opts', ['DONKEY'], {'file' => file_asc})
+        wait_for_job_complete(job['uri'])
+        envs = read_tmp_path[3]
+        env = Hash[eval envs]
+        path = env['PUSHY_JOB_FILE']
+        path.should match(/pushy\//)
+      end
+
+      it 'file directory can be configured' do
+        prep_tmp_path
+        new_file_dir = "/tmp/pushy2"
+        stop_client('DONKEY')
+        start_client('DONKEY', {:file_dir => new_file_dir})
+        filestr = 'raw:test'
+        job = start_job('ruby-opts', ['DONKEY'], {'file' => filestr})
+        wait_for_job_complete(job['uri'])
+        envs = read_tmp_path[3]
+        env = Hash[eval envs]
+        path = env['PUSHY_JOB_FILE']
+        path.should start_with new_file_dir
+      end
+
+      it 'if post is too big (> 1M), server returns a 413' do
+        prep_tmp_path
+        file_asc = 'raw:' + ('X' * 1000000)
+        payload = {'command' => 'ruby-opts',
+                   'nodes' => ['DONKEY'],
+                   'file' => file_asc}
+        post(api_url("pushy/jobs"), admin_user, :payload => payload) do |response|
+          response.should look_like({:status => 413})
+        end
+      end
+
+      it 'if file is too big (> 100K), server returns a 400' do
+        prep_tmp_path
+        file_asc = 'raw:' + ('X' * 100001)
+        payload = {'command' => 'ruby-opts',
+                   'nodes' => ['DONKEY'],
+                   'file' => file_asc}
+        post(api_url("pushy/jobs"), admin_user, :payload => payload) do |response|
+          response.should look_like({:status => 400})
+        end
+      end
+
+      context "when getting the summary" do
+        before :each do
+          prep_tmp_path
+        end
+
+        it 'the summary includes the param information' do
+          job_env = {'E1' => 'e1', 'E2' => 'e2'}
+          job = start_job('ruby-opts', ['DONKEY'], {'user' => 'daemon', 'dir' => '/tmp', 'env' => job_env})
+          uri = job['uri']
+          wait_for_job_complete(uri)
+          summary = get_job(uri)
+          summary['user'].should == 'daemon'
+          summary['dir'].should == '/tmp'
+          summary['env'].should == job_env
+          summary['file_specified'].should == nil
+        end
+
+        it 'if a file was provided, and the include_file is not specified, return "file_specified=true"' do
+          job = start_job('ruby-opts', ['DONKEY'], {'file' => 'raw:foo'})
+          uri = job['uri']
+          wait_for_job_complete(uri)
+          summary = get_job(uri)
+          summary['user'].should == nil
+          summary['dir'].should == nil
+          summary['env'].should == nil
+          summary['file_specified'].should == true
+        end
+
+        it 'if a file was provided, and the include_file is specified, return "file=<file>"' do
+          file = 'raw:foo'
+          job = start_job('ruby-opts', ['DONKEY'], {'file' => file})
+          uri = job['uri']
+          wait_for_job_complete(uri)
+          summary = get_job(uri + '?include_file=true')
+          p summary
+          summary['file_specified'].should == nil
+          summary['file'].should == file
+        end
+      end
+    end
+        
   end
 
   context 'with a client that is killed and comes back up quickly' do
     before :each do
-      start_new_clients('DONKEY')
+      start_new_clients(['DONKEY'])
       kill_client('DONKEY')
       start_client('DONKEY')
     end
@@ -481,7 +636,7 @@ describe "end-to-end-test" do
 
   context 'with a dead client that comes back down after a while' do
     before :each do
-      start_new_clients('DONKEY')
+      start_new_clients(['DONKEY'])
       kill_client('DONKEY')
       wait_for_node_status('offline', 'DONKEY')
       # Start that sucker back up
@@ -501,7 +656,7 @@ describe "end-to-end-test" do
 
   context 'with a client that goes down and back up quickly' do
     before :each do
-      start_new_clients('DONKEY')
+      start_new_clients(['DONKEY'])
       stop_client('DONKEY')
       start_client('DONKEY')
     end
@@ -519,7 +674,7 @@ describe "end-to-end-test" do
 
   context 'with a client that goes down and back up a while later' do
     before :each do
-      start_new_clients('DONKEY')
+      start_new_clients(['DONKEY'])
       stop_client('DONKEY')
       wait_for_node_status('offline', 'DONKEY')
       start_client('DONKEY')
@@ -538,7 +693,7 @@ describe "end-to-end-test" do
 
   context 'with three clients' do
     before :each do
-      start_new_clients('DONKEY', 'FARQUAD', 'FIONA')
+      start_new_clients(['DONKEY', 'FARQUAD', 'FIONA'])
     end
 
     it 'node count should be 3' do
@@ -657,7 +812,7 @@ describe "end-to-end-test" do
 
       context 'and we start a job on DONKEY, FARQUAD, and FIONA with a quorum of 2' do
         before(:each) do
-          @job3 = start_job(echo_yahoo, %w{DONKEY FARQUAD FIONA}, options={'quorum' => 2})
+          @job3 = start_job(echo_yahoo, %w{DONKEY FARQUAD FIONA}, {'quorum' => 2})
           wait_for_job_complete(@job3['uri'])
         end
 
@@ -677,7 +832,7 @@ describe "end-to-end-test" do
 
       context 'and we start a job on DONKEY and FIONA with a quorum of 2' do
         before(:each) do
-          @job4 = start_job(echo_yahoo, %w{DONKEY FIONA}, options={'quorum' => 2})
+          @job4 = start_job(echo_yahoo, %w{DONKEY FIONA}, {'quorum' => 2})
         end
 
         it 'should fail with reason quorum_failed' do
@@ -759,7 +914,7 @@ describe "end-to-end-test" do
 
   context 'when one client is running a long running job' do
     before :each do
-      start_new_clients('DONKEY')
+      start_new_clients(['DONKEY'])
       @long_job = start_job('sleep 5', [ 'DONKEY' ])
     end
 
@@ -779,7 +934,7 @@ describe "end-to-end-test" do
   # TODO Figure out why this breaks other tests and fix it
   context 'when one client is running a long running job' do
     before :each do
-      start_new_clients('DONKEY')
+      start_new_clients(['DONKEY'])
       @long_job = start_job('sleep 20', [ 'DONKEY' ])
     end
 
