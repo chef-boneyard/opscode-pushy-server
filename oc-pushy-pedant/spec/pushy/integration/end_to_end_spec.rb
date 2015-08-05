@@ -1,5 +1,4 @@
-
-# -*- indent-level: 4;indent-tabs-mode: nil; fill-column: 92 -*-
+# -*- indent-level: 2;indent-tabs-mode: nil; fill-column: 92 -*-
 #
 # Author:: John Keiser (<jkeiser@opscode.com>)
 # Author:: Douglas Triggs (<doug@opscode.com>)
@@ -295,8 +294,8 @@ describe "end-to-end-test" do
 
     context 'that forgets to send the ack_commit message', :slow do
       before :each do
-        override_send_command('DONKEY') do |real_send_command, message, job_id|
-          real_send_command.call(message, job_id) unless message == :ack_commit
+        override_send_command('DONKEY') do |real_send_command, message, job_id, params|
+          real_send_command.call(message, job_id, params) unless message == :ack_commit
         end
       end
 
@@ -372,8 +371,8 @@ describe "end-to-end-test" do
 
     context 'when the client crashes after reporting "ready" but before running the command' do
       before :each do
-        override_send_command('DONKEY') do |real_send_command, message, job_id|
-          real_send_command.call(message, job_id)
+        override_send_command('DONKEY') do |real_send_command, message, job_id, params|
+          real_send_command.call(message, job_id, params)
           if message == :ack_commit
             kill_client('DONKEY')
           end
@@ -607,13 +606,153 @@ describe "end-to-end-test" do
           uri = job['uri']
           wait_for_job_complete(uri)
           summary = get_job(uri + '?include_file=true')
-          p summary
           summary['file_specified'].should == nil
           summary['file'].should == file
         end
       end
     end
-        
+
+    context 'capture tests' do
+      it 'if capture is not specified, no data will be sent in result' do
+        send_params = nil
+        override_send_command('DONKEY') do |real_send_command, message, job_id, params|
+          send_params = params
+          real_send_command.call(message, job_id, params)
+        end
+        job = start_job('capture_test', ['DONKEY'])
+        uri = job['uri']
+        wait_for_job_complete(uri)
+        send_params.should == {}
+      end
+      
+      it 'if capture is specified, but output is empty, empty strings will be sent in result' do
+        send_params = nil
+        override_send_command('DONKEY') do |real_send_command, message, job_id, params|
+          send_params = params
+          real_send_command.call(message, job_id, params)
+        end
+        job = start_job('capture_test_empty', ['DONKEY'], {'capture_output' => true})
+        uri = job['uri']
+        wait_for_job_complete(uri)
+        send_params.should == {:stdout => '', :stderr => ''}
+      end
+
+      it 'if capture is specified in a succeeding cmd, the stdout and stderr will be available via REST' do
+        job = start_job('capture_test', ['DONKEY'], {'capture_output' => true})
+        uri = job['uri']
+        wait_for_job_complete(uri)
+        opts = { :headers => {'Accept' => 'application/octet-stream'} }
+        cmd_out = get(uri + "/output/DONKEY/stdout", admin_user, opts) do |response|
+          response.should look_like({:status => 200})
+          response
+        end
+        cmd_out.should == "testout\n"
+        cmd_err = get(uri + "/output/DONKEY/stderr", admin_user, opts) do |response|
+          response.should look_like({:status => 200})
+          response
+        end
+        cmd_err.should == "testerr\n"
+      end
+
+      it 'if capture is specified in a failing cmd, the stdout and stderr will be available via REST' do
+        job = start_job('capture_test_fail', ['DONKEY'], {'capture_output' => true})
+        uri = job['uri']
+        wait_for_job_complete(uri)
+        opts = { :headers => {'Accept' => 'application/octet-stream'} }
+        cmd_out = get(uri + "/output/DONKEY/stdout", admin_user, opts) do |response|
+          response.should look_like({:status => 200})
+          response
+        end
+        cmd_out.should == "testout\n"
+        cmd_err = get(uri + "/output/DONKEY/stderr", admin_user, opts) do |response|
+          response.should look_like({:status => 200})
+          response
+        end
+        cmd_err.should == "testerr\n"
+      end
+
+      it 'if capture is not specified in a succeeding cmd, the stdout and stderr will return 404' do
+        job = start_job('capture_test', ['DONKEY'])
+        uri = job['uri']
+        wait_for_job_complete(uri)
+        opts = { :headers => {'Accept' => 'application/octet-stream'} }
+        get(uri + "/output/DONKEY/stdout", admin_user, opts) do |response|
+          response.should look_like({:status => 404})
+        end
+        get(uri + "/output/DONKEY/stderr", admin_user, opts) do |response|
+          response.should look_like({:status => 404})
+        end
+      end
+
+      it 'if capture is specified in a cmd, and the output is empty, the stdout and stderr will return the right strings' do
+        job = start_job('capture_test_empty', ['DONKEY'], {'capture_output' => true})
+        uri = job['uri']
+        wait_for_job_complete(uri)
+        opts = { :headers => {'Accept' => 'application/octet-stream'} }
+        cmd_out = get(uri + "/output/DONKEY/stdout", admin_user, opts) do |response|
+          response.should look_like({:status => 200})
+          response
+        end
+        cmd_out.should == ''
+        cmd_err = get(uri + "/output/DONKEY/stderr", admin_user, opts) do |response|
+          response.should look_like({:status => 200})
+          response
+        end
+        cmd_err.should == ''
+      end
+
+      it 'if capture is specified in a succeeding cmd with no err, the stdout and stderr will be available, and stderr will be empty' do
+        job = start_job('capture_test_no_err', ['DONKEY'], {'capture_output' => true})
+        uri = job['uri']
+        wait_for_job_complete(uri)
+        opts = { :headers => {'Accept' => 'application/octet-stream'} }
+        cmd_out = get(uri + "/output/DONKEY/stdout", admin_user, opts) do |response|
+          response.should look_like({:status => 200})
+          response
+        end
+        cmd_out.should == "testout\n"
+        cmd_err = get(uri + "/output/DONKEY/stderr", admin_user, opts) do |response|
+          response.should look_like({:status => 200})
+          response
+        end
+        cmd_err.should == ''
+      end
+
+      it 'if capture is specified in a succeeding cmd with no out, the stdout and stderr will be available, and stdout will be empty' do
+        job = start_job('capture_test_no_out', ['DONKEY'], {'capture_output' => true})
+        uri = job['uri']
+        wait_for_job_complete(uri)
+        opts = { :headers => {'Accept' => 'application/octet-stream'} }
+        cmd_err = get(uri + "/output/DONKEY/stderr", admin_user, opts) do |response|
+          response.should look_like({:status => 200})
+          response
+        end
+        cmd_err.should == "testerr\n"
+        cmd_out = get(uri + "/output/DONKEY/stdout", admin_user, opts) do |response|
+          response.should look_like({:status => 200})
+          response
+        end
+        cmd_out.should == ''
+      end
+      
+      it 'if capture is specified along with a user, things still work' do
+        job = start_job('capture_test', ['DONKEY'], {'capture_output' => true,
+                                                     'user' => 'daemon'})
+        uri = job['uri']
+        wait_for_job_complete(uri)
+        opts = { :headers => {'Accept' => 'application/octet-stream'} }
+        cmd_out = get(uri + "/output/DONKEY/stdout", admin_user, opts) do |response|
+          response.should look_like({:status => 200})
+          response
+        end
+        cmd_out.should == "testout\n"
+        cmd_err = get(uri + "/output/DONKEY/stderr", admin_user, opts) do |response|
+          response.should look_like({:status => 200})
+          response
+        end
+        cmd_err.should == "testerr\n"
+      end
+    end
   end
 
   context 'with a client that is killed and comes back up quickly' do
@@ -908,6 +1047,26 @@ describe "end-to-end-test" do
           }
           job_should_complete(make_node_busy, [ 'DONKEY' ], @job1['uri'])
         end
+      end
+    end
+
+    it 'capture works' do
+      nodes = ['DONKEY', 'FARQUAD', 'FIONA']
+      job = start_job('capture_test', nodes, {'capture_output' => true})
+      uri = job['uri']
+      wait_for_job_complete(uri)
+      opts = { :headers => {'Accept' => 'application/octet-stream'} }
+      nodes.each do |node|
+        cmd_out = get(uri + "/output/#{node}/stdout", admin_user, opts) do |response|
+          response.should look_like({:status => 200})
+          response
+        end
+        cmd_out.should == "testout\n"
+        cmd_err = get(uri + "/output/#{node}/stderr", admin_user, opts) do |response|
+          response.should look_like({:status => 200})
+          response
+        end
+        cmd_err.should == "testerr\n"
       end
     end
   end
