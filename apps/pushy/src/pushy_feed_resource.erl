@@ -2,7 +2,7 @@
 %% ex: ts=4 sw=4 et
 %% @author Steven Grady <steven.grady@erlang-solutions.com>
 %%% @doc
-%%% REST resource provide server-sent event stream for jobs
+%%% REST resource providing server-sent event stream for jobs
 %%% @end
 %% @copyright Copyright 2014 Chef Software, Inc. All Rights Reserved.
 %%
@@ -92,6 +92,7 @@ process_job_msg(Msg, MonitorRef) ->
         {'DOWN', MonitorRef, process, JobPid, Info} ->
             case Info of
                 normal -> ok;
+                shutdown -> ok;
                 _ -> lager:error("Job ~p exited: ~p", [JobPid, Info])
             end,
             % XXX Post a job-complete, if one wasn't provided?

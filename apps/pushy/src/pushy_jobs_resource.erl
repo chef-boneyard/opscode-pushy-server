@@ -34,6 +34,7 @@
          post_is_create/2,
          to_json/2]).
 
+-include("pushy.hrl").
 -include("pushy_sql.hrl").
 -include("pushy_wm.hrl").
 
@@ -85,6 +86,10 @@ malformed_request('POST', Req, State) ->
             {{halt, 400}, Req1, State};
         throw:bad_type_run_timeout ->
             Msg = <<"invalid type supplied for run_timeout (expected a number)">>,
+            Req1 = wrq:set_resp_body(jiffy:encode({[{<<"error">>, Msg}]}), Req),
+            {{halt, 400}, Req1, State};
+        throw:bad_type_capture ->
+            Msg = <<"invalid type supplied for capture_output (expected a boolean)">>,
             Req1 = wrq:set_resp_body(jiffy:encode({[{<<"error">>, Msg}]}), Req),
             {{halt, 400}, Req1, State};
         throw:dup_env_keys ->
@@ -139,12 +144,8 @@ post_is_create(Req, State) ->
 
 % This creates the job record
 create_path(Req, #config_state{organization_guid = OrgId} = State) ->
-    {Command, NodeNames, RunTimeout, Quorum, User, Dir, Env, File} = parse_post_body(Req),
-    RunTimeout2 = case RunTimeout of
-        undefined -> envy:get(pushy, default_running_timeout, 3600, integer);
-        Value -> Value
-    end,
-    Job = pushy_object:new_record(pushy_job, OrgId, NodeNames, Command, RunTimeout2, Quorum, User, Dir, Env, File),
+    Desc = parse_post_body(Req),
+    Job = pushy_object:new_job_record(OrgId, Desc),
     State2 = State#config_state{pushy_job = Job},
     {binary_to_list(Job#pushy_job.id), Req, State2}.
 
@@ -175,7 +176,8 @@ validate_body(Json) ->
              {{opt, <<"user">>}, string},
              {{opt, <<"dir">>}, string},
              {{opt, <<"env">>}, {object_map, {{keys, string}, {values, string}}}},
-             {{opt, <<"file">>}, string}
+             {{opt, <<"file">>}, string},
+             {{opt, <<"capture_output">>}, boolean}
             ]},
 
     case ej:valid(Spec, Json) of
@@ -195,6 +197,7 @@ validate_body(Json) ->
                 {_, <<"nodes">>} -> throw(bad_nodes);
                 {json_type, <<"run_timeout">>} -> throw(bad_type_run_timeout);
                 {json_type, <<"quorum">>} -> throw(bad_type_quorum);
+                {json_type, <<"capture_output">>} -> throw(bad_type_capture);
                 {_T, _K} -> throw(unknown_validation_error)
             end
     end.
@@ -206,8 +209,9 @@ validate_nodes(Nodes) ->
     end.
 
 validate_keys({Json}) ->
-    ExpectedKeys = [<<"command">>, <<"nodes">>, <<"run_timeout">>, <<"quorum">>,
-                    <<"user">>, <<"dir">>, <<"env">>, <<"file">>],
+    ExpectedKeys = [<<"command">>, <<"nodes">>, <<"run_timeout">>,
+                    <<"quorum">>, <<"user">>, <<"dir">>, <<"env">>,
+                    <<"file">>, <<"capture_output">>],
     Keys = proplists:get_keys(Json),
 
     case Keys -- ExpectedKeys of
@@ -245,15 +249,26 @@ assemble_jobs_ejson(Jobs) ->
 parse_post_body(Req) ->
     Body = wrq:req_body(Req),
     JobJson = jiffy:decode(Body),
-    Command = ej:get({<<"command">>}, JobJson),
+    RunTimeout = case ej:get({<<"run_timeout">>}, JobJson) of
+        undefined -> envy:get(pushy, default_running_timeout, 3600, integer);
+        Value -> Value
+    end,
     NodeNames = ej:get({<<"nodes">>}, JobJson),
-    RunTimeout = ej:get({<<"run_timeout">>}, JobJson),
-    Quorum = ej:get({<<"quorum">>}, JobJson, length(NodeNames)),
-    User = ej:get({<<"user">>}, JobJson),
-    Dir = ej:get({<<"dir">>}, JobJson),
-    Env = ej:get({<<"env">>}, JobJson),
-    File = ej:get({<<"file">>}, JobJson),
-    { Command, NodeNames, RunTimeout, Quorum, User, Dir, Env, File }.
+    Capture = case ej:get({<<"capture_output">>}, JobJson) of
+                  undefined -> false;
+                  Other -> Other
+              end,
+    #job_create_desc{
+        command = ej:get({<<"command">>}, JobJson),
+        node_names = NodeNames,
+        run_timeout = RunTimeout,
+        quorum = ej:get({<<"quorum">>}, JobJson, length(NodeNames)),
+        user = ej:get({<<"user">>}, JobJson),
+        dir = ej:get({<<"dir">>}, JobJson),
+        env = ej:get({<<"env">>}, JobJson),
+        file = ej:get({<<"file">>}, JobJson),
+        capture = Capture
+      }.
 
 %% TODO The below are MERCILESSLY STOLEN FROM chef_rest.  Get this in a common place, yo.
 %% @doc Sets the JSON body of a response and it's Location header to

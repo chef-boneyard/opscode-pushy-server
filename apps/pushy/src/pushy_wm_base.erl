@@ -29,10 +29,10 @@
 
 -include("pushy_wm.hrl").
 
-init([{incarnation_id, IncarnationId}]) ->
-    {ok, #config_state{incarnation_id = IncarnationId,
-                       curve_public_key = undefined}};
-init([{incarnation_id, IncarnationId}, {curve_public_key, CurvePublicKey}]) ->
+init(InitArgs) ->
+    % These may be undefined.
+    IncarnationId = proplists:get_value(incarnation_id, InitArgs),
+    CurvePublicKey = proplists:get_value(curve_public_key, InitArgs),
     {ok, #config_state{incarnation_id = IncarnationId,
                        curve_public_key = CurvePublicKey}}.
 

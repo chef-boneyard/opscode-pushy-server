@@ -52,12 +52,15 @@
                          stop_job/1,
                          get_org_feed/1,
                          get_org_feed/2,
-                         run_job/1,
-                         run_job/3,
+                         run_default_job/1,
+                         run_default_job_with_ref/2,
+                         run_default_job_like_this/4,
                          expect_org_job_start/2,
                          expect_org_job_complete/3,
                          expect_start_of_history/1,
                          make_node_ref/2,
+                         get_job/2,
+                         get_org_jobs/1,
                          post_job/3,
                          send_msg/3,
                          binary_str/2,
@@ -174,13 +177,41 @@ param_tests() -> {
   ]
  }.
 
+capture_tests() -> {
+  foreach,
+  fun() -> start_node() end,
+  fun(V) -> stop_node(V) end,
+  [
+   t("Non-boolean capture value is rejected", fun capture_opt_bool/0),
+   t("By default, nothing is added to commit messages", fun capture_not_added_to_commit/0),
+   t("Capture=true is added to commit messages", fun capture_added_to_commit/0),
+   t("Capture=true is added to start event", fun capture_added_to_start_event/0),
+   t("Capture=true is added to job resource", fun capture_added_to_job_res/0),
+   t("Capture=false is not added to job resource", fun capture_not_added_to_job_res/0),
+   t("Capture=false is not added to job resource when dir specified", fun capture_not_added_to_job_res_with_dir/0),
+   t("Capture=true is added to org resource", fun capture_added_to_org_res/0),
+   t("Capture=false is not added to org resource", fun capture_not_added_to_org_res/0),
+   t1("If capture, output blobs from run=succeeded are added to database", fun capture_succeeded_blobs_in_db/1),
+   t1("If capture, output blobs from run=failed are added to database", fun capture_failed_blobs_in_db/1),
+   t1("If capture with no output, no rows are added", fun capture_no_output_no_row/1),
+   t1("If capture with empty output, appropriate row is added", fun capture_empty_output_correct_row/1),
+   t1("If capture with empty stderr, appropriate row is added", fun capture_empty_err_correct_row/1),
+   t("For a non-existent job, capture resource returns a 404", fun capture_res_404_for_bad_job/0),
+   t("For a job with no captured data, capture resource returns a 404", fun capture_res_404_for_no_capture/0),
+   t1("For a job with captured stdout, we can get the data via the resource", fun capture_res_ok_for_stdout_capture/1),
+   t1("For a job with captured stderr, we can get the data via the resource", fun capture_res_ok_for_stderr_capture/1),
+   t1("For a job with captured stdout and stderr, we can get the data via the resource", fun capture_res_ok_for_both_capture/1)
+  ]
+}.
+
 focust(Title, Fun) -> {focus,t(Title, Fun)}.
 focust1(Title, Fun1) -> {focus,t1(Title, Fun1)}.
 
 all_tests() -> filter_tests([
     one_node_tests(),
     org_tests(),
-    param_tests()
+    param_tests(),
+    capture_tests()
 ]).
 
 init_test_() ->
@@ -232,7 +263,7 @@ org_empty() ->
     ibrowse:stream_close(ReqId).
 
 org_one_old_job(NodePid) ->
-    {_, JobId} = run_job(NodePid),
+    {_, JobId} = run_default_job(NodePid),
     timer:sleep(100),
     ReqId = get_org_feed(no_last_event_id),
     {"200", _Headers} = receive_async_headers(ReqId),
@@ -248,7 +279,7 @@ MoreEvs = receive_sse_so_far(ReqId),
 org_one_new_job(NodePid) ->
     ReqId = get_org_feed(no_last_event_id),
     {"200", _Headers} = receive_async_headers(ReqId),
-    {_, JobId} = run_job(NodePid),
+    {_, JobId} = run_default_job(NodePid),
     EvsSoFar = receive_sse_so_far(ReqId),
     validate_events(1, EvsSoFar),
     expect_org_job_start(hd(EvsSoFar), JobId),
@@ -262,7 +293,7 @@ org_one_new_job(NodePid) ->
 org_last_event_id(NodePid) ->
     ReqId = get_org_feed(no_last_event_id),
     {"200", _} = receive_async_headers(ReqId),
-    {_, JobId} = run_job(NodePid),
+    {_, JobId} = run_default_job(NodePid),
     % Get evs without LastEventID
     EvsSoFar = receive_sse_so_far(ReqId),
     Ev1 = hd(EvsSoFar),
@@ -289,7 +320,7 @@ org_last_event_id(NodePid) ->
 org_unrecognized_id(NodePid) ->
     pushy_org_events:clear_events(?ORGID),
     % Let the command start and end
-    {_, JobId} = run_job(NodePid),
+    {_, JobId} = run_default_job(NodePid),
     timer:sleep(750),
     ReqId = get_org_feed(<<"no_such_id">>),
     {"200", _} = receive_async_headers(ReqId),
@@ -309,7 +340,7 @@ org_events_expire(NodePid) ->
     % Get the start event
     ReqId = get_org_feed(no_last_event_id),
     {"200", _} = receive_async_headers(ReqId),
-    {_, JobId} = run_job(NodePid),
+    {_, JobId} = run_default_job(NodePid),
     EvsSoFar = receive_sse_so_far(ReqId),
     Ev1 = hd(EvsSoFar),
     ibrowse:stream_close(ReqId),
@@ -332,8 +363,8 @@ org_multiple_jobs(NodePid) ->
     ReqId = get_org_feed(no_last_event_id),
     {"200", _Headers} = receive_async_headers(ReqId),
     % Deliberately start job2 first, so we can make sure our code for splitting by job below works
-    {_, JobId2} = run_job(NodePid),
-    {_, JobId} = run_job(NodePid),
+    {_, JobId2} = run_default_job(NodePid),
+    {_, JobId} = run_default_job(NodePid),
     timer:sleep(750),
     Evs = receive_sse_so_far(ReqId),
     ?assertEqual(4, length(Evs)),
@@ -358,15 +389,15 @@ org_multiple_jobs(NodePid) ->
 org_multiple_orgs(NodePid) ->
     ReqId = get_org_feed(no_last_event_id),
     {"200", _} = receive_async_headers(ReqId),
-    {_, JobId} = run_job(NodePid),
+    {_, JobId} = run_default_job(NodePid),
 
-    JobId2 = pushy_object:make_org_prefix_id(?ORG2ID),
-    Node2Ref = make_node_ref(?ORG2ID, <<"n2">>),
+    Node2 = <<"n2">>,
+    Node2Ref = make_node_ref(?ORG2ID, Node2),
     Node2Pid = start_node(Node2Ref),
     ReqId2 = get_org_feed(no_last_event_id, ?ORG2),
     {"200", _} = receive_async_headers(ReqId2),
     ?assertEqual([], receive_sse_so_far(ReqId2)),
-    run_job(Node2Pid, JobId2, Node2Ref),
+    {_JobPid2, JobId2} = run_default_job_with_ref(Node2Pid, Node2Ref),
 
     timer:sleep(750),
 
@@ -620,3 +651,248 @@ db_param_org_start_event() ->
     ?assertEqual(true, get_ev_val(Ev, file_specified)),
     ibrowse:stream_close(ReqId),
     stop_job(JobId).
+
+capture_opt_bool() ->
+    Params = [{<<"capture_output">>, 1}],
+    {error, Code, _} = post_job(?COMMAND, [?NODE], Params),
+    ?assertEqual("400", Code).
+
+capture_not_added_to_commit() ->
+    meck:reset(pushy_node_state),
+    {ok, JobId} = post_job(?COMMAND, [?NODE], []),
+    [CommitMsg] = get_sent_msgs(),
+    ?assertEqual(undefined, proplists:get_value(file, CommitMsg)),
+    stop_job(JobId).
+
+capture_added_to_commit() ->
+    Params = [{<<"capture_output">>, true}],
+    {ok, JobId} = post_job(?COMMAND, [?NODE], Params),
+    [CommitMsg] = get_sent_msgs(),
+    ?assertEqual(true, proplists:get_value(capture, CommitMsg)),
+    stop_job(JobId).
+
+capture_added_to_start_event() ->
+    Params = [{capture_output, true}],
+    {ok, JobId} = post_job(?COMMAND, [?NODE], Params),
+    ReqId = get_job_feed(self(), JobId),
+    {Code, _Headers} = receive_async_headers(ReqId),
+    ?assertEqual("200", Code),
+    EvsSoFar = receive_sse_so_far(ReqId),
+    validate_event_content(EvsSoFar),
+    Ev = hd(EvsSoFar),
+    ?assertEqual(start, Ev#event.name),
+    ?assertEqual(true, get_ev_val(Ev, capture)),
+    ibrowse:stream_close(ReqId),
+    stop_job(JobId).
+
+capture_added_to_job_res() ->
+    Params = [{capture_output, true}],
+    {ok, JobId} = post_job(?COMMAND, [?NODE], Params),
+    {Job} = get_job(JobId, ?ORG),
+    ?assertEqual(true, ej:get({"capture_output"}, Job)),
+    stop_job(JobId).
+
+capture_not_added_to_job_res() ->
+    {ok, JobId} = post_job(?COMMAND, [?NODE], []),
+    {Job} = get_job(JobId, ?ORG),
+    ?assertEqual(undefined, ej:get({"capture_output"}, Job)),
+    stop_job(JobId).
+
+% No rows are written to the DB if there are _no_ options, so let's
+% force a row to be written.
+capture_not_added_to_job_res_with_dir() ->
+    Params = [{dir, <<"/tmp">>}],
+    {ok, JobId} = post_job(?COMMAND, [?NODE], Params),
+    {Job} = get_job(JobId, ?ORG),
+    ?assertEqual(undefined, ej:get({"capture_output"}, Job)),
+    stop_job(JobId).
+
+capture_added_to_org_res() ->
+    Params = [{capture_output, true}],
+    {ok, JobId} = post_job(?COMMAND, [?NODE], Params),
+    Jobs = get_org_jobs(?ORG),
+    [Job] = [J || J <- Jobs, ej:get({"id"}, J) =:= JobId],
+    ?assertEqual(true, ej:get({"capture_output"}, Job)),
+    stop_job(JobId).
+
+capture_not_added_to_org_res() ->
+    {ok, JobId} = post_job(?COMMAND, [?NODE], []),
+    Jobs = get_org_jobs(?ORG),
+    [Job] = [J || J <- Jobs, ej:get({"id"}, J) =:= JobId],
+    ?assertEqual(undefined, ej:get({"capture_output"}, Job)),
+    stop_job(JobId).
+
+capture_succeeded_blobs_in_db(NodePid) ->
+    meck:reset(pushy_node_state),
+    NodeRef = make_node_ref(?ORGID, ?NODE),
+    Opts = #pushy_job_opts{capture=true},
+    ResultParams = [{<<"stdout">>, <<"testout">>},
+                    {<<"stderr">>, <<"testerr">>}],
+    Result = {succeeded, ResultParams},
+    {_, JobId} = run_default_job_like_this(NodePid, NodeRef, Opts, Result),
+    timer:sleep(1000),
+    {ok, [OptRow]} = sqerl:execute(<<"select * from job_options where job_id = $1">>,
+                               [JobId]),
+    {_, Capture} = lists:keyfind(<<"capture">>, 1, OptRow),
+    ?assertEqual(true, Capture),
+    {ok, [OutRow]} = sqerl:execute(<<"select * from job_output where job_id = $1">>,
+                               [JobId]),
+    {_, Out} = lists:keyfind(<<"stdout">>, 1, OutRow),
+    ?assertEqual(<<"testout">>, Out),
+    {_, Err} = lists:keyfind(<<"stderr">>, 1, OutRow),
+    ?assertEqual(<<"testerr">>, Err),
+    stop_job(JobId).
+
+capture_failed_blobs_in_db(NodePid) ->
+    meck:reset(pushy_node_state),
+    NodeRef = make_node_ref(?ORGID, ?NODE),
+    Opts = #pushy_job_opts{capture=true},
+    ResultParams = [{<<"stdout">>, <<"testout">>},
+                    {<<"stderr">>, <<"testerr">>}],
+    Result = {failed, ResultParams},
+    {_, JobId} = run_default_job_like_this(NodePid, NodeRef, Opts, Result),
+    timer:sleep(1000),
+    {ok, [OptRow]} = sqerl:execute(<<"select * from job_options where job_id = $1">>,
+                               [JobId]),
+    {_, Capture} = lists:keyfind(<<"capture">>, 1, OptRow),
+    ?assertEqual(true, Capture),
+    {ok, [OutRow]} = sqerl:execute(<<"select * from job_output where job_id = $1">>,
+                               [JobId]),
+    {_, Out} = lists:keyfind(<<"stdout">>, 1, OutRow),
+    ?assertEqual(<<"testout">>, Out),
+    {_, Err} = lists:keyfind(<<"stderr">>, 1, OutRow),
+    ?assertEqual(<<"testerr">>, Err),
+    stop_job(JobId).
+
+capture_no_output_no_row(NodePid) ->
+    meck:reset(pushy_node_state),
+    NodeRef = make_node_ref(?ORGID, ?NODE),
+    Opts = #pushy_job_opts{capture=true},
+    Result = {succeeded, []},
+    {_, JobId} = run_default_job_like_this(NodePid, NodeRef, Opts, Result),
+    timer:sleep(1000),
+    {ok, [OptRow]} = sqerl:execute(<<"select * from job_options where job_id = $1">>,
+                               [JobId]),
+    {_, Capture} = lists:keyfind(<<"capture">>, 1, OptRow),
+    ?assertEqual(true, Capture),
+    {ok, []} = sqerl:execute(<<"select * from job_output where job_id = $1">>,
+                               [JobId]),
+    stop_job(JobId).
+
+capture_empty_output_correct_row(NodePid) ->
+    meck:reset(pushy_node_state),
+    NodeRef = make_node_ref(?ORGID, ?NODE),
+    Opts = #pushy_job_opts{capture=true},
+    % Note we are testing both strings and binaries, just in case
+    Result = {succeeded, [{<<"stdout">>, ""}, {<<"stderr">>, <<"">>}]},
+    {_, JobId} = run_default_job_like_this(NodePid, NodeRef, Opts, Result),
+    timer:sleep(1000),
+    {ok, [OptRow]} = sqerl:execute(<<"select * from job_options where job_id = $1">>,
+                               [JobId]),
+    {_, Capture} = lists:keyfind(<<"capture">>, 1, OptRow),
+    ?assertEqual(true, Capture),
+    {ok, [OutRow]} = sqerl:execute(<<"select * from job_output where job_id = $1">>,
+                               [JobId]),
+    {_, Out} = lists:keyfind(<<"stdout">>, 1, OutRow),
+    ?assertEqual(<<"">>, Out),
+    {_, Err} = lists:keyfind(<<"stderr">>, 1, OutRow),
+    ?assertEqual(<<"">>, Err),
+    stop_job(JobId).
+
+capture_empty_err_correct_row(NodePid) ->
+    meck:reset(pushy_node_state),
+    NodeRef = make_node_ref(?ORGID, ?NODE),
+    Opts = #pushy_job_opts{capture=true},
+    Result = {failed, [{<<"stdout">>, "testout"}, {<<"stderr">>, <<"">>}]},
+    {_, JobId} = run_default_job_like_this(NodePid, NodeRef, Opts, Result),
+    timer:sleep(1000),
+    {ok, [OptRow]} = sqerl:execute(<<"select * from job_options where job_id = $1">>,
+                               [JobId]),
+    {_, Capture} = lists:keyfind(<<"capture">>, 1, OptRow),
+    ?assertEqual(true, Capture),
+    {ok, [OutRow]} = sqerl:execute(<<"select * from job_output where job_id = $1">>,
+                               [JobId]),
+    {_, Out} = lists:keyfind(<<"stdout">>, 1, OutRow),
+    ?assertEqual(<<"testout">>, Out),
+    {_, Err} = lists:keyfind(<<"stderr">>, 1, OutRow),
+    ?assertEqual(<<"">>, Err),
+    stop_job(JobId).
+
+capture_res_404_for_bad_job() ->
+    Path = io_lib:format("jobs/no_such_job/output/~s/stdout", [?NODE]),
+    {ok, Code, _Headers, _Resp} =
+        pushy_api_util:api_request(get, <<"creator_name">>, ?ORG, 
+                                   Path, synchronous, [], <<"">>),
+    ?assertEqual("404", Code).
+
+capture_res_404_for_no_capture() ->
+    {ok, JobId} = post_job(?COMMAND, [?NODE], []),
+    Path = io_lib:format("jobs/~s/output/~s/stdout", [JobId, ?NODE]),
+    {ok, Code, _Headers, _Resp} =
+        pushy_api_util:api_request(get, <<"creator_name">>, ?ORG, 
+                                   Path, synchronous, [], <<"">>),
+    ?assertEqual("404", Code).
+
+capture_res_ok_for_stdout_capture(NodePid) ->
+    meck:reset(pushy_node_state),
+    NodeRef = make_node_ref(?ORGID, ?NODE),
+    Opts = #pushy_job_opts{capture=true},
+    ResultParams = [{<<"stdout">>, <<"testout">>}, {<<"stderr">>, <<"">>}],
+    Result = {succeeded, ResultParams},
+    {_, JobId} = run_default_job_like_this(NodePid, NodeRef, Opts, Result),
+    timer:sleep(1000),
+    PathO = io_lib:format("jobs/~s/output/~s/stdout", [JobId, ?NODE]),
+    {ok, CodeO, _HeadersO, RespO} =
+        pushy_api_util:api_request(get, <<"creator_name">>, ?ORG, 
+                                   PathO, synchronous, [], <<"">>),
+    ?assertEqual("200", CodeO),
+    ?assertEqual(<<"testout">>, RespO),
+    PathE = io_lib:format("jobs/~s/output/~s/stderr", [JobId, ?NODE]),
+    {ok, CodeE, _HeadersE, RespE} =
+        pushy_api_util:api_request(get, <<"creator_name">>, ?ORG, 
+                                   PathE, synchronous, [], <<"">>),
+    ?assertEqual("200", CodeE),
+    ?assertEqual(<<"">>, RespE).
+
+capture_res_ok_for_stderr_capture(NodePid) ->
+    meck:reset(pushy_node_state),
+    NodeRef = make_node_ref(?ORGID, ?NODE),
+    Opts = #pushy_job_opts{capture=true},
+    ResultParams = [{<<"stdout">>, <<"">>}, {<<"stderr">>, <<"testerr">>}],
+    Result = {succeeded, ResultParams},
+    {_, JobId} = run_default_job_like_this(NodePid, NodeRef, Opts, Result),
+    timer:sleep(1000),
+    PathO = io_lib:format("jobs/~s/output/~s/stdout", [JobId, ?NODE]),
+    {ok, CodeO, _HeadersO, RespO} =
+        pushy_api_util:api_request(get, <<"creator_name">>, ?ORG, 
+                                   PathO, synchronous, [], <<"">>),
+    ?assertEqual("200", CodeO),
+    ?assertEqual(<<"">>, RespO),
+    PathE = io_lib:format("jobs/~s/output/~s/stderr", [JobId, ?NODE]),
+    {ok, CodeE, _HeadersE, RespE} =
+        pushy_api_util:api_request(get, <<"creator_name">>, ?ORG, 
+                                   PathE, synchronous, [], <<"">>),
+    ?assertEqual("200", CodeE),
+    ?assertEqual(<<"testerr">>, RespE).
+
+capture_res_ok_for_both_capture(NodePid) ->
+    meck:reset(pushy_node_state),
+    NodeRef = make_node_ref(?ORGID, ?NODE),
+    Opts = #pushy_job_opts{capture=true},
+    ResultParams = [{<<"stdout">>, <<"testout">>},
+                    {<<"stderr">>, <<"testerr">>}],
+    Result = {succeeded, ResultParams},
+    {_, JobId} = run_default_job_like_this(NodePid, NodeRef, Opts, Result),
+    timer:sleep(1000),
+    PathO = io_lib:format("jobs/~s/output/~s/stdout", [JobId, ?NODE]),
+    {ok, CodeO, _HeadersO, RespO} =
+        pushy_api_util:api_request(get, <<"creator_name">>, ?ORG, 
+                                   PathO, synchronous, [], <<"">>),
+    ?assertEqual("200", CodeO),
+    ?assertEqual(<<"testout">>, RespO),
+    PathE = io_lib:format("jobs/~s/output/~s/stderr", [JobId, ?NODE]),
+    {ok, CodeE, _HeadersE, RespE} =
+        pushy_api_util:api_request(get, <<"creator_name">>, ?ORG, 
+                                   PathE, synchronous, [], <<"">>),
+    ?assertEqual("200", CodeE),
+    ?assertEqual(<<"testerr">>, RespE).

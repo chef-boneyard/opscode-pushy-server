@@ -96,13 +96,13 @@ maybe_run_graphite(false, Workers) ->
     Workers.
 
 add_init_params({["organizations"|_Tail]=Route,
-                 pushy_config_resource=Resource, []},
+                 pushy_config_resource=Resource, InitArgs},
                 #pushy_state{incarnation_id = IncarnationId,
                              curve_public_key = CurvePublicKey}) ->
-    {Route, Resource, [{incarnation_id, IncarnationId}, {curve_public_key, CurvePublicKey}]};
-add_init_params({["organizations"|_Tail]=Route, Resource, []},
+    {Route, Resource, [{incarnation_id, IncarnationId}, {curve_public_key, CurvePublicKey} | InitArgs]};
+add_init_params({["organizations"|_Tail]=Route, Resource, InitArgs},
                 #pushy_state{incarnation_id = IncarnationId}) ->
-    {Route, Resource, [{incarnation_id, IncarnationId}]};
+    {Route, Resource, [{incarnation_id, IncarnationId} | InitArgs]};
 add_init_params({["pushy"|_Tail]=Route, Resource, []},
                 #pushy_state{incarnation_id = IncarnationId}) ->
     {Route, Resource, [{incarnation_id, IncarnationId}]};

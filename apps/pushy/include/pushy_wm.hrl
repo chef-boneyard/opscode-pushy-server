@@ -44,6 +44,10 @@
 
                        curve_public_key :: binary(),
 
+                       % Used only by pushy_job_output_resource
+                       output :: 'stdout' | 'stderr' | undefined,
+                       output_data :: binary() | undefined,
+
                        job_pid :: pid()
                       }).
 

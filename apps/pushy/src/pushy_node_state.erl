@@ -129,9 +129,16 @@ init([NodeRef, NodeAddr, IncarnationId]) ->
         %% assigned before anyone else tries to start things up gproc:reg can only return
         %% true or throw
         true = gproc:reg({n, l, GprocName}),
-        true = gproc:reg({n, l, GprocAddr}),
-        %% We then move to a post_init state that handles the rest of the setup process
-        {ok, post_init, State, 0}
+        try
+            true = gproc:reg({n, l, GprocAddr}),
+            %% We then move to a post_init state that handles the rest of the setup process
+            {ok, post_init, State, 0}
+        catch
+            error:badarg ->
+                lager:error("Failed to register addr:~p(~p) for ~p (already exists as ~p?)",
+                            [NodeRef, NodeAddr, self(), gproc:lookup_pid({n,l,GprocName}) ]),
+                {stop, state_transition(init, shutdown, State), State}
+        end
     catch
         error:badarg ->
             %% When we start up from a previous run, we have two ways that the FSM might be started;
@@ -140,8 +147,8 @@ init([NodeRef, NodeAddr, IncarnationId]) ->
             %% We may also want to *not* automatically reanimate FSMs for nodes that aren't
             %% actively reporting; but rather keep them in a 'limbo' waiting for the first
             %% packet, and if one doesn't arrive within a certain time mark them down.
-            lager:error("Failed to register:~p for ~p (already exists as ~p?)",
-                        [NodeRef,self(), gproc:lookup_pid({n,l,GprocName}) ]),
+            lager:error("Failed to register name:~p(~p) for ~p (already exists as ~p?)",
+                        [NodeRef, NodeAddr, self(), gproc:lookup_pid({n,l,GprocName}) ]),
             {stop, state_transition(init, shutdown, State), State}
     end.
 
@@ -208,7 +215,10 @@ handle_info({heartbeat, IncarnationId}, CurrentState,
         true ->
             case pushy_node_stats:heartbeat(self()) of
                 ok -> {next_state, CurrentState, State};
-                should_die -> {stop, state_transition(CurrentState, shutdown, State), State}
+                should_die -> 
+                    NodeInfo = {State#state.node_ref, State#state.node_addr},
+                    lager:debug("no heartbeat from ~p, shutting down", [NodeInfo]),
+                    {stop, state_transition(CurrentState, shutdown, State), State}
             end
     end;
 handle_info(should_die, CurrentState, State) ->
@@ -401,23 +411,23 @@ process_message(#state{node_ref=NodeRef, node_addr=Address} = State, #pushy_mess
     lager:debug("Received message for Node ~p Type ~p (address ~p)",
                 [NodeRef, BinaryType, pushy_tools:bin_to_hex(Address)]),
     case Type of
-        unknown ->
+        undefined ->
             lager:error("Status message for node ~p was missing type field!~n", [NodeRef]),
             State;
-        undefined ->
+        unknown ->
             lager:error("Status message for node ~p had unknown type ~p~n", [NodeRef, BinaryType]),
             State;
         heartbeat ->
             send_node_event(State, JobId, NodeRef, IncarnationId, heartbeat);
         _ ->
-            send_node_event(State, JobId, NodeRef, Type)
+            send_node_event(State, JobId, NodeRef, {Type, Data})
     end.
 
 -spec send_node_event(#state{},
                       job_id(),
                       node_ref(),
                       incarnation_id(),
-                      node_event()) -> #state{}.
+                      heartbeat) -> #state{}.
 send_node_event(State, JobId, NodeRef, IncarnationId, heartbeat) ->
     lager:debug("Received heartbeat for node ~p with job id ~p", [NodeRef, JobId]),
     case JobId /= null andalso pushy_job_state_sup:get_process(JobId) == not_found of
@@ -432,8 +442,8 @@ send_node_event(State, JobId, NodeRef, IncarnationId, heartbeat) ->
 -spec send_node_event(#state{},
                       job_id(),
                       node_ref(),
-                      node_event()) -> #state{}.
-send_node_event(State, JobId, NodeRef, aborted = Msg) ->
+                      job_event()) -> #state{}.
+send_node_event(State, JobId, NodeRef, Msg = {aborted, _}) ->
     gen_fsm:send_event(self(), aborted),
     if
         JobId /= null ->
