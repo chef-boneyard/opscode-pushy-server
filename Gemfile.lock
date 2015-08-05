@@ -1,20 +1,20 @@
 GIT
   remote: git://github.com/opscode/omnibus-software.git
-  revision: 997d7c1cbeb4be11f13e1b8f88c2a5b40bdb7fca
+  revision: 05e778b04644c5bb1d1e1fb514587361868a61c6
   branch: master
   specs:
     omnibus-software (4.0.0)
 
 GIT
   remote: git://github.com/opscode/omnibus.git
-  revision: 4b019f031c32a0d92c389d3949103e643884d864
+  revision: f0aa2759a0b55204b7a7a4c5889b9359a258bcca
   specs:
     omnibus (4.0.0)
       chef-sugar (~> 3.0)
       cleanroom (~> 1.0)
-      mixlib-shellout (~> 1.4)
+      mixlib-shellout (~> 2.0)
       mixlib-versioning
-      ohai (~> 7.2)
+      ohai (~> 8.0)
       ruby-progressbar (~> 1.7)
       thor (~> 0.18)
       uber-s3
@@ -22,36 +22,36 @@ GIT
 GEM
   remote: https://rubygems.org/
   specs:
-    chef-sugar (3.1.0)
+    chef-sugar (3.1.1)
     cleanroom (1.0.0)
-    ffi (1.9.8)
-    ffi-yajl (1.4.0)
-      ffi (~> 1.5)
+    ffi (1.9.10)
+    ffi-yajl (2.2.2)
       libyajl2 (~> 1.2)
     ipaddress (0.8.0)
     libyajl2 (1.2.0)
-    mime-types (1.25.1)
+    mime-types (2.6.1)
     mixlib-cli (1.5.0)
     mixlib-config (2.2.1)
     mixlib-log (1.6.0)
-    mixlib-shellout (1.6.1)
-    mixlib-versioning (1.0.0)
-    ohai (7.4.1)
+    mixlib-shellout (2.1.0)
+    mixlib-versioning (1.1.0)
+    ohai (8.5.0)
       ffi (~> 1.9)
-      ffi-yajl (~> 1.1)
+      ffi-yajl (~> 2.2)
       ipaddress
-      mime-types (~> 1.16)
+      mime-types (~> 2.0)
       mixlib-cli
       mixlib-config (~> 2.0)
       mixlib-log
-      mixlib-shellout (~> 1.2)
+      mixlib-shellout (~> 2.0)
+      rake (~> 10.1)
       systemu (~> 2.6.4)
       wmi-lite (~> 1.0)
+    rake (10.4.2)
     ruby-progressbar (1.7.5)
     systemu (2.6.5)
     thor (0.19.1)
-    uber-s3 (0.2.4)
-      mime-types (~> 1.17)
+    uber-s3 (0.1.1)
     wmi-lite (1.0.0)
 
 PLATFORMS
