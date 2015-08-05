@@ -15,7 +15,7 @@
 #
 
 name "opscode-pushy-server"
-default_version "ma/capture_output"
+default_version "2.0.0-alpha.3"
 
 source git:  "git://github.com/opscode/opscode-pushy-server"
 
