@@ -334,9 +334,9 @@ shared_context "sse_support" do
   def wait_for_job_done(uri, options = {})
     job = nil
     begin
-      Timeout::timeout(options[:timeout] || JOB_STATUS_TIMEOUT_DEFAULT) do
+      Timeout::timeout(options[:timeout] || job_status_timeout_default) do
         begin
-          sleep(SLEEP_TIME) if job
+          sleep(sleep_time) if job
           job = get_job(uri)
         end until ['complete', 'timed_out', 'quorum_failed'].include?(job['status'])
       end

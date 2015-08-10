@@ -19,19 +19,19 @@ require 'pushy_client'
 require 'timeout'
 
 shared_context "end_to_end_util" do
-  SLEEP_TIME = 0.2
+  let (:sleep_time) { 0.2 }
 
   # A variety of timeouts are used to ensure that jobs have started,
   # nodes are available, etc.  These are set very conservatively.
-  CLIENT_START_TIMEOUT       = 5
-  JOB_START_TIMEOUT          = 15
-  JOB_STATUS_TIMEOUT_DEFAULT = 30
-  NODE_AVAILABILITY_TIMEOUT  = 10
-  NODE_STATUS_TIMEOUT        = 10
-  SERVER_RESTART_TIMEOUT     = 45 # increasing this makes failing tests take longer, but salvages some slow runs
+  let (:client_start_timeout) { 5 }
+  let (:job_start_timeout) { 15 }
+  let (:job_status_timeout_default) { 30 }
+  let (:node_availability_timeout) { 10 }
+  let (:node_status_timeout) { 10 }
+  let (:server_restart_timeout) { 45 } # increasing this makes failing tests take longer, but salvages some slow runs
 
-  CLIENT_CREATION_RETRIES    = 5  # how many times to retry a client creation
-  CLIENT_CREATION_SLEEP      = 10 # how long to wait between retries
+  let (:client_creation_retries) { 5 }  # how many times to retry a client creation
+  let (:client_creation_sleep) { 10 } # how long to wait between retries
 
   def echo_yahoo
     'sh ' + File.expand_path('../../support/echo_yahoo_to_tmp_pushytest', __FILE__)
@@ -81,14 +81,14 @@ shared_context "end_to_end_util" do
       #
       # Keygen can be slow, and fail
       retry_count = 1
-      while (retry_count <= CLIENT_CREATION_RETRIES)
+      while (retry_count <= client_creation_retries)
         response = post(api_url("/clients"), superuser, :payload => {"name" => name})
 
         puts "Got a #{response.code} response to a POST to /clients for client #{name}: (try #{retry_count})"
         pp response
         # 500 happens when keygen is behind; generating a key can take almost a sec on a slow box
         break if response.code < 500
-        sleep CLIENT_CREATION_SLEEP
+        sleep client_creation_sleep
         retry_count+=1
       end
 
@@ -148,11 +148,11 @@ shared_context "end_to_end_util" do
     end
 
     begin
-      Timeout::timeout(CLIENT_START_TIMEOUT) do
+      Timeout::timeout(client_start_timeout) do
         while true
           offline_nodes = names.select { |name| !@clients[name][:client].online? }
           break if offline_nodes.size == 0
-          sleep SLEEP_TIME
+          sleep sleep_time
         end
       end
     rescue Timeout::Error
@@ -165,14 +165,14 @@ shared_context "end_to_end_util" do
 
   def wait_for_node_status(up_down, *names)
     begin
-      Timeout::timeout(NODE_STATUS_TIMEOUT) do
+      Timeout::timeout(node_status_timeout) do
         until names.all? { |name|
             get(api_url("pushy/node_states/#{name}"), admin_user) do |response|
               status = JSON.parse(response)['status']
               status == up_down
             end
           }
-          sleep SLEEP_TIME
+          sleep sleep_time
         end
       end
     rescue Timeout::Error
@@ -189,12 +189,12 @@ shared_context "end_to_end_util" do
 
   def wait_for_nodes_availabilty(availability, *names)
     begin
-      Timeout::timeout(NODE_AVAILABILITY_TIMEOUT) do
+      Timeout::timeout(node_availability_timeout) do
         until names.all? { |name|
                 response = get_rest("pushy/node_states/#{name}")
                 response['availability'] == availability
               }
-          sleep SLEEP_TIME
+          sleep sleep_time
         end
       end
     rescue Timeout::Error
@@ -240,7 +240,7 @@ shared_context "end_to_end_util" do
   # until the backend appears.  We wait until we get a parsable JSON object back
   def wait_for_server_restart
     begin
-      Timeout::timeout(SERVER_RESTART_TIMEOUT) do
+      Timeout::timeout(server_restart_timeout) do
         status = :not_ready
         while status != :ready do
           sleep(1)
@@ -275,9 +275,9 @@ shared_context "end_to_end_util" do
     job = nil
     status_list = status.respond_to?(:member?) ? status : [status]
     begin
-      Timeout::timeout(options[:timeout] || JOB_STATUS_TIMEOUT_DEFAULT) do
+      Timeout::timeout(options[:timeout] || job_status_timeout_default) do
         begin
-          sleep(SLEEP_TIME) if job
+          sleep(sleep_time) if job
           job = get_job(uri)
         end until status_list.member?(job['status'])
       end
@@ -336,7 +336,7 @@ shared_context "end_to_end_util" do
     # Wait until all have started
     begin
       uncommitted_nodes = node_names # assume nothing is committed to start
-      Timeout::timeout(JOB_START_TIMEOUT) do
+      Timeout::timeout(job_start_timeout) do
         while true
           uncommitted_nodes = node_names.select do |name|
             !@clients[name][:states].any? do |state|
@@ -344,11 +344,11 @@ shared_context "end_to_end_util" do
             end
           end
           break if uncommitted_nodes.size == 0
-          sleep(SLEEP_TIME)
+          sleep(sleep_time)
         end
       end
     rescue Timeout::Error
-      raise "Timeout of #{JOB_START_TIMEOUT} sec elapsed: Clients never committed to job, or job never started: #{uncommitted_nodes.map { |name| "#{name}: #{@clients[name][:states][-1]}" }}"
+      raise "Timeout of #{job_start_timeout} sec elapsed: Clients never committed to job, or job never started: #{uncommitted_nodes.map { |name| "#{name}: #{@clients[name][:states][-1]}" }}"
     end
   end
 
