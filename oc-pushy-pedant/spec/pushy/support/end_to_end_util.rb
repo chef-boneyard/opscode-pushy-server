@@ -103,7 +103,7 @@ shared_context "end_to_end_util" do
       file.flush
 
       require 'rbconfig'
-      ruby_exec = RbConfig.ruby + " -e "
+      ruby_exec = "BUNDLE_GEMFILE='' #{RbConfig.ruby} -e "
 
       # Create pushy client
       default_opts = {
@@ -139,7 +139,7 @@ shared_context "end_to_end_util" do
               :command_line => ruby_exec + %q!'$,="\n";p=Process;File.open("/tmp/junkfile","w"){|f|f.print p.uid,p.euid,Dir.getwd,ENV.to_a} &> /tmp/junk-capture'!
           },
           'debug-env' => {
-            :command_line => "(printenv; id; which ruby; ${ruby_exec}'puts :ruby_minus_e_ran') &> /tmp/debug-env-#{name}"
+            :command_line => "(printenv; id; which ruby; echo #{ruby_exec}; #{ruby_exec}'puts :ruby_minus_e_ran') &> /tmp/debug-env-#{name}"
           }
         }
       }
