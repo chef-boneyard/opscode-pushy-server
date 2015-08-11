@@ -102,6 +102,9 @@ shared_context "end_to_end_util" do
       file.write(key)
       file.flush
 
+      require 'rbconfig'
+      ruby_exec = RbConfig.ruby + " -e "
+
       # Create pushy client
       default_opts = {
         :chef_server_url => "#{Pedant.config[:chef_server]}/organizations/#{org}",
@@ -114,22 +117,29 @@ shared_context "end_to_end_util" do
             :command_line => 'echo true',
             :lock => true
           },
-          'ruby -e "ENV[\'PUSHY_NODE_NAME\'] == \'DONKEY\' ? exit(1) : exit(0)"' => 'ruby -e "ENV[\'PUSHY_NODE_NAME\'] == \'DONKEY\' ? exit(1) : exit(0)"',
-          'ruby -e "exit 1"' => 'ruby -e "exit 1"',
+          'ruby -e "ENV[\'PUSHY_NODE_NAME\'] == \'DONKEY\' ? exit(1) : exit(0)"' =>
+             ruby_exec + '"ENV[\'PUSHY_NODE_NAME\'] == \'DONKEY\' ? exit(1) : exit(0)"',
+          'ruby -e "exit 1"' => ruby_exec + '"exit 1"',
           'sleep 1' => 'sleep 1',
           'sleep 2' => 'sleep 2',
           'sleep 5' => 'sleep 5',
           'sleep 10' => 'sleep 10',
           'sleep 20' => 'sleep 20',
           'this_oughta_succeed' => 'echo true',
-          'this_oughta_fail' => 'ruby -e "exit 1"',
-          'capture_test' => %q!ruby -e 'puts "testout"; $stderr.puts "testerr"'!,
-          'capture_test_fail' => %q!ruby -e 'puts "testout"; $stderr.puts "testerr"; exit 1'!,
+          'this_oughta_fail' => ruby_exec + '"exit 1"',
+          'capture_test' => ruby_exec + %q!'puts "testout"; $stderr.puts "testerr"'!,
+          'capture_test_fail' => ruby_exec + %q!'puts "testout"; $stderr.puts "testerr"; exit 1'!,
           'capture_test_empty' => '/bin/true',
-          'capture_test_no_out' => %q!ruby -e '$stderr.puts "testerr"'!,
+          'capture_test_no_out' => ruby_exec + %q!'$stderr.puts "testerr"'!,
           'capture_test_no_err' => 'echo testout',
           'ruby-opts' => {
-              :command_line => %q!ruby -e '$,="\n";p=Process;File.open(ENV["OUT"],"w"){|f|f.print p.uid,p.euid,Dir.getwd,ENV.to_a}'!
+            :command_line => ruby_exec + %q!'$,="\n";p=Process;File.open(ENV["OUT"],"w"){|f|f.print p.uid,p.euid,Dir.getwd,ENV.to_a}'!
+          },
+          'ruby-junk' => {
+              :command_line => ruby_exec + %q!'$,="\n";p=Process;File.open("/tmp/junkfile","w"){|f|f.print p.uid,p.euid,Dir.getwd,ENV.to_a} &> /tmp/junk-capture'!
+          },
+          'debug-env' => {
+            :command_line => "(printenv; id; which ruby; ${ruby_exec}'puts :ruby_minus_e_ran') &> /tmp/debug-env-#{name}"
           }
         }
       }
