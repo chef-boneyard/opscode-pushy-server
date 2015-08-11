@@ -621,6 +621,7 @@ describe "sse-test" do
     it 'the job event should include the parameters (with "file_specified" instead of "file")' do
       env = {'ENV1' => 'myenv1', 'ENV2' => 'myenv2'}
       @id = start_new_job(param_job('root', '/tmp', env, 'raw:foo'))
+      sleep 2
       @stream = start_event_stream
       evs = @stream.get_streaming_events
       js = evs[0].json
