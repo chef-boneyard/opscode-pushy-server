@@ -283,8 +283,8 @@ shared_context "sse_support" do
   # Validate standard events
   def validate_events(numEvents, evs)
     require 'pp'
-    #pp evs
-    evs.length.should == numEvents
+    pp evs unless evs.length >= numEvents
+    evs.length.should >= numEvents
     # All ids are unique
     evs.map(&:id).uniq.length.should == evs.length
     # All events have (parsable) timestamps
