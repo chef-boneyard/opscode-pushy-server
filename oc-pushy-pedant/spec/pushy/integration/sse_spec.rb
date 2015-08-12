@@ -27,9 +27,9 @@ describe "sse-test" do
   include_context "sse_support"
   SUMMARY_WAIT_TIME = 5
   JOB_WAITING_AROUND_TIME = 60
-  let(:command) { 'sleep 1' }
+  let(:command) { 'sleep 2' }
   let(:quorum) { 1 }
-  let(:run_timeout) { 2 }
+  let(:run_timeout) { 4 }
   def job_to_run                        # use "def", because "let" caches, but we want to always get the latest version
     {
       'command' => command,
@@ -523,11 +523,12 @@ describe "sse-test" do
       start_new_clients([node])
       @id = start_new_job(job_to_run)
       @stream = start_event_stream
+      sleep 5
     end
 
     it "the events become available as they happen" do
       evs = @stream.get_streaming_events
-      validate_events(4, evs)
+      evs.length.should be >= 4
       expect_start(evs[0], command, run_timeout, quorum, 1, admin_user.name)
       expect_quorum_vote(evs[1], node, 'success')
       expect_quorum_succeeded(evs[2])
@@ -535,9 +536,11 @@ describe "sse-test" do
       @stream.close
       sleep 2
       evs = @stream.get_streaming_events
+      evs.length.should be == 6
       validate_events(6, evs)
       expect_run_complete(evs[4], node, 'success')
       expect_job_complete(evs[5], "complete")
+      sleep 5
       @stream.complete.should == true
     end
 
@@ -561,8 +564,13 @@ describe "sse-test" do
     end
 
     it "the stream can be resumed" do
+      # This test isn't very reliable and is hardware dependent
+      # The intent was that 4 events have happened by the first read, and the final completion events land in the second
+      # However, sometimes the full 6 event stream is read in the first statement, leaving none for the second.
+      # 
       old_evs = @stream.get_streaming_events
-      last_id = old_evs[3].id
+      validate_events(4, old_evs)
+      last_id = old_evs[-1].id
       sleep 1
       another_stream = start_event_stream(last_id)
       new_evs = another_stream.get_streaming_events
@@ -596,6 +604,7 @@ describe "sse-test" do
       # a failure.  So this test passes even when there is no keep-alive data.
       sleep 21
       evs = @stream.get_streaming_events
+      evs.length.should be == 6
       validate_events(6, evs)
     end
   end
@@ -612,6 +621,7 @@ describe "sse-test" do
     it 'the job event should include the parameters (with "file_specified" instead of "file")' do
       env = {'ENV1' => 'myenv1', 'ENV2' => 'myenv2'}
       @id = start_new_job(param_job('root', '/tmp', env, 'raw:foo'))
+      sleep 2
       @stream = start_event_stream
       evs = @stream.get_streaming_events
       js = evs[0].json
