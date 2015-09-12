@@ -47,7 +47,7 @@ describe "filedir-test" do
       wait_for_job_complete(job['uri'])
       envs = read_tmp_path[3]
       env = Hash[eval envs]
-      path = env['PUSHY_JOB_FILE']
+      path = env['CHEF_PUSH_JOB_FILE']
       File::exists?(path).should == true
       sleep file_dir_expiry_limit
       File::exists?(path).should == false

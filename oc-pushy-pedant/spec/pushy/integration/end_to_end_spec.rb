@@ -496,14 +496,14 @@ describe "end-to-end-test" do
         wait_for_job_status(job['uri'], 'quorum_failed')
       end
 
-      it 'PUSHY_JOB_ID is set to the job_id' do
+      it 'CHEF_PUSH_JOB_ID is set to the job_id' do
         prep_tmp_path
         job = start_job('ruby-opts', ['DONKEY'])
         wait_for_job_complete(job['uri'])
         job_id = job["uri"].split("/").last
         envs = read_tmp_path[3]
         env = Hash[eval envs]
-        env['PUSHY_JOB_ID'].should == job_id
+        env['CHEF_PUSH_JOB_ID'].should == job_id
       end
 
       it 'passing in a file as base64 works' do
@@ -514,7 +514,7 @@ describe "end-to-end-test" do
         wait_for_job_complete(job['uri'])
         envs = read_tmp_path[3]
         env = Hash[eval envs]
-        path = env['PUSHY_JOB_FILE']
+        path = env['CHEF_PUSH_JOB_FILE']
         File.read(path).should == filestr
       end
 
@@ -526,7 +526,7 @@ describe "end-to-end-test" do
         wait_for_job_complete(job['uri'])
         envs = read_tmp_path[3]
         env = Hash[eval envs]
-        path = env['PUSHY_JOB_FILE']
+        path = env['CHEF_PUSH_JOB_FILE']
         File.read(path).should == filestr
       end
 
@@ -538,7 +538,7 @@ describe "end-to-end-test" do
         wait_for_job_complete(job['uri'])
         envs = read_tmp_path[3]
         env = Hash[eval envs]
-        path = env['PUSHY_JOB_FILE']
+        path = env['CHEF_PUSH_JOB_FILE']
         path.should match(/pushy\//)
       end
 
@@ -552,7 +552,7 @@ describe "end-to-end-test" do
         wait_for_job_complete(job['uri'])
         envs = read_tmp_path[3]
         env = Hash[eval envs]
-        path = env['PUSHY_JOB_FILE']
+        path = env['CHEF_PUSH_JOB_FILE']
         path.should start_with new_file_dir
       end
 
@@ -893,7 +893,7 @@ describe "end-to-end-test" do
 
     context 'when running a job that DONKEY fails but FARQUAD and FIONA succeed' do
       before(:each) do
-        @command = "ruby -e \"ENV['PUSHY_NODE_NAME'] == 'DONKEY' ? exit(1) : exit(0)\""
+        @command = "ruby -e \"ENV['CHEF_PUSH_NODE_NAME'] == 'DONKEY' ? exit(1) : exit(0)\""
         @job1 = start_job(@command, %w{DONKEY FARQUAD FIONA})
       end
 
