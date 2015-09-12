@@ -28,6 +28,12 @@ def is_backend
   !!Pedant.config[:running_from_backend]
 end
 
+# 
+# Some test envs have bad perms on their path; this hides it for us.
+def fixup_cmd_err(cmd_err)
+  cmd_err.gsub(/^.*warning: Insecure world writable dir.*\n/,"")
+end
+
 describe "end-to-end-test" do
   include_context "end_to_end_util"
 
@@ -651,7 +657,7 @@ describe "end-to-end-test" do
           response.should look_like({:status => 200})
           response
         end
-        cmd_err.should == "testerr\n"
+        fixup_cmd_err(cmd_err).should == "testerr\n"
       end
 
       it 'if capture is specified in a failing cmd, the stdout and stderr will be available via REST' do
@@ -668,7 +674,7 @@ describe "end-to-end-test" do
           response.should look_like({:status => 200})
           response
         end
-        cmd_err.should == "testerr\n"
+        fixup_cmd_err(cmd_err).should == "testerr\n"
       end
 
       it 'if capture is not specified in a succeeding cmd, the stdout and stderr will return 404' do
@@ -727,7 +733,7 @@ describe "end-to-end-test" do
           response.should look_like({:status => 200})
           response
         end
-        cmd_err.should == "testerr\n"
+        fixup_cmd_err(cmd_err).should == "testerr\n"
         cmd_out = get(uri + "/output/DONKEY/stdout", admin_user, opts) do |response|
           response.should look_like({:status => 200})
           response
@@ -750,7 +756,7 @@ describe "end-to-end-test" do
           response.should look_like({:status => 200})
           response
         end
-        cmd_err.should == "testerr\n"
+        fixup_cmd_err(cmd_err).should == "testerr\n"
       end
     end
   end
@@ -1066,7 +1072,7 @@ describe "end-to-end-test" do
           response.should look_like({:status => 200})
           response
         end
-        cmd_err.should == "testerr\n"
+        fixup_cmd_err(cmd_err).should == "testerr\n"
       end
     end
   end
