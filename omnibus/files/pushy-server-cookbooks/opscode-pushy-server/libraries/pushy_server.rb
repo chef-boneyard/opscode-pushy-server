@@ -93,7 +93,7 @@ module PushJobsServer
       when "ha", "tier"
         PushJobsServer['opscode_pushy_server']['ha'] = (topology == 'ha')
         PushJobsServer['opscode_pushy_server']['vip'] = node['private_chef']['backend_vips']['ipaddress']
-        PushJobsServer['postgresql']['vip']           = node['private_chef']['backend_vips']['ipaddress']
+        PushJobsServer['postgresql']['vip']           = node['private_chef']['postgresql']['vip']
         case node['private_chef']['servers'][node_name]['role']
         when "backend"
           # nothing special needs to be done
