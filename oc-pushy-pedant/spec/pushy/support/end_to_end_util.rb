@@ -117,8 +117,8 @@ shared_context "end_to_end_util" do
             :command_line => 'echo true',
             :lock => true
           },
-          'ruby -e "ENV[\'PUSHY_NODE_NAME\'] == \'DONKEY\' ? exit(1) : exit(0)"' =>
-             ruby_exec + '"ENV[\'PUSHY_NODE_NAME\'] == \'DONKEY\' ? exit(1) : exit(0)"',
+          'ruby -e "ENV[\'CHEF_PUSH_NODE_NAME\'] == \'DONKEY\' ? exit(1) : exit(0)"' =>
+             ruby_exec + '"ENV[\'CHEF_PUSH_NODE_NAME\'] == \'DONKEY\' ? exit(1) : exit(0)"',
           'ruby -e "exit 1"' => ruby_exec + '"exit 1"',
           'sleep 1' => 'sleep 1',
           'sleep 2' => 'sleep 2',
