@@ -28,17 +28,20 @@ override :cacerts, version: '2014.08.20'
 override :berkshelf, version: "2.0.18"
 override :erlang, version: "R16B03-1"
 override :ruby, version: "2.1.4"
-
+# 2.4.8 avoids rubygems resolution bug that brings in wrong ohai version for chef.
+override :rubygems,     version: "2.4.8"
 override :libzmq, version: "4.0.5"
 
 override :rebar, version: "2.6.0"
+
+#override :"chef-gem", version: "master" # doesn't work because that's not a gemversion
+override :"chef-gem", version: "~>12.5.0"
 
 # creates required build directories
 dependency "preparation"
 
 # global
 dependency "libffi"
-dependency "chef-gem"
 dependency "pushy-server-cookbooks"
 dependency "pushy-server-scripts"
 dependency "opscode-pushy-server-ctl"
@@ -47,6 +50,8 @@ dependency "runit"
 dependency "opscode-pushy-server"
 dependency "pushy-server-schema"
 dependency "oc-pushy-pedant"
+dependency "chef-gem" # if we float on master we will invalidate cache continually; building last lets us only rebuild one thing.
+dependency "ohai"
 
 # version manifest file
 dependency "version-manifest"
