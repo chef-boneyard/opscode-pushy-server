@@ -27,6 +27,7 @@ nginx_addon_dir = File.join(nginx_etc_dir, "addon.d")
 # restate it here for notifying once we lay down some extra config
 # files.
 runit_service "nginx" do
+  service_dir "/opt/opscode/service"
   action :nothing
 end
 
