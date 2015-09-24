@@ -74,7 +74,9 @@ end
 
 include_recipe "enterprise::runit"
 
-include_recipe "opscode-pushy-server::postgresql" if is_data_master?
+# do I need this?
+# private_chef_pg_database "opscode-pgsql"
+include_recipe "opscode-pushy-server::push_database" if is_data_master?
 
 include_recipe "opscode-pushy-server::nginx"
 

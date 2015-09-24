@@ -67,6 +67,7 @@ default['pushy']['opscode-pushy-server']['chef_api_version'] = '11.1.0' # API Ve
 ###
 # PostgreSQL
 ###
+default['pushy']['postgresql']['database_name'] = "opscode_pushy"
 default['pushy']['postgresql']['username'] = "opscode-pgsql"
 default['pushy']['postgresql']['sql_user'] = "opscode_pushy"
 default['pushy']['postgresql']['sql_password'] = "snakepliskin"
