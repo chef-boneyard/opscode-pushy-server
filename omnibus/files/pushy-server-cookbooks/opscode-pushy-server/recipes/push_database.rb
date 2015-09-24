@@ -19,7 +19,7 @@
 postgres_attrs = node['private_chef']['postgresql']
 install_path = node['pushy']['install_path']
 push_attrs = node['pushy']['postgresql']
-database_name = "opscode_pushy"
+database_name = node['pushy']['postgresql']['database_name']
 
 # TODO - check for postgres to be up and accessible
 
@@ -46,7 +46,7 @@ opscode_pushy_server_pg_user_table_access push_attrs['sql_user'] do
 end
 
 opscode_pushy_server_pg_user_table_access push_attrs['sql_ro_user'] do
-  database 'bifrost'
+  database database_name
   schema 'public'
   access_profile :read
 end
