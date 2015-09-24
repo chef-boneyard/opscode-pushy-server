@@ -2,7 +2,7 @@ class EcPostgres
   # Provides a superuser connection to the specified database
   def self.with_connection(node, database = 'template1', opts = {})
     require 'pg'
-    postgres = node['private_chef']['postgresql'].merge(opts)
+    postgres = node['pushy']['postgresql'].merge(opts)
     connection = ::PGconn.open('user' => postgres['db_superuser'],
                                'host' => postgres['vip'],
                                'password' => postgres['db_superuser_password'],
@@ -20,7 +20,7 @@ class EcPostgres
   # to the extent required to set configure tcp access and set a password for the superuser.
   def self.with_local_connection(node, database = 'template1')
     require 'pg'
-    postgres = node['private_chef']['postgresql']
+    postgres = node['pushy']['postgresql']
     as_user(postgres['username']) do
       connection = ::PGconn.open('dbname' => database)
       begin

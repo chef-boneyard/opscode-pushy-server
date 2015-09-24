@@ -93,7 +93,13 @@ module PushJobsServer
       when "ha", "tier"
         PushJobsServer['opscode_pushy_server']['ha'] = (topology == 'ha')
         PushJobsServer['opscode_pushy_server']['vip'] = node['private_chef']['backend_vips']['ipaddress']
+
+        # inherit postgres config from chef-server
         PushJobsServer['postgresql']['vip']           = node['private_chef']['postgresql']['vip']
+        PushJobsServer['postgresql']['port']          = node['private_chef']['postgresql']['port']
+        PushJobsServer['postgresql']['db_superuser']  = node['private_chef']['postgresql']['db_superuser']
+        PushJobsServer['postgresql']['db_superuser_password'] = node['private_chef']['postgresql']['db_superuser_password']
+
         case node['private_chef']['servers'][node_name]['role']
         when "backend"
           # nothing special needs to be done
