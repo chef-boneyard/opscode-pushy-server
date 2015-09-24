@@ -16,7 +16,6 @@
 #
 
 
-postgres_attrs = node['private_chef']['postgresql']
 install_path = node['pushy']['install_path']
 push_attrs = node['pushy']['postgresql']
 database_name = node['pushy']['postgresql']['database_name']
@@ -53,10 +52,10 @@ end
 
 # TODO Fix this hardcoded path!
 opscode_pushy_server_pg_sqitch  "#{install_path}/embedded/service/pushy-server-schema" do
-  hostname postgres_attrs['vip']
-  port     postgres_attrs['port']
-  username  postgres_attrs['db_superuser']
-  password  postgres_attrs['db_superuser_password']
+  hostname push_attrs['vip']
+  port     push_attrs['port']
+  username  push_attrs['db_superuser']
+  password  push_attrs['db_superuser_password']
   database database_name
 end
 
