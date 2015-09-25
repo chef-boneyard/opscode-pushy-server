@@ -74,9 +74,8 @@ end
 
 include_recipe "enterprise::runit"
 
-# do I need this?
-# private_chef_pg_database "opscode-pgsql"
-include_recipe "opscode-pushy-server::push_database" if is_data_master?
+# TODO Figure out why is_data_master is returning false in standalone mode...
+include_recipe "opscode-pushy-server::push_database" #if is_data_master?
 
 include_recipe "opscode-pushy-server::nginx"
 
