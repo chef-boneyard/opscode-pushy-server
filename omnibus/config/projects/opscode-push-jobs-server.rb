@@ -26,7 +26,7 @@ build_iteration 1
 # https://github.com/opscode/opscode-omnibus/commit/8efcebf946e2662a6fd52ed1ee66f198dbca3a8d
 override :cacerts, version: '2014.08.20'
 override :berkshelf, version: "2.0.18"
-override :erlang, version: "R16B03-1"
+override :erlang, version: "17.5"
 override :ruby, version: "2.1.4"
 # 2.4.8 avoids rubygems resolution bug that brings in wrong ohai version for chef.
 override :rubygems,     version: "2.4.8"
