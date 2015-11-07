@@ -57,7 +57,7 @@
 -record(state, {
                 job_host        :: binary(),
                 job             :: #pushy_job{},
-                job_nodes       :: dict(),
+                job_nodes       :: dict:dict(node_ref(), #pushy_job_node{}),
                 voting_timeout  :: integer(),
                 term_reason     :: atom(),
                 next_event_id   :: integer(),

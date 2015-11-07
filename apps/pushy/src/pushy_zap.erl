@@ -50,7 +50,7 @@
 
 -record(state,
         {socket, %% :: erlzmq_socket(),
-         clients :: dict()      % If this is too slow, change to orddict() ordered by client timestamp
+         clients :: dict:dict(binary(), integer())      % If this is too slow, change to orddict() ordered by client timestamp
         }).
 
 % Client encrypted connection must be established within 60 seconds of sending in its public key (in the

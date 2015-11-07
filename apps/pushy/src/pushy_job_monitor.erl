@@ -41,11 +41,12 @@
 
 -define(SERVER, ?MODULE).
 
+-include("pushy.hrl").
 -include("pushy_sql.hrl").
 
 -compile([{parse_transform, lager_transform}]).
 
--record(state, {jobs :: dict()}).
+-record(state, {jobs :: dict:dict(pid(), job_id())}).
 
 %%%===================================================================
 %%% API
