@@ -22,6 +22,12 @@
 require 'pushy/spec_helper'
 require 'time'
 
+# PRETEST_SLEEP = 0.1
+# def sleep_and_wait_for_available(*names)
+#   pp names: names
+#   wait_for_node_to_come_out_of_rehab(*names)
+# end
+
 describe "sse-test" do
   include_context "end_to_end_util"     # to start clients
   include_context "sse_support"
@@ -528,6 +534,7 @@ describe "sse-test" do
 
     it "the events become available as they happen" do
       evs = @stream.get_streaming_events
+#      pp evs: evs
       evs.length.should be >= 4
       expect_start(evs[0], command, run_timeout, quorum, 1, admin_user.name)
       expect_quorum_vote(evs[1], node, 'success')

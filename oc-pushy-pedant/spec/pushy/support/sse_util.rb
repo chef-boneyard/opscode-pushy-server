@@ -348,6 +348,7 @@ shared_context "sse_support" do
 
   def do_complete_job(job, options = {})
     @id = start_new_job(job)
+    pp job_id: @id
     wait_for_job_done(api_url("/pushy/jobs/#{@id}"), options)
   end
 
