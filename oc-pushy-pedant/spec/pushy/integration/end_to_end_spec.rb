@@ -28,10 +28,16 @@ def is_backend
   !!Pedant.config[:running_from_backend]
 end
 
-# 
+#
 # Some test envs have bad perms on their path; this hides it for us.
 def fixup_cmd_err(cmd_err)
   cmd_err.gsub(/^.*warning: Insecure world writable dir.*\n/,"")
+end
+
+PRETEST_SLEEP = 0.1
+def sleep_and_wait_for_available(names)
+  puts "names: #{names}"
+  wait_for_node_to_come_out_of_rehab(*names)
 end
 
 describe "end-to-end-test" do
@@ -57,6 +63,7 @@ describe "end-to-end-test" do
   context 'with one client' do
     before :each do
       start_new_clients(['DONKEY'])
+      sleep_and_wait_for_available(['DONKEY'])
     end
 
     it "heartbeat should be received when starting up" do
@@ -619,6 +626,10 @@ describe "end-to-end-test" do
     end
 
     context 'capture tests' do
+      before :each do
+        sleep 1
+      end
+
       it 'if capture is not specified, no data will be sent in result' do
         send_params = nil
         override_send_command('DONKEY') do |real_send_command, message, job_id, params|
@@ -630,7 +641,7 @@ describe "end-to-end-test" do
         wait_for_job_complete(uri)
         send_params.should == {}
       end
-      
+
       it 'if capture is specified, but output is empty, empty strings will be sent in result' do
         send_params = nil
         override_send_command('DONKEY') do |real_send_command, message, job_id, params|
@@ -740,7 +751,7 @@ describe "end-to-end-test" do
         end
         cmd_out.should == ''
       end
-      
+
       it 'if capture is specified along with a user, things still work' do
         job = start_job('capture_test', ['DONKEY'], {'capture_output' => true,
                                                      'user' => 'daemon'})

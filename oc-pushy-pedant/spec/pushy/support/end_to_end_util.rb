@@ -343,6 +343,7 @@ shared_context "end_to_end_util" do
   def start_and_wait_for_job(command, node_names, options = {})
     @response = start_job(command, node_names, options)
     job_id = @response["uri"].split("/").last
+    puts "job_id: #{job_id}"
     # Wait until all have started
     begin
       uncommitted_nodes = node_names # assume nothing is committed to start
