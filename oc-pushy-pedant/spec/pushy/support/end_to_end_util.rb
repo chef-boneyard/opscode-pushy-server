@@ -220,6 +220,11 @@ shared_context "end_to_end_util" do
     wait_for_nodes_availabilty('available', *names)
   end
 
+  def sleep_and_wait_for_available(names)
+    puts "names: #{names}"
+    wait_for_node_to_come_out_of_rehab(*names)
+  end
+
   def stop_client(name)
     client = @clients[name][:client]
     @clients[name][:client] = nil
