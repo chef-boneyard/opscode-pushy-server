@@ -1,7 +1,7 @@
 GIT
   remote: https://github.com/chef/chef-server.git
-  revision: 2423a9b53b4b0e4c05c3f4dc3255eb45a72f9e50
-  tag: ma/pedant_add_seed_option
+  revision: e465e0a3d11d63b0a216e73823767c03efca1b55
+  tag: e465e0a3d11d63b0a216e73823767c03efca1b55
   specs:
     oc-chef-pedant (2.2.0)
       activesupport (~> 3.2.8)
@@ -15,16 +15,6 @@ GIT
       rspec-legacy_formatters (~> 1.0)
       rspec-rerun (= 0.1.1)
       rspec_junit_formatter (~> 0.2.0)
-
-GIT
-  remote: https://github.com/chef/opscode-pushy-client.git
-  revision: 84fe6f7d9c5d8d058f393b769d3cc1fd1f5c3571
-  specs:
-    opscode-pushy-client (1.9.0)
-      chef (>= 12.0)
-      ffi-rzmq
-      ohai
-      uuidtools
 
 GIT
   remote: https://github.com/chef/rest-client.git
@@ -42,6 +32,15 @@ PATH
     oc-pushy-pedant (2.0.0)
       httpclient
       typhoeus
+
+PATH
+  remote: ../opscode-pushy-client
+  specs:
+    opscode-pushy-client (1.9.0)
+      chef (>= 12.0)
+      ffi-rzmq
+      ohai
+      uuidtools
 
 GEM
   remote: https://rubygems.org/
