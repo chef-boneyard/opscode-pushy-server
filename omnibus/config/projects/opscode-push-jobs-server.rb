@@ -50,6 +50,11 @@ dependency "runit"
 dependency "opscode-pushy-server"
 dependency "pushy-server-schema"
 dependency "oc-pushy-pedant"
+
+# These two are required for reconfigure, we don't actually need our own postgres server
+dependency "postgresql"
+dependency "pg-gem"
+
 dependency "chef-gem" # if we float on master we will invalidate cache continually; building last lets us only rebuild one thing.
 dependency "ohai"
 
