@@ -775,6 +775,7 @@ describe "end-to-end-test" do
   context 'with a client that is killed and comes back up quickly' do
     before :each do
       start_new_clients(['DONKEY'])
+      sleep_and_wait_for_available(['DONKEY'])
       kill_client('DONKEY')
       start_client('DONKEY')
     end
@@ -793,6 +794,7 @@ describe "end-to-end-test" do
   context 'with a dead client that comes back down after a while' do
     before :each do
       start_new_clients(['DONKEY'])
+      sleep_and_wait_for_available(['DONKEY'])
       kill_client('DONKEY')
       wait_for_node_status('offline', 'DONKEY')
       # Start that sucker back up
@@ -813,6 +815,7 @@ describe "end-to-end-test" do
   context 'with a client that goes down and back up quickly' do
     before :each do
       start_new_clients(['DONKEY'])
+      sleep_and_wait_for_available(['DONKEY'])
       stop_client('DONKEY')
       start_client('DONKEY')
     end
@@ -849,7 +852,9 @@ describe "end-to-end-test" do
 
   context 'with three clients' do
     before :each do
-      start_new_clients(['DONKEY', 'FARQUAD', 'FIONA'])
+      clients = ['DONKEY', 'FARQUAD', 'FIONA']
+      start_new_clients(clients)
+      sleep_and_wait_for_available(clients)
     end
 
     it 'node count should be 3' do
@@ -1091,6 +1096,7 @@ describe "end-to-end-test" do
   context 'when one client is running a long running job' do
     before :each do
       start_new_clients(['DONKEY'])
+      sleep_and_wait_for_available(['DONKEY'])
       @long_job = start_job('sleep 5', [ 'DONKEY' ])
     end
 
