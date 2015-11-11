@@ -45,3 +45,5 @@ Dir["pushy/support/**/*.rb"].map { |f| f.gsub(%r{.rb$}, '') }.each { |f| require
 puts "="*10 + "SSL verify mode hardcoded to verify_none" + "="*10
 Chef::Config[:ssl_verify_mode] = :verify_none
 Chef::Config[:verify_api_cert] = false
+Chef::Config[:log_level] = :debug
+Chef::Config[:log_location] = "/tmp/push_client_pedant_#{Process.pid}.log"

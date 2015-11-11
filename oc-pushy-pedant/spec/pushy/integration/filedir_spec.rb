@@ -29,6 +29,7 @@ describe "filedir-test" do
 
     before :each do
       start_new_clients(['DONKEY'], {:file_dir_expiry => 2})
+      sleep_and_wait_for_available(['DONKEY'])
     end
 
     after :each do
@@ -40,7 +41,7 @@ describe "filedir-test" do
       end
     end
 
-    it 'within #{file_dir_expiry_limit} seconds, cleans up a newly-created file' do
+    it "within file_dir_expiry_limit (default 10) seconds, cleans up a newly-created file" do
       prep_tmp_path
       filestr = 'raw:test'
       job = start_job('ruby-opts', ['DONKEY'], {'file' => filestr})
