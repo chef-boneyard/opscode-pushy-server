@@ -17,6 +17,16 @@ GIT
       rspec_junit_formatter (~> 0.2.0)
 
 GIT
+  remote: https://github.com/chef/opscode-pushy-client.git
+  revision: 755397aa5d0c10bcb5496e3aed4d9a19bf4c09cb
+  specs:
+    opscode-pushy-client (1.9.0)
+      chef (>= 12.0)
+      ffi-rzmq
+      ohai
+      uuidtools
+
+GIT
   remote: https://github.com/chef/rest-client.git
   revision: 
   tag: >=1.6.7
@@ -32,15 +42,6 @@ PATH
     oc-pushy-pedant (2.0.0)
       httpclient
       typhoeus
-
-PATH
-  remote: ../opscode-pushy-client
-  specs:
-    opscode-pushy-client (1.9.0)
-      chef (>= 12.0)
-      ffi-rzmq
-      ohai
-      uuidtools
 
 GEM
   remote: https://rubygems.org/

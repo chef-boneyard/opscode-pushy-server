@@ -140,6 +140,7 @@ describe "sse-test" do
       let(:command) { 'this_oughta_fail' }
       before :each do
         start_new_clients([node])
+        sleep_and_wait_for_available([node])
         do_complete_job(job_to_run)
       end
 
@@ -160,6 +161,7 @@ describe "sse-test" do
       let(:command) { 'bad command' }
       before :each do
         start_new_clients([node])
+        sleep_and_wait_for_available([node])
         do_complete_job(job_to_run)
       end
 
@@ -182,6 +184,7 @@ describe "sse-test" do
           def commit(job_id, command, opts); nil; end
         end
         start_new_clients([node])
+        sleep_and_wait_for_available([node])
         do_complete_job(job_to_run, {:timeout => JOB_WAITING_AROUND_TIME+5})
       end
 
@@ -211,6 +214,7 @@ describe "sse-test" do
           end
         end
         start_new_clients([node])
+        sleep_and_wait_for_available([node])
         do_complete_job(job_to_run)
       end
 
@@ -240,6 +244,7 @@ describe "sse-test" do
           def run(job_id); nil; end
         end
         start_new_clients([node])
+        sleep_and_wait_for_available([node])
         do_complete_job(job_to_run)
       end
 
@@ -271,6 +276,7 @@ describe "sse-test" do
           end
         end
         start_new_clients([node])
+        sleep_and_wait_for_available([node])
         do_complete_job(job_to_run)
       end
 
@@ -303,6 +309,7 @@ describe "sse-test" do
     context "when the command succeeds on both" do
       before :each do
         start_new_clients(nodes)
+        sleep_and_wait_for_available(nodes)
         do_complete_job(job_to_run)
       end
 
@@ -328,6 +335,7 @@ describe "sse-test" do
       let(:command) { 'this_oughta_fail' }
       before :each do
         start_new_clients(nodes)
+        sleep_and_wait_for_available(nodes)
         do_complete_job(job_to_run)
       end
 
@@ -392,6 +400,7 @@ describe "sse-test" do
     context "when the one rejects the quorum," do
       before :each do
         start_new_clients(nodes)
+        sleep_and_wait_for_available(nodes)
         # Do some ugly object hacking to get one client to behave differently
         donkey = @clients['DONKEY'][:client]
         jr = donkey.instance_variable_get('@job_runner')
@@ -447,6 +456,7 @@ describe "sse-test" do
     context "when a buggy client sends an unrecognized message (e.g. nack_run) during a vote, after committing," do
       before :each do
         start_new_clients(nodes)
+        sleep_and_wait_for_available(nodes)
         # Do some ugly object hacking to get one client to behave differently
         donkey = @clients['DONKEY'][:client]
         jr = donkey.instance_variable_get('@job_runner')
@@ -485,6 +495,7 @@ describe "sse-test" do
     let(:nodes) { ['DONKEY'] }
     before :each do
       start_new_clients(nodes)
+      sleep_and_wait_for_available(nodes)
       do_complete_job(job_to_run)
       sleep(SUMMARY_WAIT_TIME + 1)
     end
@@ -503,7 +514,8 @@ describe "sse-test" do
     let(:nodes) { [node] }
 
     before :each do
-      start_new_clients([node])
+      start_new_clients(nodes)
+      sleep_and_wait_for_available(nodes)
       donkey = @clients['DONKEY'][:client]
       donkey.instance_variable_get('@whitelist').instance_variable_set('@whitelist', {command => command})
       do_complete_job(job_to_run)
@@ -527,6 +539,7 @@ describe "sse-test" do
     let(:nodes) { [node] }
     before :each do
       start_new_clients([node])
+      sleep_and_wait_for_available(nodes)
       @id = start_new_job(job_to_run)
       @stream = start_event_stream
       sleep 5
@@ -599,6 +612,7 @@ describe "sse-test" do
     let(:nodes) { [node] }
     before :each do
       start_new_clients([node])
+      sleep_and_wait_for_available(nodes)
       donkey = @clients[node][:client]
       donkey.instance_variable_get('@whitelist').instance_variable_set('@whitelist', {command => command})
       @id = start_new_job(job_to_run)
@@ -623,6 +637,7 @@ describe "sse-test" do
     end
     before :each do
       start_new_clients([node])
+      sleep_and_wait_for_available([node])
     end
 
     it 'the job event should include the parameters (with "file_specified" instead of "file")' do
