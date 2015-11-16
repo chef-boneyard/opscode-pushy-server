@@ -15,7 +15,7 @@
 #
 
 name "oc-pushy-pedant"
-default_version "master"
+default_version "622db3ba703634d295f9f92ff2d70d3d3d1d5509" # locked to a sha on master
 
 # TODO: use the public git:// uri once this repo is public
 source git: "git@github.com:opscode/oc-pushy-pedant"

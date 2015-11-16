@@ -1,5 +1,19 @@
 # Push Jobs Server Changelog
 
+## 2.0.1 (2015-11-10)
+* Release bump to make sure versions sort right.
+
+## 2.0.0 (Never released except in alpha form)
+* Added curve based encryption for all ZeroMQ communication
+* Added parameter/environment variable/file transfer support
+* Added output capture
+* Added protocol version information
+* Added Server Sent Event feeds for job execution.
+* Work in progress to support external postgresql
+* Upgrade omnibus software, including:
+  * Updated to Chef 12.5.0 for configure
+  * Erlang 17.5
+
 ## 1.3.0 (2015-06-21)
 * Push server: Add support for multiple keys and updated principals endpoint
 * Upgrade to ZeroMQ 4
