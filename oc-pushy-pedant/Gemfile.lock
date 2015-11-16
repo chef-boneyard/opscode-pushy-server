@@ -18,10 +18,11 @@ GIT
 
 GIT
   remote: https://github.com/chef/opscode-pushy-client.git
-  revision: 755397aa5d0c10bcb5496e3aed4d9a19bf4c09cb
+  revision: 6d95f9634a6e6ae282a874a58d894f212650b3de
+  tag: 2.0.0
   specs:
-    opscode-pushy-client (1.9.0)
-      chef (>= 12.0)
+    opscode-pushy-client (2.0.0)
+      chef (>= 12.5)
       ffi-rzmq
       ohai
       uuidtools
@@ -166,14 +167,14 @@ GEM
     rspec_junit_formatter (0.2.3)
       builder (< 4)
       rspec-core (>= 2, < 4, != 2.12.0)
-    serverspec (2.24.2)
+    serverspec (2.24.3)
       multi_json
       rspec (~> 3.0)
       rspec-its
       specinfra (~> 2.43)
     sfl (2.2)
     slop (3.6.0)
-    specinfra (2.44.1)
+    specinfra (2.44.2)
       net-scp
       net-ssh (~> 2.7)
       net-telnet

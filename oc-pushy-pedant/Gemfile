@@ -14,5 +14,5 @@ gem 'rest-client', :git => "https://github.com/chef/rest-client.git", :tag => ">
 gem 'oc-chef-pedant', :git => "https://github.com/chef/chef-server.git", :tag => "e465e0a3d11d63b0a216e73823767c03efca1b55"
 #
 # floating pushy-client on master as an experiment
-gem 'opscode-pushy-client', :git => "https://github.com/chef/opscode-pushy-client.git"
+gem 'opscode-pushy-client', :git => "https://github.com/chef/opscode-pushy-client.git", :tag=>'2.0.0'
 
