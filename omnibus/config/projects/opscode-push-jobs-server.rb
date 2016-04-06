@@ -22,14 +22,8 @@ install_dir    "/opt/opscode-push-jobs-server"
 build_version   Omnibus::BuildVersion.new.semver
 build_iteration 1
 
-# Pin cacerts to an earlier version because the latest is missing some certs
-# https://github.com/opscode/opscode-omnibus/commit/8efcebf946e2662a6fd52ed1ee66f198dbca3a8d
-override :cacerts, version: '2014.08.20'
-override :berkshelf, version: "2.0.18"
 override :erlang, version: "17.5"
-override :ruby, version: "2.1.4"
-# 2.4.8 avoids rubygems resolution bug that brings in wrong ohai version for chef.
-override :rubygems,     version: "2.4.8"
+override :ruby, version: "2.1.8"
 override :libzmq, version: "4.0.5"
 
 override :rebar, version: "2.6.0"
