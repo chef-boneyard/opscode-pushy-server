@@ -19,9 +19,24 @@ require 'pushy_client'
 require 'timeout'
 
 shared_context "end_to_end_util" do
+  def heartbeat_interval
+    if @clients
+      @clients.first do |name|
+        @clients[name][:client].config['push_jobs']['heartbeat']['interval']
+      end
+    end
+  end
+
+  def threshold
+    if @clients
+      @clients.first do |name|
+        @clients[name][:client].config['push_jobs']['heartbeat']['offline_threshold']
+      end
+    end
+  end
+
   let (:sleep_time) { 0.2 }
-  let (:heartbeat_interval) { 10 }
-  let (:offline_threshold) { 3 }
+
   # A variety of timeouts are used to ensure that jobs have started,
   # nodes are available, etc.  These are set very conservatively.
   let (:client_start_timeout) { 5 }
