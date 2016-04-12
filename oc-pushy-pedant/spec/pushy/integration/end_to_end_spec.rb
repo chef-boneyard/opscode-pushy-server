@@ -71,7 +71,7 @@ describe "end-to-end-test" do
       threshold = client.config['push_jobs']['heartbeat']['offline_threshold']
       heartbeater = client.instance_variable_get(:@heartbeater)
       heartbeater.instance_variable_set(:@online, false)
-      sleep (threshold + 1)  # need a little extra time, just in case
+      sleep ((threshold + 1) * 10)  # need a little extra time, just in case
       client.online?.should == true
     end
 

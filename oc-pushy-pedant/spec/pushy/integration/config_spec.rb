@@ -66,7 +66,7 @@ describe "pushy config" do
         "heartbeat" => {
           "out_addr" => "tcp://#{pushy_server}:10000",
           "command_addr" => "tcp://#{pushy_server}:10002",
-          "interval" => 1.0,
+          "interval" => 10.0,
           "offline_threshold" => 3,
           "online_threshold" => 2
         }
