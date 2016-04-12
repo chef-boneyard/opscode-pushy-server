@@ -20,18 +20,19 @@ require 'timeout'
 
 shared_context "end_to_end_util" do
   let (:sleep_time) { 0.2 }
-
+  let (:heartbeat_interval) { 10 }
+  let (:offline_threshold) { 3 }
   # A variety of timeouts are used to ensure that jobs have started,
   # nodes are available, etc.  These are set very conservatively.
   let (:client_start_timeout) { 5 }
   let (:job_start_timeout) { 30 }
-  let (:job_status_timeout_default) { 30 * 10 }
-  let (:node_availability_timeout) { 10 * 3 }
-  let (:node_status_timeout) { 10 * 10 }
+  let (:job_status_timeout_default) { 30 * heartbeat_interval }
+  let (:node_availability_timeout) { 10 * offline_threshold }
+  let (:node_status_timeout) { 10 * heartbeat_interval }
   let (:server_restart_timeout) { 45 } # increasing this makes failing tests take longer, but salvages some slow runs
 
   let (:client_creation_retries) { 5 }  # how many times to retry a client creation
-  let (:client_creation_sleep) { 10 + 5 } # how long to wait between retries
+  let (:client_creation_sleep) { 5 + heartbeat_interval } # how long to wait between retries
 
   def echo_yahoo
     'sh ' + File.expand_path('../../support/echo_yahoo_to_tmp_pushytest', __FILE__)
@@ -75,7 +76,7 @@ shared_context "end_to_end_util" do
       # Delete chef client if it exists
       delete(api_url("/clients/#{name}"), admin_user)
 
-      require 'pp'
+      #require 'pp'
 
       # Create chef client and save key for pushy client
       #
@@ -85,7 +86,7 @@ shared_context "end_to_end_util" do
         response = post(api_url("/clients"), superuser, :payload => {"name" => name})
 
         puts "Got a #{response.code} response to a POST to /clients for client #{name}: (try #{retry_count})"
-        pp response
+        # pp response
         # 500 happens when keygen is behind; generating a key can take almost a sec on a slow box
         break if response.code < 500
         sleep client_creation_sleep
