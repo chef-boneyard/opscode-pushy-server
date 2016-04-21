@@ -69,9 +69,10 @@ describe "end-to-end-test" do
     it "heartbeat should be received when starting up" do
       client = @clients['DONKEY'][:client]
       threshold = client.config['push_jobs']['heartbeat']['offline_threshold']
+      heartbeat_interval = client.config['push_jobs']['heartbeat']['interval']
       heartbeater = client.instance_variable_get(:@heartbeater)
       heartbeater.instance_variable_set(:@online, false)
-      sleep (threshold + 1)  # need a little extra time, just in case
+      sleep ((threshold + 1) * heartbeat_interval)  # need a little extra time, just in case
       client.online?.should == true
     end
 
