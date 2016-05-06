@@ -16,6 +16,9 @@
 
 name "pushy-server-cookbooks"
 
+license "Apache-2.0"
+license_file "LICENSE"
+
 source path: "#{project.files_path}/pushy-server-cookbooks"
 
 dependency 'berkshelf2'
