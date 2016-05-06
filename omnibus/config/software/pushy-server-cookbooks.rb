@@ -16,6 +16,9 @@
 
 name "pushy-server-cookbooks"
 
+license "Apache-2.0"
+license_file "LICENSE"
+
 source path: "#{project.files_path}/pushy-server-cookbooks"
 
 dependency 'berkshelf2'
@@ -26,14 +29,14 @@ build do
         " --path=#{install_dir}/embedded/cookbooks", env: env, cwd: "#{project_dir}/opscode-pushy-server"
   block do
     File.open("#{install_dir}/embedded/cookbooks/dna.json", "w") do |f|
-      f.write JSON.fast_generate(
+      f.write FFI_Yajl::Encoder.encode(
         run_list: [
           'recipe[opscode-pushy-server::default]',
         ]
       )
     end
     File.open("#{install_dir}/embedded/cookbooks/show-config.json", "w") do |f|
-      f.write JSON.fast_generate(
+      f.write FFI_Yajl::Encoder.encode(
         run_list: [
           'recipe[opscode-pushy-server::show_config]',
         ]

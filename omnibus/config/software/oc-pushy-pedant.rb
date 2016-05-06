@@ -17,6 +17,9 @@
 name "oc-pushy-pedant"
 default_version "2ce87a7a1ea6e3482be7ad97fdb94a959e7d53ce" # locked to a sha on master
 
+license "Apache-2.0"
+license_file "LICENSE"
+
 # TODO: use the public git:// uri once this repo is public
 source git: "git@github.com:opscode/oc-pushy-pedant"
 

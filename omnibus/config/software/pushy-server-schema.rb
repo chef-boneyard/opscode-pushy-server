@@ -17,6 +17,9 @@
 name "pushy-server-schema"
 default_version "2.0.0"
 
+license "Apache-2.0"
+license_file "LICENSE"
+
 # To install, we need sqitch, but we can use the one already installed
 # for Enterprise Chef
 
