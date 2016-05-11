@@ -1,0 +1,42 @@
+#!/bin/bash
+
+WORKSPACE_DIR=.chef
+
+setup_workspace() {
+    echo -n "Setting up workspace. "
+    mkdir -p $WORKSPACE_DIR
+    echo "Done."
+}
+
+setup_server() {
+    echo "Setting up server VM."
+    kitchen converge server
+    echo "Done."
+}
+
+setup_client() {
+    echo "Setting up client VM."
+    kitchen converge client
+    echo "Done."
+}
+
+bootstrap_client() {
+    echo "Bootstrapping client node."
+    berks install
+    berks upload --no-ssl-verify
+    knife bootstrap "$(< $WORKSPACE_DIR/client-ip)" \
+        -r 'recipe[push-jobs]' --json-attribute-file 'push-client.json' \
+        -x vagrant -P vagrant --sudo --node-name client \
+        --node-ssl-verify-mode none
+    echo "Done."
+}
+
+setup() {
+    setup_workspace
+    setup_server
+    setup_client
+    bootstrap_client
+    echo "Setup complete. Run 'kitchen destroy' to clean up."
+}
+
+setup

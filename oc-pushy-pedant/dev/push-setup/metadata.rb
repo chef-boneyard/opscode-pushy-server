@@ -1,0 +1,12 @@
+name 'push-setup'
+maintainer 'The Authors'
+maintainer_email 'you@example.com'
+license 'all_rights'
+description 'Installs/Configures push-setup'
+long_description 'Installs/Configures push-setup'
+version '0.1.0'
+
+depends 'chef-ingredient'
+depends 'push-jobs'
+depends 'hostsfile'
+depends 'hurry-up-and-test'
