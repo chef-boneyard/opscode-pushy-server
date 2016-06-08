@@ -18,6 +18,7 @@
 ###
 # High level options
 ###
+default['enterprise']['name'] = 'private_chef'
 default['pushy']['install_path'] = "/opt/opscode-push-jobs-server"
 
 default['pushy']['bootstrap']['enable'] = true
