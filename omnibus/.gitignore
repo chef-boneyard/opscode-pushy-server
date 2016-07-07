@@ -9,3 +9,6 @@ vendor/cookbooks
 # emacs leaves these behind.
 *~
 *#
+.kitchen
+Berksfile.lock
+Gemfile.lock
