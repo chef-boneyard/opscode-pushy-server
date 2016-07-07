@@ -21,12 +21,12 @@ license_file "LICENSE"
 
 source path: "#{project.files_path}/pushy-server-cookbooks"
 
-dependency 'berkshelf2'
+dependency 'berkshelf'
 
 build do
   env = with_standard_compiler_flags(with_embedded_path)
-  command "berks install" \
-        " --path=#{install_dir}/embedded/cookbooks", env: env, cwd: "#{project_dir}/opscode-pushy-server"
+  command "berks vendor #{install_dir}/embedded/cookbooks",
+          env: env, cwd: "#{project_dir}/opscode-pushy-server"
   block do
     File.open("#{install_dir}/embedded/cookbooks/dna.json", "w") do |f|
       f.write FFI_Yajl::Encoder.encode(
