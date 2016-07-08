@@ -20,7 +20,7 @@ default_version "2ce87a7a1ea6e3482be7ad97fdb94a959e7d53ce" # locked to a sha on 
 license "Apache-2.0"
 license_file "LICENSE"
 
-source git: "https://github.com/chef/oc-chef-pedant.git"
+source git: "https://github.com/chef/oc-pushy-pedant.git"
 
 dependency "libzmq"
 dependency "ruby"
