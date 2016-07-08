@@ -6,10 +6,15 @@ driver:
     memory: 2048
   synced_folders:
     - ['..', '/home/vagrant/chef-push-server']
-    - ['../../omnibus', '/home/vagrant/omnibus']
-    - ['../../omnibus-software', '/home/vagrant/omnibus-software']
-    - ['../../oc-pushy-pedant', '/home/vagrant/oc-pushy-pedant']
-    - ['../../opscode-pushy-client', '/home/vagrant/opscode-pushy-client']
+    #
+    # Uncomment to mount local versions of omnibus, omnibus-software,
+    # etc. To use your local version of omnibus, you will also need
+    # to change the Gemfile
+    #
+    # - ['../../omnibus', '/home/vagrant/omnibus']
+    # - ['../../omnibus-software', '/home/vagrant/omnibus-software']
+    # - ['../../oc-pushy-pedant', '/home/vagrant/oc-pushy-pedant']
+    # - ['../../opscode-pushy-client', '/home/vagrant/opscode-pushy-client']
 
 provisioner:
   name: chef_zero
