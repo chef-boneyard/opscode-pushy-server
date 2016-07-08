@@ -23,7 +23,7 @@ license_file "LICENSE"
 # To install, we need sqitch, but we can use the one already installed
 # for Enterprise Chef
 
-source git: "git@github.com:opscode/pushy-server-schema.git"
+source git: "https://github.com/chef/pushy-server-schema.git"
 
 build do
   sync project_dir, "#{install_dir}/embedded/service/#{name}/"
