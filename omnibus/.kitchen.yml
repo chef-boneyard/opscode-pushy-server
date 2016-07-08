@@ -5,11 +5,11 @@ driver:
     cpus: 2
     memory: 2048
   synced_folders:
-    - ['.', '/home/vagrant/omnibus-pushy']
-    - ['../omnibus', '/home/vagrant/omnibus']
-    - ['../omnibus-software', '/home/vagrant/omnibus-software']
-    - ['../oc-pushy-pedant', '/home/vagrant/oc-pushy-pedant']
-    - ['../opscode-pushy-client', '/home/vagrant/opscode-pushy-client']
+    - ['..', '/home/vagrant/chef-push-server']
+    - ['../../omnibus', '/home/vagrant/omnibus']
+    - ['../../omnibus-software', '/home/vagrant/omnibus-software']
+    - ['../../oc-pushy-pedant', '/home/vagrant/oc-pushy-pedant']
+    - ['../../opscode-pushy-client', '/home/vagrant/opscode-pushy-client']
 
 provisioner:
   name: chef_zero
