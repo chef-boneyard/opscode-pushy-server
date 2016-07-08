@@ -1,0 +1,32 @@
+#!/bin/bash
+#
+# Perform necessary push-jobs-server setup steps after package is installed.
+#
+
+PROGNAME=$(basename $0)
+
+function error_exit
+{
+	echo "${PROGNAME}: ${1:-"Unknown Error"}" 1>&2
+	exit 1
+}
+
+ln -sf /opt/opscode-push-jobs-server/bin/opscode-push-jobs-server-ctl /usr/bin || error_exit "Cannot link opscode-push-jobs-server-ctl in /usr/bin"
+
+# Ensure all files/directories in $INSTALLER_DIR are owned by root. This
+# has been fixed on new installs but upgrades from old installs need to
+# be manually fixed.
+chown -Rh 0:0 /opt/opscode-push-jobs-server
+
+if [ -e /etc/opscode-push-jobs-server/opscode-push-jobs-server-running.json ]; then
+  echo -e "\033[1mYou have upgraded the Push Jobs Server!\033[0m"
+  echo
+  echo "The next step in the upgrade process is to run:"
+  echo
+  echo -e "\033[1;31mopscode-push-jobs-server-ctl reconfigure\033[0m"
+else
+  echo -e "\033[1mThank you for installing the Push Jobs Server!\033[0m"
+fi
+
+exit 0
+
