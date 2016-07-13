@@ -25,7 +25,6 @@ install_dir    "/opt/opscode-push-jobs-server"
 build_version   Omnibus::BuildVersion.new.semver
 build_iteration 1
 
-override :erlang, version: "17.5"
 override :libzmq, version: "4.0.5"
 override :rebar, version: "2.6.0"
 
