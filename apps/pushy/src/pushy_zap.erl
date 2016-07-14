@@ -107,12 +107,12 @@ code_change(_OldVsn, State, _Extra) ->
 %% @doc Add the client public key to the set of validated keys.
 %% of heartbeat intervals
 add_key_to_cache(Key, State = #state{clients = Clients}) ->
-    State#state{clients = dict:store(Key, time_to_integer(erlang:now()) + ?EXPIRATION_TIME, Clients)}.
-    
+    State#state{clients = dict:store(Key, time_to_integer(os:timestamp()) + ?EXPIRATION_TIME, Clients)}.
+
 time_to_integer({MegaS, S, _MicroS}) -> 1000000*MegaS + S.
 
 expire_clients(State = #state{clients = Clients}) ->
-    Now = time_to_integer(erlang:now()),
+    Now = time_to_integer(os:timestamp()),
     NewClients = dict:filter(fun(_, T) -> T > Now end, Clients),
     State#state{clients = NewClients}.
 

@@ -48,7 +48,7 @@ start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 init([]) ->
-    _Seed = random:seed(erlang:now()),
+    _Seed = random:seed(os:timestamp()),
     Interval = wait_interval(),
     lager:info("Starting pushy node cleanup (every ~p ms)", [Interval]),
     {ok, #state{interval=Interval}, Interval}.

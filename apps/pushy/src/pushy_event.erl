@@ -28,8 +28,7 @@ get_time_as_iso8601(Time) ->
     {_, _, Micros} = Time,
     {{YY, MM, DD}, {Hour, Min, Sec}} = calendar:now_to_universal_time(Time),
     io_lib:format("~4..0w-~2..0w-~2..0w ~2..0w:~2..0w:~2..0w.~6..0BZ",
-                  [YY, MM, DD, Hour, Min, Sec, Micros]). 
+                  [YY, MM, DD, Hour, Min, Sec, Micros]).
 
 make_event(Name, Id, Props) ->
-    #event{name = list_to_binary(Name), id = Id, timestamp = erlang:now(), data = Props}.
-
+    #event{name = list_to_binary(Name), id = Id, timestamp = os:timestamp(), data = Props}.
