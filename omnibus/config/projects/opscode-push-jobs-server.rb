@@ -26,13 +26,8 @@ build_version   Omnibus::BuildVersion.new.semver
 build_iteration 1
 
 override :erlang, version: "17.5"
-override :ruby, version: "2.1.8"
 override :libzmq, version: "4.0.5"
-
 override :rebar, version: "2.6.0"
-
-#override :"chef-gem", version: "master" # doesn't work because that's not a gemversion
-override :"chef-gem", version: "~>12.5.0"
 
 # creates required build directories
 dependency "preparation"
@@ -48,15 +43,13 @@ dependency "opscode-pushy-server"
 dependency "pushy-server-schema"
 dependency "oc-pushy-pedant"
 
-# These two are required for reconfigure, we don't actually need our own postgres server
+# These two are required for reconfigure, we don't actually need our
+# own postgres server
 dependency "postgresql"
 dependency "pg-gem"
 
-dependency "chef-gem" # if we float on master we will invalidate cache continually; building last lets us only rebuild one thing.
+dependency "chef"
 dependency "ohai"
-
-# version manifest file
-dependency "version-manifest"
 
 package :rpm do
   signing_passphrase ENV['OMNIBUS_RPM_SIGNING_PASSPHRASE']
