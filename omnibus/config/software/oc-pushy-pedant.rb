@@ -15,7 +15,7 @@
 #
 
 name "oc-pushy-pedant"
-default_version "2ce87a7a1ea6e3482be7ad97fdb94a959e7d53ce" # locked to a sha on master
+default_version "master"
 
 license "Apache-2.0"
 license_file "LICENSE"
