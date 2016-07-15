@@ -16,8 +16,7 @@
 
 name "pushy-server-scripts"
 
-license "Apache-2.0"
-license_file "LICENSE"
+license :project_license
 
 source path: "#{project.files_path}/pushy-server-scripts"
 
