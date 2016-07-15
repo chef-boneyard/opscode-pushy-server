@@ -1,0 +1,32 @@
+---
+driver:
+  name: vagrant
+  forward_agent: yes
+  customize:
+      memory: 2048
+      cpus: 2
+      natdnshostresolver1: "on"
+      natdnsproxy1: "on"
+      nictype1: "virtio"
+  network:
+    - [ 'private_network', {type: 'dhcp'} ]
+  synced_folders:
+    - ['./.chef/', '/srv']
+    - ['.', '/vagrant']
+
+provisioner:
+  name: nodes
+  require_chef_omnibus: true
+
+platforms:
+  - name: ubuntu-14.04
+
+suites:
+  - name: server
+    run_list:
+      - recipe[push-setup::server]
+    attributes:
+  - name: client
+    run_list:
+      - recipe[push-setup::client]
+    attributes:

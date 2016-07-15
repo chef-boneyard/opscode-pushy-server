@@ -1,0 +1,15 @@
+#!/opt/opscode-push-jobs-server/embedded/bin/ruby
+
+require 'bundler/setup' # so we don't need to type 'bundle exec' to run it
+
+require 'rspec/core'
+require 'pedant'
+require 'pedant/platform'
+require 'pedant/organization'
+require 'pedant/pushy_command_line'
+
+Pedant.config.suite = "pushy"
+Pedant.setup(ARGV, ["core_options", "pushy_options"])
+puts Pedant::UI.new.info_banner
+
+exit RSpec::Core::Runner.run(Pedant.config.rspec_args)
