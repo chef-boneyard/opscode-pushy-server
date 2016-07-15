@@ -51,7 +51,7 @@ start(_StartType, _StartArgs) ->
 
             IoProcesses = envy:get(pushy, zmq_io_processes, 1, integer),
             {ok, Pub, Sec} = erlzmq:curve_keypair(),
-            case erlzmq:context(IoProcesses, [{max_sockets, 51200}]) of
+            case erlzmq:context(IoProcesses, [{max_sockets, 51200}] ) of
                 {ok, Ctx} ->
                     State = #pushy_state{ctx=Ctx,
                                          incarnation_id=IncarnationId,

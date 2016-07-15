@@ -36,7 +36,7 @@
           dir         :: binary() | undefined,
           env         :: [{binary(), binary()}] | undefined,
           file        :: binary() | undefined,
-          capture     :: boolean | undefined
+          capture     :: boolean() | undefined
          }).
 
 -define(PUSHY_BROKER_OUT, "inproc://pushy_broker_out").

@@ -543,7 +543,7 @@ post_to_subscribers(#state{subscribers = Subscribers}, Msg) ->
 -spec add_start_event(#state{}, binary(), non_neg_integer(), non_neg_integer(),
                       non_neg_integer(), binary(), binary()|undefined,
                       binary()|undefined, binary()|undefined,
-                      binary()|undefined, boolean|undefined) -> #state{}.
+                      binary()|undefined, boolean()|undefined) -> #state{}.
 add_start_event(State, Command, RunTimeout, Quorum, NodeCount, User, JobUser, Dir, Env, File, Capture) ->
     JobUserPL = get_attr_list(job_user, JobUser),
     DirPL = get_attr_list(dir, Dir),
