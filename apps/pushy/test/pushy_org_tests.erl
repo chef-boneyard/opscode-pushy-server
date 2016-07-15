@@ -47,15 +47,15 @@ simple_test_() ->
              setup_env(),
              meck:new([ibrowse], []),
              application:set_env(chef_authn, keyring,
-                                 [{pivotal, "../test/testkey.pem"}]),
+                                 [{pivotal, "apps/pushy/test/testkey.pem"}]),
              application:set_env(chef_authn, keyring_dir, "../test"),
              application:set_env(pushy, chef_api_version, "11.0.0"),
-             chef_keyring:start_link()
-             %%meck:expect(chef_keyring, get_key,
-             %%            fun(_) -> {ok, <<"FOO">>} end)
+             {ok, Pid} = chef_keyring:start_link(),
+             Pid
      end,
-     fun(_) ->
-              meck:unload()
+     fun(Pid) ->
+              meck:unload(),
+              gen_server:stop(Pid)
      end,
     [{"Simple success test",
       fun() -> meck:expect(ibrowse, send_req,

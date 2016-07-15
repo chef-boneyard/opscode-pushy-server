@@ -53,7 +53,9 @@ mecked() -> [pushy_object, chef_authn, pushy_principal, pushy_wm_base, pushy_key
 
 applications() -> [folsom, compiler, syntax_tools, goldrush, lager, inets, mochiweb, webmachine, pooler, public_key, ssl, epgsql, sqerl, gproc, jiffy, ibrowse, erlzmq, pushy].
 
-configs() -> [
+configs() ->
+    User = get_user(),
+             [
                 {pushy, [
                   {api_port, 10003}
                 , {log_dir, "/tmp"}
@@ -74,9 +76,9 @@ configs() -> [
                   {db_driver_mod, sqerl_pgsql_client}
                 , {db_host, "127.0.0.1"}
                 , {db_port, 5432}
-                , {db_user, "opscode_pushy"}
+                , {db_user, User}
                 , {db_pass, "de58233901fcbc3512979571dae6abf85e175ad108062eda5cf307b1f4706f2e5537524c35528f654bfeac183fd45c7a8408"}
-                , {db_name,   "opscode_pushy" }
+                , {db_name,   "opscode_pushy_test" }
                 , {idle_check, 10000}
                 , {prepared_statements, {pushy_sql, statements, []} }
                 , {column_transforms, []}
@@ -89,11 +91,17 @@ configs() -> [
                 , {metrics_module, folsom_metrics}
                ]}
               , {chef_authn, [
-                  {keyring_dir, "../test"}
-                , {keyring, [  {pivotal, "../test/testkey.pem"}
-                             , {pushy_priv, "../test/testkey.pem"}]}
+                  {keyring_dir, "apps/pushy/test"}
+                , {keyring, [  {pivotal, "apps/pushy/test/testkey.pem"}
+                             , {pushy_priv, "apps/pushy/test/testkey.pem"}]}
                ]}
              ].
+
+get_user() ->
+    case os:getenv("PGUSER") of
+        false -> os:getenv("USER");
+        User -> User
+    end.
 
 get_addr(NodeRef) -> iolist_to_binary(io_lib:format("~p-addr", [NodeRef])).
 
@@ -217,7 +225,7 @@ get_org_feed(LastEventId, OrgName) ->
 get_job_subscribers(JobId) ->
     case pushy_job_state_sup:get_process(JobId) of
         not_found -> not_found;
-        Pid -> 
+        Pid ->
             {ok, Subs} = pushy_fsm_utils:safe_sync_send_all_state_event(Pid, get_subscribers),
             % Filter out the pushy_org_events subs
             lists:filter(fun(P) ->
@@ -228,7 +236,7 @@ get_job_subscribers(JobId) ->
                                  end
                          end, Subs)
     end.
-    
+
 get_job(JobId, Org) ->
     Path = iolist_to_binary(io_lib:format("~s/~s", ["jobs", JobId])),
     {ok, Code, _ResHeaders, ResBody} = api_request(get, <<"creator_name">>, Org, Path, synchronous, [], <<"">>),
@@ -273,7 +281,7 @@ receive_async_headers(ReqId) ->
     Res = receive
             {ibrowse_async_headers, ReqId, C, Headers} -> {C, Headers}
           after
-            100 -> 
+            100 ->
                   ?debugVal({no_async_header, ReqId}),
                   {error, no_async_header, ReqId}
     end,
@@ -333,14 +341,14 @@ scan_for(Pat, Bin) ->
             {yes, Start, Rest};
         no -> no
     end.
-    
+
 scan_lflf(Bin) -> scan_for(<<$\n, $\n>>, Bin).
 scan_lf(Bin) -> scan_for(<<$\n>>, Bin).
 scan_colon(Bin) -> scan_for(<<$:>>, Bin).
 
 split_on(Fun, Bin) -> split_on(Fun, Bin, []).
 
-split_on(Fun, Bin, Acc) -> 
+split_on(Fun, Bin, Acc) ->
     case Fun(Bin) of
         {yes, Start, Rest} ->
             split_on(Fun, Rest, [Start | Acc]);
@@ -358,7 +366,7 @@ parse_field_val(Bin) ->
         {yes, Start, Rest} -> {Start, skip_spaces(Rest)}
     end.
 
-parse_event(Bin) -> 
+parse_event(Bin) ->
     {Lines1, Rest} = split_event(Bin),
     Lines = Lines1 ++ [Rest],
     KVs = [parse_field_val(Line) || Line <- Lines],
@@ -366,7 +374,7 @@ parse_event(Bin) ->
 
 update_event({<<"event">>,V}, E) -> E#event{name=list_to_atom(binary_to_list(V))};
 update_event({<<"id">>,V}, E) -> E#event{id=V};
-update_event({<<"data">>,V}, E) -> 
+update_event({<<"data">>,V}, E) ->
     % Assume the JSON is a single object; we'll store its kv list directly
     {PL} = jiffy:decode(V),
     Timestamp = case lists:keyfind(<<"timestamp">>, 1, PL) of
@@ -379,7 +387,7 @@ update_event({<<"data">>,V}, E) ->
 
 split_events(Bin) -> split_on(fun scan_lflf/1, Bin).
 
-parse_more_events(Prev, Bin, Final) -> 
+parse_more_events(Prev, Bin, Final) ->
     All = <<Prev/binary, Bin/binary>>,
     {EvStrs, Rest} = split_events(All),
     Evs = [parse_event(EvStr) || EvStr <- EvStrs],
@@ -487,7 +495,7 @@ receive_next_sse(ReqId, Prev) ->
             {[], Prev}
     end.
 
-receive_sse_so_far(ReqId) -> 
+receive_sse_so_far(ReqId) ->
     {Evs, <<>>} = receive_sse_so_far(ReqId, <<>>, []),
     Evs.
 
@@ -505,7 +513,7 @@ receive_sse_so_far(ReqId, Prev, PastEvs) ->
         {ibrowse_async_headers, ReqId, C, Headers} ->
             exit({unexpected_ibrowse_headers, {ReqId, C, Headers}})
         % Don't catch everything, because non-ReqId messages may be coming in
-    after 
+    after
         50 ->
             {PastEvs, Prev}
     end.

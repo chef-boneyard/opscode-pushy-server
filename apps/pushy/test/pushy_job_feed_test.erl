@@ -52,6 +52,7 @@ basic_setup() ->
                 fun(X) -> X end),
     meck:expect(wrq, path_info, fun(_Id, _Req) -> ?ID end),
     meck:expect(wrq, get_req_header, fun(_Header, _Req) -> undefined end),
+    meck:expect(wrq, set_resp_headers, fun([{"X-Accel-Buffering", "no"}], Req) -> Req end),
     meck:expect(pushy_node_state, watch, fun(_) -> ok end),
     meck:expect(pushy_node_state, status, fun(_) -> {online, {available, none}} end),
     meck:expect(pushy_node_state, send_msg, fun(_, _) -> ok end),
