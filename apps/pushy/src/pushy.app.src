@@ -32,7 +32,12 @@
                   sqerl,
                   webmachine,
                   lager,
-                  folsom
+                  folsom,
+                  folsom_graphite,
+                  pushy_common,
+                  chef_authn,
+                  envy,
+                  ej
                  ]},
   {included_applications, []},
   {mod, { pushy_app, []}},
