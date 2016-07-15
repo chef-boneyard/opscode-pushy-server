@@ -464,7 +464,7 @@ safe_get(Key, Proplist) ->
 %% CHEF_DB CARGO_CULT
 statements() ->
     File = "pgsql_statements.config",
-    Path = filename:join([filename:dirname(code:which(?MODULE)), "apps", "pushy", "priv", File]),
+    Path = filename:join([code:priv_dir(pushy), File]),
     Rv = case file:consult(Path) of
              {ok, Statements} -> Statements;
              {error, Error} ->
