@@ -39,6 +39,6 @@ build do
   env['ZEROMQ_PREFIX']="#{install_dir}/embedded"
   make "distclean", env: env
   make "rel", env: env
-  sync "#{project_dir}/rel/opscode-pushy-server/", "#{install_dir}/embedded/service/opscode-pushy-server/"
+  sync "#{project_dir}/_build/default/rel/opscode-pushy-server/", "#{install_dir}/embedded/service/opscode-pushy-server/"
   delete "#{install_dir}/embedded/service/opscode-pushy-server/log"
 end
