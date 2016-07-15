@@ -6,8 +6,7 @@
 
 name "opscode-pushy-server-ctl"
 
-license "Apache-2.0"
-license_file "LICENSE"
+license :project_license
 
 source path: "#{project.files_path}/pushy-server-ctl-commands"
 
