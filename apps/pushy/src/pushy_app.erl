@@ -43,7 +43,7 @@ start(_StartType, _StartArgs) ->
     case erlang:system_info(multi_scheduling) of
         enabled ->
             %% TODO - find a better spot for this log setup
-                                                % Logs all job message to a specific file
+            %% Logs all job message to a specific file
             lager:trace_file("log/jobs.log", [{job_id, '*'}]),
             IncarnationId = list_to_binary(pushy_util:guid_v4()),
 
@@ -51,7 +51,7 @@ start(_StartType, _StartArgs) ->
 
             IoProcesses = envy:get(pushy, zmq_io_processes, 1, integer),
             {ok, Pub, Sec} = erlzmq:curve_keypair(),
-            case erlzmq:context(IoProcesses, [{max_sockets, 51200}] ) of
+            case erlzmq:context(IoProcesses, [{max_sockets, 51200}]) of
                 {ok, Ctx} ->
                     State = #pushy_state{ctx=Ctx,
                                          incarnation_id=IncarnationId,

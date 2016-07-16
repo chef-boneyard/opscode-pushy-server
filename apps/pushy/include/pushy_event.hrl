@@ -23,6 +23,5 @@
                 name      :: binary(),
                 id        :: binary(),
                 timestamp :: erlang:timestamp(),
-                data      :: [{binary(), binary()}]
+                data      :: [{binary()|atom(), binary()|non_neg_integer()|boolean()}]
         }).
-
