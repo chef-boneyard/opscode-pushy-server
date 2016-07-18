@@ -26,26 +26,24 @@ build_version   Omnibus::BuildVersion.new.semver
 build_iteration 1
 
 override :libzmq, version: "4.0.5"
-override :rebar, version: "2.6.0"
 
 # creates required build directories
 dependency "preparation"
 
 # global
 dependency "libffi"
-dependency "pushy-server-cookbooks"
-dependency "pushy-server-scripts"
-dependency "opscode-pushy-server-ctl"
+# These two are required for reconfigure, we don't actually need our
+# own postgres server
 dependency "runit"
+dependency "postgresql"
+dependency "pg-gem"
+
+dependency "pushy-server-cookbooks"
+dependency "opscode-pushy-server-ctl"
 
 dependency "opscode-pushy-server"
 dependency "pushy-server-schema"
 dependency "oc-pushy-pedant"
-
-# These two are required for reconfigure, we don't actually need our
-# own postgres server
-dependency "postgresql"
-dependency "pg-gem"
 
 dependency "chef"
 dependency "ohai"

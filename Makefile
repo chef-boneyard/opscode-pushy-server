@@ -1,5 +1,3 @@
-REBAR3 = $(CURDIR)/rebar3
-
 # If there is a rebar in the current directory, use it
 ifeq ($(wildcard rebar3),rebar3)
 REBAR3 = $(CURDIR)/rebar3
@@ -10,7 +8,7 @@ REBAR3 ?= $(shell which rebar3)
 
 # And finally, prep to download rebar if all else fails
 ifeq ($(REBAR3),)
-REBAR3 = rebar3
+REBAR3 = $(CURDIR)/rebar3
 endif
 
 all: $(REBAR3)
@@ -35,7 +33,7 @@ update:
 install: $(REBAR3) distclean update
 
 omnibus: $(REBAR3) install
-	$(REBAR3) compile, release
+	$(REBAR3) do compile, release
 
 distclean:
 	@rm -rf _build

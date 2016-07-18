@@ -23,13 +23,7 @@ license_file "LICENSE"
 source path: "#{project.files_path}/../../"
 
 dependency "erlang"
-dependency "rebar"
-dependency "curl"
-dependency "automake"
-dependency "autoconf"
-dependency "libuuid"
-dependency "libtool"
-dependency "bundler"
+dependency "libzmq"
 
 relative_path "opscode-pushy-server"
 
