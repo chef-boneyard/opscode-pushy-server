@@ -38,7 +38,7 @@ end
 # some configurations, and eventually we will need to protect against that.
 node.default['pushy']['opscode-pushy-server']['server_name_advertised'] ||=  node['pushy']['opscode-pushy-server']['vip']
 
-pushy_config  = File.join(pushy_dir, "app.config")
+pushy_config  = File.join(pushy_dir, "sys.config")
 pushy_vm_args = File.join(pushy_dir, "vm.args")
 
 template pushy_config do
@@ -54,7 +54,7 @@ template pushy_vm_args do
   notifies :restart, 'runit_service[opscode-pushy-server]' if is_data_master?
 end
 
-link "#{node['pushy']['install_path']}/embedded/service/opscode-pushy-server/app.config" do
+link "#{node['pushy']['install_path']}/embedded/service/opscode-pushy-server/sys.config" do
   to pushy_config
 end
 
