@@ -48,7 +48,7 @@ simple_test_() ->
              meck:new([ibrowse], []),
              application:set_env(chef_authn, keyring,
                                  [{pivotal, "apps/pushy/test/testkey.pem"}]),
-             application:set_env(chef_authn, keyring_dir, "../test"),
+             application:set_env(chef_authn, keyring_dir, "apps/pushy/test"),
              application:set_env(pushy, chef_api_version, "11.0.0"),
              {ok, Pid} = chef_keyring:start_link(),
              Pid
