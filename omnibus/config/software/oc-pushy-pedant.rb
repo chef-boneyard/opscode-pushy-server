@@ -15,12 +15,11 @@
 #
 
 name "oc-pushy-pedant"
-default_version "master"
 
 license "Apache-2.0"
 license_file "LICENSE"
 
-source git: "https://github.com/chef/oc-pushy-pedant.git"
+source path: "#{project.files_path}/../../oc-pushy-pedant"
 
 dependency "libzmq"
 dependency "ruby"
