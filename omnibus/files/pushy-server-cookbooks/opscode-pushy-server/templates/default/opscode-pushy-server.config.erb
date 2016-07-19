@@ -118,11 +118,13 @@
                         {metrics_module, folsom_metrics},
                         {enable_graphite, <%= @enable_graphite %> }
                        ]},
+<% if @enable_graphite -%>
  {folsom_graphite,[{application, "pushy"},
                    {graphite_host, "<%= @graphite_host %>"},
                    {graphite_port, <%= @graphite_port %>}
                   ]},
-   {chef_authn,  [{keyring_dir, "<%= @keyring_dir %>"},
+<% end -%>
+ {chef_authn,  [{keyring_dir, "<%= @keyring_dir %>"},
                 {keyring, [{pivotal, "/etc/opscode/pivotal.pem"}]}
                ]}
 ].
