@@ -25,6 +25,7 @@ source git: "https://github.com/chef/oc-pushy-pedant.git"
 dependency "libzmq"
 dependency "ruby"
 dependency "bundler"
+dependency "curl"
 
 relative_path "oc-pushy-pedant"
 
