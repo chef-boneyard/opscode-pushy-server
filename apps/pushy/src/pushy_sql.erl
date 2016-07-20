@@ -113,7 +113,7 @@ create_job(#pushy_job{job_nodes = JobNodes}=Job) ->
             case insert_job_nodes(JobNodes) of
                 ok ->
                     case insert_job_options(Job) of
-                        {ok, _} -> 
+                        {ok, _} ->
                             %% (Remember, create_object/1 should return {ok, Number})
                             {ok, 1};
                         {error, Reason1} ->
@@ -464,7 +464,7 @@ safe_get(Key, Proplist) ->
 %% CHEF_DB CARGO_CULT
 statements() ->
     File = "pgsql_statements.config",
-    Path = filename:join([filename:dirname(code:which(?MODULE)), "..", "priv", File]),
+    Path = filename:join([code:priv_dir(pushy), File]),
     Rv = case file:consult(Path) of
              {ok, Statements} -> Statements;
              {error, Error} ->

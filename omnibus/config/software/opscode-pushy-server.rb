@@ -22,13 +22,7 @@ license_file "LICENSE"
 source path: "#{project.files_path}/../../"
 
 dependency "erlang"
-dependency "rebar"
-dependency "curl"
-dependency "automake"
-dependency "autoconf"
-dependency "libuuid"
-dependency "libtool"
-dependency "bundler"
+dependency "libzmq"
 
 relative_path "opscode-pushy-server"
 
@@ -38,6 +32,6 @@ build do
   env['ZEROMQ_PREFIX']="#{install_dir}/embedded"
   make "distclean", env: env
   make "rel", env: env
-  sync "#{project_dir}/rel/opscode-pushy-server/", "#{install_dir}/embedded/service/opscode-pushy-server/"
+  sync "#{project_dir}/_build/default/rel/opscode-pushy-server/", "#{install_dir}/embedded/service/opscode-pushy-server/"
   delete "#{install_dir}/embedded/service/opscode-pushy-server/log"
 end

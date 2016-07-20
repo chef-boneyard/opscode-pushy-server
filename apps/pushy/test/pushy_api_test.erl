@@ -93,9 +93,9 @@ basic_setup() ->
                 fun(?ORG) -> ?ORGID; (?ORG2) -> ?ORG2ID end),
                 %fun(_) -> <<"ABCDEFGH12345678ABCDEFGH12345678">> end),
     meck:expect(chef_authn, authenticate_user_request,
-                fun(_, _, _, _, _, _) -> {name, ok} end),
-    meck:expect(pushy_principal, fetch_principal,
-                fun(_, _) -> #pushy_principal{requestor_key= <<"rk">>, requestor_type=user, requestor_id= <<"pivotal">>} end),
+                fun(_, _, _, _, _, _) -> {name, user_id, #pushy_principal{requestor_key= <<"rk">>, requestor_type=user, requestor_id= <<"pivotal">>}} end),
+    meck:expect(pushy_principal, fetch_principals,
+                fun(_, _) -> [#pushy_principal{requestor_key= <<"rk">>, requestor_type=user, requestor_id= <<"pivotal">>}] end),
     meck:expect(pushy_wm_base, read_forbidden,
                 fun(Req, State) -> {false, Req, State} end),
     meck:expect(pushy_wm_base, write_forbidden,
@@ -107,7 +107,7 @@ basic_setup() ->
     meck:expect(pushy_messaging, check_timestamp,
                 fun(_, _) -> ok end),
     lists:foreach(fun({A, Cs}) -> [application:set_env(A, P, V) || {P, V} <- Cs] end, configs()),
-    lists:foreach(fun(A) -> ok = application:start(A) end, applications()),
+    lists:foreach(fun(A) -> {ok, _} = application:ensure_all_started(A) end, applications()),
     ok.
 
 basic_cleanup() ->
@@ -821,7 +821,7 @@ capture_empty_err_correct_row(NodePid) ->
 capture_res_404_for_bad_job() ->
     Path = io_lib:format("jobs/no_such_job/output/~s/stdout", [?NODE]),
     {ok, Code, _Headers, _Resp} =
-        pushy_api_util:api_request(get, <<"creator_name">>, ?ORG, 
+        pushy_api_util:api_request(get, <<"creator_name">>, ?ORG,
                                    Path, synchronous, [], <<"">>),
     ?assertEqual("404", Code).
 
@@ -829,7 +829,7 @@ capture_res_404_for_no_capture() ->
     {ok, JobId} = post_job(?COMMAND, [?NODE], []),
     Path = io_lib:format("jobs/~s/output/~s/stdout", [JobId, ?NODE]),
     {ok, Code, _Headers, _Resp} =
-        pushy_api_util:api_request(get, <<"creator_name">>, ?ORG, 
+        pushy_api_util:api_request(get, <<"creator_name">>, ?ORG,
                                    Path, synchronous, [], <<"">>),
     ?assertEqual("404", Code).
 
@@ -843,13 +843,13 @@ capture_res_ok_for_stdout_capture(NodePid) ->
     timer:sleep(1000),
     PathO = io_lib:format("jobs/~s/output/~s/stdout", [JobId, ?NODE]),
     {ok, CodeO, _HeadersO, RespO} =
-        pushy_api_util:api_request(get, <<"creator_name">>, ?ORG, 
+        pushy_api_util:api_request(get, <<"creator_name">>, ?ORG,
                                    PathO, synchronous, [], <<"">>),
     ?assertEqual("200", CodeO),
     ?assertEqual(<<"testout">>, RespO),
     PathE = io_lib:format("jobs/~s/output/~s/stderr", [JobId, ?NODE]),
     {ok, CodeE, _HeadersE, RespE} =
-        pushy_api_util:api_request(get, <<"creator_name">>, ?ORG, 
+        pushy_api_util:api_request(get, <<"creator_name">>, ?ORG,
                                    PathE, synchronous, [], <<"">>),
     ?assertEqual("200", CodeE),
     ?assertEqual(<<"">>, RespE).
@@ -864,13 +864,13 @@ capture_res_ok_for_stderr_capture(NodePid) ->
     timer:sleep(1000),
     PathO = io_lib:format("jobs/~s/output/~s/stdout", [JobId, ?NODE]),
     {ok, CodeO, _HeadersO, RespO} =
-        pushy_api_util:api_request(get, <<"creator_name">>, ?ORG, 
+        pushy_api_util:api_request(get, <<"creator_name">>, ?ORG,
                                    PathO, synchronous, [], <<"">>),
     ?assertEqual("200", CodeO),
     ?assertEqual(<<"">>, RespO),
     PathE = io_lib:format("jobs/~s/output/~s/stderr", [JobId, ?NODE]),
     {ok, CodeE, _HeadersE, RespE} =
-        pushy_api_util:api_request(get, <<"creator_name">>, ?ORG, 
+        pushy_api_util:api_request(get, <<"creator_name">>, ?ORG,
                                    PathE, synchronous, [], <<"">>),
     ?assertEqual("200", CodeE),
     ?assertEqual(<<"testerr">>, RespE).
@@ -886,13 +886,13 @@ capture_res_ok_for_both_capture(NodePid) ->
     timer:sleep(1000),
     PathO = io_lib:format("jobs/~s/output/~s/stdout", [JobId, ?NODE]),
     {ok, CodeO, _HeadersO, RespO} =
-        pushy_api_util:api_request(get, <<"creator_name">>, ?ORG, 
+        pushy_api_util:api_request(get, <<"creator_name">>, ?ORG,
                                    PathO, synchronous, [], <<"">>),
     ?assertEqual("200", CodeO),
     ?assertEqual(<<"testout">>, RespO),
     PathE = io_lib:format("jobs/~s/output/~s/stderr", [JobId, ?NODE]),
     {ok, CodeE, _HeadersE, RespE} =
-        pushy_api_util:api_request(get, <<"creator_name">>, ?ORG, 
+        pushy_api_util:api_request(get, <<"creator_name">>, ?ORG,
                                    PathE, synchronous, [], <<"">>),
     ?assertEqual("200", CodeE),
     ?assertEqual(<<"testerr">>, RespE).

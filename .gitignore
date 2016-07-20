@@ -4,18 +4,13 @@ docs/*.log
 docs/*.out
 docs/*.toc
 docs/*.aux
-prototype_old/ebin
-prototype_old/deps
-apps/pushy/ebin
 apps/pushy/.eunit
 .DS_STORE
 *.beam
-rel/opscode-pushy-server
-rel/pushy
-deps
 .eunit
-
-/deps.plt
+_build
+_checkouts
+log
 
 /.concrete/
 # emacs leaves these behind.

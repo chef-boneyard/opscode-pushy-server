@@ -81,9 +81,9 @@ resource_exists(Req, State) ->
 
 process_job_msg(Msg, MonitorRef) ->
     case Msg of
-        {job_ev, _JobId, Ev} -> 
+        {job_ev, _JobId, Ev} ->
             {ok, [encode_event(Ev), "\n\n"]};
-        done -> 
+        done ->
             case MonitorRef of
                 undefined -> ok;
                 _ -> demonitor(MonitorRef, [flush])
@@ -103,7 +103,7 @@ process_job_msg(Msg, MonitorRef) ->
 
 process_org_msg(Msg) ->
     case Msg of
-        {ev, Ev} -> 
+        {ev, Ev} ->
             {ok, [encode_event(Ev), "\n\n"]};
         _ ->
             unknown
@@ -129,7 +129,7 @@ stream_events(MsgProcessorFun, KeepAliveTime) ->
     case Resp of
         done -> {<<>>, done};
         {_R, done} -> Resp;
-        _ -> 
+        _ ->
             %?debugVal(binary_to_list(iolist_to_binary(Resp))),
             {Resp, fun() -> stream_events(MsgProcessorFun, KeepAliveTime) end}
     end.
@@ -162,13 +162,13 @@ get_org_events(OrgId, LastEventID) ->
 to_event_stream(Req, State) ->
     LastEventID = wrq:get_req_header("Last-Event-ID",Req),
     KeepAliveTime = envy:get(pushy, keep_alive_time, 15, integer),
-    Res = case {wrq:path_info(job_id, Req), State#config_state.pushy_job} of 
+    Res = case {wrq:path_info(job_id, Req), State#config_state.pushy_job} of
         {undefined, undefined} ->
             OrgId = State#config_state.organization_guid,
             Events = get_org_events(OrgId, LastEventID),
             Stream = {Events, fun() -> stream_events(fun process_org_msg/1, KeepAliveTime * 1000) end},
             {stream, Stream};
-        {_, undefined} -> 
+        {_, undefined} ->
             JobPid = State#config_state.job_pid,
             Stream = case get_job_events(JobPid, LastEventID) of
                 {true, Events} ->
@@ -185,7 +185,7 @@ to_event_stream(Req, State) ->
     end,
     %?debugVal(Res),
 
-    %% Nginix buffers output, but this header disables.
+    %% Nginx buffers output, but this header disables.
     %% Alternate approach would be to disable buffering for endpoint in nginx config...
     %% https://stackoverflow.com/questions/27898622/server-sent-events-stopped-work-after-enabling-ssl-on-proxy
     %% https://stackoverflow.com/questions/20106386/server-sent-events-eventsource-with-sinatra-on-elastic-beanstalk

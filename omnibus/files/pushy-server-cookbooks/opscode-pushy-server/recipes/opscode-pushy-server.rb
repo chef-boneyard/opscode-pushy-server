@@ -16,12 +16,10 @@
 #
 
 pushy_dir = node['pushy']['opscode-pushy-server']['dir']
-pushy_etc_dir = File.join(pushy_dir, "etc")
 pushy_log_dir = node['pushy']['opscode-pushy-server']['log_directory']
 pushy_sasl_log_dir = File.join(pushy_log_dir, "sasl")
 [
   pushy_dir,
-  pushy_etc_dir,
   pushy_log_dir,
   pushy_sasl_log_dir
 ].each do |dir_name|
@@ -40,17 +38,8 @@ end
 # some configurations, and eventually we will need to protect against that.
 node.default['pushy']['opscode-pushy-server']['server_name_advertised'] ||=  node['pushy']['opscode-pushy-server']['vip']
 
-template "#{node['pushy']['install_path']}/embedded/service/opscode-pushy-server/bin/opscode-pushy-server" do
-  source "opscode-pushy-server.erb"
-  owner "root"
-  group "root"
-  mode "0755"
-  variables(node['pushy']['opscode-pushy-server'].to_hash)
-  notifies :restart, 'runit_service[opscode-pushy-server]' if is_data_master?
-end
-
-pushy_config  = File.join(pushy_etc_dir, "app.config")
-pushy_vm_args = File.join(pushy_etc_dir, "vm.args")
+pushy_config  = File.join(pushy_dir, "sys.config")
+pushy_vm_args = File.join(pushy_dir, "vm.args")
 
 template pushy_config do
   source "opscode-pushy-server.config.erb"
@@ -65,11 +54,11 @@ template pushy_vm_args do
   notifies :restart, 'runit_service[opscode-pushy-server]' if is_data_master?
 end
 
-link "#{node['pushy']['install_path']}/embedded/service/opscode-pushy-server/etc/app.config" do
+link "#{node['pushy']['install_path']}/embedded/service/opscode-pushy-server/sys.config" do
   to pushy_config
 end
 
-link "#{node['pushy']['install_path']}/embedded/service/opscode-pushy-server/etc/vm.args" do
+link "#{node['pushy']['install_path']}/embedded/service/opscode-pushy-server/vm.args" do
   to pushy_vm_args
 end
 

@@ -2,80 +2,6 @@
 
 This project creates full-stack platform-specific packages for `opscode-push-jobs`!
 
-## Installation
-
-We'll assume you have Ruby 1.9+ and Bundler installed. First ensure all
-required gems are installed and ready to use:
-
-```shell
-$ bundle install --binstubs
-```
-
-## Usage
-
-### Build
-
-You create a platform-specific package using the `build project` command:
-
-```shell
-$ bin/omnibus build opscode-push-jobs-server
-```
-
-The platform/architecture type of the package created will match the platform
-where the `build` command is invoked. So running this command on a
-MacBook Pro will generate a Mac OS X specific package. After the build
-completes packages will be available in `pkg/`.
-
-### Clean
-
-You can clean up all temporary files generated during the build process with
-the `clean` command:
-
-```shell
-$ bin/omnibus clean
-```
-
-Adding the `--purge` purge option removes __ALL__ files generated during the
-build including the project install directory (`/opt/opscode`) and
-the package cache directory (`/var/cache/omnibus/pkg`):
-
-```shell
-$ bin/omnibus clean --purge
-```
-
-### Cache
-
-Lists source packages that are required but not yet cached:
-
-```shell
-$ bin/omnibus cache missing
-```
-
-Populate the S3 Cache:
-
-```shell
-$ bin/omnibus cache populate
-```
-
-### Publish
-
-Omnibus has a built-in mechanism for releasing to a variety of "backends", such
-as Amazon S3 and Artifactory. You must set the proper credentials in your `omnibus.rb`
-config file or specify them via the command line.
-
-```shell
-$ bundle exec omnibus publish path/to/*.deb --backend s3
-```
-
-### Help
-
-Full help for the Omnibus command line interface can be accessed with the
-`help` command:
-
-```shell
-$ bin/omnibus help
-```
-
 Kitchen-based Build Environment
 -------------------------------
 Every Omnibus project ships will a project-specific
@@ -95,22 +21,28 @@ Once you have tweaked your `.kitchen.yml` (or `.kitchen.local.yml`) to your
 liking, you can bring up an individual build environment using the `kitchen`
 command.
 
-**NOTE:** Test Kitchen shoud be installed external to the local Ruby bundle.
+**NOTE:** Test Kitchen should be installed external to the local Ruby bundle.
 Please either use ChefDK or install the latest test-kitchen from Rubygems.
 
 ```shell
-$ kitchen converge ubuntu-12.04
+bundle install
+```
+
+```shell
+kitchen converge default-ubuntu-1204
 ```
 
 Then login to the instance and build the project as described in the Usage
 section:
 
 ```shell
-$ kitchen login ubuntu-12.04
-[vagrant@ubuntu...] $ cd opscode-push-jobs-server
-[vagrant@ubuntu...] $ bundle install
-[vagrant@ubuntu...] $ ...
-[vagrant@ubuntu...] $ bundle exec omnibus build opscode-push-jobs-server
+kitchen login default-ubuntu-1204
+
+sudo su -
+source /home/vagrant/load-omnibus-toolchain.sh
+cd /home/vagrant/chef-push-server/omnibus
+bundle install
+bundle exec omnibus build opscode-push-jobs-server
 ```
 
 For a complete list of all commands and platforms, run `kitchen list` or
@@ -134,4 +66,3 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-
