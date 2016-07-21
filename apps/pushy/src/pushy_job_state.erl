@@ -115,12 +115,8 @@ init({#pushy_job{id = JobId, job_nodes = JobNodeList, opts = Opts} = Job, Reques
             lager:info([{job_id,Job#pushy_job.id}],
                         "Job ~p starting '~p' on ~p nodes, with timeout ~ps",
                         [JobId, Job#pushy_job.command, length(JobNodeList), Job#pushy_job.run_timeout]),
-
-            % Start voting--if there are no nodes, the job finishes immediately.
-            case start_voting(State) of
-                {next_state, StateName, State2} -> {ok, StateName, State2};
-                {stop, Reason, _State} -> {stop, Reason}
-            end;
+            {next_state, StateName, State2} = start_voting(State),
+            {ok, StateName, State2};
         false ->
             lager:error("couldn't register job_state process: ~p", [JobId]),
             {stop, shutdown}
@@ -529,7 +525,7 @@ build_event_response(LastEventID, State = #state{done = Done}) ->
              end,
     {Done, lists:reverse(RevEvs)}.
 
--spec add_event(#state{}, string(), [{binary(), integer() | binary()}]) -> #state{}.
+-spec add_event(#state{}, string(), [{binary()|atom(), binary()|non_neg_integer()|boolean()}]) -> #state{}.
 add_event(State = #state{next_event_id = Id, rev_events = RevEvents}, EventName, PropList) ->
     IdStr = iolist_to_binary(io_lib:format("job-~B", [Id])),
     Ev = pushy_event:make_event(EventName, IdStr, PropList),
@@ -543,7 +539,7 @@ post_to_subscribers(#state{subscribers = Subscribers}, Msg) ->
 -spec add_start_event(#state{}, binary(), non_neg_integer(), non_neg_integer(),
                       non_neg_integer(), binary(), binary()|undefined,
                       binary()|undefined, binary()|undefined,
-                      binary()|undefined, boolean|undefined) -> #state{}.
+                      binary()|undefined, boolean()|undefined) -> #state{}.
 add_start_event(State, Command, RunTimeout, Quorum, NodeCount, User, JobUser, Dir, Env, File, Capture) ->
     JobUserPL = get_attr_list(job_user, JobUser),
     DirPL = get_attr_list(dir, Dir),

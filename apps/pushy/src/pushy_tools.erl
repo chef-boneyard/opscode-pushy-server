@@ -25,25 +25,7 @@
 
 -include("pushy_sql.hrl").
 
--export([send_job/3,
-         bin_to_hex/1]).
-
-%% @doc helper function to generate a job and send it to a set of clients listening
-%% on a simulator.  It assumes the node names are of the form:  HOSTNAME-000ID
-%% where HOSTNAME is the server where the simulated clients are running
-send_job(Host, OrgName, Num) ->
-    Names = [ construct_name(Host, N) || N <- lists:seq(1, Num)],
-    OrgId = pushy_org:fetch_org_id(OrgName),
-    Job = pushy_object:new_record(pushy_job, OrgId, Names, <<"chef-client">>,
-                                  10000, Num, <<"chef-user">>),
-    pushy_job_state_sup:start(Job).
-
-%%
-%% Internal functions
-%%
-
-construct_name(Hostname, Id) ->
-    list_to_binary(io_lib:format("~s-~4..0B", [Hostname, Id])).
+-export([bin_to_hex/1]).
 
 %%
 %% Generate a pretty hexadecimal output for a binary.

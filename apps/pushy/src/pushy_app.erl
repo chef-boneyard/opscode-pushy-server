@@ -43,7 +43,7 @@ start(_StartType, _StartArgs) ->
     case erlang:system_info(multi_scheduling) of
         enabled ->
             %% TODO - find a better spot for this log setup
-                                                % Logs all job message to a specific file
+            %% Logs all job message to a specific file
             lager:trace_file("log/jobs.log", [{job_id, '*'}]),
             IncarnationId = list_to_binary(pushy_util:guid_v4()),
 

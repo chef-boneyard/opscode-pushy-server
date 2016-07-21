@@ -109,7 +109,7 @@ rehab(NodeRef) ->
 %% Testing API
 
 -spec heartbeat(NodeRef :: node_ref(),
-                IncarnationId :: binary()) -> ok.
+                IncarnationId :: binary()) -> ok | undefined.
 heartbeat(NodeRef, IncarnationId) ->
     send_info(NodeRef, {heartbeat, IncarnationId}).
 
@@ -215,7 +215,7 @@ handle_info({heartbeat, IncarnationId}, CurrentState,
         true ->
             case pushy_node_stats:heartbeat(self()) of
                 ok -> {next_state, CurrentState, State};
-                should_die -> 
+                should_die ->
                     NodeInfo = {State#state.node_ref, State#state.node_addr},
                     lager:debug("no heartbeat from ~p, shutting down", [NodeInfo]),
                     {stop, state_transition(CurrentState, shutdown, State), State}
@@ -478,11 +478,11 @@ key_fetch(Method, EJson) ->
     NodeRef = get_node_ref(EJson),
     get_key_for_method(Method, NodeRef).
 
--spec do_send(#state{}, ej:json_term()) -> #state{}.
+-spec do_send(#state{}, jiffy:json_value()) -> #state{}.
 do_send(State, Message) ->
     do_send(State, hmac_sha256, Message).
 
--spec do_send(#state{}, pushy_signing_method(), ej:json_term()) -> #state{}.
+-spec do_send(#state{}, pushy_signing_method(), jiffy:json_value()) -> #state{}.
 do_send(#state{node_addr=NodeAddr, node_ref=NodeRef, sequence_no = SeqNo} = State,
         Method, Message) ->
     %% Normalize msg by adding standard fields.
