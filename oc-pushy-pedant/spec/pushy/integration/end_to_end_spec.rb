@@ -54,7 +54,10 @@ describe "end-to-end-test" do
   after :each do
     if @clients
       @clients.each do |client_name, client|
-        stop_client(client_name) if @clients[client_name][:client]
+        if @clients[client_name][:client]
+          stop_client(client_name)
+          wait_for_node_status('offline', client_name)
+        end
       end
       @clients = nil
     end

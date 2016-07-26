@@ -47,7 +47,10 @@ describe "sse-test" do
   after :each do
     if @clients
       @clients.each do |client_name, client|
-        stop_client(client_name) if @clients[client_name][:client]
+        if @clients[client_name][:client]
+          stop_client(client_name)
+          wait_for_node_status('offline', client_name)
+        end
       end
       @clients = nil
     end
@@ -587,7 +590,7 @@ describe "sse-test" do
       # This test isn't very reliable and is hardware dependent
       # The intent was that 4 events have happened by the first read, and the final completion events land in the second
       # However, sometimes the full 6 event stream is read in the first statement, leaving none for the second.
-      # 
+      #
       old_evs = @stream.get_streaming_events
       validate_events(4, old_evs)
       last_id = old_evs[-1].id
