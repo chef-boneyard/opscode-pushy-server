@@ -289,7 +289,7 @@ shared_context "sse_support" do
     evs.map(&:id).uniq.length.should == evs.length
     # All events have (parsable) timestamps
     ts = evs.map {|e| Time.parse(e.json['timestamp'])}
-    TestLogger.debug "Event Timestamps: #{ts}"
+    TestLogger.debug "Event Timestamps: #{ts.map {|t| t.to_f}}"
     # All timestamps are unique
     ts.uniq.length.should == ts.length
     # All timestamps are in increasing order
