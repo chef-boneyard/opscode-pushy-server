@@ -36,7 +36,6 @@ end
 
 PRETEST_SLEEP = 0.1
 def sleep_and_wait_for_available(names)
-  puts "names: #{names}"
   wait_for_node_to_come_out_of_rehab(*names)
 end
 

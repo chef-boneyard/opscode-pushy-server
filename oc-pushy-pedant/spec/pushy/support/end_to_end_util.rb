@@ -164,15 +164,24 @@ shared_context "end_to_end_util" do
 
         # Register for state changes
         client[:states] << client[:client].job_state
-        client[:client].on_job_state_change { |job_state| client[:states] << job_state }
+        client[:client].on_job_state_change { |job_state|
+          TestLogger.debug "Got job_stat_change: #{job_state}"
+          client[:states] << job_state
+        }
       end
 
       begin
+        TestLogger.info("Waiting #{client_start_timeout} for #{names} to come online")
         Timeout::timeout(client_start_timeout) do
           while true
             offline_nodes = names.select { |name| !@clients[name][:client].online? }
-            break if offline_nodes.size == 0
-            sleep sleep_time
+            if offline_nodes.size == 0
+              TestLogger.debug("All nodes now online!")
+              break
+            else
+              TestLogger.debug("Still waiting for #{offline_nodes} to come online")
+              sleep sleep_time
+            end
           end
         end
       rescue Timeout::Error
@@ -184,11 +193,13 @@ shared_context "end_to_end_util" do
     end
 
     def wait_for_node_status(up_down, *names)
+      TestLogger.info "Waiting #{node_status_timeout} for #{names} to enter status == #{up_down}"
       begin
         Timeout::timeout(node_status_timeout) do
           until names.all? { |name|
               get(api_url("pushy/node_states/#{name}"), admin_user) do |response|
                 status = JSON.parse(response)['status']
+                TestLogger.debug "Node #{name} has status = #{status}"
                 status == up_down
               end
             }
@@ -208,12 +219,15 @@ shared_context "end_to_end_util" do
     end
 
     def wait_for_nodes_availabilty(availability, *names)
+      TestLogger.info "Waiting #{node_availability_timeout} seconds for #{names} to enter availability == #{availability}"
       begin
         Timeout::timeout(node_availability_timeout) do
           until names.all? { |name|
-                  response = get_rest("pushy/node_states/#{name}")
-                  response['availability'] == availability
-                }
+              response = get_rest("pushy/node_states/#{name}")
+              TestLogger.debug "Node #{name} has availability = #{response['availability']}"
+              response['availability'] == availability
+            }
+
             sleep sleep_time
           end
         end
@@ -231,7 +245,6 @@ shared_context "end_to_end_util" do
     end
 
     def sleep_and_wait_for_available(names)
-      puts "names: #{names}"
       wait_for_node_to_come_out_of_rehab(*names)
     end
 
@@ -263,6 +276,7 @@ shared_context "end_to_end_util" do
     # until the backend appears.  We wait until we get a parsable JSON object back
     def wait_for_server_restart
       begin
+        TestLogger.info("Waiting #{server_restart_timeout} for server to restart")
         Timeout::timeout(server_restart_timeout) do
           status = :not_ready
           while status != :ready do
@@ -296,9 +310,11 @@ shared_context "end_to_end_util" do
 
     def wait_for_job_status(uri, status, options = {})
       job = nil
+      timeout = options[:timeout] || job_status_timeout_default
       status_list = status.respond_to?(:member?) ? status : [status]
+      TestLogger.info "Waiting #{timeout} seconds for #{uri} to enter #{status_list}"
       begin
-        Timeout::timeout(options[:timeout] || job_status_timeout_default) do
+        Timeout::timeout(timeout) do
           begin
             sleep(sleep_time) if job
             job = get_job(uri)
@@ -356,7 +372,7 @@ shared_context "end_to_end_util" do
     def start_and_wait_for_job(command, node_names, options = {})
       @response = start_job(command, node_names, options)
       job_id = @response["uri"].split("/").last
-      puts "job_id: #{job_id}"
+      TestLogger.info "Waiting #{job_start_timeout} seconds for job #{job_id} to start on #{node_names}"
       # Wait until all have started
       begin
         uncommitted_nodes = node_names # assume nothing is committed to start
@@ -367,8 +383,13 @@ shared_context "end_to_end_util" do
                 state[:state] == :committed && state[:job_id] == job_id
               end
             end
-            break if uncommitted_nodes.size == 0
-            sleep(sleep_time)
+            if uncommitted_nodes.size == 0
+              TestLogger.debug "All nodes have committed to job #{job_id}"
+              break
+            else
+              TestLogger.debug "Still waiting on #{uncommitted_nodes} to commit to job #{job_id}"
+              sleep(sleep_time)
+            end
           end
         end
       rescue Timeout::Error
