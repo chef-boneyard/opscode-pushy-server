@@ -25,11 +25,12 @@ shared_context "end_to_end_util" do
 
     # A variety of timeouts are used to ensure that jobs have started,
     # nodes are available, etc.  These are set very conservatively.
+
     let (:client_start_timeout) { 5 }
     let (:job_start_timeout) { 30 }
     let (:job_status_timeout_default) { 30 * heartbeat_interval }
     let (:node_availability_timeout) { 10 * 3 } # 3 is the offline_threshold
-    let (:node_status_timeout) { 10 * heartbeat_interval }
+    let (:node_status_timeout) { (10 * heartbeat_interval) +  5 } # Add some buffer for when heartbeat_interval is set low
     let (:server_restart_timeout) { 45 } # increasing this makes failing tests take longer, but salvages some slow runs
 
     let (:client_creation_retries) { 5 }  # how many times to retry a client creation
