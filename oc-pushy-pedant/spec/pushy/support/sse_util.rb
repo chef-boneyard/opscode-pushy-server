@@ -111,7 +111,7 @@ shared_context "sse_support" do
       if last_id then
           headers.merge!({'Last-Event-ID' => last_id})
       end
-      
+
       @ep = EventParser.new
       Thread.new {
         conn = @client.get_async(url, :header => headers)
@@ -179,7 +179,7 @@ shared_context "sse_support" do
       if last_id then
           headers.merge!({'Last-Event-ID' => last_id})
       end
-      
+
       @ep = EventParser.new
       Thread.new {
         req = Typhoeus::Request.new(
@@ -284,6 +284,7 @@ shared_context "sse_support" do
   def validate_events(numEvents, evs)
     TestLogger.debug "Validating events. Expected count: #{numEvents}. Actual count: #{evs.length}"
     TestLogger.debug "Event Names: #{evs.map {|e| e.name}}"
+    TestLogger.debug "Full Event Records: #{evs}"
     evs.length.should >= numEvents
     # All ids are unique
     evs.map(&:id).uniq.length.should == evs.length
