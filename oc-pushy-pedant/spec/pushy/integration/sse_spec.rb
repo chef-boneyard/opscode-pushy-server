@@ -28,7 +28,7 @@ require 'time'
 #   wait_for_node_to_come_out_of_rehab(*names)
 # end
 
-describe "sse-test" do
+describe "sse-test", :sse do
   include_context "end_to_end_util"     # to start clients
   include_context "sse_support"
   SUMMARY_WAIT_TIME = 5

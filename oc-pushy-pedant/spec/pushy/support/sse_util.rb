@@ -282,13 +282,14 @@ shared_context "sse_support" do
 
   # Validate standard events
   def validate_events(numEvents, evs)
-    require 'pp'
-    pp evs unless evs.length >= numEvents
+    TestLogger.debug "Validating events. Expected count: #{numEvents}. Actual count: #{evs.length}"
+    TestLogger.debug "Event Names: #{evs.map {|e| e.name}}"
     evs.length.should >= numEvents
     # All ids are unique
     evs.map(&:id).uniq.length.should == evs.length
     # All events have (parsable) timestamps
     ts = evs.map {|e| Time.parse(e.json['timestamp'])}
+    TestLogger.debug "Event Timestamps: #{ts.map {|t| t.to_f}}"
     # All timestamps are unique
     ts.uniq.length.should == ts.length
     # All timestamps are in increasing order
@@ -332,9 +333,11 @@ shared_context "sse_support" do
 
   # Modified from end_to_end_util:wait_for_job_status
   def wait_for_job_done(uri, options = {})
+    timeout = options[:timeout] || job_status_timeout_default
     job = nil
+    TestLogger.info "Waiting #{timeout} seconds for #{uri} to finish"
     begin
-      Timeout::timeout(options[:timeout] || job_status_timeout_default) do
+      Timeout::timeout(timeout) do
         begin
           sleep(sleep_time) if job
           job = get_job(uri)
@@ -348,7 +351,6 @@ shared_context "sse_support" do
 
   def do_complete_job(job, options = {})
     @id = start_new_job(job)
-    pp job_id: @id
     wait_for_job_done(api_url("/pushy/jobs/#{@id}"), options)
   end
 

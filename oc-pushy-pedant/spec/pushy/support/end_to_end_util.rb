@@ -25,11 +25,12 @@ shared_context "end_to_end_util" do
 
     # A variety of timeouts are used to ensure that jobs have started,
     # nodes are available, etc.  These are set very conservatively.
+
     let (:client_start_timeout) { 5 }
     let (:job_start_timeout) { 30 }
     let (:job_status_timeout_default) { 30 * heartbeat_interval }
     let (:node_availability_timeout) { 10 * 3 } # 3 is the offline_threshold
-    let (:node_status_timeout) { 10 * heartbeat_interval }
+    let (:node_status_timeout) { (10 * heartbeat_interval) +  5 } # Add some buffer for when heartbeat_interval is set low
     let (:server_restart_timeout) { 45 } # increasing this makes failing tests take longer, but salvages some slow runs
 
     let (:client_creation_retries) { 5 }  # how many times to retry a client creation
@@ -70,34 +71,47 @@ shared_context "end_to_end_util" do
       start_clients([name], opts)
     end
 
+    def create_key_for(name)
+      TestLogger.debug "Creating new chef client #{name}"
+      delete(api_url("/clients/#{name}"), admin_user)
+
+      # Create chef client and save key for pushy client
+      #
+      # Keygen can be slow, and fail
+      retry_count = 1
+      while (retry_count <= client_creation_retries)
+        response = post(api_url("/clients"), superuser, :payload => {"name" => name})
+        if response.code == 201
+          TestLogger.debug "Client #{name} created successfully (try #{retry_count}/#{client_creation_retries})"
+          break
+        elsif response.code >= 500
+          TestLogger.debug "Client creation for #{name} failed with retriably error (HTTP #{response.code}). (try #{retry_count}/#{client_creation_retries})"
+          retry_count += 1
+          sleep client_creation_sleep
+        elsif response.code < 500
+          TestLogger.debug "Client creation for #{name} failed with fatal errror (HTTP #{response.code}). (try #{retry_count}/#{client_creation_retries})"
+          break
+        end
+      end
+
+      key = parse(response)["private_key"]
+      file = Tempfile.new([name, '.pem'])
+      file.write(key)
+      file.flush
+      file
+    end
+
     def start_clients(names, opts = {})
       names.each do |name|
         raise "Client #{name} already started" if @clients[name][:client]
+        TestLogger.info("Starting client #{name}")
 
-        # Delete chef client if it exists
-        delete(api_url("/clients/#{name}"), admin_user)
-
-        # Create chef client and save key for pushy client
-        #
-        # Keygen can be slow, and fail
-        retry_count = 1
-        while (retry_count <= client_creation_retries)
-          response = post(api_url("/clients"), superuser, :payload => {"name" => name})
-
-          puts "Got a #{response.code} response to a POST to /clients for client #{name}: (try #{retry_count})"
-          # 500 happens when keygen is behind; generating a key can take almost a sec on a slow box
-          break if response.code < 500
-          sleep client_creation_sleep
-          retry_count+=1
+        key = KeyCache.get(name)
+        if !key
+          TestLogger.debug "Key for #{name} not found in key cache! Key cache state: #{KeyCache}"
+          key = create_key_for(name)
+          KeyCache.put(name, key)
         end
-
-        key = parse(response)["private_key"]
-
-        @clients[name][:key_file] = file = Tempfile.new([name, '.pem'])
-        key_path = file.path
-
-        file.write(key)
-        file.flush
 
         require 'rbconfig'
         ruby_exec = "BUNDLE_GEMFILE='' #{RbConfig.ruby} -e "
@@ -105,7 +119,7 @@ shared_context "end_to_end_util" do
         # Create pushy client
         default_opts = {
           :chef_server_url => "#{Pedant.config[:chef_server]}/organizations/#{org}",
-          :client_key      => key_path,
+          :client_key      => key.path,
           :node_name       => name,
           :hostname        => name,
           :whitelist       => {
@@ -133,7 +147,7 @@ shared_context "end_to_end_util" do
               :command_line => ruby_exec + %q!'$,="\n";p=Process;File.open(ENV["OUT"],"w"){|f|f.print p.uid,p.euid,Dir.getwd,ENV.to_a}'!
             },
             'ruby-junk' => {
-                :command_line => ruby_exec + %q!'$,="\n";p=Process;File.open("/tmp/junkfile","w"){|f|f.print p.uid,p.euid,Dir.getwd,ENV.to_a} &> /tmp/junk-capture'!
+              :command_line => ruby_exec + %q!'$,="\n";p=Process;File.open("/tmp/junkfile","w"){|f|f.print p.uid,p.euid,Dir.getwd,ENV.to_a} &> /tmp/junk-capture'!
             },
             'debug-env' => {
               :command_line => "(printenv; id; which ruby; echo #{ruby_exec}; #{ruby_exec}'puts :ruby_minus_e_ran') &> /tmp/debug-env-#{name}"
@@ -151,15 +165,24 @@ shared_context "end_to_end_util" do
 
         # Register for state changes
         client[:states] << client[:client].job_state
-        client[:client].on_job_state_change { |job_state| client[:states] << job_state }
+        client[:client].on_job_state_change { |job_state|
+          TestLogger.debug "Got job_state_change: #{job_state}"
+          client[:states] << job_state
+        }
       end
 
       begin
+        TestLogger.info("Waiting #{client_start_timeout} seconds for #{names} to come online")
         Timeout::timeout(client_start_timeout) do
           while true
             offline_nodes = names.select { |name| !@clients[name][:client].online? }
-            break if offline_nodes.size == 0
-            sleep sleep_time
+            if offline_nodes.size == 0
+              TestLogger.debug("All nodes now online!")
+              break
+            else
+              TestLogger.debug("Still waiting for #{offline_nodes} to come online")
+              sleep sleep_time
+            end
           end
         end
       rescue Timeout::Error
@@ -171,11 +194,13 @@ shared_context "end_to_end_util" do
     end
 
     def wait_for_node_status(up_down, *names)
+      TestLogger.info "Waiting #{node_status_timeout} seconds for #{names} to enter status == #{up_down}"
       begin
         Timeout::timeout(node_status_timeout) do
           until names.all? { |name|
               get(api_url("pushy/node_states/#{name}"), admin_user) do |response|
                 status = JSON.parse(response)['status']
+                TestLogger.debug "Node #{name} has status = #{status}"
                 status == up_down
               end
             }
@@ -190,17 +215,20 @@ shared_context "end_to_end_util" do
             node_states[name] = status
           end
         end
-        raise "Not all nodes detected up by server!  #{node_states}"
+        raise "Nodes #{names} failed to achieve status #{up_down} within #{node_status_timeout} seconds!  Last known node states: #{node_states}"
       end
     end
 
     def wait_for_nodes_availabilty(availability, *names)
+      TestLogger.info "Waiting #{node_availability_timeout} seconds for #{names} to enter availability == #{availability}"
       begin
         Timeout::timeout(node_availability_timeout) do
           until names.all? { |name|
-                  response = get_rest("pushy/node_states/#{name}")
-                  response['availability'] == availability
-                }
+              response = get_rest("pushy/node_states/#{name}")
+              TestLogger.debug "Node #{name} has availability = #{response['availability']}"
+              response['availability'] == availability
+            }
+
             sleep sleep_time
           end
         end
@@ -218,7 +246,6 @@ shared_context "end_to_end_util" do
     end
 
     def sleep_and_wait_for_available(names)
-      puts "names: #{names}"
       wait_for_node_to_come_out_of_rehab(*names)
     end
 
@@ -232,8 +259,6 @@ shared_context "end_to_end_util" do
       # from a callback (on_job_state_change or send_command) on a client thread
       thread = Thread.new { client.stop }
       thread.join
-
-      @clients[name][:key_file].close
     end
 
     def kill_client(name)
@@ -252,6 +277,7 @@ shared_context "end_to_end_util" do
     # until the backend appears.  We wait until we get a parsable JSON object back
     def wait_for_server_restart
       begin
+        TestLogger.info("Waiting #{server_restart_timeout} seconds for server to restart")
         Timeout::timeout(server_restart_timeout) do
           status = :not_ready
           while status != :ready do
@@ -285,9 +311,11 @@ shared_context "end_to_end_util" do
 
     def wait_for_job_status(uri, status, options = {})
       job = nil
+      timeout = options[:timeout] || job_status_timeout_default
       status_list = status.respond_to?(:member?) ? status : [status]
+      TestLogger.info "Waiting #{timeout} seconds for #{uri} to enter #{status_list}"
       begin
-        Timeout::timeout(options[:timeout] || job_status_timeout_default) do
+        Timeout::timeout(timeout) do
           begin
             sleep(sleep_time) if job
             job = get_job(uri)
@@ -345,7 +373,7 @@ shared_context "end_to_end_util" do
     def start_and_wait_for_job(command, node_names, options = {})
       @response = start_job(command, node_names, options)
       job_id = @response["uri"].split("/").last
-      puts "job_id: #{job_id}"
+      TestLogger.info "Waiting #{job_start_timeout} seconds for job #{job_id} to start on #{node_names}"
       # Wait until all have started
       begin
         uncommitted_nodes = node_names # assume nothing is committed to start
@@ -356,8 +384,13 @@ shared_context "end_to_end_util" do
                 state[:state] == :committed && state[:job_id] == job_id
               end
             end
-            break if uncommitted_nodes.size == 0
-            sleep(sleep_time)
+            if uncommitted_nodes.size == 0
+              TestLogger.debug "All nodes have committed to job #{job_id}"
+              break
+            else
+              TestLogger.debug "Still waiting on #{uncommitted_nodes} to commit to job #{job_id}"
+              sleep(sleep_time)
+            end
           end
         end
       rescue Timeout::Error
