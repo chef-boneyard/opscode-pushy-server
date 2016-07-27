@@ -25,9 +25,9 @@ Building
 
 1. [OPTIONAL] Increase the heartbeat interval so the tests go faster
 
-        vim /etc/opscode/chef-server.rb
-        # Add the line opscode_pushy['heartbeat_interval'] = 200
-        chef-server-ctl reconfigure
+        vim /etc/opscode-push-jobs-server/opscode-push-jobs-server.rb
+        # Add the line: opscode_pushy_server['heartbeat_interval'] = 1000
+        opscode-push-jobs-server-ctl reconfigure
 
 1. In the VM, run the tests:
 
