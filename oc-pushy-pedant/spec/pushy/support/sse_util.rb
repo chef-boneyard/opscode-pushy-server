@@ -282,12 +282,14 @@ shared_context "sse_support" do
 
   # Validate standard events
   def validate_events(numEvents, evs)
-    TestLogger.debug "Validating events. Expected #{numEvents}: #{evs}"
+    TestLogger.debug "Validating events. Expected count: #{numEvents}. Actual count: #{evs.length}"
+    TestLogger.debug "Event Names: #{evs.map {|e| e.name}}"
     evs.length.should >= numEvents
     # All ids are unique
     evs.map(&:id).uniq.length.should == evs.length
     # All events have (parsable) timestamps
     ts = evs.map {|e| Time.parse(e.json['timestamp'])}
+    TestLogger.debug "Event Timestamps: #{ts}"
     # All timestamps are unique
     ts.uniq.length.should == ts.length
     # All timestamps are in increasing order

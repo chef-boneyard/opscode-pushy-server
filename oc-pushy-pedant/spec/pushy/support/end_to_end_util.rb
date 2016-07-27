@@ -165,7 +165,7 @@ shared_context "end_to_end_util" do
         # Register for state changes
         client[:states] << client[:client].job_state
         client[:client].on_job_state_change { |job_state|
-          TestLogger.debug "Got job_stat_change: #{job_state}"
+          TestLogger.debug "Got job_state_change: #{job_state}"
           client[:states] << job_state
         }
       end
@@ -214,7 +214,7 @@ shared_context "end_to_end_util" do
             node_states[name] = status
           end
         end
-        raise "Not all nodes detected up by server!  #{node_states}"
+        raise "Nodes #{names} failed to achieve status #{up_down} within #{node_status_timeout} seconds!  Last known node states: #{node_states}"
       end
     end
 
