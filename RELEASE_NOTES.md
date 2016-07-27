@@ -1,5 +1,42 @@
 # Push Jobs Server Release Notes
 
+## 2.1.0
+NOTE: at this time we do not recommend upgrading Automate to Push Server 2.1.0
+
+* Substantial stability improvements in the tests.
+
+* Upgrade to rebar 3
+
+* Upgrade to Erlang 18
+
+* Modernized the build and repo management to make building easier,
+  merged in multiple separate repositories into one tree.
+
+## 2.0.1
+
+* Allow the job excution environment to be set; this includes user to
+  be set, working directory, environment variables and a data file to
+  be set.
+
+* Command output capture. We now optionally capture stdout/stderr from job
+  execution and return it to the server. Users can retrieve the output
+  via the knife job output command.
+
+* SSE feeds for job events. We now provide two SSE feed endpoints; one
+  provides fine grained per-job events, while the other provides a
+  per-org feed of jobs starting and completing.
+
+* Use libsodium based encryption via zeromq4's CurveZMQ. This replaces
+  the signing protocol used in 1.x. All zeromq packets are fully
+  encrypted and signed, except for the server heartbeat broadcast,
+  which is signed, but in the clear.
+
+  This is not backwards compatibile with push 1.0 clients, and users
+  should fully upgrade to 2.x push clients, and only then upgrade the server.
+
+* Upgrade to Erlang 17.5
+
+
 ## 1.1.3 (2014-09-17)
 
 ### What's New:
