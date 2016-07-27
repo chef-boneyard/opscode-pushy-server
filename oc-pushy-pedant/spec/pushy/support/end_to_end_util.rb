@@ -171,7 +171,7 @@ shared_context "end_to_end_util" do
       end
 
       begin
-        TestLogger.info("Waiting #{client_start_timeout} for #{names} to come online")
+        TestLogger.info("Waiting #{client_start_timeout} seconds for #{names} to come online")
         Timeout::timeout(client_start_timeout) do
           while true
             offline_nodes = names.select { |name| !@clients[name][:client].online? }
@@ -193,7 +193,7 @@ shared_context "end_to_end_util" do
     end
 
     def wait_for_node_status(up_down, *names)
-      TestLogger.info "Waiting #{node_status_timeout} for #{names} to enter status == #{up_down}"
+      TestLogger.info "Waiting #{node_status_timeout} seconds for #{names} to enter status == #{up_down}"
       begin
         Timeout::timeout(node_status_timeout) do
           until names.all? { |name|
@@ -276,7 +276,7 @@ shared_context "end_to_end_util" do
     # until the backend appears.  We wait until we get a parsable JSON object back
     def wait_for_server_restart
       begin
-        TestLogger.info("Waiting #{server_restart_timeout} for server to restart")
+        TestLogger.info("Waiting #{server_restart_timeout} seconds for server to restart")
         Timeout::timeout(server_restart_timeout) do
           status = :not_ready
           while status != :ready do
