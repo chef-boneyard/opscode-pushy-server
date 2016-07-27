@@ -39,7 +39,7 @@ def sleep_and_wait_for_available(names)
   wait_for_node_to_come_out_of_rehab(*names)
 end
 
-describe "end-to-end-test" do
+describe "end-to-end-test", :end_to_end do
   include_context "end_to_end_util"
 
   let(:status_url) { api_url("/_status").gsub(/organizations\/[^\/]*.\//, '/pushy') }
