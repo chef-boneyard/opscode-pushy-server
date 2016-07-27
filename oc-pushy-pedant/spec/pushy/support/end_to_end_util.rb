@@ -70,34 +70,47 @@ shared_context "end_to_end_util" do
       start_clients([name], opts)
     end
 
+    def create_key_for(name)
+      TestLogger.debug "Creating new chef client #{name}"
+      delete(api_url("/clients/#{name}"), admin_user)
+
+      # Create chef client and save key for pushy client
+      #
+      # Keygen can be slow, and fail
+      retry_count = 1
+      while (retry_count <= client_creation_retries)
+        response = post(api_url("/clients"), superuser, :payload => {"name" => name})
+        if response.code == 201
+          TestLogger.debug "Client #{name} created successfully (try #{retry_count}/#{client_creation_retries})"
+          break
+        elsif response.code >= 500
+          TestLogger.debug "Client creation for #{name} failed with retriably error (HTTP #{response.code}). (try #{retry_count}/#{client_creation_retries})"
+          retry_count += 1
+          sleep client_creation_sleep
+        elsif response.code < 500
+          TestLogger.debug "Client creation for #{name} failed with fatal errror (HTTP #{response.code}). (try #{retry_count}/#{client_creation_retries})"
+          break
+        end
+      end
+
+      key = parse(response)["private_key"]
+      file = Tempfile.new([name, '.pem'])
+      file.write(key)
+      file.flush
+      file
+    end
+
     def start_clients(names, opts = {})
       names.each do |name|
         raise "Client #{name} already started" if @clients[name][:client]
+        TestLogger.info("Starting client #{name}")
 
-        # Delete chef client if it exists
-        delete(api_url("/clients/#{name}"), admin_user)
-
-        # Create chef client and save key for pushy client
-        #
-        # Keygen can be slow, and fail
-        retry_count = 1
-        while (retry_count <= client_creation_retries)
-          response = post(api_url("/clients"), superuser, :payload => {"name" => name})
-
-          puts "Got a #{response.code} response to a POST to /clients for client #{name}: (try #{retry_count})"
-          # 500 happens when keygen is behind; generating a key can take almost a sec on a slow box
-          break if response.code < 500
-          sleep client_creation_sleep
-          retry_count+=1
+        key = KeyCache.get(name)
+        if !key
+          TestLogger.debug "Key for #{name} not found in key cache! Key cache state: #{KeyCache}"
+          key = create_key_for(name)
+          KeyCache.put(name, key)
         end
-
-        key = parse(response)["private_key"]
-
-        @clients[name][:key_file] = file = Tempfile.new([name, '.pem'])
-        key_path = file.path
-
-        file.write(key)
-        file.flush
 
         require 'rbconfig'
         ruby_exec = "BUNDLE_GEMFILE='' #{RbConfig.ruby} -e "
@@ -105,7 +118,7 @@ shared_context "end_to_end_util" do
         # Create pushy client
         default_opts = {
           :chef_server_url => "#{Pedant.config[:chef_server]}/organizations/#{org}",
-          :client_key      => key_path,
+          :client_key      => key.path,
           :node_name       => name,
           :hostname        => name,
           :whitelist       => {
@@ -133,7 +146,7 @@ shared_context "end_to_end_util" do
               :command_line => ruby_exec + %q!'$,="\n";p=Process;File.open(ENV["OUT"],"w"){|f|f.print p.uid,p.euid,Dir.getwd,ENV.to_a}'!
             },
             'ruby-junk' => {
-                :command_line => ruby_exec + %q!'$,="\n";p=Process;File.open("/tmp/junkfile","w"){|f|f.print p.uid,p.euid,Dir.getwd,ENV.to_a} &> /tmp/junk-capture'!
+              :command_line => ruby_exec + %q!'$,="\n";p=Process;File.open("/tmp/junkfile","w"){|f|f.print p.uid,p.euid,Dir.getwd,ENV.to_a} &> /tmp/junk-capture'!
             },
             'debug-env' => {
               :command_line => "(printenv; id; which ruby; echo #{ruby_exec}; #{ruby_exec}'puts :ruby_minus_e_ran') &> /tmp/debug-env-#{name}"
@@ -232,8 +245,6 @@ shared_context "end_to_end_util" do
       # from a callback (on_job_state_change or send_command) on a client thread
       thread = Thread.new { client.stop }
       thread.join
-
-      @clients[name][:key_file].close
     end
 
     def kill_client(name)

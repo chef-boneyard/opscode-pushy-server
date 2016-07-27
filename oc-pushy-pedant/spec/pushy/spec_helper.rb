@@ -29,6 +29,7 @@ require 'tempfile'
 require 'pushy/support/end_to_end_util'
 require 'pushy/support/validation_util'
 require 'pushy/support/sse_util'
+require 'pushy/support/key_cache'
 
 WATCH = lambda { |x| puts x } unless defined?(WATCH)
 
@@ -47,3 +48,21 @@ Chef::Config[:ssl_verify_mode] = :verify_none
 Chef::Config[:verify_api_cert] = false
 Chef::Config[:log_level] = :debug
 Chef::Config[:log_location] = "/tmp/push_client_pedant_#{Process.pid}.log"
+
+
+RSpec.configure do |config|
+  config.after(:all) do
+    KeyCache.clean
+  end
+end
+
+require 'logger'
+TestLogger = Logger.new(STDERR)
+# For uncluttered test output, set to WARN
+# For possibly helper log output, set to DEBUG
+#
+# TestLogger.level = Logger::WARN
+TestLogger.level = Logger::DEBUG
+TestLogger.formatter = proc do |severity, datetime, _progname, msg|
+  "[#{datetime}][#{severity.ljust(5)}]: #{msg}\n"
+end
