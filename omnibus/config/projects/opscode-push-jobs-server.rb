@@ -26,6 +26,12 @@ build_version   Omnibus::BuildVersion.new.semver
 build_iteration 1
 
 override :libzmq, version: "4.0.5"
+override :berkshelf, version: "4.3.5"
+override :chef, version: "12.12.15"
+override :ohai, version: "8.17.1"
+override :ruby, version: "2.1.8"
+override :rubygems, version: "2.6.6"
+override :bundler, version: "1.12.5"
 
 # creates required build directories
 dependency "preparation"
