@@ -20,7 +20,7 @@ license :project_license
 
 source path: "#{project.files_path}/pushy-server-cookbooks"
 
-dependency 'berkshelf'
+dependency 'berkshelf-no-depselector'
 
 build do
   env = with_standard_compiler_flags(with_embedded_path)
