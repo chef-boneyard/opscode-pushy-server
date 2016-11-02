@@ -356,12 +356,8 @@ dispatch_raw_message([Addr, _Header, Body] = Message) ->
 %% This occurs in the fsm context
 %%
 maybe_process_and_dispatch_message(CurrentState, State, Message) ->
-    case process_and_dispatch_message(Message, State) of
-        {ok, State1} -> {next_state, CurrentState, State1}
-        %% TODO - JC we never get a {should_die, State} right now.  Need to improve logic around
-        %% failed decode messages
-        %%{should_die, State1} -> {stop, state_transition(CurrentState, shutdown, State1), State1}
-    end.
+    {ok, State1} = process_and_dispatch_message(Message, State),
+    {next_state, CurrentState, State1}.
 
 -spec process_and_dispatch_message(Message :: [binary()],
                                    State :: #state{} ) -> {ok, #state{} }.
@@ -375,6 +371,9 @@ process_and_dispatch_message([Address, Header, Body], State) ->
             {ok, State};
         {error, #pushy_message{validated=bad_timestamp}} ->
             lager:error("Bad timestamp in message: =~s", [Body]),
+            {ok, State};
+        {error, #pushy_message{validated=Reason}} ->
+            lager:error("Message validation failed: ~p ~p", [Reason, Body]),
             {ok, State}
     catch
         error:Error ->
