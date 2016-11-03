@@ -18,12 +18,11 @@ Follow the instructions in `omnibus/README.md`.
 ## Compiling and Running Tests Locally
 
 * Requires Erlang 18+
-* Checkout of [Pushy Server Schema](https://github.com/chef/pushy-server-schema)
 * Running instance of postgres 9.4+
 
 ### Setup the Schema
 
-In your checkout of Pushy Server Schema:
+In the pushy\_server\_schema directory:
 
         make setup_schema
 
@@ -31,7 +30,7 @@ Add the following to `config/vars.config`: (Don't commit this change)
 
         {db_user, "<your local user account>"}.
 
-In this repo:
+In the root directory of this repository:
 
         make test
 
