@@ -27,7 +27,6 @@ before_cache:
   - rm -f $HOME/.cpanm/build.log
 install:
   - cpanm --notest --quiet --local-lib=$HOME/perl5 local::lib && eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib)
-  - cpanm --notest --quiet App::Sqitch TAP::Parser::SourceHandler::pgTAP
-    #- cpanm --notest --quiet TAP::Parser::SourceHandler::pgTAP
-  - git clone https://github.com/chef/pushy-server-schema.git && cd pushy-server-schema && make setup_schema
+  - cpanm --notest --quiet App::Sqitch
+  - (git clone https://github.com/chef/pushy-server-schema.git && cd pushy-server-schema && make setup_schema)
 script: make test
