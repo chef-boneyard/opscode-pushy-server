@@ -1,32 +1,33 @@
 sudo: false
-services:
-  - postgresql
+language: erlang
+otp_release:
+- 18.2
 addons:
   apt:
     packages:
       - cpanminus
-      - perl
       - libdbd-pg-perl
+      - perl
   postgresql: "9.4"
-language: erlang
-otp_release:
-- 18.2
 cache:
   - _build
-  - $HOME/.cpanm
-  - $HOME/.cpan
-  - $HOME/perl5
   - $HOME/.cache/rebar3/
+  - $HOME/.cpan
+  - $HOME/.cpanm
+  - $HOME/perl5
 env:
   global:
     - PERL5LIB=~/perl5/lib/perl5/x86_64-linux-gnu-thread-multi:~/perl5/lib/perl5:/etc/perl:/usr/local/lib/perl/5.14.2:/usr/local/share/perl/5.14.2:/usr/lib/perl5:/usr/share/perl5:/usr/lib/perl/5.14:/usr/share/perl/5.14:/usr/local/lib/site_perl
     - PATH=~/perl5/bin:$PATH
+services:
+  - postgresql
 before_cache:
   # Prevent build log from changing cache and causing repackage
   - rm -f $HOME/.cpanm/work/*/build.log
   - rm -f $HOME/.cpanm/build.log
 install:
   - cpanm --notest --quiet --local-lib=$HOME/perl5 local::lib && eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib)
-  - cpanm --notest --quiet App::Sqitch
+  - cpanm --notest --quiet App::Sqitch TAP::Parser::SourceHandler::pgTAP
+    #- cpanm --notest --quiet TAP::Parser::SourceHandler::pgTAP
   - git clone https://github.com/chef/pushy-server-schema.git && cd pushy-server-schema && make setup_schema
 script: make test
