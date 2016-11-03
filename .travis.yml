@@ -10,5 +10,5 @@ cache:
   - _build
   - $HOME/.cache/rebar3/
 install:
-  - git clone https://github.com/chef/pushy-server-schema.get && cd pushy-server-schema && make setup_schema
+  - git clone https://github.com/chef/pushy-server-schema.git && cd pushy-server-schema && make setup_schema
 script: make test
