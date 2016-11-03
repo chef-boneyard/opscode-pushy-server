@@ -1,5 +1,14 @@
+sudo: false
+services:
+  - postgresql
+addons:
+  postgresql: "9.4"
 language: erlang
 otp_release:
 - 18.2
-cache: _build
+cache:
+  - _build
+  - $HOME/.cache/rebar3/
+install:
+  - git clone https://github.com/chef/pushy-server-schema.get && cd pushy-server-schema && make setup_schema
 script: make test
