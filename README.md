@@ -1,21 +1,17 @@
-# Overview
+# Chef Push Jobs Server
 
-"pushy" is the internal nickname for the new push job feature. In this repo you
-will find:
+## Building Packages
 
-* A org-mode file describing the overall design
-* A spec compliant agent suitable for production deployment
-* A spec compliant server suitable for inclusion in a production OPC installation.
+Follow the instructions in [omnibus/README.md](omnibus/README.md).
 
-## Building Opscode Pushy Server Package
+## Docker-based Development Environment
 
-* Virtualbox
-* Vagrant
-* Chefdk
+Run `make shell` to start a Docker-based development environment. This will
+start Postgres, run the database schema migrations, update the rebar
+dependencies, and put you into a shell where you can run `make` to compile and
+`make test` to run the tests.
 
-Follow the instructions in `omnibus/README.md`.
-
-## Compiling and Running Tests Locally
+## Local Development Environment
 
 * Requires Erlang 18+
 * Running instance of postgres 9.4+
@@ -34,20 +30,12 @@ In the root directory of this repository:
 
         make test
 
-License
-=======
-
-Pushy - The push jobs component for chef
-
-|                      |                                          |
-|:---------------------|:-----------------------------------------|
-| **Copyright:**       | Copyright (c) 2008-2014 Chef Software, Inc.
-| **License:**         | Apache License, Version 2.0
+## License
 
 All files in the repository are licensed under the Apache 2.0 license. If any
 file is missing the License header it should assume the following is attached;
 
-Copyright 2014 Chef Software Inc
+Copyright (c) 2008-2016 Chef Software, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
