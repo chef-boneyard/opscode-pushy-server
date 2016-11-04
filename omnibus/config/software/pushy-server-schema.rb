@@ -1,5 +1,5 @@
 #
-# Copyright 2012-2014 Chef Software, Inc.
+# Copyright 2012-2016 Chef Software, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,15 +15,13 @@
 #
 
 name "pushy-server-schema"
-default_version "2.0.0"
 
-license "Apache-2.0"
-license_file "LICENSE"
+license :project_license
 
 # To install, we need sqitch, but we can use the one already installed
-# for Enterprise Chef
+# for Chef Server
 
-source git: "https://github.com/chef/pushy-server-schema.git"
+source path: "#{project.files_path}/../../pushy-server-schema"
 
 build do
   sync project_dir, "#{install_dir}/embedded/service/#{name}/"
