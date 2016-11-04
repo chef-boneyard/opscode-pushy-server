@@ -1,4 +1,5 @@
 REBAR3 = $(CURDIR)/rebar3
+DOCKER_IMAGE_TAG = devchef/push-jobs-server
 
 all:
 	@$(REBAR3) do clean, compile
@@ -22,3 +23,6 @@ omnibus: install
 
 distclean:
 	@rm -rf _build
+
+shell:
+	if [ -z $$(docker images -q $(DOCKER_IMAGE_TAG)) ]; then docker build --tag $(DOCKER_IMAGE_TAG) .; fi; docker run --volume $(PWD):/root --interactive --tty $(DOCKER_IMAGE_TAG)
