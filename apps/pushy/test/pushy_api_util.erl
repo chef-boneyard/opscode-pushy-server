@@ -54,7 +54,6 @@ mecked() -> [pushy_object, chef_authn, pushy_principal, pushy_wm_base, pushy_key
 applications() -> [folsom, compiler, syntax_tools, goldrush, lager, inets, mochiweb, webmachine, pooler, public_key, ssl, epgsql, sqerl, gproc, jiffy, ibrowse, erlzmq, pushy].
 
 configs() ->
-    User = get_user(),
              [
                 {pushy, [
                   {api_port, 10003}
@@ -76,8 +75,8 @@ configs() ->
                   {db_driver_mod, sqerl_pgsql_client}
                 , {db_host, "127.0.0.1"}
                 , {db_port, 5432}
-                , {db_user, User}
-                , {db_pass, "de58233901fcbc3512979571dae6abf85e175ad108062eda5cf307b1f4706f2e5537524c35528f654bfeac183fd45c7a8408"}
+                , {db_user, "pushy_test"}
+                , {db_pass, "password"}
                 , {db_name,   "opscode_pushy_test" }
                 , {idle_check, 10000}
                 , {prepared_statements, {pushy_sql, statements, []} }
