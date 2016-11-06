@@ -24,5 +24,11 @@ omnibus: install
 distclean:
 	@rm -rf _build
 
-shell:
-	if [ -z $$(docker images -q $(DOCKER_IMAGE_TAG)) ]; then docker build --tag $(DOCKER_IMAGE_TAG) .; fi; docker run --volume $(PWD):/root --interactive --tty $(DOCKER_IMAGE_TAG)
+update-image:
+	@docker build --tag $(DOCKER_IMAGE_TAG) .
+
+# depend directly on update-image - it makes it simple
+# to tweak the image, and doesn't add signficant time
+# to getting the container running if it's already up-to-date
+shell: update-image
+	docker run --volume $(PWD):/srv --interactive --tty $(DOCKER_IMAGE_TAG)
