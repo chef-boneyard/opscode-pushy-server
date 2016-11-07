@@ -3,7 +3,7 @@
 %% @author James Casey <james@opscode.com>
 %%
 
-%% @copyright Copyright 2012 Chef Software, Inc. All Rights Reserved.
+%% @copyright Copyright 2012-2016 Chef Software, Inc. All Rights Reserved.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -96,7 +96,7 @@ kill_process_test_() ->
                 pushy_job_monitor:monitor_job(MyJobId, Pid),
                 ?assertEqual(true, pushy_job_monitor:is_monitored(Pid)),
                 test_fsm:crash_me(),
-                timer:sleep(10),
+                timer:sleep(250),
                 ?assertEqual(false, pushy_job_monitor:is_monitored(Pid))
        end
       },
