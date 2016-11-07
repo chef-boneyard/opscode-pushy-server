@@ -93,6 +93,7 @@
            {metrics_module, folsom_metrics}
           ]},
  {pushy, [
+          {max_body_size, <%= @max_body_size %> },
           {server_name, "<%= @server_name_advertised %>" },
           {heartbeat_interval, <%= @heartbeat_interval %> },
           {zeromq_listen_address, "<%= @zeromq_listen_address %>" },
