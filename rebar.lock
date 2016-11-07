@@ -25,7 +25,7 @@
   1},
  {<<"erlzmq">>,
   {git,"https://github.com/chef/erlzmq2",
-       {ref,"a295d29c30878a2b55246249de2b5be9c81ff164"}},
+       {ref,"c175e70206560e8c8bf3958d1deda72441cdbb8b"}},
   0},
  {<<"folsom">>,
   {git,"https://github.com/chef/folsom",

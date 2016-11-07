@@ -19,9 +19,7 @@ compile_commands.json
 *#
 
 # When in a Docker shell, these can be left behind
-.bash_history
 .cache/
-.viminfo
 
 **/*.coverdata
 .psql_history
