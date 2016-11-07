@@ -11,8 +11,9 @@ apps/pushy/.eunit
 _build
 _checkouts
 log
+# rebar3 output
+compile_commands.json
 
-/.concrete/
 # emacs leaves these behind.
 *~
 *#
@@ -21,3 +22,6 @@ log
 .bash_history
 .cache/
 .viminfo
+
+**/*.coverdata
+.psql_history
