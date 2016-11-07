@@ -8,7 +8,7 @@
 %%
 %% @doc simple FSM for tracking node heartbeats and thus up/down status
 %%
-%% @copyright Copyright 2012 Chef Software, Inc. All Rights Reserved.
+%% @copyright Copyright 2012-2016 Chef Software, Inc. All Rights Reserved.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -66,7 +66,7 @@ basic_cleanup() ->
     meck:unload(pushy_object),
     meck:unload(pushy_command_switch).
 
-mk_message_body({Org,Node}, Type, IncarnationId) ->
+mk_message_body({Org, Node}, Type, IncarnationId, ExtraContent) ->
     {[{<<"node">>, Node},
       {<<"client">>, <<"private-chef.opscode.piab">>},
       {<<"org">>, Org},
@@ -74,18 +74,23 @@ mk_message_body({Org,Node}, Type, IncarnationId) ->
       {<<"incarnation_id">>, IncarnationId},
       {<<"job_state">>, <<"idle">>},
       {<<"job_id">>, <<"null">>},
-      {<<"sequence">>, 2} ]}.
+      {<<"sequence">>, 2},
+      {<<"extra">>, ExtraContent}
+     ]}.
 
 send_message(Node, Type, IncarnationId) ->
+    send_message(Node, Type, IncarnationId, []).
+
+send_message(Node, Type, IncarnationId, ExtraContent) ->
     {hmac_sha256, Key} = pushy_key_manager:get_key(Node),
-    Body = mk_message_body(Node, Type, IncarnationId),
+    Body = mk_message_body(Node, Type, IncarnationId, ExtraContent),
     Body2 = pushy_messaging:insert_timestamp_and_sequence(Body, 0),
     Json = jiffy:encode(Body2),
     Header = pushy_messaging:make_header(proto_v2, hmac_sha256, Key, Json),
     Message = [?ADDR, Header, Json],
     pushy_node_state:recv_msg(Message).
 
-message_test_() ->
+send_message_test_() ->
     {foreach,
      fun() ->
              basic_setup(),
@@ -98,7 +103,7 @@ message_test_() ->
              erlang:exit(Pid, kill),
              ok
      end,
-     [fun(_) ->
+     [
               {"Send heartbeats to a node",
                fun() ->
                        send_message(?NODE, heartbeat, ?INC_ID),
@@ -123,8 +128,16 @@ message_test_() ->
                        timer:sleep(?HB_INTERVAL),
                        ?ASSERT_AVAILABLE(?NODE)
                end
+              },
+              {"Sending a message that's too large should not crash.",
+               fun() ->
+                       Message = send_message(?NODE,ack_run, ?INC_ID,
+                                        base64:encode(crypto:strong_rand_bytes(100000))),
+                       ?assertMatch({raw_message, _}, Message)
+               end
               }
-      end
+
+
      ]}.
 
 
