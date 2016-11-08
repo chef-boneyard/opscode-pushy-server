@@ -1,3 +1,4 @@
+{"1.1.0",
 [{<<"bear">>,
   {git,"git://github.com/opscode/bear.git",
        {ref,"1cd85dc9f87f3dc4ec4c7077659ddaa8a3660cac"}},
@@ -24,7 +25,7 @@
   1},
  {<<"erlzmq">>,
   {git,"https://github.com/chef/erlzmq2",
-       {ref,"4c28bc3705f3d9ef7c55588f459e5054b947d703"}},
+       {ref,"c175e70206560e8c8bf3958d1deda72441cdbb8b"}},
   0},
  {<<"folsom">>,
   {git,"https://github.com/chef/folsom",
@@ -48,7 +49,7 @@
   1},
  {<<"jiffy">>,
   {git,"https://github.com/davisp/jiffy",
-       {ref,"1febce3ca86c5ca5d5a3618ed3d5f125bb99e4c5"}},
+       {ref,"a7db72493d2288533afbb417d5c2e6f11db84639"}},
   0},
  {<<"lager">>,
   {git,"https://github.com/basho/lager",
@@ -58,10 +59,11 @@
   {git,"https://github.com/eproxus/meck",
        {ref,"c772db17a7c94e75d20688197f61538d63fe2ae9"}},
   0},
- {<<"mochiweb">>,
-  {git,"git://github.com/basho/mochiweb.git",
-       {ref,"ade2a9b29a11034eb550c1d79b4f991bf5ca05ba"}},
-  1},
+ {<<"mochiweb">>,{pkg,<<"mochiweb">>,<<"2.12.2">>},2},
+ {<<"opscoderl_wm">>,
+  {git,"https://github.com/chef/opscoderl_wm",
+       {ref,"398065057df06ad55b998b910e2238d4b96123f3"}},
+  0},
  {<<"pooler">>,
   {git,"git://github.com/seth/pooler.git",
        {ref,"b6c522a67a1d067122705ef725535a8664dd8514"}},
@@ -75,6 +77,10 @@
        {ref,"7e40908af7010b70212320e3d410dff31edfc7f9"}},
   0},
  {<<"webmachine">>,
-  {git,"https://github.com/basho/webmachine",
-       {ref,"7677c240f4a7ed020f4bab48278224966bb42311"}},
-  0}].
+  {git,"git://github.com/webmachine/webmachine",
+       {ref,"6c4265808d8d307d76f28483f5eaada7d261ea18"}},
+  1}]}.
+[
+{pkg_hash,[
+ {<<"mochiweb">>, <<"80804AD342AFA3D7F3524040D4EED66CE74B17A555DE454AC85B07C479928E46">>}]}
+].

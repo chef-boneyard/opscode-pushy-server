@@ -24,5 +24,13 @@ omnibus: install
 distclean:
 	@rm -rf _build
 
-shell:
-	if [ -z $$(docker images -q $(DOCKER_IMAGE_TAG)) ]; then docker build --tag $(DOCKER_IMAGE_TAG) .; fi; docker run --volume $(PWD):/root --interactive --tty $(DOCKER_IMAGE_TAG)
+update-image:
+	# Remove the previous containers built from this image so that we can pick up any changes
+	# TODO - not properly escaped for use in makefile: @docker ps -a | awk "{ print $$1,$$2 }" | grep devchef/push-jobs-server | awk "{print $1 }" | xargs -I {} docker rm -f {}
+	@docker build --tag $(DOCKER_IMAGE_TAG) .
+
+# depend directly on update-image - it makes it simple
+# to tweak the image, and doesn't add signficant time
+# to getting the container running if it's already up-to-date
+shell: update-image
+	docker run --volume $(PWD):/srv --interactive --tty $(DOCKER_IMAGE_TAG)
