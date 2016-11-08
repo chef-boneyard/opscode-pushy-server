@@ -41,6 +41,9 @@ default['pushy']['opscode-pushy-server']['db_pool_size'] = '20'
 default['pushy']['opscode-pushy-server']['ibrowse_max_sessions'] = 256
 default['pushy']['opscode-pushy-server']['ibrowse_max_pipeline_size'] = 1
 
+# Maximum size of requests in bytes
+default['pushy']['opscode-pushy-server']['max_body_size'] = 65536
+
 # Sets the rate of heartbeats between server and client (in milliseconds)
 default['pushy']['opscode-pushy-server']['heartbeat_interval'] = '10000'
 
