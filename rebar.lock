@@ -68,7 +68,7 @@
   1},
  {<<"pushy_common">>,
   {git,"https://github.com/chef/pushy_common",
-       {ref,"ac92db8ec2611140509482a5fc24e2af26ab914e"}},
+       {ref,"d81cbb8026b6c209080e121c161e9d7128bb1b19"}},
   0},
  {<<"sqerl">>,
   {git,"https://github.com/chef/sqerl",
