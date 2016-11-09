@@ -16,14 +16,6 @@
 #
 
 bootstrap_status_file = "/var/opt/opscode-push-jobs-server/bootstrapped"
-pushy_dir = "#{node['pushy']['install_path']}/embedded/service/opscode-pushy-server"
-
-# JC - TODO when status is ready for pushy API
-#execute "verify-system-status" do
-#  command "curl -sf http://localhost:8000/_status"
-#  retries 20
-#  not_if { File.exists?(bootstrap_status_file) }
-#end
 
 file bootstrap_status_file do
   owner "root"
