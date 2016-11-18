@@ -21,7 +21,6 @@
 
 require 'httpclient'
 require 'thread'
-require 'typhoeus'
 
 shared_context "sse_support" do
   class Event < Struct.new(:name, :id, :json); end
@@ -86,7 +85,7 @@ shared_context "sse_support" do
     end
   end
 
-  class EventStreamOld
+  class EventStream
     def initialize(url, user, last_id, receive_timeout)
       host = URI.parse(url).host
       @evs = []
@@ -132,69 +131,6 @@ shared_context "sse_support" do
           @queue << str
         end
         @queue << :done
-      }
-    end
-
-    attr_reader :complete
-
-    def get_streaming_events
-      while ! @queue.empty?
-        el = @queue.pop
-        if el == :done
-          @ep.feed("", true)
-          @complete = true
-        else
-          @ep.feed(el)
-        end
-      end
-      @evs += @ep.events_so_far
-      @evs
-    end
-
-    def close
-        @client.reset_all
-    end
-
-  end
-
-  class EventStream
-    def initialize(url, user, last_id, receive_timeout)
-      host = URI.parse(url).host
-      @evs = []
-      @complete = false
-      # XXX May need to disable SSL verification, if possible
-      @queue = Queue.new
-
-      auth_headers = user.signing_headers(:GET, url, "")
-      require 'chef/version'
-      headers =
-        {
-          'Accept' => 'text/event-stream',
-          'User-Agent' => 'chef-pedant rspec tests',
-          'X-Chef-Version' => Chef::VERSION,
-          'Host' => host,
-          'Cache-Control' => 'no-cache'   # spec says clients should always set this
-        }
-      headers.merge!(auth_headers)
-      if last_id then
-          headers.merge!({'Last-Event-ID' => last_id})
-      end
-
-      @ep = EventParser.new
-      Thread.new {
-        req = Typhoeus::Request.new(
-          url,
-          headers: headers,
-          timeout: receive_timeout,
-          verbose: true
-        )
-        req.on_body do |chunk|
-          @queue << chunk
-        end
-        req.on_complete do |response|
-          @queue << :done
-        end
-        req.run
       }
     end
 
@@ -357,7 +293,7 @@ shared_context "sse_support" do
 
   def start_event_stream(last_id = nil, receive_timeout = nil)
     job_feed_url = api_url("#{job_feed_path}/#{@id}")
-    stream = EventStreamOld.new(job_feed_url, admin_user, last_id, receive_timeout)
+    stream = EventStream.new(job_feed_url, admin_user, last_id, receive_timeout)
     # Give some time for the first events to come in
     sleep 0.25
     stream

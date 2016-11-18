@@ -11,5 +11,4 @@ Gem::Specification.new do |s|
   s.require_paths = ['spec', 'lib']
 
   s.add_dependency "httpclient"
-  s.add_dependency "typhoeus"
 end
