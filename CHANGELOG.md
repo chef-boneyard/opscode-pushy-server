@@ -1,5 +1,19 @@
 # Push Jobs Server Changelog
 
+## 2.1.1 (2016-12-01)
+* Remove cURL dependencies
+* Improvements to build, development, and test environments
+* Upgrade runit
+* Better handling of messages that exceed MAX_BODY_SIZE
+* Update to latest OpenSSL
+
+## 2.1.0 (2016-07-27)
+* Substantial stability improvements in the tests
+* Upgrade to Rebar3
+* Upgrade to Erlang 18
+* Modernize the build and repo management to make building easier,
+  merge in multiple separate repositories into one tree
+
 ## 2.0.1 (2015-11-10)
 * Release bump to make sure versions sort right.
 
