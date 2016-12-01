@@ -1,5 +1,13 @@
 # Push Jobs Server Release Notes
 
+## 2.1.1
+This release contains the latest patched version of OpenSSL (1.0.2j) as well as
+various build, test, and development environment improvements.
+
+It also fixes a bug where messages that exceed the allowed message size would
+not be handled properly. Additional client fixes related to this bug are
+in Push Jobs Client 2.1.4.
+
 ## 2.1.0
 NOTE: at this time we do not recommend upgrading Automate to Push Server 2.1.0
 
