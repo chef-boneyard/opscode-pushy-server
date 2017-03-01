@@ -30,11 +30,11 @@ end.run_action(:create)
 # We need to load the private chef configuration
 if File.exists?("/etc/opscode/chef-server-running.json")
   private_chef = JSON.parse(IO.read("/etc/opscode/chef-server-running.json"))
+  node.consume_attributes({'private_chef' => private_chef['private_chef'],
+                           'runit'        => private_chef['runit']
+                          })
+
 end
-node.consume_attributes({
-  'private_chef' => private_chef['private_chef'],
-  'runit'        => private_chef['runit']
-})
 
 PushJobsServer[:node] = node
 if File.exists?("/etc/opscode-push-jobs-server/opscode-push-jobs-server.rb")
@@ -46,21 +46,7 @@ if File.exists?("/var/opt/opscode-push-jobs-server/bootstrapped")
   node.set['pushy']['bootstrap']['enable'] = false
 end
 
-pushy_key = OpenSSL::PKey::RSA.generate(2048) unless File.exists?('/etc/opscode-push-jobs-server/pushy_pub.pem')
-
-file "/etc/opscode-push-jobs-server/pushy_pub.pem" do
-  owner "root"
-  group "root"
-  mode "0644"
-  content pushy_key.public_key.to_s unless File.exists?('/etc/opscode-push-jobs-server/pushy_pub.pem')
-end
-
-file "/etc/opscode-push-jobs-server/pushy_priv.pem" do
-  owner node["private_chef"]["user"]["username"]
-  group "root"
-  mode "0600"
-  content pushy_key.to_pem.to_s unless File.exists?('/etc/opscode-push-jobs-server/pushy_pub.pem')
-end
+PushServer::Secrets.bootstrap
 
 directory "/var/opt/opscode-push-jobs-server" do
   owner "root"
@@ -76,7 +62,6 @@ include_recipe "enterprise::runit"
 
 # TODO Figure out why is_data_master is returning false in standalone mode...
 include_recipe "opscode-pushy-server::push_database" #if is_data_master?
-
 include_recipe "opscode-pushy-server::nginx"
 
 # Configure Services
@@ -91,7 +76,6 @@ include_recipe "opscode-pushy-server::nginx"
   end
 end
 
-# TODO - JC
 include_recipe "opscode-pushy-server::oc-pushy-pedant"
 
 file "/etc/opscode-push-jobs-server/opscode-push-jobs-server-running.json" do
