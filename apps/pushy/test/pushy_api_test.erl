@@ -79,7 +79,7 @@
 
 mecked() -> [pushy_object, chef_authn, pushy_principal, pushy_wm_base, pushy_key_manager, pushy_job_monitor, pushy_messaging, pushy_node_state].
 
-applications() -> [folsom, compiler, syntax_tools, goldrush, lager, inets, mochiweb, webmachine, pooler, public_key, ssl, epgsql, sqerl, gproc, jiffy, ibrowse, erlzmq, pushy].
+applications() -> [folsom, compiler, syntax_tools, goldrush, lager, inets, mochiweb, webmachine, chef_secrets, pooler, public_key, ssl, epgsql, sqerl, gproc, jiffy, ibrowse, erlzmq, pushy].
 
 basic_setup() ->
     meck:new(mecked(), [passthrough]),

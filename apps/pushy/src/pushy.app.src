@@ -29,17 +29,20 @@
                   ibrowse,
                   jiffy,
                   gproc,
-                  sqerl,
                   webmachine,
                   lager,
                   folsom,
                   folsom_graphite,
                   pushy_common,
+                  chef_secrets,
                   chef_authn,
                   envy,
                   ej
                  ]},
-  {included_applications, []},
+  {included_applications, [
+                           pooler,
+                           sqerl
+                          ]},
   {mod, { pushy_app, []}},
   {env, []}
  ]}.

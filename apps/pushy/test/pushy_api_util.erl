@@ -51,7 +51,7 @@ trace_module(Mod) ->
 
 mecked() -> [pushy_object, chef_authn, pushy_principal, pushy_wm_base, pushy_key_manager, pushy_job_monitor, pushy_messaging].
 
-applications() -> [folsom, compiler, syntax_tools, goldrush, lager, inets, mochiweb, webmachine, pooler, public_key, ssl, epgsql, sqerl, gproc, jiffy, ibrowse, erlzmq, pushy].
+applications() -> [folsom, compiler, syntax_tools, goldrush, lager, inets, mochiweb, webmachine, chef_secrets, pooler, public_key, ssl, epgsql, sqerl, gproc, jiffy, ibrowse, erlzmq, pushy].
 
 configs() ->
              [
@@ -70,13 +70,17 @@ configs() ->
                ]}
               , {pushy_common, [
                   {enable_graphite, false}
-               ]}
-              , {sqerl, [
+               ]},
+              {chef_secrets, [{provider, chef_secrets_json_file},
+                              {provider_config, [{secrets_file, filename:join(code:priv_dir(pushy),
+                                                                              "../test/secrets.json")}]}]}
+
+             , {sqerl, [
+                  {config_cb, {chef_secrets_sqerl, config, [{<<"postgresql">>, <<"sql_password">>}]}},
                   {db_driver_mod, sqerl_pgsql_client}
                 , {db_host, "127.0.0.1"}
                 , {db_port, 5432}
                 , {db_user, "pushy_test"}
-                , {db_pass, "password"}
                 , {db_name,   "opscode_pushy_test" }
                 , {idle_check, 10000}
                 , {prepared_statements, {pushy_sql, statements, []} }
