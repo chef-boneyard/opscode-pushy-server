@@ -35,12 +35,12 @@
                   folsom_graphite,
                   pushy_common,
                   chef_secrets,
-                  chef_authn,
                   envy,
                   ej
                  ]},
   {included_applications, [
                            pooler,
+                           chef_authn,
                            sqerl
                           ]},
   {mod, { pushy_app, []}},

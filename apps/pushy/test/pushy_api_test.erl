@@ -83,6 +83,7 @@ applications() -> [folsom, compiler, syntax_tools, goldrush, lager, inets, mochi
 
 basic_setup() ->
     meck:new(mecked(), [passthrough]),
+    test_util:mock_chef_secrets(),
     %meck:expect(pushy_object, create_object,
                 %fun(_, _, _) -> {ok, foo} end),
     %meck:expect(pushy_object, update_object,
@@ -111,12 +112,8 @@ basic_setup() ->
     ok.
 
 basic_cleanup() ->
-%   application:stop(lager),    % needs to stop to ensure that "rebar eunit" exits quickly
-%   % Note -- pooler will generate lots of messages on cleanup as long as it uses "brutal_kill" for some
-%   % of the supervsior shutdown strategies.
-%   application:stop(pushy),
     [application:stop(A) || A <- lists:reverse(applications())],
-    [meck:unload(M) || M <- lists:reverse(mecked())],
+    meck:unload(),
     ok.
 
 t(Title, Fun) ->

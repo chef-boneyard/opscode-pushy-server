@@ -65,7 +65,6 @@ default['pushy']['opscode-pushy-server']['validate_client_node_name'] = 'true'
 default['pushy']['opscode-pushy-server']['enable_graphite'] = false
 default['pushy']['opscode-pushy-server']['graphite_host'] = 'localhost'
 default['pushy']['opscode-pushy-server']['graphite_port'] = '2003'
-default['pushy']['opscode-pushy-server']['keyring_dir'] = '/etc/opscode-push-jobs-server'
 
 default['pushy']['opscode-pushy-server']['chef_api_version'] = '11.1.0' # API Version used to query Erchef
 
@@ -75,9 +74,7 @@ default['pushy']['opscode-pushy-server']['chef_api_version'] = '11.1.0' # API Ve
 default['pushy']['postgresql']['database_name'] = "opscode_pushy"
 default['pushy']['postgresql']['username'] = "opscode-pgsql"
 default['pushy']['postgresql']['sql_user'] = "opscode_pushy"
-default['pushy']['postgresql']['sql_password'] = "snakepliskin"
 default['pushy']['postgresql']['sql_ro_user'] = "opscode_pushy_ro"
-default['pushy']['postgresql']['sql_ro_password'] = "shmunzeltazzen"
 default['pushy']['postgresql']['vip'] = "127.0.0.1"
 default['pushy']['postgresql']['port'] = 5432
 

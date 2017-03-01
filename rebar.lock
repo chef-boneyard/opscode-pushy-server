@@ -5,7 +5,7 @@
   1},
  {<<"chef_authn">>,
   {git,"https://github.com/chef/chef_authn",
-       {ref,"defae88f9ea9f9875b1148947bbdf38c867c8ec7"}},
+       {ref,"24e8e7552c0c644d065daae26776b32120f83410"}},
   0},
  {<<"chef_secrets">>,
   {git,"https://github.com/chef/chef_secrets",
@@ -53,7 +53,7 @@
   1},
  {<<"jiffy">>,
   {git,"https://github.com/davisp/jiffy",
-       {ref,"a7db72493d2288533afbb417d5c2e6f11db84639"}},
+       {ref,"06aaf440e091c9fd5f8aea557ac760a33bd37130"}},
   0},
  {<<"lager">>,
   {git,"https://github.com/basho/lager",
@@ -61,7 +61,7 @@
   0},
  {<<"meck">>,
   {git,"https://github.com/eproxus/meck",
-       {ref,"c772db17a7c94e75d20688197f61538d63fe2ae9"}},
+       {ref,"f0904dcdace405b03ae711a8e3f30dc284996bc6"}},
   0},
  {<<"mochiweb">>,{pkg,<<"mochiweb">>,<<"2.12.2">>},2},
  {<<"opscoderl_wm">>,
@@ -82,7 +82,7 @@
   0},
  {<<"webmachine">>,
   {git,"git://github.com/webmachine/webmachine",
-       {ref,"6c4265808d8d307d76f28483f5eaada7d261ea18"}},
+       {ref,"4edbea20f05dde54cd83e562ec29ae4cc5669f76"}},
   1}]}.
 [
 {pkg_hash,[

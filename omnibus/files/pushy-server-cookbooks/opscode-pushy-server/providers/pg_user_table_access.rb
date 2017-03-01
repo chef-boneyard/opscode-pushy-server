@@ -1,6 +1,7 @@
 # NOTE:
 #
-# Uses the value of node['private_chef']['postgresql']['db_superuser'] and ['db_superuser_password]
+# Uses the value of node['private_chef']['postgresql']['db_superuser'] for the superuser name and
+# access the superuser password via the Secrets module.
 # to make the connection to the postgres server.
 
 def whyrun_supported?

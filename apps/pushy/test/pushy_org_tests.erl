@@ -2,7 +2,6 @@
 %% ex: ts=4 sw=4 et
 %% @author James Casey <james@opscode.com>
 %%
-
 %% @copyright Copyright 2012 Chef Software, Inc. All Rights Reserved.
 %%
 %% This file is provided to you under the Apache License,
@@ -45,17 +44,15 @@ simple_test_() ->
     {foreach,
      fun() ->
              setup_env(),
-             meck:new([ibrowse], []),
-             application:set_env(chef_authn, keyring,
-                                 [{pivotal, "apps/pushy/test/testkey.pem"}]),
-             application:set_env(chef_authn, keyring_dir, "apps/pushy/test"),
+             meck:new(ibrowse, []),
+             test_util:mock_chef_secrets(),
              application:set_env(pushy, chef_api_version, "11.0.0"),
              {ok, Pid} = chef_keyring:start_link(),
              Pid
      end,
      fun(Pid) ->
-              meck:unload(),
-              gen_server:stop(Pid)
+             meck:unload(),
+             gen_server:stop(Pid)
      end,
     [{"Simple success test",
       fun() -> meck:expect(ibrowse, send_req,

@@ -95,6 +95,9 @@ include_internal false
 
 
 superuser_name 'pivotal'
+# TODO(ssd) 2017-03-01: Determine what to do about this based on what
+# happens in chef-server. Do we need to support this being on disk
+# and not?
 superuser_key  '/etc/opscode/pivotal.pem'
 
 requestors({

@@ -46,7 +46,7 @@ if File.exists?("/var/opt/opscode-push-jobs-server/bootstrapped")
   node.set['pushy']['bootstrap']['enable'] = false
 end
 
-PushServer::Secrets.bootstrap
+PushServer::Secrets.bootstrap(node)
 
 directory "/var/opt/opscode-push-jobs-server" do
   owner "root"
