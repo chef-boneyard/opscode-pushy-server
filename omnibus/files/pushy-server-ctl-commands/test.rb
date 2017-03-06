@@ -19,6 +19,13 @@ add_command "test", "Run the API test suite against localhost.", 2 do
   omnibus_path = [File.join(base_path, "bin"),
                   File.join(base_path, "embedded","bin"),
                   ENV['PATH']]
+
+  require 'veil'
+
+  veil = Veil::CredentialCollection::ChefSecretsFile.from_file("/etc/opscode/private-chef-secrets.json")
+  ENV['SUPERUSER_KEY'] = veil.get("chef-server", "superuser_key")
+  ENV['WEBUI_KEY'] = veil.get("chef-server", "webui_key")
+
   ENV["PATH"] = omnibus_path.join(":")
   pedant_args = ARGV[3..-1]
   pedant_args = ["--smoke"] unless pedant_args.any?

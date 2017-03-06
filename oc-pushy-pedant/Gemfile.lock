@@ -9,7 +9,7 @@ GIT
 
 GIT
   remote: https://github.com/chef/chef-server.git
-  revision: a4af7ac38bb6fedac3c9baa6bc682821776b04cf
+  revision: 075684fe5b9eea6e37042e7e92f06f2c19764641
   specs:
     oc-chef-pedant (2.2.0)
       activesupport (>= 4.2.7.1, < 6.0)
@@ -22,15 +22,6 @@ GIT
       rspec (~> 3.2)
       rspec-rerun (~> 1.0)
       rspec_junit_formatter (~> 0.2)
-      veil (>= 0.0.1)
-
-GIT
-  remote: https://github.com/chef/chef_secrets.git
-  revision: d9695b10fc05d10b6b32d79e82c568f13510888a
-  specs:
-    veil (0.1.0)
-      bcrypt (~> 3.1)
-      pbkdf2
 
 GIT
   remote: https://github.com/chef/opscode-pushy-client.git
@@ -56,7 +47,6 @@ GEM
       i18n (~> 0.7)
       minitest (~> 5.1)
       tzinfo (~> 1.1)
-    bcrypt (3.1.11)
     builder (3.2.3)
     chef (12.12.15)
       bundler (>= 1.10)
@@ -149,7 +139,6 @@ GEM
       plist (~> 3.1)
       systemu (~> 2.6.4)
       wmi-lite (~> 1.0)
-    pbkdf2 (0.1.0)
     plist (3.2.0)
     proxifier (1.0.3)
     rack (1.6.4)
@@ -203,7 +192,6 @@ DEPENDENCIES
   oc-pushy-pedant!
   opscode-pushy-client!
   rest-client!
-  veil!
 
 BUNDLED WITH
-   1.13.6
+   1.14.3
