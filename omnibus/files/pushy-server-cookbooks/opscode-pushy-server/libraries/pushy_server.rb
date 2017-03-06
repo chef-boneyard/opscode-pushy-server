@@ -17,9 +17,7 @@
 
 require 'mixlib/config'
 require 'chef/mash'
-require 'chef/json_compat'
 require 'chef/mixin/deep_merge'
-require 'securerandom'
 
 module PushJobsServer
   extend(Mixlib::Config)
@@ -30,41 +28,6 @@ module PushJobsServer
   oc_chef_pedant Mash.new
 
   class << self
-
-    # guards against creating secrets on non-bootstrap node
-    def generate_hex(chars)
-      SecureRandom.hex(chars)
-    end
-
-    def generate_secrets(node_name)
-      existing_secrets ||= Hash.new
-      if File.exists?("/etc/opscode-push-jobs-server/opscode-push-jobs-server-secrets.json")
-        existing_secrets = Chef::JSONCompat.from_json(File.read("/etc/opscode-push-jobs-server/opscode-push-jobs-server-secrets.json"))
-      end
-      existing_secrets.each do |k, v|
-        v.each do |pk, p|
-          PushJobsServer[k][pk] = p
-        end
-      end
-
-      PushJobsServer['postgresql']['sql_password'] ||= generate_hex(50)
-      PushJobsServer['postgresql']['sql_ro_password'] ||= generate_hex(50)
-
-      if File.directory?("/etc/opscode-push-jobs-server")
-        File.open("/etc/opscode-push-jobs-server/opscode-push-jobs-server-secrets.json", "w") do |f|
-          f.puts(
-            Chef::JSONCompat.to_json_pretty({
-              'postgresql' => {
-                'sql_password' => PushJobsServer['postgresql']['sql_password'],
-                'sql_ro_password' => PushJobsServer['postgresql']['sql_ro_password']
-              }
-            })
-          )
-          system("chmod 0600 /etc/opscode-push-jobs-server/opscode-push-jobs-server-secrets.json")
-        end
-      end
-    end
-
     def gen_frontend
       PushJobsServer['bootstrap']['enable'] ||= false
       PushJobsServer['opscode_pushy_server']['enable'] ||= false
@@ -87,13 +50,10 @@ module PushJobsServer
     end
 
     def generate_config(node_name)
-      generate_secrets(node_name)
-
       # inherit postgres config from chef-server
       PushJobsServer['postgresql']['vip']           = node['private_chef']['postgresql']['vip']
       PushJobsServer['postgresql']['port']          = node['private_chef']['postgresql']['port']
       PushJobsServer['postgresql']['db_superuser']  = node['private_chef']['postgresql']['db_superuser']
-      PushJobsServer['postgresql']['db_superuser_password'] = node['private_chef']['postgresql']['db_superuser_password']
 
       topology = node['private_chef']['topology']
       case topology

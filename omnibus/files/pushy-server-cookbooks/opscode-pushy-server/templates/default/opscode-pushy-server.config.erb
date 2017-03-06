@@ -68,14 +68,17 @@
             %% Whether to redirect error_logger messages into lager - defaults to true
             {error_logger_redirect, true}
         ]},
+
+ {chef_secrets, [{provider, chef_secrets_json_file},
+                 {provider_config, [{secrets_file, "/etc/opscode/private-chef-secrets.json"}]}]},
+
  {sqerl, [
           {db_driver_mod, sqerl_pgsql_client},
-
+          {config_cb, {chef_secrets_sqerl, config, [{<<"push-jobs-server">>, <<"sql_password">>}]}},
           %% Database connection parameters
           {db_host, "<%= node['pushy']['postgresql']['vip'] %>"},
           {db_port, 5432},
           {db_user, "<%= node['pushy']['postgresql']['sql_user'] %>"},
-          {db_pass, "<%= node['pushy']['postgresql']['sql_password'] %>"},
           {db_name,   "opscode_pushy" },
           {idle_check, 10000},
           {prepared_statements, {pushy_sql, statements, []} },
@@ -125,7 +128,11 @@
                    {graphite_port, <%= @graphite_port %>}
                   ]},
 <% end -%>
- {chef_authn,  [{keyring_dir, "<%= @keyring_dir %>"},
-                {keyring, [{pivotal, "/etc/opscode/pivotal.pem"}]}
-               ]}
-].
+   {chef_authn, [{secrets_module, {chef_secrets, get,
+                                   [
+                                    {pivotal, [<<"chef-server">>, <<"superuser_key">>]},
+                                    {pushy_priv, [<<"push-jobs-server">>, <<"pushy_priv_key">>]},
+                                    {pushy_pub, [<<"push-jobs-server">>, <<"pushy_pub_key">>]}
+                                   ]
+                                  }}]}
+ ].

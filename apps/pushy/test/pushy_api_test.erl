@@ -79,10 +79,11 @@
 
 mecked() -> [pushy_object, chef_authn, pushy_principal, pushy_wm_base, pushy_key_manager, pushy_job_monitor, pushy_messaging, pushy_node_state].
 
-applications() -> [folsom, compiler, syntax_tools, goldrush, lager, inets, mochiweb, webmachine, pooler, public_key, ssl, epgsql, sqerl, gproc, jiffy, ibrowse, erlzmq, pushy].
+applications() -> [folsom, compiler, syntax_tools, goldrush, lager, inets, mochiweb, webmachine, chef_secrets, pooler, public_key, ssl, epgsql, sqerl, gproc, jiffy, ibrowse, erlzmq, pushy].
 
 basic_setup() ->
     meck:new(mecked(), [passthrough]),
+    test_util:mock_chef_secrets(),
     %meck:expect(pushy_object, create_object,
                 %fun(_, _, _) -> {ok, foo} end),
     %meck:expect(pushy_object, update_object,
@@ -111,12 +112,8 @@ basic_setup() ->
     ok.
 
 basic_cleanup() ->
-%   application:stop(lager),    % needs to stop to ensure that "rebar eunit" exits quickly
-%   % Note -- pooler will generate lots of messages on cleanup as long as it uses "brutal_kill" for some
-%   % of the supervsior shutdown strategies.
-%   application:stop(pushy),
     [application:stop(A) || A <- lists:reverse(applications())],
-    [meck:unload(M) || M <- lists:reverse(mecked())],
+    meck:unload(),
     ok.
 
 t(Title, Fun) ->

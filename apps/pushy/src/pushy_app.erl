@@ -42,6 +42,11 @@ start(_StartType, _StartArgs) ->
     %% sending changes SMP vs. non-SMP in the VM
     case erlang:system_info(multi_scheduling) of
         enabled ->
+            %% Apps depending on chef_secrets to be running without _explicitly_
+            %% depending on it (chef_authn, pooler, and sqerl) get started here
+            { ok, AppList } =  application:get_key(pushy, included_applications),
+            [ application:ensure_all_started(App, permanent) || App <- AppList ],
+
             %% TODO - find a better spot for this log setup
             %% Logs all job message to a specific file
             lager:trace_file("log/jobs.log", [{job_id, '*'}]),

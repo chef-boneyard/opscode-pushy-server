@@ -2,10 +2,11 @@ class EcPostgres
   # Provides a superuser connection to the specified database
   def self.with_connection(node, database = 'template1', opts = {})
     require 'pg'
+    password = opts['db_superuser_password'] || PushServer::Secrets.veil.get('postgresql', 'db_superuser_password')
     postgres = node['pushy']['postgresql'].merge(opts)
     connection = ::PGconn.open('user' => postgres['db_superuser'],
                                'host' => postgres['vip'],
-                               'password' => postgres['db_superuser_password'],
+                               'password' => password,
                                'port' => postgres['port'],
                                'dbname' => database)
     begin

@@ -49,10 +49,6 @@ trace_module(Mod) ->
 -define(INCARNATION, <<"inc">>).
 -define(REQUESTOR, <<"requestor">>).
 
-mecked() -> [pushy_object, chef_authn, pushy_principal, pushy_wm_base, pushy_key_manager, pushy_job_monitor, pushy_messaging].
-
-applications() -> [folsom, compiler, syntax_tools, goldrush, lager, inets, mochiweb, webmachine, pooler, public_key, ssl, epgsql, sqerl, gproc, jiffy, ibrowse, erlzmq, pushy].
-
 configs() ->
              [
                 {pushy, [
@@ -71,13 +67,16 @@ configs() ->
               , {pushy_common, [
                   {enable_graphite, false}
                ]}
+              , {chef_secrets, [{provider, chef_secrets_json_file},
+                                {provider_config, [{secrets_file, filename:join(code:priv_dir(pushy),
+                                                                                "../test/secrets.json")}]}]}
               , {sqerl, [
-                  {db_driver_mod, sqerl_pgsql_client}
+                  {config_cb, {chef_secrets_sqerl, config, [{<<"push-jobs-server">>, <<"sql_password">>}]}}
+                , {db_driver_mod, sqerl_pgsql_client}
                 , {db_host, "127.0.0.1"}
                 , {db_port, 5432}
                 , {db_user, "pushy_test"}
-                , {db_pass, "password"}
-                , {db_name,   "opscode_pushy_test" }
+                , {db_name, "opscode_pushy_test"}
                 , {idle_check, 10000}
                 , {prepared_statements, {pushy_sql, statements, []} }
                 , {column_transforms, []}
@@ -88,12 +87,14 @@ configs() ->
                             {init_count, 20 },
                             {start_mfa, {sqerl_client, start_link, []}}]]}
                 , {metrics_module, folsom_metrics}
-               ]}
-              , {chef_authn, [
-                  {keyring_dir, "apps/pushy/test"}
-                , {keyring, [  {pivotal, "apps/pushy/test/testkey.pem"}
-                             , {pushy_priv, "apps/pushy/test/testkey.pem"}]}
-               ]}
+                         ]}
+              , {chef_authn, [{secrets_module, {chef_secrets, get,
+                                                [
+                                                 {pivotal, [<<"chef-server">>, <<"superuser_key">>]},
+                                                 {pushy_priv, [<<"push-jobs-server">>, <<"pushy_priv_key">>]},
+                                                 {pushy_pub, [<<"push-jobs-server">>, <<"pushy_pub_key">>]}
+                                                ]}
+                              }]}
              ].
 
 get_user() ->

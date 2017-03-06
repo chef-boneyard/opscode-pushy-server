@@ -34,7 +34,7 @@
 -include("pushy_sql.hrl").
 -include("pushy_wm.hrl").
 
-mecked() -> [pushy_command_switch, pushy_object, wrq, pushy_node_state].
+mecked() -> [pushy_command_switch, pushy_object, wrq, pushy_node_state, chef_secrets].
 
 basic_setup() ->
     test_util:start_apps(),
@@ -102,4 +102,3 @@ init_test_() ->
                end}
       end
      ]}.
-

@@ -181,7 +181,7 @@ verify_request_signature(Req, State) ->
                                                    UserName, OrgName),
             {conn_failed, wrq:set_resp_body(jiffy:encode(ConnFailedMsg), Req), State1};
         Principals ->
-            PubKeyData = [{Principal, chef_authn:extract_public_key(Key)} ||
+            PubKeyData = [{Principal, Key} ||
                              #pushy_principal{requestor_key = Key} = Principal <- Principals],
             Body = body_or_default(Req, <<>>),
             HTTPMethod = method_as_binary(Req),
