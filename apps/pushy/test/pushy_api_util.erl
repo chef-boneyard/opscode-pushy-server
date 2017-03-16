@@ -67,9 +67,6 @@ configs() ->
               , {pushy_common, [
                   {enable_graphite, false}
                ]}
-              , {chef_secrets, [{provider, chef_secrets_json_file},
-                                {provider_config, [{secrets_file, filename:join(code:priv_dir(pushy),
-                                                                                "../test/secrets.json")}]}]}
               , {sqerl, [
                   {config_cb, {chef_secrets_sqerl, config, [{<<"push-jobs-server">>, <<"sql_password">>}]}}
                 , {db_driver_mod, sqerl_pgsql_client}

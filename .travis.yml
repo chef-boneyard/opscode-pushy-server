@@ -1,4 +1,8 @@
 sudo: false
+branches:
+  only:
+    - master
+
 language: erlang
 otp_release:
 - 18.2
@@ -37,5 +41,3 @@ script:
   # we've set as an env var does not get correctly picked up.
   - make
   - make test
-
-
