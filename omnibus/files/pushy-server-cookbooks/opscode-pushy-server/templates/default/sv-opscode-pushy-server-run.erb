@@ -1,5 +1,5 @@
 #!/bin/sh
 exec 2>&1
 
-
+export PATH=/opt/opscode-push-jobs-server/embedded/bin:$PATH
 exec chpst -P -u <%= node['private_chef']['user']['username'] %> -U <%= node['private_chef']['user']['username'] %> env HOME=<%= node['pushy']['opscode-pushy-server']['dir'] %> ERL_EPMD_ADDRESS=127.0.0.1 <%= node['pushy']['install_path'] %>/embedded/service/opscode-pushy-server/bin/opscode-pushy-server foreground

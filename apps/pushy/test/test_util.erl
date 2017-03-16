@@ -40,9 +40,14 @@ mock_chef_secrets() ->
     {ok, RawKey} = file:read_file(filename:join(code:priv_dir(pushy),
                                                 "../test/testkey.pem")),
     meck:new(chef_secrets),
-    meck:expect(chef_secrets, get, fun(<<"push-jobs-server">>, <<"sql_password">>) -> {ok, "password"};
-                                      (_, _) -> {ok, RawKey}
+    meck:new(chef_secrets_mock_provider, [non_strict]),
+    meck:expect(chef_secrets, get, fun(<<"push-jobs-server">>, <<"sql_password">>) ->
+                                           {ok, "password"};
+                                      (_, _) ->
+                                           {ok, RawKey}
                                    end),
+    meck:expect(chef_secrets_mock_provider, read, fun(_Config) -> {ok, {[]}} end),
+    application:set_env(chef_secrets, provider, chef_secrets_mock_provider),
     application:set_env(chef_authn, secrets_module, {chef_secrets, get,
                                                      [{pivotal, [<<"chef-server">>, <<"superuser_key">>]},
                                                       {pushy_priv, [<<"push-jobs-server">>, <<"pushy_priv_key">>]},
