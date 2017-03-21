@@ -27,8 +27,6 @@ module PushServer
     PUSH_PUB_PATH = "/etc/opscode-push-jobs-server/pushy_pub.pem"
     PIVOTAL_PATH = "/etc/opscode/pivotal.pem"
 
-    attr_accessor :user
-
     def self.bootstrap(node)
       instance.bootstrap(node)
     end
@@ -42,12 +40,6 @@ module PushServer
     end
 
     def bootstrap(node)
-      @user = node.read('private_chef', 'user', 'username')
-      unless @user
-        Chef::Log.warn("Could not read Chef server username, using 'opscode'")
-        @user = 'opscode'
-      end
-
       migrate_to_veil
       migrate_pivotal_key
       generate_passwords
@@ -59,7 +51,11 @@ module PushServer
     end
 
     def veil
-      @veil ||= Veil::CredentialCollection::ChefSecretsFile.from_file(SECRETS_FILE, user: user)
+      config = {
+        provider: 'chef-secrets-file',
+        path: SECRETS_FILE
+      }
+      @veil ||= Veil::CredentialCollection.from_config(config)
     end
 
     private
