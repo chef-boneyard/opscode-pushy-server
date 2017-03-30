@@ -1,5 +1,8 @@
 # Push Jobs Server Changelog
 
+## 2.2.0 (2016-03-30)
+* use `chef_secrets` and `Veil` to manage credentials
+
 ## 2.1.1 (2016-12-01)
 * Remove cURL dependencies
 * Improvements to build, development, and test environments

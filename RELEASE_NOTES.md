@@ -1,5 +1,19 @@
 # Push Jobs Server Release Notes
 
+## 2.2.0
+
+This release updates Push Jobs Server to ensure compatibility with
+Chef Server 12.14.0 and later.  This includes enhancements to use
+Chef Server's new unified credentials handling.
+
+*Backwards Compatibility Note*
+
+This version of Push Jobs Server is not compatible with any version of Chef Server earlier
+than 12.14.0.
+
+If you are using Chef Server 12.13.0 or earlier, do not upgrade this add-on
+until after you have upgraded Chef Server to 12.14.0.
+
 ## 2.1.1
 This release contains the latest patched version of OpenSSL (1.0.2j) as well as
 various build, test, and development environment improvements.
