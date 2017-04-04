@@ -1,5 +1,11 @@
 # Push Jobs Server Release Notes
 
+## 2.2.1
+
+As mentioned in the 2.2.0 release notes, Push Jobs Server now requires
+Chef Server 12.14.0. This release enforces that constraint in the
+package metadata.
+
 ## 2.2.0
 
 This release updates Push Jobs Server to ensure compatibility with

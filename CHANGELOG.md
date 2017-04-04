@@ -1,5 +1,8 @@
 # Push Jobs Server Changelog
 
+## 2.2.1 (2016-04-04)
+* Enforce chef-server version constraint in package metadata
+
 ## 2.2.0 (2016-03-30)
 * use `chef_secrets` and `Veil` to manage credentials
 
