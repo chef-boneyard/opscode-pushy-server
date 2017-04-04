@@ -25,6 +25,13 @@ install_dir    "/opt/opscode-push-jobs-server"
 build_version   Omnibus::BuildVersion.new.semver
 build_iteration 1
 
+# RPM spec files and DEB control files use slightly different formats
+if ubuntu?
+  runtime_dependency 'chef-server-core (>= 12.14.0)'
+elsif rhel?
+  runtime_dependency 'chef-server-core >= 12.14.0'
+end
+
 override :libzmq, version: "4.0.5"
 override :'berkshelf-no-depselector', version: "v4.3.5"
 override :chef, version: "v12.13.37"
