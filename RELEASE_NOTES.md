@@ -1,5 +1,9 @@
 # Push Jobs Server Release Notes
 
+## 2.2.2
+
+Security fix release for updating zlib to 1.2.11.
+
 ## 2.2.1
 
 As mentioned in the 2.2.0 release notes, Push Jobs Server now requires

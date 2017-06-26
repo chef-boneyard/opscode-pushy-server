@@ -32,7 +32,7 @@ In order to release, you will need the following accounts/permissions:
 ### Informing everyone of a pending release.
 
 - [ ] Announce your intention to drive the release to #cft-announce on slack.
-- [ ] Cross-post this intention on #chef-server and #spool.  Determine whether
+- [ ] Cross-post this intention on #chef-server and #pool.  Determine whether
   this upgrade requires a major/minor/patch bump and what the major changes
   are.
 - [ ] Ensure that the opscode-push-jobs-server pipeline on wilson is currently green - you
@@ -44,10 +44,9 @@ In order to release, you will need the following accounts/permissions:
 - [ ] Check RELEASE_NOTES.md to ensure that it describes the
   most important user-facing changes in the release. This file should
   form the basis of the post to Discourse that comes in a later step. Update as
-  appropriate.  If a there is a major version change, transfer all
-  contents to PRIOR_RELEASE_NOTES.md before adding release notes.
+  appropriate.
 - [ ] Open a PR with these changes and post the link to #chef-server-rfr
-  and #spool.
+  and #pool.
 
 ### Building and Releasing the Release
 
