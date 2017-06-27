@@ -19,14 +19,11 @@ release.
 
 In order to release, you will need the following accounts/permissions:
 
-- Local checkouts of the opsocde-pushy-server and chef-web-downloads repositories
 - Push access to the opscode-pushy-server github repository
 - Chef Software, Inc Slack account
 - VPN account for Chef Software, Inc.
 - Account on [https://discourse.chef.io](https://discourse.chef.io) using your Chef email address
 - Login for wilson.ci.chef.co (This is linked to your github account.)
-- Access to artifactory.chef.co
-- Access to delivery.chef.co
 
 ## THE PROCESS
 ### Informing everyone of a pending release.
@@ -71,31 +68,6 @@ In order to release, you will need the following accounts/permissions:
 - [ ] Chef employees should already know a release is coming; however, as a
   courtesy, drop a message in the #cft-announce slack channel that the release
   is coming. Provide the release number and any highlights of the release.
-
-- [ ] In your local checkout of the chef-web-downloads repository,
-generate an update to the download pages using rake:
-
-```
-git co -b YOUR_INITIALS/release-push-server-VERSION
-rake fetch[opscode-push-jobs-server]
-git add data/
-# make sure all the changes are what you expect
-# write a simple commit message
-git commit -v
-```
-
-- [ ] Create a delivery change request. See the README in
-  chef-web-downloads for setup instructions if this doesn't work.
-
-```
-delivery review
-```
-
-- [ ] Have someone review and approve the change request.
-
-- [ ] Once committed to master, an automated process will make the
-  change to the live website; however, it might take a few minutes for
-  the deploy to complete and then a few more for CDN caches to expire.
 
 - [ ] Write and then publish a Discourse post on https://discourse.chef.io
   once the release is live. This post should contain a link to the downloads
