@@ -1,7 +1,12 @@
 # Push Jobs Server Changelog
 
+<!-- latest_release -->
 ## 2.2.2 (2016-06-26)
 * Security fix release: update zlib to 1.2.11
+<!-- latest_release -->
+
+<!-- release_rollup -->
+<!-- release_rollup -->
 
 ## 2.2.1 (2016-04-04)
 * Enforce chef-server version constraint in package metadata
