@@ -1,9 +1,17 @@
 # Push Jobs Server Changelog
 
 <!-- latest_release -->
+## [2.2.3](https://github.com/chef/opscode-pushy-server/tree/2.2.3) (2017-07-19)
+
+#### Merged Pull Requests
+- [JEX-608] Use Expeditor to bump version and trigger release build [#170](https://github.com/chef/opscode-pushy-server/pull/170) ([schisamo](https://github.com/schisamo))
 <!-- latest_release -->
 
-<!-- release_rollup -->
+<!-- release_rollup since=2.2.2 -->
+### Changes since 2.2.2 release
+
+#### Merged Pull Requests
+- [JEX-608] Use Expeditor to bump version and trigger release build [#170](https://github.com/chef/opscode-pushy-server/pull/170) ([schisamo](https://github.com/schisamo)) <!-- 2.2.3 -->
 <!-- release_rollup -->
 
 ## 2.2.2 (2016-06-26)
