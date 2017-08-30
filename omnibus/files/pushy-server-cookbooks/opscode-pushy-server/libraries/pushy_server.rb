@@ -59,7 +59,7 @@ module PushJobsServer
       case topology
       when "ha", "tier"
         PushJobsServer['opscode_pushy_server']['ha'] = (topology == 'ha')
-        PushJobsServer['opscode_pushy_server']['vip'] = node['private_chef']['backend_vips']['ipaddress']
+        PushJobsServer['opscode_pushy_server']['vip'] ||= node['private_chef']['backend_vips']['ipaddress']
 
         case node['private_chef']['servers'][node_name]['role']
         when "backend"
@@ -70,7 +70,7 @@ module PushJobsServer
           raise "I don't have a role for you!  Use 'backend' or 'frontend'."
         end
       else
-        PushJobsServer['opscode_pushy_server']['vip'] = node['private_chef']['lb']['api_fqdn']
+        PushJobsServer['opscode_pushy_server']['vip'] ||= node['private_chef']['lb']['api_fqdn']
       end
       generate_hash
     end
