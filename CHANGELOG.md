@@ -1,5 +1,5 @@
 # Push Jobs Server Changelog
-
+<!-- usage documentation: http://expeditor-docs.es.chef.io/configuration/changelog/ -->
 <!-- latest_release 2.2.5 -->
 ## [2.2.5](https://github.com/chef/opscode-pushy-server/tree/2.2.5) (2017-08-31)
 
