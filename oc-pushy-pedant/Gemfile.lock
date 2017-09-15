@@ -25,7 +25,8 @@ GIT
 
 GIT
   remote: https://github.com/chef/opscode-pushy-client.git
-  revision: 2b77865ed99abfba6686d7c601537c95aa7724d4
+  revision: 246f8644c7dde4bb6d1a67d5d6e6ab01831df35a
+  branch: praj/bundler_update
   specs:
     opscode-pushy-client (2.4.3)
       chef (>= 12.19, < 14.0)
