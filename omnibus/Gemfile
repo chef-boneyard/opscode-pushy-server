@@ -1,5 +1,6 @@
 source 'https://rubygems.org'
 
+gem 'chef', tag: "v13.4.24"
 gem 'omnibus', github: 'chef/omnibus'
 gem 'omnibus-software', github: 'chef/omnibus-software'
 gem 'license_scout', git: 'https://github.com/chef/license_scout'
