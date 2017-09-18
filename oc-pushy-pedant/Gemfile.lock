@@ -9,7 +9,7 @@ GIT
 
 GIT
   remote: https://github.com/chef/chef-server.git
-  revision: 7d5acaf60fa71fb184d16e3910a2f10203c8a128
+  revision: d473a25a67a1920904e806948f3eb8ead3d77316
   specs:
     oc-chef-pedant (2.2.0)
       activesupport (>= 4.2.7.1, < 6.0)
@@ -25,7 +25,7 @@ GIT
 
 GIT
   remote: https://github.com/chef/opscode-pushy-client.git
-  revision: 246f8644c7dde4bb6d1a67d5d6e6ab01831df35a
+  revision: bb1486a6c4e90dd4851cb07426990edc76be4741
   branch: praj/bundler_update
   specs:
     opscode-pushy-client (2.4.3)
