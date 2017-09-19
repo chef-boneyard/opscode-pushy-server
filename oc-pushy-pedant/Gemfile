@@ -1,9 +1,9 @@
 source "https://rubygems.org"
 
-gem "chef"
+gem "chef",  "<13.0.0"
 
 gemspec
 
 gem 'rest-client', :git => 'git://github.com/opscode/rest-client.git'
 gem 'oc-chef-pedant', :git => "https://github.com/chef/chef-server.git"
-gem 'opscode-pushy-client', :git => "https://github.com/chef/opscode-pushy-client.git"
+gem 'opscode-pushy-client', :git => "https://github.com/chef/opscode-pushy-client.git", :branch => "praj/bundler_update"

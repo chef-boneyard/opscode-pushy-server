@@ -36,9 +36,9 @@ override :libzmq, version: "4.0.5"
 override :'berkshelf-no-depselector', version: "v4.3.5"
 override :chef, version: "v12.13.37"
 override :ohai, version: "v8.19.1"
-override :ruby, version: "2.2.5"
-override :rubygems, version: "2.6.6"
-override :bundler, version: "1.12.5"
+override :ruby, version: "2.2.8"
+override :rubygems, version: "2.6.13"
+override :bundler, version: "1.15.4"
 
 # creates required build directories
 dependency "preparation"
