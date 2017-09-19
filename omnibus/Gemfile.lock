@@ -39,13 +39,13 @@ GEM
       public_suffix (>= 2.0.2, < 4.0)
     artifactory (2.8.2)
     awesome_print (1.8.0)
-    aws-sdk (2.10.47)
-      aws-sdk-resources (= 2.10.47)
-    aws-sdk-core (2.10.47)
+    aws-sdk (2.10.48)
+      aws-sdk-resources (= 2.10.48)
+    aws-sdk-core (2.10.48)
       aws-sigv4 (~> 1.0)
       jmespath (~> 1.0)
-    aws-sdk-resources (2.10.47)
-      aws-sdk-core (= 2.10.47)
+    aws-sdk-resources (2.10.48)
+      aws-sdk-core (= 2.10.48)
     aws-sigv4 (1.0.2)
     berkshelf (6.3.1)
       buff-config (~> 2.0)
@@ -280,7 +280,6 @@ PLATFORMS
 
 DEPENDENCIES
   berkshelf
-  chef
   kitchen-vagrant
   license_scout!
   omnibus!

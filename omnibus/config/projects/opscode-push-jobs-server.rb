@@ -34,7 +34,7 @@ end
 
 override :libzmq, version: "4.0.5"
 override :'berkshelf-no-depselector', version: "v4.3.5"
-override :chef, version: "v13.4.24"
+override :chef, version: "v12.13.37"
 override :ohai, version: "v8.19.1"
 override :ruby, version: "2.2.8"
 override :rubygems, version: "2.6.13"
