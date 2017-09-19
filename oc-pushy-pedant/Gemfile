@@ -1,6 +1,6 @@
 source "https://rubygems.org"
 
-gem "chef"
+gem "chef",  "<13.0.0"
 
 gemspec
 
