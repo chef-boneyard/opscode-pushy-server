@@ -11,4 +11,3 @@ vendor/cookbooks
 *#
 .kitchen
 Berksfile.lock
-Gemfile.lock

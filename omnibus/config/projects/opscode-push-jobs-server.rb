@@ -32,13 +32,8 @@ elsif rhel?
   runtime_dependency 'chef-server-core >= 12.14.0'
 end
 
-override :libzmq, version: "4.0.5"
-override :'berkshelf-no-depselector', version: "v4.3.5"
-override :chef, version: "v12.13.37"
-override :ohai, version: "v8.19.1"
-override :ruby, version: "2.2.5"
-override :rubygems, version: "2.6.6"
-override :bundler, version: "1.12.5"
+overrides_path = File.expand_path("../../../../omnibus_overrides.rb", __FILE__)
+instance_eval(IO.read(overrides_path), overrides_path)
 
 # creates required build directories
 dependency "preparation"
