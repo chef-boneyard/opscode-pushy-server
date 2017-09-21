@@ -1,16 +1,17 @@
 # Push Jobs Server Changelog
 <!-- usage documentation: http://expeditor-docs.es.chef.io/configuration/changelog/ -->
-<!-- latest_release 2.2.5 -->
-## [2.2.5](https://github.com/chef/opscode-pushy-server/tree/2.2.5) (2017-08-31)
+<!-- latest_release 2.2.6 -->
+## [2.2.6](https://github.com/chef/opscode-pushy-server/tree/2.2.6) (2017-09-21)
 
 #### Merged Pull Requests
-- Allow opscode_pushy_server vip to be overridden [#172](https://github.com/chef/opscode-pushy-server/pull/172) ([OBrienCommaJosh](https://github.com/OBrienCommaJosh))
+- Update to Ruby 2.4.2 and Chef 13 [#175](https://github.com/chef/opscode-pushy-server/pull/175) ([stevendanna](https://github.com/stevendanna))
 <!-- latest_release -->
 
 <!-- release_rollup since=2.2.2 -->
 ### Changes since 2.2.2 release
 
 #### Merged Pull Requests
+- Update to Ruby 2.4.2 and Chef 13 [#175](https://github.com/chef/opscode-pushy-server/pull/175) ([stevendanna](https://github.com/stevendanna)) <!-- 2.2.6 -->
 - Allow opscode_pushy_server vip to be overridden [#172](https://github.com/chef/opscode-pushy-server/pull/172) ([OBrienCommaJosh](https://github.com/OBrienCommaJosh)) <!-- 2.2.5 -->
 - Update the CHANGELOG when push-server is promoted to stable [#171](https://github.com/chef/opscode-pushy-server/pull/171) ([tduffield](https://github.com/tduffield)) <!-- 2.2.4 -->
 - [JEX-608] Use Expeditor to bump version and trigger release build [#170](https://github.com/chef/opscode-pushy-server/pull/170) ([schisamo](https://github.com/schisamo)) <!-- 2.2.3 -->
