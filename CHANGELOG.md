@@ -1,16 +1,17 @@
 # Push Jobs Server Changelog
 <!-- usage documentation: http://expeditor-docs.es.chef.io/configuration/changelog/ -->
-<!-- latest_release 2.2.7 -->
-## [2.2.7](https://github.com/chef/opscode-pushy-server/tree/2.2.7) (2018-02-08)
+<!-- latest_release 2.2.8 -->
+## [2.2.8](https://github.com/chef/opscode-pushy-server/tree/2.2.8) (2018-02-09)
 
 #### Merged Pull Requests
-- Use the version of LicenseScout that comes with the Omnibus gem. [#178](https://github.com/chef/opscode-pushy-server/pull/178) ([tduffield](https://github.com/tduffield))
+- Update to ruby 2.4.3 [#177](https://github.com/chef/opscode-pushy-server/pull/177) ([PrajaktaPurohit](https://github.com/PrajaktaPurohit))
 <!-- latest_release -->
 
 <!-- release_rollup since=2.2.6 -->
 ### Changes since 2.2.6 release
 
 #### Merged Pull Requests
+- Update to ruby 2.4.3 [#177](https://github.com/chef/opscode-pushy-server/pull/177) ([PrajaktaPurohit](https://github.com/PrajaktaPurohit)) <!-- 2.2.8 -->
 - Use the version of LicenseScout that comes with the Omnibus gem. [#178](https://github.com/chef/opscode-pushy-server/pull/178) ([tduffield](https://github.com/tduffield)) <!-- 2.2.7 -->
 <!-- release_rollup -->
 
