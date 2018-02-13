@@ -1,21 +1,19 @@
 # Push Jobs Server Changelog
 <!-- usage documentation: http://expeditor-docs.es.chef.io/configuration/changelog/ -->
-<!-- latest_release 2.2.8 -->
-## [2.2.8](https://github.com/chef/opscode-pushy-server/tree/2.2.8) (2018-02-09)
-
-#### Merged Pull Requests
-- Update to ruby 2.4.3 [#177](https://github.com/chef/opscode-pushy-server/pull/177) ([PrajaktaPurohit](https://github.com/PrajaktaPurohit))
+<!-- latest_release -->
 <!-- latest_release -->
 
-<!-- release_rollup since=2.2.6 -->
-### Changes since 2.2.6 release
-
-#### Merged Pull Requests
-- Update to ruby 2.4.3 [#177](https://github.com/chef/opscode-pushy-server/pull/177) ([PrajaktaPurohit](https://github.com/PrajaktaPurohit)) <!-- 2.2.8 -->
-- Use the version of LicenseScout that comes with the Omnibus gem. [#178](https://github.com/chef/opscode-pushy-server/pull/178) ([tduffield](https://github.com/tduffield)) <!-- 2.2.7 -->
+<!-- release_rollup -->
 <!-- release_rollup -->
 
 <!-- latest_stable_release -->
+## [2.2.8](https://github.com/chef/opscode-pushy-server/tree/2.2.8) (2018-02-13)
+
+#### Merged Pull Requests
+- Use the version of LicenseScout that comes with the Omnibus gem. [#178](https://github.com/chef/opscode-pushy-server/pull/178) ([tduffield](https://github.com/tduffield))
+- Update to ruby 2.4.3 [#177](https://github.com/chef/opscode-pushy-server/pull/177) ([PrajaktaPurohit](https://github.com/PrajaktaPurohit))
+<!-- latest_stable_release -->
+
 ## [2.2.6](https://github.com/chef/opscode-pushy-server/tree/2.2.6) (2017-09-21)
 
 #### Merged Pull Requests
@@ -23,7 +21,6 @@
 - Update the CHANGELOG when push-server is promoted to stable [#171](https://github.com/chef/opscode-pushy-server/pull/171) ([tduffield](https://github.com/tduffield))
 - Allow opscode_pushy_server vip to be overridden [#172](https://github.com/chef/opscode-pushy-server/pull/172) ([OBrienCommaJosh](https://github.com/OBrienCommaJosh))
 - Update to Ruby 2.4.2 and Chef 13 [#175](https://github.com/chef/opscode-pushy-server/pull/175) ([stevendanna](https://github.com/stevendanna))
-<!-- latest_stable_release -->
 
 
 
