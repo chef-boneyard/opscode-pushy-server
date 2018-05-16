@@ -35,8 +35,8 @@ end
 overrides_path = File.expand_path("../../../../omnibus_overrides.rb", __FILE__)
 instance_eval(IO.read(overrides_path), overrides_path)
 
-override :"chef-gem", :version => "13.8.5"
-override :ruby, :version => "2.4.0"
+override :"chef-gem", :version => "14.1.1"
+override :ruby, :version => "2.4.4"
 # creates required build directories
 dependency "preparation"
 
