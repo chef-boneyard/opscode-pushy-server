@@ -1,12 +1,12 @@
 source "https://rubygems.org"
 
 # Pinned to the same version shipped in the current pushy client
-gem "chef", "14.1.1"
+gem "chef", "14.1.12"
 gem "ohai", "~> 14.0"
 gem "rake"
 
 gemspec
 
-gem 'rest-client', :git => 'git://github.com/opscode/rest-client.git'
-gem 'oc-chef-pedant', :git => "https://github.com/chef/chef-server.git"
+gem 'rest-client', :git => 'git://github.com/opscode/rest-client'
+gem 'oc-chef-pedant', :git => "https://github.com/chef/chef-server"
 gem 'opscode-pushy-client', :git => "https://github.com/chef/opscode-pushy-client.git"
