@@ -1,7 +1,7 @@
 source 'https://rubygems.org'
 
-gem 'omnibus', github: 'chef/omnibus'
-gem 'omnibus-software', github: 'chef/omnibus-software'
+gem "omnibus", :git => "https://github.com/chef/omnibus.git"
+gem "omnibus-software", :git => "https://github.com/chef/omnibus-software.git"
 
 group :development do
   gem 'test-kitchen'
