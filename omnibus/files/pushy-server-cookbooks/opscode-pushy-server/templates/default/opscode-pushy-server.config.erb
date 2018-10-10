@@ -76,7 +76,7 @@
           {config_cb, {chef_secrets_sqerl, config, [{<<"push-jobs-server">>, <<"sql_password">>}]}},
           %% Database connection parameters
           {db_host, "<%= node['pushy']['postgresql']['vip'] %>"},
-          {db_port, 5432},
+          {db_port, <%= node['pushy']['postgresql']['port'] %>},
           {db_user, "<%= node['pushy']['postgresql']['sql_user'] %>"},
           {db_name,   "opscode_pushy" },
           {idle_check, 10000},
