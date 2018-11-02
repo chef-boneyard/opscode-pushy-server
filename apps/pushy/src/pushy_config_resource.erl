@@ -39,6 +39,7 @@
 -include("pushy_wm.hrl").
 
 -define(DEFAULT_CONFIG_LIFETIME, 3600).
+-define(MAX_BODY_SIZE, 65536).
 
 init(Config) ->
     pushy_wm_base:init(Config).
@@ -94,9 +95,11 @@ to_json(Req, #config_state{organization_name = OrgName,
                            node_name = NodeName,
                            incarnation_id = IncarnationId,
                            curve_public_key = CurvePublicKey,
+                           max_body_size = MaxBodySize,
                            requestor_key = ClientKey } = State) ->
     Host = envy:get(pushy, server_name, string),
     ConfigLifetime = envy:get(pushy, config_lifetime, ?DEFAULT_CONFIG_LIFETIME, integer),
+    MaxBodySize = envy:get(pushy, max_body_size, ?MAX_BODY_SIZE, integer),
     HeartbeatAddress = iolist_to_binary(
         pushy_util:make_zmq_socket_addr(Host, server_heartbeat_port, tcp)),
     CommandAddress = iolist_to_binary(
@@ -138,6 +141,7 @@ to_json(Req, #config_state{organization_name = OrgName,
           {<<"encoded_session_key">>, EKeyStruct},
           {<<"lifetime">>, ConfigLifetime},
           {<<"max_message_skew">>, pushy_messaging:get_max_message_skew()},
+          {<<"max_body_size">>, MaxBodySize},
           {<<"incarnation_id">>, IncarnationId}
          ]},
     ConfigurationJson = jiffy:encode(ConfigurationStruct),
