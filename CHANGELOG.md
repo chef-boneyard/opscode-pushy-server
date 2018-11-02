@@ -1,16 +1,17 @@
 # Push Jobs Server Changelog
 <!-- usage documentation: http://expeditor-docs.es.chef.io/configuration/changelog/ -->
-<!-- latest_release 2.2.9 -->
-## [2.2.9](https://github.com/chef/opscode-pushy-server/tree/2.2.9) (2018-07-13)
+<!-- latest_release 2.2.10 -->
+## [2.2.10](https://github.com/chef/opscode-pushy-server/tree/2.2.10) (2018-11-02)
 
 #### Merged Pull Requests
-- Amol/795 chef upgrade [#179](https://github.com/chef/opscode-pushy-server/pull/179) ([samshinde](https://github.com/samshinde))
+- MSYS-832 : Added Max_body_size configurable [#180](https://github.com/chef/opscode-pushy-server/pull/180) ([piyushawasthi](https://github.com/piyushawasthi))
 <!-- latest_release -->
 
 <!-- release_rollup since=2.2.8 -->
 ### Changes since 2.2.8 release
 
 #### Merged Pull Requests
+- MSYS-832 : Added Max_body_size configurable [#180](https://github.com/chef/opscode-pushy-server/pull/180) ([piyushawasthi](https://github.com/piyushawasthi)) <!-- 2.2.10 -->
 - Amol/795 chef upgrade [#179](https://github.com/chef/opscode-pushy-server/pull/179) ([samshinde](https://github.com/samshinde)) <!-- 2.2.9 -->
 <!-- release_rollup -->
 
