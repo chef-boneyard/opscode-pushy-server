@@ -1,10 +1,11 @@
 # Chef Push Jobs Server
+[![Build Status](https://travis-ci.org/chef/opscode-pushy-server.svg?branch=master)](https://travis-ci.org/chef/opscode-pushy-server)
 
 ## Getting Help
 
 We use GitHub issues to track bugs and feature requests. If you need help please post to our Mailing List or join the Chef Community Slack.
 
- * Chef Community Slack at http://community-slack.chef.io/.
+ * Chef Community Slack at http://community-slack.chef.io/
  * Chef Mailing List https://discourse.chef.io/
 
 ## Building Packages
@@ -37,12 +38,16 @@ In the root directory of this repository:
 
         make test
 
+## Contributing
+
+For information on contributing to this project see <https://github.com/chef/chef/blob/master/CONTRIBUTING.md>
+
 ## License
 
 All files in the repository are licensed under the Apache 2.0 license. If any
 file is missing the License header it should assume the following is attached;
 
-Copyright (c) 2008-2016 Chef Software, Inc.
+Copyright (c) 2008-2018 Chef Software, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
