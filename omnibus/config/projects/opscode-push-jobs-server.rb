@@ -16,8 +16,7 @@
 
 name       "opscode-push-jobs-server"
 maintainer "Chef Software, Inc. <maintainers@chef.io>"
-homepage   "http://www.getchef.com"
-
+homepage "https://www.chef.io"
 license "Apache-2.0"
 license_file "../LICENSE"
 
@@ -58,6 +57,15 @@ dependency "oc-pushy-pedant"
 dependency "chef"
 dependency "ohai"
 
+dependency "ruby-cleanup"
+
 package :rpm do
-  signing_passphrase ENV['OMNIBUS_RPM_SIGNING_PASSPHRASE']
+  signing_passphrase ENV["OMNIBUS_RPM_SIGNING_PASSPHRASE"]
+  compression_level 1
+  compression_type :xz
+end
+
+package :deb do
+  compression_level 1
+  compression_type :xz
 end
