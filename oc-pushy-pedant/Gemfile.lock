@@ -9,7 +9,7 @@ GIT
 
 GIT
   remote: https://github.com/chef/chef-server.git
-  revision: 477a9e457aced5a426577548c2817362bd025cc2
+  revision: 406e3080c02e7606518afdc44358d06016ca8b8d
   specs:
     oc-chef-pedant (2.2.0)
       activesupport (>= 4.2.7.1, < 6.0)
@@ -48,7 +48,7 @@ GEM
       i18n (>= 0.7, < 2)
       minitest (~> 5.1)
       tzinfo (~> 1.1)
-    addressable (2.5.2)
+    addressable (2.6.0)
       public_suffix (>= 2.0.2, < 4.0)
     builder (3.2.3)
     chef (14.8.12)
@@ -107,7 +107,7 @@ GEM
     hashie (3.6.0)
     highline (1.7.10)
     httpclient (2.8.3)
-    i18n (1.5.2)
+    i18n (1.5.3)
       concurrent-ruby (~> 1.0)
     iniparse (1.4.4)
     ipaddress (0.8.3)
@@ -183,7 +183,7 @@ GEM
       rspec-its
       specinfra (~> 2.72)
     sfl (2.3)
-    specinfra (2.76.7)
+    specinfra (2.76.9)
       net-scp
       net-ssh (>= 2.7)
       net-telnet (= 0.1.1)
@@ -195,7 +195,7 @@ GEM
     tzinfo (1.2.5)
       thread_safe (~> 0.1)
     uuidtools (2.1.5)
-    wmi-lite (1.0.1)
+    wmi-lite (1.0.2)
 
 PLATFORMS
   ruby
@@ -210,4 +210,4 @@ DEPENDENCIES
   rest-client!
 
 BUNDLED WITH
-   1.16.1
+   1.17.1
