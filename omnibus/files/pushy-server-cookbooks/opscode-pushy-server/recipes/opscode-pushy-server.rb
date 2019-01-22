@@ -27,6 +27,7 @@ pushy_sasl_log_dir = File.join(pushy_log_dir, "sasl")
     owner node['private_chef']['user']['username']
     mode '0700'
     recursive true
+    action :create
   end
 end
 
