@@ -1,5 +1,5 @@
 override :libzmq, version: "4.0.5"
-override :chef, version: "v14.8.12"
+override :chef, version: "v14.10.9"
 override :ohai, version: "v14.8.10"
 override :ruby, version: "2.5.0"
 override :rubygems, version: "2.7.7"

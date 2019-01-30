@@ -2,5 +2,5 @@ source 'https://supermarket.chef.io'
 
 metadata
 
-cookbook 'enterprise', :git => 'https://github.com/chef-cookbooks/enterprise-chef-common.git'
+cookbook 'enterprise', :git => 'https://github.com/chef-cookbooks/enterprise-chef-common.git', tag: 'v0.14.1'
 cookbook 'runit', '>= 3.0.0'
