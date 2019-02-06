@@ -23,6 +23,13 @@ promote:
     - built_in:rollover_changelog
     - built_in:notify_chefio_slack_channels
 
+pipelines:
+  - omnibus/release
+  - omnibus/adhoc:
+      definition: .expeditor/release.omnibus.yml
+      env:
+        - ADHOC: true
+
 # These actions are taken, in order they are specified, anytime a Pull Request is merged.
 merge_actions:
   - built_in:bump_version:
