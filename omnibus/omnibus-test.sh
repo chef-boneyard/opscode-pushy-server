@@ -2,7 +2,7 @@
 set -ueo pipefail
 
 channel="${CHANNEL:-unstable}"
-product="${PRODUCT:-push-jobs-server}"
+product=push-jobs-server
 version="${VERSION:-latest}"
 dep_channel="${DEP_CHANNEL:-current}"
 
