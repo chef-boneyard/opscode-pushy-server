@@ -18,11 +18,6 @@ github:
   minor_bump_labels:
     - "Expeditor: Bump Minor Version"
 
-promote:
-  actions:
-    - built_in:rollover_changelog
-    - built_in:notify_chefio_slack_channels
-
 pipelines:
   - omnibus/release
   - omnibus/adhoc:
@@ -40,7 +35,13 @@ merge_actions:
       ignore_labels:
         - "Expeditor: Exclude From Changelog"
         - "Expeditor: Skip All"
-  - built_in:trigger_omnibus_release_build:
+  - trigger_pipeline:omnibus/release:
       ignore_labels:
         - "Expeditor: Skip Build"
       only_if: built_in:bump_version
+
+subscriptions:
+  - workload: artifact_published:stable:push-jobs-server:*
+    actions:
+      - built_in:rollover_changelog
+      - built_in:notify_chefio_slack_channels
