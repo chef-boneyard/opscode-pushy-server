@@ -77,7 +77,7 @@
           %% Database connection parameters
           {db_host, "<%= node['pushy']['postgresql']['vip'] %>"},
           {db_port, <%= node['pushy']['postgresql']['port'] %>},
-          {db_user, "<%= node['pushy']['postgresql']['sql_user'] %>"},
+          {db_user, "<%= node['pushy']['postgresql']['sql_connection_user'] || node['pushy']['postgresql']['sql_user'] %>"},
           {db_name,   "opscode_pushy" },
           {idle_check, 10000},
           {prepared_statements, {pushy_sql, statements, []} },

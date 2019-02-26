@@ -1,6 +1,6 @@
 # NOTE:
 #
-# Uses the value of node['private_chef']['postgresql']['db_superuser'] for the superuser name and
+# Uses the value of node['private_chef']['postgresql']['db_connection_superuser'] for the superuser name and
 # access the superuser password via the Secrets module.
 # to make the connection to the postgres server.
 
