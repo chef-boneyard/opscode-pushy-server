@@ -54,6 +54,7 @@ module PushJobsServer
       PushJobsServer['postgresql']['vip']           = node['private_chef']['postgresql']['vip']
       PushJobsServer['postgresql']['port']          = node['private_chef']['postgresql']['port']
       PushJobsServer['postgresql']['db_superuser']  = node['private_chef']['postgresql']['db_superuser']
+      PushJobsServer['postgresql']['sslmode']       = node['private_chef']['postgresql']['sslmode']
 
       topology = node['private_chef']['topology']
       case topology
