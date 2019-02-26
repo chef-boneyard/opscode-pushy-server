@@ -8,6 +8,7 @@ class EcPostgres
                                'host' => postgres['vip'],
                                'password' => password,
                                'port' => postgres['port'],
+                               'sslmode' => postgres['sslmode'],
                                'dbname' => database)
     begin
       yield connection
