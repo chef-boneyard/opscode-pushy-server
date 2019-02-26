@@ -79,6 +79,7 @@
           {db_port, <%= node['pushy']['postgresql']['port'] %>},
           {db_user, "<%= node['pushy']['postgresql']['sql_connection_user'] || node['pushy']['postgresql']['sql_user'] %>"},
           {db_name,   "opscode_pushy" },
+          {db_options, [{ssl, <%= { 'disable' => false, 'prefer' => true, 'require' => 'required' }[node['pushy']['postgresql']['sslmode']] %>}]},
           {idle_check, 10000},
           {prepared_statements, {pushy_sql, statements, []} },
           {column_transforms, []}
