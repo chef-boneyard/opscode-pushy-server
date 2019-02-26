@@ -78,6 +78,7 @@ default['pushy']['postgresql']['sql_connection_user'] = nil
 default['pushy']['postgresql']['sql_ro_user'] = "opscode_pushy_ro"
 default['pushy']['postgresql']['vip'] = "127.0.0.1"
 default['pushy']['postgresql']['port'] = 5432
+default['pushy']['postgresql']['sslmode'] = 'disable'
 
 ####
 # Chef Pedant
