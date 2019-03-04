@@ -55,4 +55,5 @@ opscode_pushy_server_pg_sqitch  "#{install_path}/embedded/service/pushy-server-s
   username  push_attrs['db_connection_superuser'] || push_attrs['db_superuser']
   password  PushServer::Secrets.veil.get('postgresql', 'db_superuser_password')
   database database_name
+  sslmode  push_attrs['sslmode']
 end
