@@ -35,7 +35,6 @@
                        pushy_job :: tuple(),
                        incarnation_id :: binary(),
                        requestor :: binary(),
-                       max_body_size :: binary(),
 
                        %% Authz ID of the requestor
                        %% TODO: Why isn't this just an embedded #pushy_principal{} record instead?
