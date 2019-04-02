@@ -43,7 +43,7 @@ end
 node.consume_attributes(PushJobsServer.generate_config(node['fqdn']))
 
 if File.exists?("/var/opt/opscode-push-jobs-server/bootstrapped")
-  node.set['pushy']['bootstrap']['enable'] = false
+  node.default['pushy']['bootstrap']['enable'] = false
 end
 
 PushServer::Secrets.bootstrap(node)
