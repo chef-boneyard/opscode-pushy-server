@@ -27,9 +27,9 @@ build_iteration 1
 
 # RPM spec files and DEB control files use slightly different formats
 if ubuntu?
-  runtime_dependency 'chef-server-core (>= 12.14.0)'
+  runtime_dependency 'chef-server-core (>= 12.18.1)'
 elsif rhel?
-  runtime_dependency 'chef-server-core >= 12.14.0'
+  runtime_dependency 'chef-server-core >= 12.18.1'
 end
 
 overrides_path = File.expand_path("../../../../omnibus_overrides.rb", __FILE__)
