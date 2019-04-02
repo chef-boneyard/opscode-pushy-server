@@ -19,6 +19,7 @@ github:
     - "Expeditor: Bump Minor Version"
 
 pipelines:
+  - verify
   - omnibus/release
   - omnibus/adhoc:
       definition: .expeditor/release.omnibus.yml
