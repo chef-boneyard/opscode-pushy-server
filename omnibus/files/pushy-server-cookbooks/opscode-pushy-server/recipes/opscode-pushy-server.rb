@@ -45,13 +45,13 @@ template pushy_config do
   source "opscode-pushy-server.config.erb"
   mode "644"
   variables(node['pushy']['opscode-pushy-server'].to_hash)
-  notifies :restart, 'runit_service[opscode-pushy-server]' if is_data_master?
+  notifies :restart, 'component_runit_service[opscode-pushy-server]' if is_data_master?
 end
 
 template pushy_vm_args do
   source "vm.args.erb"
   mode "644"
-  notifies :restart, 'runit_service[opscode-pushy-server]' if is_data_master?
+  notifies :restart, 'component_runit_service[opscode-pushy-server]' if is_data_master?
 end
 
 link "#{node['pushy']['install_path']}/embedded/service/opscode-pushy-server/sys.config" do
