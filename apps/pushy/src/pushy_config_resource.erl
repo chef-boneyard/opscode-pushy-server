@@ -95,7 +95,6 @@ to_json(Req, #config_state{organization_name = OrgName,
                            node_name = NodeName,
                            incarnation_id = IncarnationId,
                            curve_public_key = CurvePublicKey,
-                           max_body_size = MaxBodySize,
                            requestor_key = ClientKey } = State) ->
     Host = envy:get(pushy, server_name, string),
     ConfigLifetime = envy:get(pushy, config_lifetime, ?DEFAULT_CONFIG_LIFETIME, integer),

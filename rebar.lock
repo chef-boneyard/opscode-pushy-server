@@ -5,7 +5,7 @@
   1},
  {<<"chef_authn">>,
   {git,"https://github.com/chef/chef_authn",
-       {ref,"f79808e3a5a2fe90a653a3a0fddb7a13c8e6dfa2"}},
+       {ref,"fc98851cf2ac103101379f677f54dd0b1f9edb8d"}},
   0},
  {<<"chef_secrets">>,
   {git,"https://github.com/chef/chef_secrets",
