@@ -1,16 +1,17 @@
 # Push Jobs Server Changelog
 <!-- usage documentation: http://expeditor-docs.es.chef.io/configuration/changelog/ -->
-<!-- latest_release 2.2.12 -->
-## [2.2.12](https://github.com/chef/opscode-pushy-server/tree/2.2.12) (2019-04-03)
+<!-- latest_release 2.2.13 -->
+## [2.2.13](https://github.com/chef/opscode-pushy-server/tree/2.2.13) (2019-04-09)
 
 #### Merged Pull Requests
-- Migrate verification tests to Buildkite [#196](https://github.com/chef/opscode-pushy-server/pull/196) ([jaymalasinha](https://github.com/jaymalasinha))
+- Jsinha/just try [#195](https://github.com/chef/opscode-pushy-server/pull/195) ([markan](https://github.com/markan))
 <!-- latest_release -->
 
 <!-- release_rollup since=2.2.8 -->
 ### Changes since 2.2.8 release
 
 #### Merged Pull Requests
+- Jsinha/just try [#195](https://github.com/chef/opscode-pushy-server/pull/195) ([markan](https://github.com/markan)) <!-- 2.2.13 -->
 - Migrate verification tests to Buildkite [#196](https://github.com/chef/opscode-pushy-server/pull/196) ([jaymalasinha](https://github.com/jaymalasinha)) <!-- 2.2.12 -->
 - Add github issue templates [#182](https://github.com/chef/opscode-pushy-server/pull/182) ([markan](https://github.com/markan)) <!-- 2.2.11 -->
 - MSYS-832 : Added Max_body_size configurable [#180](https://github.com/chef/opscode-pushy-server/pull/180) ([piyushawasthi](https://github.com/piyushawasthi)) <!-- 2.2.10 -->
