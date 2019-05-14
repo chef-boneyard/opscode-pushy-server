@@ -18,8 +18,8 @@ name       "opscode-push-jobs-server"
 maintainer "Chef Software, Inc. <maintainers@chef.io>"
 homepage   "http://www.getchef.com"
 
-license "Apache-2.0"
-license_file "../LICENSE"
+license "Chef EULA"
+license_file "CHEF-EULA.md"
 
 install_dir    "/opt/opscode-push-jobs-server"
 build_version IO.read(File.expand_path("../../../../VERSION", __FILE__)).strip
