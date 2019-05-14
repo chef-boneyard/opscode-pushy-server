@@ -1,16 +1,17 @@
 # Push Jobs Server Changelog
 <!-- usage documentation: http://expeditor-docs.es.chef.io/configuration/changelog/ -->
-<!-- latest_release 2.2.14 -->
-## [2.2.14](https://github.com/chef/opscode-pushy-server/tree/2.2.14) (2019-04-18)
+<!-- latest_release 2.2.15 -->
+## [2.2.15](https://github.com/chef/opscode-pushy-server/tree/2.2.15) (2019-05-14)
 
 #### Merged Pull Requests
-- Update chef, ohai and rubygems [#197](https://github.com/chef/opscode-pushy-server/pull/197) ([jaymalasinha](https://github.com/jaymalasinha))
+- Update the omnibus build license to the Chef EULA [#198](https://github.com/chef/opscode-pushy-server/pull/198) ([btm](https://github.com/btm))
 <!-- latest_release -->
 
 <!-- release_rollup since=2.2.8 -->
 ### Changes since 2.2.8 release
 
 #### Merged Pull Requests
+- Update the omnibus build license to the Chef EULA [#198](https://github.com/chef/opscode-pushy-server/pull/198) ([btm](https://github.com/btm)) <!-- 2.2.15 -->
 - Update chef, ohai and rubygems [#197](https://github.com/chef/opscode-pushy-server/pull/197) ([jaymalasinha](https://github.com/jaymalasinha)) <!-- 2.2.14 -->
 - Jsinha/just try [#195](https://github.com/chef/opscode-pushy-server/pull/195) ([markan](https://github.com/markan)) <!-- 2.2.13 -->
 - Migrate verification tests to Buildkite [#196](https://github.com/chef/opscode-pushy-server/pull/196) ([jaymalasinha](https://github.com/jaymalasinha)) <!-- 2.2.12 -->
