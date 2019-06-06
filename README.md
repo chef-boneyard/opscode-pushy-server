@@ -1,5 +1,23 @@
 # Chef Push Jobs Server
 
+[![Build Status](https://badge.buildkite.com/273e4d7ab2cfc46f02e29460dfb5529f868a802b34500e6d67.svg)](https://buildkite.com/chef/chef-opscode-pushy-server-master-omnibus-adhoc)
+
+**Umbrella Project**: [Chef Infra](https://github.com/chef/chef-oss-practices/blob/master/projects/chef-server-infra.md)
+
+**Project State**: [Active](https://github.com/chef/chef-oss-practices/blob/master/repo-management/repo-states.md#Maintained)
+
+**Issues [Response Time Maximum](https://github.com/chef/chef-oss-practices/blob/master/repo-management/repo-states.md)**: 28 days
+
+**Pull Request [Response Time Maximum](https://github.com/chef/chef-oss-practices/blob/master/repo-management/repo-states.md)**: 28 days
+
+NOTE: we know we have a backlog, and are working through it, but this applies for new requests.
+
+This repository is the central repository for the Chef Push Jobs Server.
+
+If you want to file an issue about Chef Push Jobs Server or contribute a change, you're in the right place.
+
+If you need to file an issue against another Chef project, you can find a list of projects and where to file issues in the [community contributions section](https://docs.chef.io/community_contributions.html#issues-and-bug-reports) of the [Chef docs](https://docs.chef.io).
+
 ## Getting Help
 
 We use GitHub issues to track bugs and feature requests. If you need help please post to our Mailing List or join the Chef Community Slack.
