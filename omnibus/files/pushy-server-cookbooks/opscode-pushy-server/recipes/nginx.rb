@@ -40,6 +40,6 @@ end
     owner "root"
     group "root"
     mode "0644"
-    notifies :restart, 'runit_service[nginx]' unless backend_secondary?
+    notifies :restart, 'runit_service[nginx]'
   end
 end
