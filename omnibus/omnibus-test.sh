@@ -64,7 +64,7 @@ printf -- "
 opscode_pushy_server['heartbeat_interval'] = 1000
 " | sudo tee /etc/opscode-push-jobs-server/opscode-push-jobs-server.rb
 
-sudo chef-server-ctl reconfigure
+sudo chef-server-ctl reconfigure --chef-license=accept-no-persist
 sleep 120
 
 create_license_guard_file /opt/opscode-push-jobs-server || true
