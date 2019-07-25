@@ -1,16 +1,17 @@
 # Push Jobs Server Changelog
 <!-- usage documentation: http://expeditor-docs.es.chef.io/configuration/changelog/ -->
-<!-- latest_release 3.0.0 -->
-## [3.0.0](https://github.com/chef/opscode-pushy-server/tree/3.0.0) (2019-05-14)
+<!-- latest_release 3.0.1 -->
+## [3.0.1](https://github.com/chef/opscode-pushy-server/tree/3.0.1) (2019-07-25)
 
 #### Merged Pull Requests
-- Bump version to v3 for Chef EULA major release [#199](https://github.com/chef/opscode-pushy-server/pull/199) ([btm](https://github.com/btm))
+- Ma/oss practices [#201](https://github.com/chef/opscode-pushy-server/pull/201) ([markan](https://github.com/markan))
 <!-- latest_release -->
 
 <!-- release_rollup since=2.2.8 -->
 ### Changes since 2.2.8 release
 
 #### Merged Pull Requests
+- Ma/oss practices [#201](https://github.com/chef/opscode-pushy-server/pull/201) ([markan](https://github.com/markan)) <!-- 3.0.1 -->
 - Bump version to v3 for Chef EULA major release [#199](https://github.com/chef/opscode-pushy-server/pull/199) ([btm](https://github.com/btm)) <!-- 3.0.0 -->
 - Update the omnibus build license to the Chef EULA [#198](https://github.com/chef/opscode-pushy-server/pull/198) ([btm](https://github.com/btm)) <!-- 2.2.15 -->
 - Update chef, ohai and rubygems [#197](https://github.com/chef/opscode-pushy-server/pull/197) ([jaymalasinha](https://github.com/jaymalasinha)) <!-- 2.2.14 -->
