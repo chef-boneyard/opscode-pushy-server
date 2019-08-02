@@ -8,9 +8,9 @@ GIT
 
 GIT
   remote: https://github.com/chef/omnibus.git
-  revision: af75fc2b244de04e76961c02b30db504d5b1a8f4
+  revision: 33bddeefb10afe23a57ea72807625881ab01990f
   specs:
-    omnibus (6.0.25)
+    omnibus (6.1.0)
       aws-sdk-s3 (~> 1)
       chef-sugar (>= 3.3)
       cleanroom (~> 1.0)
@@ -28,21 +28,22 @@ GEM
   specs:
     addressable (2.5.2)
       public_suffix (>= 2.0.2, < 4.0)
+    artifactory (3.0.5)
     awesome_print (1.8.0)
-    aws-eventstream (1.0.2)
-    aws-partitions (1.149.0)
-    aws-sdk-core (3.48.3)
+    aws-eventstream (1.0.3)
+    aws-partitions (1.196.0)
+    aws-sdk-core (3.62.0)
       aws-eventstream (~> 1.0, >= 1.0.2)
       aws-partitions (~> 1.0)
       aws-sigv4 (~> 1.1)
       jmespath (~> 1.0)
-    aws-sdk-kms (1.16.0)
-      aws-sdk-core (~> 3, >= 3.48.2)
+    aws-sdk-kms (1.24.0)
+      aws-sdk-core (~> 3, >= 3.61.1)
       aws-sigv4 (~> 1.1)
-    aws-sdk-s3 (1.36.0)
-      aws-sdk-core (~> 3, >= 3.48.2)
+    aws-sdk-s3 (1.46.0)
+      aws-sdk-core (~> 3, >= 3.61.1)
       aws-sdk-kms (~> 1)
-      aws-sigv4 (~> 1.0)
+      aws-sigv4 (~> 1.1)
     aws-sigv4 (1.1.0)
       aws-eventstream (~> 1.0, >= 1.0.2)
     berkshelf (7.0.8)
@@ -109,7 +110,7 @@ GEM
     erubis (2.7.0)
     faraday (0.15.4)
       multipart-post (>= 1.2, < 3)
-    ffi (1.10.0)
+    ffi (1.11.1)
     ffi-yajl (2.3.1)
       libyajl2 (~> 1.2)
     fuzzyurl (0.9.0)
@@ -139,8 +140,8 @@ GEM
     mixlib-archive (1.0.1)
       mixlib-log
     mixlib-authentication (2.1.1)
-    mixlib-cli (2.0.3)
-    mixlib-config (2.2.18)
+    mixlib-cli (2.1.1)
+    mixlib-config (3.0.1)
       tomlrb
     mixlib-install (3.11.12)
       mixlib-shellout
@@ -166,7 +167,7 @@ GEM
     nori (2.6.0)
     octokit (4.14.0)
       sawyer (~> 0.8.0, >= 0.5.3)
-    ohai (14.8.11)
+    ohai (14.8.12)
       chef-config (>= 12.8, < 15)
       ffi (~> 1.9)
       ffi-yajl (~> 2.2)
@@ -185,9 +186,9 @@ GEM
       progressbar
       zhexdump (>= 0.0.2)
     plist (3.5.0)
-    progressbar (1.10.0)
+    progressbar (1.10.1)
     proxifier (1.0.3)
-    public_suffix (3.0.3)
+    public_suffix (3.1.1)
     rack (2.0.7)
     retryable (3.0.4)
     rspec (3.8.0)
@@ -209,7 +210,7 @@ GEM
     rspec_junit_formatter (0.2.3)
       builder (< 4)
       rspec-core (>= 2, < 4, != 2.12.0)
-    ruby-progressbar (1.10.0)
+    ruby-progressbar (1.10.1)
     rubyntlm (0.6.2)
     rubyzip (1.2.2)
     sawyer (0.8.1)
@@ -271,6 +272,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  artifactory
   berkshelf
   kitchen-vagrant
   omnibus!
