@@ -1,16 +1,17 @@
 # Push Jobs Server Changelog
 <!-- usage documentation: http://expeditor-docs.es.chef.io/configuration/changelog/ -->
-<!-- latest_release 3.0.2 -->
-## [3.0.2](https://github.com/chef/opscode-pushy-server/tree/3.0.2) (2019-08-22)
+<!-- latest_release 3.0.3 -->
+## [3.0.3](https://github.com/chef/opscode-pushy-server/tree/3.0.3) (2019-08-27)
 
 #### Merged Pull Requests
-- Jsinha/deprecate ubuntu 14 [#203](https://github.com/chef/opscode-pushy-server/pull/203) ([jaymalasinha](https://github.com/jaymalasinha))
+- Add RHEL 8 tester to build pipeline [#205](https://github.com/chef/opscode-pushy-server/pull/205) ([christopher-snapp](https://github.com/christopher-snapp))
 <!-- latest_release -->
 
 <!-- release_rollup since=2.2.8 -->
 ### Changes since 2.2.8 release
 
 #### Merged Pull Requests
+- Add RHEL 8 tester to build pipeline [#205](https://github.com/chef/opscode-pushy-server/pull/205) ([christopher-snapp](https://github.com/christopher-snapp)) <!-- 3.0.3 -->
 - Jsinha/deprecate ubuntu 14 [#203](https://github.com/chef/opscode-pushy-server/pull/203) ([jaymalasinha](https://github.com/jaymalasinha)) <!-- 3.0.2 -->
 - Ma/oss practices [#201](https://github.com/chef/opscode-pushy-server/pull/201) ([markan](https://github.com/markan)) <!-- 3.0.1 -->
 - Bump version to v3 for Chef EULA major release [#199](https://github.com/chef/opscode-pushy-server/pull/199) ([btm](https://github.com/btm)) <!-- 3.0.0 -->
