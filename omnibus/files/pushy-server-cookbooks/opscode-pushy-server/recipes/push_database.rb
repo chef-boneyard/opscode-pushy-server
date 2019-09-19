@@ -52,7 +52,7 @@ end
 opscode_pushy_server_pg_sqitch  "#{install_path}/embedded/service/pushy-server-schema" do
   hostname push_attrs['vip']
   port     push_attrs['port']
-  username  push_attrs['db_superuser']
+  username  push_attrs['db_connection_superuser'] || push_attrs['db_superuser']
   password  PushServer::Secrets.veil.get('postgresql', 'db_superuser_password')
   database database_name
 end
