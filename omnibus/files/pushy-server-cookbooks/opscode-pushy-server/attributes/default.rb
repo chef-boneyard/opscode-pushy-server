@@ -74,9 +74,11 @@ default['pushy']['opscode-pushy-server']['chef_api_version'] = '11.1.0' # API Ve
 default['pushy']['postgresql']['database_name'] = "opscode_pushy"
 default['pushy']['postgresql']['username'] = "opscode-pgsql"
 default['pushy']['postgresql']['sql_user'] = "opscode_pushy"
+default['pushy']['postgresql']['sql_connection_user'] = nil
 default['pushy']['postgresql']['sql_ro_user'] = "opscode_pushy_ro"
 default['pushy']['postgresql']['vip'] = "127.0.0.1"
 default['pushy']['postgresql']['port'] = 5432
+default['pushy']['postgresql']['sslmode'] = 'disable'
 
 ####
 # Chef Pedant
