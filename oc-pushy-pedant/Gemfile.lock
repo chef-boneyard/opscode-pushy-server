@@ -153,7 +153,7 @@ GEM
     plist (3.5.0)
     proxifier (1.0.3)
     public_suffix (3.0.3)
-    rack (2.0.6)
+    rack (2.0.8)
     rake (12.3.2)
     rdoc (6.1.1)
     rspec (3.8.0)
