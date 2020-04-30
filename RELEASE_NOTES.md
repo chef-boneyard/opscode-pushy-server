@@ -1,5 +1,32 @@
 # Push Jobs Server Release Notes
 
+## 3.0
+
+Versions of Chef Push Jobs 3.0 and later may only be used under the terms of the [Chef EULA](https://www.chef.io/end-user-license-agreement/) or another commercial agreement with Chef Software.
+
+### Dependency updates
+- Chef Infra Client 13.3.42 to 15.10.12
+
+### Security updates
+
+These updates include a large number of CVE fixes. Users are strongly encouraged to upgrade.
+
+TBD
+
+Added platform support:
+- RHEL 8
+- Ubuntu 20.04
+
+Removed EOL platform support:
+- RHEL 5
+- Ubuntu 14.04
+
+For more information see our [platform support policy](https://docs.chef.io/platforms/#platform-end-of-life-policy).
+
+### experimental max\_body\_size setting
+
+TBD
+
 ## 2.2.2
 
 Security fix release for updating zlib to 1.2.11.

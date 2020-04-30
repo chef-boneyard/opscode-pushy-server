@@ -23,63 +23,29 @@ In order to release, you will need the following accounts/permissions:
 - Chef Software, Inc Slack account
 - VPN account for Chef Software, Inc.
 - Account on [https://discourse.chef.io](https://discourse.chef.io) using your Chef email address
-- Login for wilson.ci.chef.co (This is linked to your github account.)
 
 ## THE PROCESS
-### Informing everyone of a pending release.
 
-- [ ] Announce your intention to drive the release to #cft-announce on slack.
-- [ ] Cross-post this intention on #chef-server and #pool.  Determine whether
-  this upgrade requires a major/minor/patch bump and what the major changes
-  are.
-- [ ] Ensure that the opscode-push-jobs-server pipeline on wilson is currently green - you
-  cannot ship if master is broken.
+- All merges to master are automatically built by Buildkite and placed in the unstable channel
 
-### Preparing for the release
+- Buildkite will run [very limited] tests and promote the built to the current channel
 
-- [ ] Update CHANGELOG.md to contain all of the changes needed in this release.
-- [ ] Check RELEASE_NOTES.md to ensure that it describes the
-  most important user-facing changes in the release. This file should
-  form the basis of the post to Discourse that comes in a later step. Update as
-  appropriate.
-- [ ] Open a PR with these changes and post the link to #chef-server-rfr
-  and #pool.
+- To release a build, use `/expeditor promote` on Slack to promote the build to the stable channel
 
-### Building and Releasing the Release
-
-- [ ] Tag the opscode-pushy-server repository with the release version: `git
-  tag -a VERSION_NUMBER`. The first line of the tag message should be
-  the version number. The other lines are up to you. You're the boss!
-  (You can leave them blank).
-
-- [ ] Push the new tag: `git push origin master --tags`.
-
-- [ ] Trigger a release build in Jenkins using the
-  `opscode-push-jobs-server-trigger-release` trigger.  Use the tag you created
-  above as the GIT_REF parameter.
-
-- [ ] Wait for the pipeline to complete.
-
-- [ ] Use julia to promote the build:
-- `@julia artifactory promote opscode-push-jobs-server VERSION`. Please do this
-- in the `#eng-services-support` room.  Once this is done, the release is
-  available to the public via the APT and YUM repositories.
-
-- [ ] Chef employees should already know a release is coming; however, as a
+- Chef employees should already know a release is coming; however, as a
   courtesy, drop a message in the #cft-announce slack channel that the release
   is coming. Provide the release number and any highlights of the release.
 
-- [ ] Write and then publish a Discourse post on https://discourse.chef.io
+- Write and then publish a Discourse post on https://discourse.chef.io
   once the release is live. This post should contain a link to the downloads
   page ([https://downloads.chef.io](https://downloads.chef.io)) and its contents
-  should be based on the information that was added to the RELEASE_NOTES.md file
+  should be based on the information that was added to the RELEASE\_NOTES.md file
   in an earlier step. *The post should  be published to the Chef Release
   Announcements category on https://discourse.chef.io. If it is a security
   release, it should also be published to the Chef Security Announcements
   category.* Full details on the policy of making release announcements on
-  Discourse can be found on the wiki under the Engineering section ->
-  Policy and Processes -> Release Announcements and Security Alerts
+  Discourse can be found on the wiki: [https://chefio.atlassian.net/wiki/display/ENG/Release+Announcements+and+Security+Alerts](https://chefio.atlassian.net/wiki/display/ENG/Release+Announcements+and+Security+Alerts)
 
-- [ ] Let `#cft-announce` know about the release, including a link to the Discourse post.
+- Let `#cft-announce` know about the release, including a link to the Discourse post.
 
 Chef Push Jobs Server is now released.
