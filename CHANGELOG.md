@@ -1,16 +1,17 @@
 # Push Jobs Server Changelog
 <!-- usage documentation: http://expeditor-docs.es.chef.io/configuration/changelog/ -->
-<!-- latest_release 3.0.3 -->
-## [3.0.3](https://github.com/chef/opscode-pushy-server/tree/3.0.3) (2019-08-27)
+<!-- latest_release 3.0.4 -->
+## [3.0.4](https://github.com/chef/opscode-pushy-server/tree/3.0.4) (2020-05-12)
 
 #### Merged Pull Requests
-- Add RHEL 8 tester to build pipeline [#205](https://github.com/chef/opscode-pushy-server/pull/205) ([christopher-snapp](https://github.com/christopher-snapp))
+- 3.0 release dep updates and release notes [#216](https://github.com/chef/opscode-pushy-server/pull/216) ([btm](https://github.com/btm))
 <!-- latest_release -->
 
 <!-- release_rollup since=2.2.8 -->
 ### Changes since 2.2.8 release
 
 #### Merged Pull Requests
+- 3.0 release dep updates and release notes [#216](https://github.com/chef/opscode-pushy-server/pull/216) ([btm](https://github.com/btm)) <!-- 3.0.4 -->
 - Add RHEL 8 tester to build pipeline [#205](https://github.com/chef/opscode-pushy-server/pull/205) ([christopher-snapp](https://github.com/christopher-snapp)) <!-- 3.0.3 -->
 - Jsinha/deprecate ubuntu 14 [#203](https://github.com/chef/opscode-pushy-server/pull/203) ([jaymalasinha](https://github.com/jaymalasinha)) <!-- 3.0.2 -->
 - Ma/oss practices [#201](https://github.com/chef/opscode-pushy-server/pull/201) ([markan](https://github.com/markan)) <!-- 3.0.1 -->
