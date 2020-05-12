@@ -22,7 +22,6 @@ source path: "#{project.files_path}/../../oc-pushy-pedant"
 
 dependency "libzmq"
 dependency "ruby"
-dependency "bundler"
 
 relative_path "oc-pushy-pedant"
 

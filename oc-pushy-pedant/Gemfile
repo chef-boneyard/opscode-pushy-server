@@ -1,8 +1,8 @@
 source "https://rubygems.org"
 
 # Pinned to the same version shipped in the current pushy client
-gem "chef", "14.11.21"
-gem "ohai", "~> 14.0"
+gem "chef", "= 15.10.12"
+gem "ohai", "~> 15.0"
 gem "rake"
 
 gemspec

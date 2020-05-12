@@ -4,7 +4,7 @@ class EcPostgres
     require 'pg'
     password = opts['db_superuser_password'] || PushServer::Secrets.veil.get('postgresql', 'db_superuser_password')
     postgres = node['pushy']['postgresql'].merge(opts)
-    connection = ::PGconn.open('user' => postgres['db_superuser'],
+    connection = PG::Connection.open('user' => postgres['db_superuser'],
                                'host' => postgres['vip'],
                                'password' => password,
                                'port' => postgres['port'],
@@ -23,7 +23,7 @@ class EcPostgres
     require 'pg'
     postgres = node['pushy']['postgresql']
     as_user(postgres['username']) do
-      connection = ::PGconn.open('dbname' => database)
+      connection = PG::Connection.open('dbname' => database)
       begin
         yield connection
       ensure
