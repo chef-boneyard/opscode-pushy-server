@@ -73,4 +73,5 @@ sleep 120
 
 echo "--- Running verification for $channel $product $version"
 
-sudo opscode-push-jobs-server-ctl test -J pedant.xml --all
+#sudo opscode-push-jobs-server-ctl test -J pedant.xml --all
+sudo chef-server-ctl test
