@@ -27,7 +27,7 @@ GIT
 GEM
   remote: https://rubygems.org/
   specs:
-    addressable (2.7.0)
+    addressable (2.8.0)
       public_suffix (>= 2.0.2, < 5.0)
     artifactory (3.0.12)
     awesome_print (1.8.0)
@@ -214,7 +214,7 @@ GEM
     plist (3.5.0)
     progressbar (1.10.1)
     proxifier (1.0.3)
-    public_suffix (4.0.4)
+    public_suffix (4.0.6)
     rack (2.2.2)
     rainbow (3.0.0)
     retryable (3.0.5)
